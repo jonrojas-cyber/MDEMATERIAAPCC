@@ -1,0 +1,56 @@
+[
+  {
+    "id": "rev-001",
+    "tipo": "Temperatura nevera barra",
+    "valor": "4.1°C",
+    "estado": "Correcto",
+    "accion_correctiva": "",
+    "responsable": "Laura",
+    "fecha": "2026-06-20T07:03:44.477908+02:00"
+  },
+  {
+    "id": "rev-002",
+    "tipo": "Temperatura nevera producción",
+    "valor": "6.8°C",
+    "estado": "Fuera del rango esperado",
+    "accion_correctiva": "Revisar cierre de puerta y repetir medición en 30 min",
+    "responsable": "Laura",
+    "fecha": "2026-06-20T07:04:44.477908+02:00"
+  },
+  {
+    "id": "rev-003",
+    "tipo": "Temperatura leche",
+    "valor": "3.5°C",
+    "estado": "Correcto",
+    "accion_correctiva": "",
+    "responsable": "Diego",
+    "fecha": "2026-06-20T07:13:44.477908+02:00"
+  },
+  {
+    "id": "rev-004",
+    "tipo": "Limpieza barra",
+    "valor": "Realizada",
+    "estado": "Correcto",
+    "accion_correctiva": "",
+    "responsable": "Diego",
+    "fecha": "2026-06-20T06:13:44.477908+02:00"
+  },
+  {
+    "id": "rev-005",
+    "tipo": "Limpieza mesa fría",
+    "valor": "Pendiente",
+    "estado": "Requiere atención",
+    "accion_correctiva": "Completar antes del servicio de mediodía",
+    "responsable": "Diego",
+    "fecha": "2026-06-20T06:18:44.477908+02:00"
+  },
+  {
+    "id": "rev-006",
+    "tipo": "Limpieza grifos",
+    "valor": "Realizada",
+    "estado": "Correcto",
+    "accion_correctiva": "",
+    "responsable": "Laura",
+    "fecha": "2026-06-20T06:23:44.477908+02:00"
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "prov-001",
+    "nombre": "Frutas Pedregalejo",
+    "contacto": "Manolo Ruiz",
+    "email": "pedidos@frutaspedregalejo.es",
+    "whatsapp": "+34 612 334 556",
+    "dias_reparto": ["Lunes", "Jueves"],
+    "productos_asociados": ["mat-001", "mat-002", "mat-005"]
+  },
+  {
+    "id": "prov-002",
+    "nombre": "Aceites Axarquía",
+    "contacto": "Pilar Gómez",
+    "email": "ventas@aceitesaxarquia.es",
+    "whatsapp": "+34 655 102 998",
+    "dias_reparto": ["Miércoles"],
+    "productos_asociados": ["mat-003"]
+  },
+  {
+    "id": "prov-003",
+    "nombre": "Distribuidora Mediterránea",
+    "contacto": "Javier Soto",
+    "email": "j.soto@distmediterranea.com",
+    "whatsapp": "+34 644 778 211",
+    "dias_reparto": ["Martes", "Viernes"],
+    "productos_asociados": ["mat-004", "mat-011", "mat-012", "mat-015"]
+  },
+  {
+    "id": "prov-004",
+    "nombre": "Sous Vide Málaga",
+    "contacto": "Carmen Díaz",
+    "email": "carmen@sousvidemalaga.es",
+    "whatsapp": "+34 633 221 045",
+    "dias_reparto": ["Lunes", "Viernes"],
+    "productos_asociados": ["mat-006"]
+  },
+  {
+    "id": "prov-005",
+    "nombre": "Tueste Local",
+    "contacto": "Fran Ortega",
+    "email": "fran@tuestelocal.com",
+    "whatsapp": "+34 622 884 130",
+    "dias_reparto": ["Martes"],
+    "productos_asociados": ["mat-008"]
+  },
+  {
+    "id": "prov-006",
+    "nombre": "Lácteos del Sur",
+    "contacto": "Inés Calvo",
+    "email": "inescalvo@lacteosdelsur.es",
+    "whatsapp": "+34 611 998 320",
+    "dias_reparto": ["Lunes", "Jueves"],
+    "productos_asociados": ["mat-009", "mat-013"]
+  },
+  {
+    "id": "prov-007",
+    "nombre": "Panadería M (interna)",
+    "contacto": "Producción propia",
+    "email": "produccion@mdemateria.com",
+    "whatsapp": "+34 600 000 000",
+    "dias_reparto": ["Diario"],
+    "productos_asociados": ["mat-010"]
+  },
+  {
+    "id": "prov-008",
+    "nombre": "Frutos Secos Málaga",
+    "contacto": "Rosa Linares",
+    "email": "rosa@frutossecosmalaga.es",
+    "whatsapp": "+34 660 442 117",
+    "dias_reparto": ["Miércoles"],
+    "productos_asociados": ["mat-014"]
+  }
+]

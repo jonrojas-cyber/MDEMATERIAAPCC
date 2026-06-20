@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Control M · Producción</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F2EEE4;
+    --paper:#FAF8F2;
+    --black:#15140F;
+    --olive:#6B7353;
+    --olive-dark:#4A4F3A;
+    --olive-soft:#E4E5D8;
+    --line:#D9D3C2;
+    --line-strong:#C3BCA8;
+    --amber:#A8793F;
+    --rust:#9C5A3A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--black);
+    font-family:'Courier Prime','Courier New',monospace;
+    font-size:14px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;}
+
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
+
+  /* ---- SIDEBAR ---- */
+  .sidebar{
+    background:var(--black);color:var(--cream);
+    padding:36px 22px;display:flex;flex-direction:column;gap:32px;
+    position:sticky;top:0;height:100vh;
+  }
+  .brand .mark{font-size:20px;font-weight:700;letter-spacing:0.04em;}
+  .brand .sub{font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B9BCA8;margin-top:4px;}
+  .nav{display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto;}
+  .nav-item{display:flex;align-items:baseline;gap:10px;padding:9px 8px;font-size:12.5px;color:#D8D9CC;}
+  .nav-item .num{font-size:10px;color:#76795F;min-width:16px;}
+  .nav-item.active{background:var(--olive-dark);color:var(--cream);border-radius:2px;}
+  .nav-item.pending{color:#6E7160;cursor:default;}
+  .nav-item.pending .tag{margin-left:auto;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#5C5E4E;border:1px solid #3A3A2E;padding:2px 6px;border-radius:2px;}
+  .sidebar-footer{font-size:10px;letter-spacing:0.05em;color:#6E7160;border-top:1px solid #2A291F;padding-top:14px;}
+
+  /* ---- MAIN ---- */
+  .main{padding:36px 56px;max-width:980px;}
+  .top-row{margin-bottom:28px;border-bottom:1px solid var(--line-strong);padding-bottom:18px;}
+  .eyebrow{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--olive-dark);margin-bottom:6px;}
+  h1{font-size:21px;font-weight:700;margin:0;}
+
+  .estado-banner{
+    display:flex;align-items:center;gap:10px;
+    background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--olive);
+    padding:12px 16px;margin-bottom:30px;font-size:13px;
+  }
+  .estado-banner.alerta{border-left-color:var(--amber);}
+  .estado-banner .dot{width:7px;height:7px;border-radius:50%;background:var(--olive);flex-shrink:0;}
+  .estado-banner.alerta .dot{background:var(--amber);}
+
+  .seccion{margin-bottom:34px;}
+  .seccion-titulo{
+    font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--olive-dark);
+    margin-bottom:12px;
+  }
+
+  .tarjeta{
+    background:var(--paper);border:1px solid var(--line);
+    padding:16px 18px;margin-bottom:10px;
+  }
+  .tarjeta-fila{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .tarjeta-titulo{font-size:14px;font-weight:700;}
+  .tarjeta-meta{font-size:11.5px;color:#7E7A66;margin-top:3px;}
+  .tarjeta-acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+
+  .btn{
+    font-family:inherit;font-size:12px;letter-spacing:0.02em;
+    background:var(--black);color:var(--cream);border:none;
+    padding:9px 14px;cursor:pointer;transition:background .15s ease;
+  }
+  .btn:hover{background:var(--olive-dark);}
+  .btn.secundario{background:transparent;color:var(--black);border:1px solid var(--line-strong);}
+  .btn.secundario:hover{background:var(--olive-soft);border-color:var(--olive);}
+  .btn.alerta{background:var(--rust);}
+  .btn.alerta:hover{background:#7E4528;}
+  .btn:disabled{opacity:0.45;cursor:default;}
+
+  .empty-state{font-size:12.5px;color:#857F68;font-style:italic;padding:4px 0 14px;}
+  .loading,.error-state{font-size:12.5px;color:#857F68;padding:24px 0;}
+  .error-state{color:var(--rust);}
+
+  .placeholder{background:var(--paper);border:1px dashed var(--line-strong);padding:40px;text-align:center;color:#7E7A66;font-size:13px;}
+  .placeholder .eyebrow{margin-bottom:10px;}
+
+  .coste-tag{font-size:11px;color:var(--olive-dark);}
+
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{position:relative;height:auto;}
+    .main{padding:24px 18px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">M</div>
+      <div class="sub">Control M · Producción</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-footer">El Palo · Pedregalejo<br/>v0.2 — decisión</div>
+  </aside>
+
+  <main class="main">
+    <div class="top-row">
+      <div class="eyebrow" id="vista-eyebrow">Sección 1</div>
+      <h1 id="vista-titulo">Inicio</h1>
+    </div>
+    <div id="contenido"></div>
+  </main>
+</div>
+
+<script>
+const API = "/api";
+
+const SECCIONES = [
+  { id: "inicio", num: 1, nombre: "Inicio" },
+  { id: "preparaciones", num: 2, nombre: "Preparaciones" },
+  { id: "lotes", num: 3, nombre: "Lotes activos" },
+  { id: "materias", num: 4, nombre: "Materias" },
+  { id: "revisiones", num: 5, nombre: "Revisiones" },
+  { id: "ajustes", num: 6, nombre: "Ajustes" },
+  { id: "proveedores", num: 7, nombre: "Proveedores" },
+  { id: "recepcion", num: 8, nombre: "Recepción" },
+  { id: "manual", num: 9, nombre: "La forma de hacer las cosas" },
+];
+
+let vistaActual = "inicio";
+
+function renderNav(){
+  const nav = document.getElementById("nav");
+  nav.innerHTML = "";
+  SECCIONES.forEach(s => {
+    const habilitada = s.id === "inicio";
+    const el = document.createElement("div");
+    el.className = "nav-item" + (s.id === vistaActual ? " active" : "") + (!habilitada ? " pending" : "");
+    el.innerHTML = `<span class="num">${String(s.num).padStart(2,"0")}</span><span>${s.nombre}</span>` +
+      (!habilitada ? `<span class="tag">Próximamente</span>` : "");
+    el.addEventListener("click", () => irA(s));
+    nav.appendChild(el);
+  });
+}
+
+function irA(seccion){
+  vistaActual = seccion.id;
+  document.getElementById("vista-eyebrow").textContent = `Sección ${seccion.num}`;
+  document.getElementById("vista-titulo").textContent = seccion.nombre;
+  renderNav();
+  if(seccion.id === "inicio") cargarInicio();
+  else mostrarPlaceholder();
+}
+
+function mostrarPlaceholder(){
+  document.getElementById("contenido").innerHTML = `
+    <div class="placeholder">
+      <div class="eyebrow">En espera de incorporación</div>
+      Este módulo se añade en el siguiente paso, tras revisión conjunta.
+    </div>`;
+}
+
+async function cargarInicio(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando estado del servicio…</div>`;
+  try{
+    const res = await fetch(`${API}/inicio`);
+    if(!res.ok) throw new Error("Respuesta no válida del servidor");
+    pintarInicio(await res.json());
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido conectar con el backend local (${err.message}). Comprueba que el servidor esté en marcha.</div>`;
+  }
+}
+
+function seccionTarjetas(titulo, items, render, vacio){
+  if(!items || items.length === 0){
+    return `<div class="seccion"><div class="seccion-titulo">${titulo}</div><div class="empty-state">${vacio}</div></div>`;
+  }
+  return `<div class="seccion"><div class="seccion-titulo">${titulo}</div>${items.map(render).join("")}</div>`;
+}
+
+function pintarInicio(d){
+  const alerta = d.estado_servicio !== "Servicio en orden";
+  const banner = `
+    <div class="estado-banner ${alerta ? "alerta" : ""}">
+      <span class="dot"></span><span>${d.estado_servicio}</span>
+    </div>`;
+
+  const enCursoHTML = seccionTarjetas(
+    "En curso",
+    d.en_curso,
+    p => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${p.nombre} — ${p.cantidad_objetivo} ${p.unidad}</div>
+            <div class="tarjeta-meta">${p.responsable}</div>
+          </div>
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn" onclick="finalizarPreparacion('${p.id}')">Finalizar producción</button>
+        </div>
+      </div>`,
+    "No hay preparaciones en curso."
+  );
+
+  const prepararHTML = seccionTarjetas(
+    "Preparar",
+    d.preparar,
+    p => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${p.nombre}</div>
+            <div class="tarjeta-meta">Disponible ahora: ${p.disponible_ahora} ${p.unidad}</div>
+          </div>
+        </div>
+        <div class="tarjeta-acciones">
+          ${p.opciones_tamano.map(o => `
+            <button class="btn secundario" onclick="iniciarPreparacion('${p.receta_id}', ${o.cantidad}, this)">
+              ${o.cantidad} ${p.unidad} <span class="coste-tag">· ${o.coste_estimado.toFixed(2)} €</span>
+            </button>
+          `).join("")}
+        </div>
+      </div>`,
+    "No hay preparaciones pendientes en este momento."
+  );
+
+  const pedirHTML = seccionTarjetas(
+    "Pedir",
+    d.pedir,
+    m => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${m.nombre}</div>
+            <div class="tarjeta-meta">${m.disponibilidad_actual} ${m.unidad} disponibles · valor en stock ${m.valor_stock_actual.toFixed(2)} € · ${m.proveedor}</div>
+          </div>
+        </div>
+        <div class="tarjeta-acciones">
+          ${m.whatsapp
+            ? `<button class="btn" onclick="pedirPorWhatsapp('${m.whatsapp}', '${encodeURIComponent(m.mensaje_whatsapp)}')">Pedir ${m.cantidad_sugerida} ${m.unidad} por WhatsApp</button>`
+            : `<button class="btn" disabled>Sin contacto de proveedor</button>`}
+        </div>
+      </div>`,
+    "Todas las materias están dentro del rango esperado."
+  );
+
+  const revisarHTML = seccionTarjetas(
+    "Revisar",
+    d.revisar,
+    r => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${r.tipo}</div>
+            <div class="tarjeta-meta">${r.valor}${r.accion_correctiva ? " · " + r.accion_correctiva : ""}</div>
+          </div>
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn" onclick="resolverRevision('${r.id}')">Marcar revisado</button>
+        </div>
+      </div>`,
+    "Revisiones del día completadas."
+  );
+
+  const lotesHTML = seccionTarjetas(
+    "Lotes a vigilar",
+    d.lotes_a_vigilar,
+    l => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${l.codigo} — ${l.nombre}</div>
+            <div class="tarjeta-meta">${l.ubicacion} · ${l.cantidad_restante} g restantes · ${l.caducado ? "Fuera de plazo" : l.horas_restantes + " h restantes"}</div>
+          </div>
+        </div>
+        ${l.caducado ? `
+          <div class="tarjeta-acciones">
+            <button class="btn alerta" onclick="darDeBajaLote('${l.id}')">Dar de baja</button>
+          </div>` : ""}
+      </div>`,
+    "Ningún lote requiere atención inmediata."
+  );
+
+  document.getElementById("contenido").innerHTML =
+    banner + enCursoHTML + prepararHTML + pedirHTML + revisarHTML + lotesHTML;
+}
+
+async function iniciarPreparacion(recetaId, cantidad, boton){
+  boton.disabled = true;
+  try{
+    const res = await fetch(`${API}/preparaciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receta_id: recetaId, cantidad_objetivo: cantidad })
+    });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido iniciar");
+    cargarInicio();
+  } catch(err){
+    alert(err.message);
+    boton.disabled = false;
+  }
+}
+
+async function finalizarPreparacion(id){
+  try{
+    const res = await fetch(`${API}/preparaciones/${id}/finalizar`, { method: "POST" });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido finalizar");
+    cargarInicio();
+  } catch(err){ alert(err.message); }
+}
+
+async function resolverRevision(id){
+  try{
+    const res = await fetch(`${API}/revisiones/${id}/resolver`, { method: "POST" });
+    if(!res.ok) throw new Error("No se ha podido marcar como revisado");
+    cargarInicio();
+  } catch(err){ alert(err.message); }
+}
+
+async function darDeBajaLote(id){
+  try{
+    const res = await fetch(`${API}/lotes/${id}/dar-de-baja`, { method: "POST" });
+    if(!res.ok) throw new Error("No se ha podido dar de baja el lote");
+    cargarInicio();
+  } catch(err){ alert(err.message); }
+}
+
+function pedirPorWhatsapp(numero, mensajeCodificado){
+  window.open(`https://wa.me/${numero}?text=${mensajeCodificado}`, "_blank");
+}
+
+renderNav();
+cargarInicio();
+setInterval(() => { if(vistaActual === "inicio") cargarInicio(); }, 60000);
+</script>
+
+</body>
+</html>

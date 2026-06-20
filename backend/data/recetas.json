@@ -1,0 +1,99 @@
+[
+  {
+    "id": "rec-001",
+    "nombre": "Aguacate M",
+    "resultado_base": 1000,
+    "unidad": "g",
+    "vida_util_horas": 24,
+    "ingredientes": [
+      {
+        "materia_id": "mat-001",
+        "cantidad": 850
+      },
+      {
+        "materia_id": "mat-002",
+        "cantidad": 80
+      },
+      {
+        "materia_id": "mat-003",
+        "cantidad": 60
+      },
+      {
+        "materia_id": "mat-004",
+        "cantidad": 10
+      }
+    ],
+    "tamanos_lote": [
+      500,
+      1000,
+      1500
+    ]
+  },
+  {
+    "id": "rec-002",
+    "nombre": "Tomate trabajado M",
+    "resultado_base": 1000,
+    "unidad": "g",
+    "vida_util_horas": 24,
+    "ingredientes": [
+      {
+        "materia_id": "mat-005",
+        "cantidad": 900
+      },
+      {
+        "materia_id": "mat-003",
+        "cantidad": 80
+      },
+      {
+        "materia_id": "mat-004",
+        "cantidad": 10
+      }
+    ],
+    "tamanos_lote": [
+      500,
+      1000
+    ]
+  },
+  {
+    "id": "rec-003",
+    "nombre": "Matcha base",
+    "resultado_base": 3000,
+    "unidad": "g",
+    "vida_util_horas": 24,
+    "ingredientes": [
+      {
+        "materia_id": "mat-007",
+        "cantidad": 360
+      },
+      {
+        "materia_id": "mat-017",
+        "cantidad": 2640
+      }
+    ],
+    "tamanos_lote": [
+      1500,
+      3000
+    ]
+  },
+  {
+    "id": "rec-004",
+    "nombre": "Cold brew",
+    "resultado_base": 10000,
+    "unidad": "g",
+    "vida_util_horas": 72,
+    "ingredientes": [
+      {
+        "materia_id": "mat-018",
+        "cantidad": 1500
+      },
+      {
+        "materia_id": "mat-017",
+        "cantidad": 8500
+      }
+    ],
+    "tamanos_lote": [
+      5000,
+      10000
+    ]
+  }
+]

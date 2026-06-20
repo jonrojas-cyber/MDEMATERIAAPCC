@@ -1,0 +1,24 @@
+[
+  {
+    "id": "aju-001",
+    "tipo_objetivo": "lote",
+    "objetivo_id": "lote-005",
+    "cantidad": 90,
+    "motivo": "fuera de vida útil",
+    "coste_estimado": 0.85,
+    "responsable": "Diego",
+    "observacion": "Retirado al cierre del lote AGM-170626-A",
+    "fecha": "2026-06-18T22:30:00+02:00"
+  },
+  {
+    "id": "aju-002",
+    "tipo_objetivo": "materia",
+    "objetivo_id": "mat-005",
+    "cantidad": 300,
+    "motivo": "maduración avanzada",
+    "coste_estimado": 0.84,
+    "responsable": "Laura",
+    "observacion": "Tomate con exceso de maduración detectado en recepción",
+    "fecha": "2026-06-19T07:30:00+02:00"
+  }
+]

@@ -52,6 +52,27 @@ function escalarIngredientes(receta, cantidadObjetivo) {
   });
 }
 
+// Construye la lista de pasos: uno por ingrediente (pesar/añadir X cantidad),
+// luego los pasos de proceso propios de la receta (mezclar, pasar a GN...).
+function generarPasos(receta, cantidadObjetivo) {
+  const ingredientes = escalarIngredientes(receta, cantidadObjetivo);
+  const pasosIngrediente = ingredientes.map((ing, i) => ({
+    tipo: "ingrediente",
+    texto: i === 0 ? `Pesar ${ing.nombre.toLowerCase()}` : `Añadir ${ing.nombre.toLowerCase()}`,
+    cantidad: ing.cantidad_necesaria,
+    unidad: ing.unidad,
+    confirmado: false,
+    confirmado_en: null,
+  }));
+  const pasosProceso = (receta.pasos_proceso || []).map((texto) => ({
+    tipo: "proceso",
+    texto,
+    confirmado: false,
+    confirmado_en: null,
+  }));
+  return [...pasosIngrediente, ...pasosProceso];
+}
+
 router.get("/", (req, res) => {
   const preparaciones = store.readAll("preparaciones");
   const recetas = store.readAll("recetas");
@@ -93,6 +114,7 @@ router.post("/calcular", (req, res) => {
   });
 });
 
+// Inicia una preparación: genera la lista de pasos completa, pendiente de confirmar uno a uno
 router.post("/", (req, res) => {
   const { receta_id, cantidad_objetivo, responsable } = req.body;
   const receta = store.findById("recetas", receta_id);
@@ -116,16 +138,44 @@ router.post("/", (req, res) => {
     creada_en: new Date().toISOString(),
     finalizada_en: null,
     lote_id: null,
+    pasos: generarPasos(receta, cantidad_objetivo),
+    paso_actual: 0,
   };
   store.insert("preparaciones", preparacion);
   res.status(201).json(preparacion);
 });
 
+// Confirma el paso actual (con OK) y avanza al siguiente. No permite saltar pasos.
+router.post("/:id/confirmar-paso", (req, res) => {
+  const preparacion = store.findById("preparaciones", req.params.id);
+  if (!preparacion) return res.status(404).json({ error: "Preparación no encontrada" });
+  if (preparacion.estado === "Finalizada") {
+    return res.status(400).json({ error: "Esta preparación ya está finalizada" });
+  }
+  if (preparacion.paso_actual >= preparacion.pasos.length) {
+    return res.status(400).json({ error: "Todos los pasos ya están confirmados" });
+  }
+
+  preparacion.pasos[preparacion.paso_actual].confirmado = true;
+  preparacion.pasos[preparacion.paso_actual].confirmado_en = new Date().toISOString();
+  preparacion.paso_actual += 1;
+
+  const actualizada = store.update("preparaciones", preparacion.id, {
+    pasos: preparacion.pasos,
+    paso_actual: preparacion.paso_actual,
+  });
+  res.json(actualizada);
+});
+
+// Finaliza: exige todos los pasos confirmados. Descuenta materias, crea lote y etiqueta.
 router.post("/:id/finalizar", async (req, res) => {
   const preparacion = store.findById("preparaciones", req.params.id);
   if (!preparacion) return res.status(404).json({ error: "Preparación no encontrada" });
   if (preparacion.estado === "Finalizada") {
     return res.status(400).json({ error: "Esta preparación ya está finalizada" });
+  }
+  if (preparacion.paso_actual < preparacion.pasos.length) {
+    return res.status(400).json({ error: "Quedan pasos sin confirmar antes de finalizar" });
   }
 
   const receta = store.findById("recetas", preparacion.receta_id);

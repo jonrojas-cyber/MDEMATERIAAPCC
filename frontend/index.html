@@ -434,81 +434,75 @@ function pedirPorWhatsapp(numero, mensajeCodificado){
 
 // ============ PREPARACIONES ============
 
-function escalarIngredientesLocal(receta, cantidad, materiasPorId){
-  const factor = cantidad / receta.resultado_base;
-  return receta.ingredientes.map(ing => {
-    const materia = materiasPorId[ing.materia_id];
-    const necesaria = Math.round(ing.cantidad * factor * 100) / 100;
-    return {
-      nombre: ing.nombre,
-      unidad: ing.unidad,
-      cantidad_necesaria: necesaria,
-      suficiente: materia ? materia.disponibilidad_actual >= necesaria : true,
-    };
-  });
+function pasoIconoTexto(paso){
+  if(paso.tipo === "ingrediente") return `${paso.texto.charAt(0).toUpperCase() + paso.texto.slice(1)}: ${paso.cantidad} ${paso.unidad}`;
+  return paso.texto;
 }
 
-function ingredientesHTML(lista){
+function pintarAsistente(p){
+  const total = p.pasos.length;
+  const actual = p.paso_actual;
+  const terminado = actual >= total;
+
+  const listaPasos = p.pasos.map((paso, i) => `
+    <div class="fila ${i < actual ? "" : ""}" style="opacity:${i < actual ? '0.45' : (i === actual ? '1' : '0.35')};">
+      <span>${i < actual ? "✓ " : ""}${pasoIconoTexto(paso)}</span>
+    </div>
+  `).join("");
+
   return `
-    <div class="ingredientes-lista">
-      ${lista.map(i => `
-        <div class="fila ${i.suficiente === false ? "insuficiente" : ""}">
-          <span>${i.nombre}</span>
-          <span>${i.cantidad_necesaria} ${i.unidad}${i.suficiente === false ? " · insuficiente" : ""}</span>
+    <div class="tarjeta">
+      <div class="tarjeta-fila">
+        <div>
+          <div class="tarjeta-titulo">${p.nombre_receta} — ${p.cantidad_objetivo}</div>
+          <div class="tarjeta-meta">${p.responsable} · Paso ${Math.min(actual + 1, total)} de ${total}</div>
         </div>
-      `).join("")}
+      </div>
+      <div class="ingredientes-lista">${listaPasos}</div>
+      ${!terminado ? `
+        <div class="tarjeta-acciones">
+          <button class="btn" onclick="confirmarPaso('${p.id}')">Confirma cuando esté listo · OK</button>
+        </div>` : `
+        <div class="tarjeta-acciones">
+          <button class="btn" onclick="finalizarPreparacion('${p.id}', cargarPreparaciones)">Preparación finalizada — Crear lote</button>
+        </div>`}
     </div>`;
+}
+
+async function confirmarPaso(id){
+  try{
+    const res = await fetch(`${API}/preparaciones/${id}/confirmar-paso`, { method: "POST" });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido confirmar el paso");
+    cargarPreparaciones();
+  } catch(err){ alert(err.message); }
 }
 
 async function cargarPreparaciones(){
   const contenido = document.getElementById("contenido");
   contenido.innerHTML = `<div class="loading">Cargando recetas y producción en curso…</div>`;
   try{
-    const [recetas, materias, enCurso, recientes] = await Promise.all([
+    const [recetas, enCurso, recientes] = await Promise.all([
       fetch(`${API}/recetas`).then(r => r.json()),
-      fetch(`${API}/materias`).then(r => r.json()),
       fetch(`${API}/preparaciones?estado=En curso`).then(r => r.json()),
       fetch(`${API}/preparaciones?estado=Finalizada`).then(r => r.json()),
     ]);
-    pintarPreparaciones(recetas, materias, enCurso, recientes.slice(-6).reverse());
+    pintarPreparaciones(recetas, enCurso, recientes.slice(-6).reverse());
   } catch(err){
     contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
   }
 }
 
-function pintarPreparaciones(recetas, materias, enCurso, recientes){
-  const materiasPorId = {};
-  materias.forEach(m => materiasPorId[m.id] = m);
-
-  const recetasPorId = {};
-  recetas.forEach(r => recetasPorId[r.id] = r);
-
+function pintarPreparaciones(recetas, enCurso, recientes){
   const enCursoHTML = seccionTarjetas(
     "En curso",
     enCurso,
-    p => {
-      const receta = recetasPorId[p.receta_id];
-      const ingredientes = receta ? escalarIngredientesLocal(receta, p.cantidad_objetivo, materiasPorId) : [];
-      return `
-        <div class="tarjeta">
-          <div class="tarjeta-fila">
-            <div>
-              <div class="tarjeta-titulo">${p.nombre_receta} — ${p.cantidad_objetivo} ${receta ? receta.unidad : ""}</div>
-              <div class="tarjeta-meta">${p.responsable}</div>
-            </div>
-          </div>
-          ${ingredientesHTML(ingredientes)}
-          <div class="tarjeta-acciones">
-            <button class="btn" onclick="finalizarPreparacion('${p.id}', cargarPreparaciones)">Finalizar producción</button>
-          </div>
-        </div>`;
-    },
+    p => pintarAsistente(p),
     "No hay preparaciones en curso."
   );
 
   const recetasHTML = `
     <div class="seccion">
-      <div class="seccion-titulo">Recetas</div>
+      <div class="seccion-titulo">Elegir preparación</div>
       ${recetas.map(r => `
         <div class="tarjeta">
           <div class="tarjeta-fila">

@@ -27,6 +27,10 @@
       500,
       1000,
       1500
+    ],
+    "pasos_proceso": [
+      "Mezclar hasta textura homogénea",
+      "Pasar a GN limpio"
     ]
   },
   {
@@ -52,6 +56,10 @@
     "tamanos_lote": [
       500,
       1000
+    ],
+    "pasos_proceso": [
+      "Mezclar bien",
+      "Pasar a GN limpio"
     ]
   },
   {
@@ -73,6 +81,10 @@
     "tamanos_lote": [
       1500,
       3000
+    ],
+    "pasos_proceso": [
+      "Disolver el matcha en el agua filtrada",
+      "Pasar a depósito limpio"
     ]
   },
   {
@@ -94,6 +106,11 @@
     "tamanos_lote": [
       5000,
       10000
+    ],
+    "pasos_proceso": [
+      "Mezclar café molido con agua filtrada",
+      "Dejar en infusión según protocolo",
+      "Filtrar y pasar a depósito limpio"
     ]
   }
 ]

@@ -3,21 +3,60 @@ const store = require("../data-store");
 
 const router = express.Router();
 
+// Tipos de revisión del día. Los de tipo "temperatura" exigen un número y el
+// sistema decide si está dentro de rango. Los de tipo "limpieza" solo
+// necesitan confirmación de que se ha hecho.
+const TIPOS_REVISION = [
+  { tipo: "Temperatura nevera barra", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
+  { tipo: "Temperatura nevera producción", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
+  { tipo: "Temperatura leche", clase: "temperatura", min: 0, max: 4, unidad: "°C" },
+  { tipo: "Limpieza barra", clase: "limpieza" },
+  { tipo: "Limpieza mesa fría", clase: "limpieza" },
+  { tipo: "Limpieza grifos", clase: "limpieza" },
+];
+
+function accionCorrectivaPara(tipo) {
+  if (tipo.includes("nevera")) return "Revisar cierre de puerta y repetir medición en 30 min";
+  if (tipo.includes("leche")) return "Retirar y sustituir por leche de nueva apertura";
+  return "Completar antes del próximo servicio";
+}
+
+router.get("/tipos", (req, res) => {
+  res.json(TIPOS_REVISION);
+});
+
 router.get("/", (req, res) => {
   res.json(store.readAll("revisiones"));
 });
 
-router.post("/", (req, res) => {
-  const { tipo, valor, estado, accion_correctiva, responsable } = req.body;
-  if (!tipo || !valor || !estado) {
-    return res.status(400).json({ error: "Indica tipo, valor y estado de la revisión" });
+// Registra una revisión de hoy. El estado lo calcula el sistema, no quien la registra.
+router.post("/registrar", (req, res) => {
+  const { tipo, valor, responsable } = req.body;
+  const definicion = TIPOS_REVISION.find((t) => t.tipo === tipo);
+  if (!definicion) return res.status(400).json({ error: "Tipo de revisión no reconocido" });
+
+  let estado = "Correcto";
+  let valorFinal = valor;
+  let accionCorrectiva = "";
+
+  if (definicion.clase === "temperatura") {
+    const num = Number(valor);
+    if (Number.isNaN(num)) return res.status(400).json({ error: "Introduce un valor numérico" });
+    valorFinal = `${num}${definicion.unidad}`;
+    if (num < definicion.min || num > definicion.max) {
+      estado = "Fuera del rango esperado";
+      accionCorrectiva = accionCorrectivaPara(tipo);
+    }
+  } else {
+    valorFinal = "Realizada";
   }
+
   const revision = {
     id: store.nextId("rev", "revisiones"),
     tipo,
-    valor,
+    valor: valorFinal,
     estado,
-    accion_correctiva: accion_correctiva || "",
+    accion_correctiva: accionCorrectiva,
     responsable: responsable || "Sin asignar",
     fecha: new Date().toISOString(),
   };

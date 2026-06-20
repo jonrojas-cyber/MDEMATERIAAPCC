@@ -5,8 +5,15 @@
     "contacto": "Manolo Ruiz",
     "email": "pedidos@frutaspedregalejo.es",
     "whatsapp": "+34 612 334 556",
-    "dias_reparto": ["Lunes", "Jueves"],
-    "productos_asociados": ["mat-001", "mat-002", "mat-005"]
+    "dias_reparto": [
+      "Lunes",
+      "Jueves"
+    ],
+    "productos_asociados": [
+      "mat-001",
+      "mat-002",
+      "mat-005"
+    ]
   },
   {
     "id": "prov-002",
@@ -14,8 +21,12 @@
     "contacto": "Pilar Gómez",
     "email": "ventas@aceitesaxarquia.es",
     "whatsapp": "+34 655 102 998",
-    "dias_reparto": ["Miércoles"],
-    "productos_asociados": ["mat-003"]
+    "dias_reparto": [
+      "Miércoles"
+    ],
+    "productos_asociados": [
+      "mat-003"
+    ]
   },
   {
     "id": "prov-003",
@@ -23,8 +34,16 @@
     "contacto": "Javier Soto",
     "email": "j.soto@distmediterranea.com",
     "whatsapp": "+34 644 778 211",
-    "dias_reparto": ["Martes", "Viernes"],
-    "productos_asociados": ["mat-004", "mat-011", "mat-012", "mat-015"]
+    "dias_reparto": [
+      "Martes",
+      "Viernes"
+    ],
+    "productos_asociados": [
+      "mat-004",
+      "mat-011",
+      "mat-012",
+      "mat-015"
+    ]
   },
   {
     "id": "prov-004",
@@ -32,8 +51,13 @@
     "contacto": "Carmen Díaz",
     "email": "carmen@sousvidemalaga.es",
     "whatsapp": "+34 633 221 045",
-    "dias_reparto": ["Lunes", "Viernes"],
-    "productos_asociados": ["mat-006"]
+    "dias_reparto": [
+      "Lunes",
+      "Viernes"
+    ],
+    "productos_asociados": [
+      "mat-006"
+    ]
   },
   {
     "id": "prov-005",
@@ -41,8 +65,12 @@
     "contacto": "Fran Ortega",
     "email": "fran@tuestelocal.com",
     "whatsapp": "+34 622 884 130",
-    "dias_reparto": ["Martes"],
-    "productos_asociados": ["mat-008"]
+    "dias_reparto": [
+      "Martes"
+    ],
+    "productos_asociados": [
+      "mat-008"
+    ]
   },
   {
     "id": "prov-006",
@@ -50,8 +78,14 @@
     "contacto": "Inés Calvo",
     "email": "inescalvo@lacteosdelsur.es",
     "whatsapp": "+34 611 998 320",
-    "dias_reparto": ["Lunes", "Jueves"],
-    "productos_asociados": ["mat-009", "mat-013"]
+    "dias_reparto": [
+      "Lunes",
+      "Jueves"
+    ],
+    "productos_asociados": [
+      "mat-009",
+      "mat-013"
+    ]
   },
   {
     "id": "prov-007",
@@ -59,8 +93,12 @@
     "contacto": "Producción propia",
     "email": "produccion@mdemateria.com",
     "whatsapp": "+34 600 000 000",
-    "dias_reparto": ["Diario"],
-    "productos_asociados": ["mat-010"]
+    "dias_reparto": [
+      "Diario"
+    ],
+    "productos_asociados": [
+      "mat-010"
+    ]
   },
   {
     "id": "prov-008",
@@ -68,7 +106,24 @@
     "contacto": "Rosa Linares",
     "email": "rosa@frutossecosmalaga.es",
     "whatsapp": "+34 660 442 117",
-    "dias_reparto": ["Miércoles"],
-    "productos_asociados": ["mat-014"]
+    "dias_reparto": [
+      "Miércoles"
+    ],
+    "productos_asociados": [
+      "mat-014"
+    ]
+  },
+  {
+    "id": "prov-009",
+    "nombre": "Moni",
+    "contacto": "Moni",
+    "email": "",
+    "whatsapp": "+34603351969",
+    "dias_reparto": [
+      "Por confirmar"
+    ],
+    "productos_asociados": [
+      "mat-007"
+    ]
   }
 ]

@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../data-store");
 const { costePorUnidad, tamanosLote } = require("../costing");
+const labelService = require("../label-service");
 
 const router = express.Router();
 
@@ -120,7 +121,7 @@ router.post("/", (req, res) => {
   res.status(201).json(preparacion);
 });
 
-router.post("/:id/finalizar", (req, res) => {
+router.post("/:id/finalizar", async (req, res) => {
   const preparacion = store.findById("preparaciones", req.params.id);
   if (!preparacion) return res.status(404).json({ error: "Preparación no encontrada" });
   if (preparacion.estado === "Finalizada") {
@@ -163,7 +164,18 @@ router.post("/:id/finalizar", (req, res) => {
     lote_id: lote.id,
   });
 
-  res.json({ preparacion: preparacionActualizada, lote, ingredientes_consumidos: ingredientes });
+  const etiqueta = await labelService.createLabel(req, {
+    lote,
+    receta,
+    responsable: preparacion.responsable,
+  });
+
+  res.json({
+    preparacion: preparacionActualizada,
+    lote,
+    etiqueta,
+    ingredientes_consumidos: ingredientes,
+  });
 });
 
 module.exports = router;

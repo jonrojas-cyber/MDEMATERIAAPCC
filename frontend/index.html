@@ -100,6 +100,44 @@
 
   .coste-tag{font-size:11px;color:var(--olive-dark);}
 
+  .quien-pill{
+    display:flex;align-items:center;gap:8px;
+    font-size:11px;color:#B9BCA8;cursor:pointer;
+  }
+  .quien-pill .punto{width:6px;height:6px;border-radius:50%;background:var(--olive);}
+  .quien-pill b{color:var(--cream);font-weight:700;}
+  .quien-opciones{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .quien-opciones button{
+    font-family:inherit;font-size:11px;background:#211F17;color:#D8D9CC;
+    border:1px solid #3A3A2E;padding:5px 9px;cursor:pointer;
+  }
+  .quien-opciones button:hover{background:var(--olive-dark);color:var(--cream);}
+
+  .ingredientes-lista{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
+  .ingredientes-lista .fila{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;}
+  .ingredientes-lista .fila.insuficiente{color:var(--rust);}
+
+  select, input[type="number"], input[type="text"]{
+    font-family:inherit;font-size:13px;background:var(--cream);color:var(--black);
+    border:1px solid var(--line-strong);padding:8px 10px;
+  }
+  .campo{margin-top:10px;}
+  .campo label{display:block;font-size:11px;color:#7E7A66;margin-bottom:4px;}
+  .grupo-botones{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+  .grupo-botones button{
+    font-family:inherit;font-size:12px;background:var(--paper);color:var(--black);
+    border:1px solid var(--line-strong);padding:7px 11px;cursor:pointer;
+  }
+  .grupo-botones button.activo{background:var(--olive-dark);color:var(--cream);border-color:var(--olive-dark);}
+  .tabla-simple{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .tabla-simple th{text-align:left;font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--olive-dark);padding:6px 8px;border-bottom:1px solid var(--line-strong);}
+  .tabla-simple td{padding:8px;border-bottom:1px solid var(--line);}
+  .badge{font-size:10.5px;padding:2px 7px;border:1px solid var(--line-strong);}
+  .badge.baja{color:var(--rust);border-color:var(--rust);}
+  .manual-bloque{margin-bottom:24px;}
+  .manual-bloque h3{font-size:13px;margin:0 0 8px;color:var(--olive-dark);}
+  .manual-bloque ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
+
   @media (max-width:860px){
     .app{grid-template-columns:1fr;}
     .sidebar{position:relative;height:auto;}
@@ -116,7 +154,10 @@
       <div class="sub">Control M · Producción</div>
     </div>
     <nav class="nav" id="nav"></nav>
-    <div class="sidebar-footer">El Palo · Pedregalejo<br/>v0.2 — decisión</div>
+    <div class="sidebar-footer">
+      <div id="quien-prepara"></div>
+      <div style="margin-top:10px;">El Palo · Pedregalejo<br/>v0.3 — preparaciones</div>
+    </div>
   </aside>
 
   <main class="main">
@@ -140,8 +181,41 @@ const SECCIONES = [
   { id: "ajustes", num: 6, nombre: "Ajustes" },
   { id: "proveedores", num: 7, nombre: "Proveedores" },
   { id: "recepcion", num: 8, nombre: "Recepción" },
-  { id: "manual", num: 9, nombre: "La forma de hacer las cosas" },
+  { id: "pagos", num: 9, nombre: "Pagos pendientes" },
+  { id: "manual", num: 10, nombre: "La forma de hacer las cosas" },
 ];
+
+const MODULOS_LISTOS = ["inicio", "preparaciones", "lotes", "materias", "revisiones", "ajustes", "proveedores", "recepcion", "pagos", "manual"];
+
+const EQUIPO = ["Diego", "Laura", "Mónica"];
+
+function quienPrepara(){
+  return localStorage.getItem("quien_prepara") || null;
+}
+
+function fijarQuienPrepara(nombre){
+  localStorage.setItem("quien_prepara", nombre);
+  renderQuienPrepara();
+}
+
+function renderQuienPrepara(){
+  const actual = quienPrepara();
+  const el = document.getElementById("quien-prepara");
+  if(actual){
+    el.innerHTML = `<div class="quien-pill" onclick="renderQuienPreparaOpciones()"><span class="punto"></span>Preparas como <b>${actual}</b></div>`;
+  } else {
+    el.innerHTML = `
+      <div style="font-size:11px;color:#B9BCA8;margin-bottom:6px;">¿Quién prepara hoy?</div>
+      <div class="quien-opciones">${EQUIPO.map(n => `<button onclick="fijarQuienPrepara('${n}')">${n}</button>`).join("")}</div>`;
+  }
+}
+
+function renderQuienPreparaOpciones(){
+  const el = document.getElementById("quien-prepara");
+  el.innerHTML = `
+    <div style="font-size:11px;color:#B9BCA8;margin-bottom:6px;">Cambiar a:</div>
+    <div class="quien-opciones">${EQUIPO.map(n => `<button onclick="fijarQuienPrepara('${n}')">${n}</button>`).join("")}</div>`;
+}
 
 let vistaActual = "inicio";
 
@@ -149,7 +223,7 @@ function renderNav(){
   const nav = document.getElementById("nav");
   nav.innerHTML = "";
   SECCIONES.forEach(s => {
-    const habilitada = s.id === "inicio";
+    const habilitada = MODULOS_LISTOS.includes(s.id);
     const el = document.createElement("div");
     el.className = "nav-item" + (s.id === vistaActual ? " active" : "") + (!habilitada ? " pending" : "");
     el.innerHTML = `<span class="num">${String(s.num).padStart(2,"0")}</span><span>${s.nombre}</span>` +
@@ -165,6 +239,15 @@ function irA(seccion){
   document.getElementById("vista-titulo").textContent = seccion.nombre;
   renderNav();
   if(seccion.id === "inicio") cargarInicio();
+  else if(seccion.id === "preparaciones") cargarPreparaciones();
+  else if(seccion.id === "lotes") cargarLotes();
+  else if(seccion.id === "materias") cargarMaterias();
+  else if(seccion.id === "revisiones") cargarRevisiones();
+  else if(seccion.id === "ajustes") cargarAjustes();
+  else if(seccion.id === "proveedores") cargarProveedores();
+  else if(seccion.id === "recepcion") cargarRecepcion();
+  else if(seccion.id === "pagos") cargarPagos();
+  else if(seccion.id === "manual") cargarManual();
   else mostrarPlaceholder();
 }
 
@@ -303,43 +386,45 @@ function pintarInicio(d){
     banner + enCursoHTML + prepararHTML + pedirHTML + revisarHTML + lotesHTML;
 }
 
-async function iniciarPreparacion(recetaId, cantidad, boton){
-  boton.disabled = true;
+async function iniciarPreparacion(recetaId, cantidad, boton, callback){
+  if(boton) boton.disabled = true;
   try{
     const res = await fetch(`${API}/preparaciones`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receta_id: recetaId, cantidad_objetivo: cantidad })
+      body: JSON.stringify({ receta_id: recetaId, cantidad_objetivo: cantidad, responsable: quienPrepara() || "Sin asignar" })
     });
     if(!res.ok) throw new Error((await res.json()).error || "No se ha podido iniciar");
-    cargarInicio();
+    if(callback) callback(); else cargarInicio();
   } catch(err){
     alert(err.message);
-    boton.disabled = false;
+    if(boton) boton.disabled = false;
   }
 }
 
-async function finalizarPreparacion(id){
+async function finalizarPreparacion(id, callback){
   try{
     const res = await fetch(`${API}/preparaciones/${id}/finalizar`, { method: "POST" });
     if(!res.ok) throw new Error((await res.json()).error || "No se ha podido finalizar");
-    cargarInicio();
+    const data = await res.json();
+    if(data.etiqueta) window.open(`/etiqueta/${data.etiqueta.id}`, "_blank");
+    if(callback) callback(); else cargarInicio();
   } catch(err){ alert(err.message); }
 }
 
-async function resolverRevision(id){
+async function resolverRevision(id, callback){
   try{
     const res = await fetch(`${API}/revisiones/${id}/resolver`, { method: "POST" });
     if(!res.ok) throw new Error("No se ha podido marcar como revisado");
-    cargarInicio();
+    if(callback) callback(); else cargarInicio();
   } catch(err){ alert(err.message); }
 }
 
-async function darDeBajaLote(id){
+async function darDeBajaLote(id, callback){
   try{
     const res = await fetch(`${API}/lotes/${id}/dar-de-baja`, { method: "POST" });
     if(!res.ok) throw new Error("No se ha podido dar de baja el lote");
-    cargarInicio();
+    if(callback) callback(); else cargarInicio();
   } catch(err){ alert(err.message); }
 }
 
@@ -347,7 +432,657 @@ function pedirPorWhatsapp(numero, mensajeCodificado){
   window.open(`https://wa.me/${numero}?text=${mensajeCodificado}`, "_blank");
 }
 
+// ============ PREPARACIONES ============
+
+function escalarIngredientesLocal(receta, cantidad, materiasPorId){
+  const factor = cantidad / receta.resultado_base;
+  return receta.ingredientes.map(ing => {
+    const materia = materiasPorId[ing.materia_id];
+    const necesaria = Math.round(ing.cantidad * factor * 100) / 100;
+    return {
+      nombre: ing.nombre,
+      unidad: ing.unidad,
+      cantidad_necesaria: necesaria,
+      suficiente: materia ? materia.disponibilidad_actual >= necesaria : true,
+    };
+  });
+}
+
+function ingredientesHTML(lista){
+  return `
+    <div class="ingredientes-lista">
+      ${lista.map(i => `
+        <div class="fila ${i.suficiente === false ? "insuficiente" : ""}">
+          <span>${i.nombre}</span>
+          <span>${i.cantidad_necesaria} ${i.unidad}${i.suficiente === false ? " · insuficiente" : ""}</span>
+        </div>
+      `).join("")}
+    </div>`;
+}
+
+async function cargarPreparaciones(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando recetas y producción en curso…</div>`;
+  try{
+    const [recetas, materias, enCurso, recientes] = await Promise.all([
+      fetch(`${API}/recetas`).then(r => r.json()),
+      fetch(`${API}/materias`).then(r => r.json()),
+      fetch(`${API}/preparaciones?estado=En curso`).then(r => r.json()),
+      fetch(`${API}/preparaciones?estado=Finalizada`).then(r => r.json()),
+    ]);
+    pintarPreparaciones(recetas, materias, enCurso, recientes.slice(-6).reverse());
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarPreparaciones(recetas, materias, enCurso, recientes){
+  const materiasPorId = {};
+  materias.forEach(m => materiasPorId[m.id] = m);
+
+  const recetasPorId = {};
+  recetas.forEach(r => recetasPorId[r.id] = r);
+
+  const enCursoHTML = seccionTarjetas(
+    "En curso",
+    enCurso,
+    p => {
+      const receta = recetasPorId[p.receta_id];
+      const ingredientes = receta ? escalarIngredientesLocal(receta, p.cantidad_objetivo, materiasPorId) : [];
+      return `
+        <div class="tarjeta">
+          <div class="tarjeta-fila">
+            <div>
+              <div class="tarjeta-titulo">${p.nombre_receta} — ${p.cantidad_objetivo} ${receta ? receta.unidad : ""}</div>
+              <div class="tarjeta-meta">${p.responsable}</div>
+            </div>
+          </div>
+          ${ingredientesHTML(ingredientes)}
+          <div class="tarjeta-acciones">
+            <button class="btn" onclick="finalizarPreparacion('${p.id}', cargarPreparaciones)">Finalizar producción</button>
+          </div>
+        </div>`;
+    },
+    "No hay preparaciones en curso."
+  );
+
+  const recetasHTML = `
+    <div class="seccion">
+      <div class="seccion-titulo">Recetas</div>
+      ${recetas.map(r => `
+        <div class="tarjeta">
+          <div class="tarjeta-fila">
+            <div>
+              <div class="tarjeta-titulo">${r.nombre}</div>
+              <div class="tarjeta-meta">Disponible ahora: ${r.disponible_ahora} ${r.unidad} · vida útil ${r.vida_util_horas} h</div>
+            </div>
+          </div>
+          <div class="tarjeta-acciones">
+            ${r.opciones_tamano.map(o => `
+              <button class="btn secundario" onclick="iniciarPreparacion('${r.id}', ${o.cantidad}, this, cargarPreparaciones)">
+                ${o.cantidad} ${r.unidad} <span class="coste-tag">· ${o.coste_estimado.toFixed(2)} €</span>
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      `).join("")}
+    </div>`;
+
+  const historialHTML = seccionTarjetas(
+    "Historial reciente",
+    recientes,
+    p => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${p.nombre_receta} — ${p.cantidad_objetivo} g</div>
+            <div class="tarjeta-meta">${p.responsable} · ${new Date(p.finalizada_en).toLocaleString("es-ES", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"})}</div>
+          </div>
+        </div>
+      </div>`,
+    "Aún no hay preparaciones finalizadas."
+  );
+
+  document.getElementById("contenido").innerHTML = enCursoHTML + recetasHTML + historialHTML;
+}
+
+// ============ LOTES ACTIVOS ============
+
+async function cargarLotes(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando lotes…</div>`;
+  try{
+    const lotes = await fetch(`${API}/lotes`).then(r => r.json());
+    pintarLotes(lotes);
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarLotes(lotes){
+  const orden = { "Requiere atención": 0, "Priorizar uso": 1, "Correcto": 2, "Fuera de servicio": 3 };
+  const ordenados = lotes.slice().sort((a, b) => (orden[a.estado] ?? 9) - (orden[b.estado] ?? 9));
+
+  const html = seccionTarjetas(
+    "Todos los lotes",
+    ordenados,
+    l => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${l.codigo} — ${l.nombre}</div>
+            <div class="tarjeta-meta">${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado}${l.caducado ? " · Fuera de plazo" : " · " + l.horas_restantes + " h restantes"}</div>
+          </div>
+        </div>
+        ${l.caducado && l.estado !== "Fuera de servicio" ? `
+          <div class="tarjeta-acciones">
+            <button class="btn alerta" onclick="darDeBajaLote('${l.id}', cargarLotes)">Dar de baja</button>
+          </div>` : ""}
+        ${l.estado !== "Fuera de servicio" ? `
+          <div class="tarjeta-acciones">
+            <button class="btn secundario" onclick="abrirEtiquetaDeLote('${l.id}')">Reimprimir etiqueta</button>
+          </div>` : ""}
+      </div>`,
+    "No hay lotes registrados."
+  );
+  document.getElementById("contenido").innerHTML = html;
+}
+
+async function abrirEtiquetaDeLote(loteId){
+  try{
+    const etiquetas = await fetch(`${API}/etiquetas/lote/${loteId}`).then(r => r.json());
+    if(!etiquetas.length){ alert("Este lote no tiene etiqueta generada (creado antes de activar el sistema de etiquetas)."); return; }
+    window.open(`/etiqueta/${etiquetas[0].id}`, "_blank");
+  } catch(err){ alert(err.message); }
+}
+
+// ============ MATERIAS ============
+
+async function cargarMaterias(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando materias…</div>`;
+  try{
+    const materias = await fetch(`${API}/materias`).then(r => r.json());
+    pintarMaterias(materias);
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarMaterias(materias){
+  const ordenadas = materias.slice().sort((a, b) => (a.disponibilidad_estado === "Disponibilidad baja" ? -1 : 1) - (b.disponibilidad_estado === "Disponibilidad baja" ? -1 : 1));
+  const html = seccionTarjetas(
+    "Materias",
+    ordenadas,
+    m => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${m.nombre} ${m.disponibilidad_estado === "Disponibilidad baja" ? '<span class="badge baja">Disponibilidad baja</span>' : ""}</div>
+            <div class="tarjeta-meta">${m.disponibilidad_actual} ${m.unidad} · valor ${m.valor_stock_actual.toFixed(2)} € · ${m.ubicacion} · ${m.proveedor_nombre}</div>
+          </div>
+        </div>
+        ${m.disponibilidad_estado === "Disponibilidad baja" && m.proveedor_whatsapp ? `
+          <div class="tarjeta-acciones">
+            <button class="btn" onclick="pedirPorWhatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}', '${encodeURIComponent("Hola, necesitamos reponer " + m.nombre + " para M de Materia.")}')">Pedir por WhatsApp</button>
+          </div>` : ""}
+      </div>`,
+    "No hay materias registradas."
+  );
+  document.getElementById("contenido").innerHTML = html;
+}
+
+// ============ REVISIONES ============
+
+async function cargarRevisiones(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando revisiones de hoy…</div>`;
+  try{
+    const [tipos, revisiones] = await Promise.all([
+      fetch(`${API}/revisiones/tipos`).then(r => r.json()),
+      fetch(`${API}/revisiones`).then(r => r.json()),
+    ]);
+    pintarRevisiones(tipos, revisiones);
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarRevisiones(tipos, revisiones){
+  const hoy = new Date().toDateString();
+  const deHoy = revisiones.filter(r => new Date(r.fecha).toDateString() === hoy);
+
+  const checklistHTML = tipos.map(t => {
+    const registroHoy = deHoy.filter(r => r.tipo === t.tipo).slice(-1)[0];
+    if(registroHoy && registroHoy.estado === "Correcto"){
+      return `
+        <div class="tarjeta">
+          <div class="tarjeta-fila">
+            <div>
+              <div class="tarjeta-titulo">${t.tipo}</div>
+              <div class="tarjeta-meta">${registroHoy.valor} · registrado</div>
+            </div>
+          </div>
+        </div>`;
+    }
+    if(registroHoy && registroHoy.estado !== "Correcto"){
+      return `
+        <div class="tarjeta">
+          <div class="tarjeta-fila">
+            <div>
+              <div class="tarjeta-titulo">${t.tipo}</div>
+              <div class="tarjeta-meta">${registroHoy.valor} · ${registroHoy.estado} · ${registroHoy.accion_correctiva}</div>
+            </div>
+          </div>
+          <div class="tarjeta-acciones">
+            <button class="btn" onclick="resolverRevision('${registroHoy.id}', cargarRevisiones)">Marcar revisado</button>
+          </div>
+        </div>`;
+    }
+    if(t.clase === "temperatura"){
+      return `
+        <div class="tarjeta">
+          <div class="tarjeta-fila">
+            <div class="tarjeta-titulo">${t.tipo}</div>
+          </div>
+          <div class="campo">
+            <label>Valor en ${t.unidad}</label>
+            <input type="number" step="0.1" id="input-${t.tipo.replace(/\s/g,'_')}" style="width:100px;">
+          </div>
+          <div class="tarjeta-acciones">
+            <button class="btn secundario" onclick="registrarRevision('${t.tipo}', document.getElementById('input-${t.tipo.replace(/\s/g,'_')}').value)">Registrar</button>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div class="tarjeta-titulo">${t.tipo}</div>
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn secundario" onclick="registrarRevision('${t.tipo}', 'Realizada')">Marcar realizada</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  document.getElementById("contenido").innerHTML = `
+    <div class="seccion">
+      <div class="seccion-titulo">Revisiones de hoy</div>
+      ${checklistHTML}
+    </div>`;
+}
+
+async function registrarRevision(tipo, valor){
+  if(valor === "" || valor === null){ alert("Introduce un valor."); return; }
+  try{
+    const res = await fetch(`${API}/revisiones/registrar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo, valor, responsable: quienPrepara() || "Sin asignar" })
+    });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido registrar");
+    cargarRevisiones();
+  } catch(err){ alert(err.message); }
+}
+
+// ============ AJUSTES ============
+
+let ajustesEstado = { tipo: "materia", objetivoId: null, motivo: null };
+
+async function cargarAjustes(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando…</div>`;
+  try{
+    const [materias, lotes, motivos, historial] = await Promise.all([
+      fetch(`${API}/materias`).then(r => r.json()),
+      fetch(`${API}/lotes`).then(r => r.json()),
+      fetch(`${API}/ajustes/motivos`).then(r => r.json()),
+      fetch(`${API}/ajustes`).then(r => r.json()),
+    ]);
+    pintarAjustes(materias, lotes, motivos, historial.slice(0, 8));
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarAjustes(materias, lotes, motivos, historial){
+  ajustesEstado = { tipo: "materia", objetivoId: null, motivo: null };
+
+  const formHTML = `
+    <div class="seccion">
+      <div class="seccion-titulo">Registrar ajuste</div>
+      <div class="tarjeta">
+        <div class="campo">
+          <label>¿Qué se ajusta?</label>
+          <div class="grupo-botones">
+            <button class="activo" id="btn-tipo-materia" onclick="ajustesCambiarTipo('materia')">Materia</button>
+            <button id="btn-tipo-lote" onclick="ajustesCambiarTipo('lote')">Lote</button>
+          </div>
+        </div>
+        <div class="campo">
+          <label id="label-objetivo">Materia</label>
+          <select id="select-objetivo" onchange="ajustesEstado.objetivoId = this.value">
+            <option value="">Selecciona...</option>
+            ${materias.map(m => `<option value="${m.id}">${m.nombre} (${m.disponibilidad_actual} ${m.unidad})</option>`).join("")}
+          </select>
+        </div>
+        <div class="campo">
+          <label>Cantidad (g/ml/ud)</label>
+          <input type="number" id="input-cantidad" style="width:120px;">
+        </div>
+        <div class="campo">
+          <label>Motivo</label>
+          <div class="grupo-botones" id="grupo-motivos">
+            ${motivos.map(m => `<button onclick="ajustesElegirMotivo('${m}', this)">${m}</button>`).join("")}
+          </div>
+        </div>
+        <div class="campo">
+          <label>Observación (opcional)</label>
+          <input type="text" id="input-observacion" style="width:100%;">
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn" onclick="registrarAjuste()">Registrar ajuste</button>
+        </div>
+      </div>
+    </div>`;
+
+  window._materiasAjuste = materias;
+  window._lotesAjuste = lotes;
+
+  const historialHTML = seccionTarjetas(
+    "Historial reciente",
+    historial,
+    a => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${a.objetivo_nombre} — ${a.cantidad}</div>
+            <div class="tarjeta-meta">${a.motivo} · ${a.coste_estimado.toFixed(2)} € · ${a.responsable} · ${new Date(a.fecha).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>
+          </div>
+        </div>
+      </div>`,
+    "Aún no hay ajustes registrados."
+  );
+
+  document.getElementById("contenido").innerHTML = formHTML + historialHTML;
+}
+
+function ajustesCambiarTipo(tipo){
+  ajustesEstado.tipo = tipo;
+  ajustesEstado.objetivoId = null;
+  document.getElementById("btn-tipo-materia").classList.toggle("activo", tipo === "materia");
+  document.getElementById("btn-tipo-lote").classList.toggle("activo", tipo === "lote");
+  document.getElementById("label-objetivo").textContent = tipo === "materia" ? "Materia" : "Lote";
+  const select = document.getElementById("select-objetivo");
+  const opciones = tipo === "materia" ? window._materiasAjuste : window._lotesAjuste;
+  select.innerHTML = `<option value="">Selecciona...</option>` + opciones.map(o =>
+    tipo === "materia"
+      ? `<option value="${o.id}">${o.nombre} (${o.disponibilidad_actual} ${o.unidad})</option>`
+      : `<option value="${o.id}">${o.codigo} — ${o.nombre} (${o.cantidad_restante} restantes)</option>`
+  ).join("");
+}
+
+function ajustesElegirMotivo(motivo, boton){
+  ajustesEstado.motivo = motivo;
+  document.querySelectorAll("#grupo-motivos button").forEach(b => b.classList.remove("activo"));
+  boton.classList.add("activo");
+}
+
+async function registrarAjuste(){
+  const objetivoId = document.getElementById("select-objetivo").value;
+  const cantidad = Number(document.getElementById("input-cantidad").value);
+  const observacion = document.getElementById("input-observacion").value;
+
+  if(!objetivoId){ alert("Selecciona materia o lote."); return; }
+  if(!cantidad || cantidad <= 0){ alert("Introduce una cantidad válida."); return; }
+  if(!ajustesEstado.motivo){ alert("Selecciona un motivo."); return; }
+
+  try{
+    const res = await fetch(`${API}/ajustes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo_objetivo: ajustesEstado.tipo,
+        objetivo_id: objetivoId,
+        cantidad,
+        motivo: ajustesEstado.motivo,
+        observacion,
+        responsable: quienPrepara() || "Sin asignar",
+      })
+    });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido registrar el ajuste");
+    cargarAjustes();
+  } catch(err){ alert(err.message); }
+}
+
+// ============ PROVEEDORES ============
+
+async function cargarProveedores(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando proveedores…</div>`;
+  try{
+    const proveedores = await fetch(`${API}/proveedores`).then(r => r.json());
+    pintarProveedores(proveedores);
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarProveedores(proveedores){
+  const html = seccionTarjetas(
+    "Proveedores",
+    proveedores,
+    p => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${p.nombre}</div>
+            <div class="tarjeta-meta">${p.contacto} · ${p.dias_reparto.join(", ")} · ${p.productos_nombres.join(", ")}</div>
+          </div>
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn secundario" onclick="pedirPorWhatsapp('${p.whatsapp.replace(/[^0-9+]/g,"")}', '${encodeURIComponent("Hola " + p.contacto + ", ")}')">Contactar por WhatsApp</button>
+        </div>
+      </div>`,
+    "No hay proveedores registrados."
+  );
+  document.getElementById("contenido").innerHTML = html;
+}
+
+// ============ RECEPCIÓN ============
+
+async function cargarRecepcion(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando…</div>`;
+  try{
+    const [proveedores, recepciones] = await Promise.all([
+      fetch(`${API}/proveedores`).then(r => r.json()),
+      fetch(`${API}/recepciones`).then(r => r.json()),
+    ]);
+    pintarRecepcion(proveedores, recepciones.slice().reverse());
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarRecepcion(proveedores, recepciones){
+  const formHTML = `
+    <div class="seccion">
+      <div class="seccion-titulo">Entrada manual</div>
+      <div class="tarjeta">
+        <div class="campo">
+          <label>Proveedor</label>
+          <select id="rcp-proveedor">
+            <option value="">Selecciona...</option>
+            ${proveedores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join("")}
+          </select>
+        </div>
+        <div class="campo">
+          <label>Importe total (€)</label>
+          <input type="number" step="0.01" id="rcp-importe" style="width:140px;">
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn" onclick="registrarRecepcion()">Registrar recepción</button>
+        </div>
+      </div>
+      <div class="tarjeta" style="opacity:0.6;">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">Escanear albarán</div>
+            <div class="tarjeta-meta">Disponible en una fase posterior — lectura automática del albarán por foto.</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const historialHTML = seccionTarjetas(
+    "Recepciones",
+    recepciones,
+    r => {
+      const proveedor = proveedores.find(p => p.id === r.proveedor_id);
+      return `
+        <div class="tarjeta">
+          <div class="tarjeta-fila">
+            <div>
+              <div class="tarjeta-titulo">${proveedor ? proveedor.nombre : r.proveedor_id} — ${r.importe_total.toFixed(2)} €</div>
+              <div class="tarjeta-meta">${r.estado} · pendiente de pago ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}</div>
+            </div>
+          </div>
+          ${r.estado === "Pendiente de confirmar" ? `
+            <div class="tarjeta-acciones">
+              <button class="btn" onclick="confirmarRecepcion('${r.id}')">Confirmar entrada</button>
+            </div>` : ""}
+        </div>`;
+    },
+    "No hay recepciones registradas."
+  );
+
+  document.getElementById("contenido").innerHTML = formHTML + historialHTML;
+}
+
+async function registrarRecepcion(){
+  const proveedorId = document.getElementById("rcp-proveedor").value;
+  const importe = Number(document.getElementById("rcp-importe").value);
+  if(!proveedorId){ alert("Selecciona un proveedor."); return; }
+  if(!importe || importe <= 0){ alert("Introduce un importe válido."); return; }
+  try{
+    const res = await fetch(`${API}/recepciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proveedor_id: proveedorId, importe_total: importe })
+    });
+    if(!res.ok) throw new Error("No se ha podido registrar la recepción");
+    cargarRecepcion();
+  } catch(err){ alert(err.message); }
+}
+
+async function confirmarRecepcion(id){
+  try{
+    const res = await fetch(`${API}/recepciones/${id}/confirmar`, { method: "POST" });
+    if(!res.ok) throw new Error("No se ha podido confirmar");
+    cargarRecepcion();
+  } catch(err){ alert(err.message); }
+}
+
+// ============ PAGOS PENDIENTES ============
+
+async function cargarPagos(){
+  const contenido = document.getElementById("contenido");
+  contenido.innerHTML = `<div class="loading">Cargando pagos pendientes…</div>`;
+  try{
+    const pagos = await fetch(`${API}/pagos`).then(r => r.json());
+    pintarPagos(pagos);
+  } catch(err){
+    contenido.innerHTML = `<div class="error-state">No se ha podido cargar (${err.message}).</div>`;
+  }
+}
+
+function pintarPagos(pagos){
+  const html = seccionTarjetas(
+    "Pagos pendientes por proveedor",
+    pagos,
+    p => `
+      <div class="tarjeta">
+        <div class="tarjeta-fila">
+          <div>
+            <div class="tarjeta-titulo">${p.proveedor_nombre}</div>
+            <div class="tarjeta-meta">${p.importe_pendiente.toFixed(2)} € · ${p.albaranes_pendientes} albarán(es) pendiente(s)</div>
+          </div>
+        </div>
+        <div class="tarjeta-acciones">
+          <button class="btn secundario" onclick="marcarPagado('${p.proveedor_id}')">Marcar como pagado</button>
+        </div>
+      </div>`,
+    "No hay pagos pendientes."
+  );
+  document.getElementById("contenido").innerHTML = html;
+}
+
+async function marcarPagado(proveedorId){
+  try{
+    const res = await fetch(`${API}/pagos/${proveedorId}/marcar-pagado`, { method: "POST" });
+    if(!res.ok) throw new Error("No se ha podido actualizar");
+    cargarPagos();
+  } catch(err){ alert(err.message); }
+}
+
+// ============ MANUAL ============
+
+function cargarManual(){
+  document.getElementById("contenido").innerHTML = `
+    <div class="placeholder" style="margin-bottom:20px;text-align:left;">
+      <div class="eyebrow">Primer borrador</div>
+      Este manual recoge la estructura pedida. Revísalo y dime qué pasos cambiar — los detalles operativos exactos (tiempos, responsables fijos, checklist de cierre completo) deben confirmarse con la operativa real antes de usarlo como referencia definitiva.
+    </div>
+
+    <div class="manual-bloque">
+      <h3>Abrir</h3>
+      <ul>
+        <li>Registrar temperaturas de nevera barra, nevera producción y leche (sección Revisiones)</li>
+        <li>Comprobar lotes activos: priorizar los marcados "Priorizar uso" o "Requiere atención"</li>
+        <li>Revisar disponibilidad baja en Materias y lanzar pedidos pendientes</li>
+        <li>Limpieza de grifos antes del primer servicio</li>
+      </ul>
+    </div>
+
+    <div class="manual-bloque">
+      <h3>Preparar</h3>
+      <ul>
+        <li>Seguir siempre las cantidades de la sección Preparaciones — nunca a ojo</li>
+        <li>Un lote, un código, una caducidad — no mezclar producto de distintos lotes</li>
+        <li>Ubicar el lote recién creado inmediatamente tras finalizar la preparación</li>
+      </ul>
+    </div>
+
+    <div class="manual-bloque">
+      <h3>Servir</h3>
+      <ul>
+        <li>Usar siempre el lote más próximo a caducar primero (FIFO)</li>
+        <li>Cualquier producto caído, roto o servido por error se registra en Ajustes, no se descarta sin registrar</li>
+      </ul>
+    </div>
+
+    <div class="manual-bloque">
+      <h3>Cuidar producto</h3>
+      <ul>
+        <li>Revisar lotes a vigilar varias veces durante el servicio (sección Lotes activos)</li>
+        <li>Dar de baja un lote en el momento en que caduque, no al final del día</li>
+      </ul>
+    </div>
+
+    <div class="manual-bloque">
+      <h3>Cerrar</h3>
+      <ul>
+        <li>Limpieza de barra y mesa fría (sección Revisiones)</li>
+        <li>Revisar que no queden preparaciones "En curso" sin finalizar</li>
+        <li>Comprobar disponibilidad baja para el pedido del día siguiente</li>
+      </ul>
+    </div>
+  `;
+}
+
 renderNav();
+renderQuienPrepara();
 cargarInicio();
 setInterval(() => { if(vistaActual === "inicio") cargarInicio(); }, 60000);
 </script>

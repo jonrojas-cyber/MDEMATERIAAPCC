@@ -138,6 +138,37 @@
   .manual-bloque h3{font-size:13px;margin:0 0 8px;color:var(--olive-dark);}
   .manual-bloque ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
 
+  .asistente-overlay{
+    position:fixed;inset:0;background:var(--cream);z-index:1000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px;
+  }
+  .asistente-progreso{position:absolute;top:28px;left:28px;right:28px;display:flex;gap:6px;}
+  .asistente-progreso .punto{flex:1;height:4px;background:var(--line);}
+  .asistente-progreso .punto.hecho{background:var(--olive);}
+  .asistente-salir{
+    position:absolute;top:28px;right:28px;top:50px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;
+    color:#9A9580;cursor:pointer;background:none;border:none;font-family:inherit;
+  }
+  .asistente-eyebrow{font-size:13px;letter-spacing:0.22em;text-transform:uppercase;color:var(--olive-dark);margin-bottom:18px;text-align:center;}
+  .asistente-receta{font-size:12px;color:#9A9580;margin-bottom:6px;text-align:center;}
+  .asistente-accion{
+    font-size:clamp(26px,6vw,42px);font-weight:700;text-transform:uppercase;text-align:center;
+    letter-spacing:0.01em;line-height:1.2;max-width:680px;
+  }
+  .asistente-cantidad{
+    font-size:clamp(64px,16vw,128px);font-weight:700;line-height:1;text-align:center;
+    margin-top:8px;letter-spacing:-0.02em;
+  }
+  .asistente-unidad{font-size:clamp(18px,3vw,26px);color:#7E7A66;text-align:center;margin-top:6px;}
+  .asistente-boton{
+    margin-top:56px;width:100%;max-width:520px;padding:26px;font-size:18px;letter-spacing:0.02em;
+    font-family:inherit;background:var(--black);color:var(--cream);border:none;cursor:pointer;
+    text-transform:uppercase;
+  }
+  .asistente-boton:active{background:var(--olive-dark);}
+  .asistente-final-titulo{font-size:clamp(28px,6vw,44px);font-weight:700;text-align:center;margin-bottom:14px;}
+
   @media (max-width:860px){
     .app{grid-template-columns:1fr;}
     .sidebar{position:relative;height:auto;}
@@ -168,6 +199,8 @@
     <div id="contenido"></div>
   </main>
 </div>
+
+<div id="asistente-root"></div>
 
 <script>
 const API = "/api";
@@ -297,7 +330,7 @@ function pintarInicio(d){
           </div>
         </div>
         <div class="tarjeta-acciones">
-          <button class="btn" onclick="finalizarPreparacion('${p.id}')">Finalizar producción</button>
+          <button class="btn" onclick="abrirAsistente('${p.id}')">Continuar</button>
         </div>
       </div>`,
     "No hay preparaciones en curso."
@@ -316,7 +349,7 @@ function pintarInicio(d){
         </div>
         <div class="tarjeta-acciones">
           ${p.opciones_tamano.map(o => `
-            <button class="btn secundario" onclick="iniciarPreparacion('${p.receta_id}', ${o.cantidad}, this)">
+            <button class="btn secundario" onclick="iniciarYAbrirAsistente('${p.receta_id}', ${o.cantidad}, this)">
               ${o.cantidad} ${p.unidad} <span class="coste-tag">· ${o.coste_estimado.toFixed(2)} €</span>
             </button>
           `).join("")}
@@ -386,32 +419,6 @@ function pintarInicio(d){
     banner + enCursoHTML + prepararHTML + pedirHTML + revisarHTML + lotesHTML;
 }
 
-async function iniciarPreparacion(recetaId, cantidad, boton, callback){
-  if(boton) boton.disabled = true;
-  try{
-    const res = await fetch(`${API}/preparaciones`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receta_id: recetaId, cantidad_objetivo: cantidad, responsable: quienPrepara() || "Sin asignar" })
-    });
-    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido iniciar");
-    if(callback) callback(); else cargarInicio();
-  } catch(err){
-    alert(err.message);
-    if(boton) boton.disabled = false;
-  }
-}
-
-async function finalizarPreparacion(id, callback){
-  try{
-    const res = await fetch(`${API}/preparaciones/${id}/finalizar`, { method: "POST" });
-    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido finalizar");
-    const data = await res.json();
-    if(data.etiqueta) window.open(`/etiqueta/${data.etiqueta.id}`, "_blank");
-    if(callback) callback(); else cargarInicio();
-  } catch(err){ alert(err.message); }
-}
-
 async function resolverRevision(id, callback){
   try{
     const res = await fetch(`${API}/revisiones/${id}/resolver`, { method: "POST" });
@@ -434,38 +441,95 @@ function pedirPorWhatsapp(numero, mensajeCodificado){
 
 // ============ PREPARACIONES ============
 
-function pasoIconoTexto(paso){
-  if(paso.tipo === "ingrediente") return `${paso.texto.charAt(0).toUpperCase() + paso.texto.slice(1)}: ${paso.cantidad} ${paso.unidad}`;
-  return paso.texto;
-}
+let asistenteActualId = null;
 
-function pintarAsistente(p){
-  const total = p.pasos.length;
-  const actual = p.paso_actual;
-  const terminado = actual >= total;
-
-  const listaPasos = p.pasos.map((paso, i) => `
-    <div class="fila ${i < actual ? "" : ""}" style="opacity:${i < actual ? '0.45' : (i === actual ? '1' : '0.35')};">
-      <span>${i < actual ? "✓ " : ""}${pasoIconoTexto(paso)}</span>
-    </div>
-  `).join("");
-
+function filaEnCurso(p){
   return `
     <div class="tarjeta">
       <div class="tarjeta-fila">
         <div>
           <div class="tarjeta-titulo">${p.nombre_receta} — ${p.cantidad_objetivo}</div>
-          <div class="tarjeta-meta">${p.responsable} · Paso ${Math.min(actual + 1, total)} de ${total}</div>
+          <div class="tarjeta-meta">${p.responsable} · Paso ${Math.min(p.paso_actual + 1, p.pasos.length)} de ${p.pasos.length}</div>
         </div>
       </div>
-      <div class="ingredientes-lista">${listaPasos}</div>
-      ${!terminado ? `
-        <div class="tarjeta-acciones">
-          <button class="btn" onclick="confirmarPaso('${p.id}')">Confirma cuando esté listo · OK</button>
-        </div>` : `
-        <div class="tarjeta-acciones">
-          <button class="btn" onclick="finalizarPreparacion('${p.id}', cargarPreparaciones)">Preparación finalizada — Crear lote</button>
-        </div>`}
+      <div class="tarjeta-acciones">
+        <button class="btn" onclick="abrirAsistente('${p.id}')">Continuar</button>
+      </div>
+    </div>`;
+}
+
+async function iniciarYAbrirAsistente(recetaId, cantidad, boton){
+  if(boton) boton.disabled = true;
+  try{
+    const res = await fetch(`${API}/preparaciones`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receta_id: recetaId, cantidad_objetivo: cantidad, responsable: quienPrepara() || "Sin asignar" })
+    });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido iniciar");
+    const data = await res.json();
+    abrirAsistente(data.id, data);
+  } catch(err){
+    alert(err.message);
+    if(boton) boton.disabled = false;
+  }
+}
+
+async function abrirAsistente(id, preCargada){
+  asistenteActualId = id;
+  try{
+    let p = preCargada;
+    if(!p){
+      const todas = await fetch(`${API}/preparaciones?estado=En curso`).then(r => r.json());
+      p = todas.find(x => x.id === id);
+    }
+    if(!p){ alert("No se encuentra esta preparación."); return; }
+    renderAsistente(p);
+  } catch(err){ alert(err.message); }
+}
+
+function cerrarAsistente(){
+  asistenteActualId = null;
+  document.getElementById("asistente-root").innerHTML = "";
+  if(vistaActual === "preparaciones") cargarPreparaciones();
+}
+
+function renderAsistente(p){
+  const root = document.getElementById("asistente-root");
+  const total = p.pasos.length;
+  const actual = p.paso_actual;
+  const terminado = actual >= total;
+
+  const progresoHTML = Array.from({length: total}).map((_, i) =>
+    `<div class="punto ${i < actual ? "hecho" : ""}"></div>`
+  ).join("");
+
+  if(terminado){
+    root.innerHTML = `
+      <div class="asistente-overlay">
+        <button class="asistente-salir" onclick="cerrarAsistente()">Cerrar</button>
+        <div class="asistente-receta">${p.nombre_receta} — ${p.cantidad_objetivo}</div>
+        <div class="asistente-final-titulo">Preparación finalizada</div>
+        <button class="asistente-boton" onclick="finalizarDesdeAsistente('${p.id}')">Crear lote</button>
+      </div>`;
+    return;
+  }
+
+  const paso = p.pasos[actual];
+  const esIngrediente = paso.tipo === "ingrediente";
+
+  root.innerHTML = `
+    <div class="asistente-overlay">
+      <div class="asistente-progreso">${progresoHTML}</div>
+      <button class="asistente-salir" onclick="cerrarAsistente()">Cerrar</button>
+      <div class="asistente-eyebrow">Paso ${actual + 1} de ${total}</div>
+      <div class="asistente-receta">${p.nombre_receta}</div>
+      <div class="asistente-accion">${paso.texto}</div>
+      ${esIngrediente ? `
+        <div class="asistente-cantidad">${paso.cantidad}</div>
+        <div class="asistente-unidad">${paso.unidad}</div>
+      ` : ""}
+      <button class="asistente-boton" onclick="confirmarPaso('${p.id}')">Confirma cuando esté listo · OK</button>
     </div>`;
 }
 
@@ -473,7 +537,18 @@ async function confirmarPaso(id){
   try{
     const res = await fetch(`${API}/preparaciones/${id}/confirmar-paso`, { method: "POST" });
     if(!res.ok) throw new Error((await res.json()).error || "No se ha podido confirmar el paso");
-    cargarPreparaciones();
+    const data = await res.json();
+    renderAsistente(data);
+  } catch(err){ alert(err.message); }
+}
+
+async function finalizarDesdeAsistente(id){
+  try{
+    const res = await fetch(`${API}/preparaciones/${id}/finalizar`, { method: "POST" });
+    if(!res.ok) throw new Error((await res.json()).error || "No se ha podido finalizar");
+    const data = await res.json();
+    if(data.etiqueta) window.open(`/etiqueta/${data.etiqueta.id}`, "_blank");
+    cerrarAsistente();
   } catch(err){ alert(err.message); }
 }
 
@@ -496,7 +571,7 @@ function pintarPreparaciones(recetas, enCurso, recientes){
   const enCursoHTML = seccionTarjetas(
     "En curso",
     enCurso,
-    p => pintarAsistente(p),
+    p => filaEnCurso(p),
     "No hay preparaciones en curso."
   );
 
@@ -513,7 +588,7 @@ function pintarPreparaciones(recetas, enCurso, recientes){
           </div>
           <div class="tarjeta-acciones">
             ${r.opciones_tamano.map(o => `
-              <button class="btn secundario" onclick="iniciarPreparacion('${r.id}', ${o.cantidad}, this, cargarPreparaciones)">
+              <button class="btn secundario" onclick="iniciarYAbrirAsistente('${r.id}', ${o.cantidad}, this)">
                 ${o.cantidad} ${r.unidad} <span class="coste-tag">· ${o.coste_estimado.toFixed(2)} €</span>
               </button>
             `).join("")}

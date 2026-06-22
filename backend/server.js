@@ -31,40 +31,97 @@ app.get("/etiqueta/:id", (req, res) => {
   const etiqueta = store.findById("etiquetas", req.params.id);
   if (!etiqueta) return res.status(404).send("<h1>Etiqueta no encontrada</h1>");
 
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Etiqueta ${etiqueta.codigo_lote}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
-      <style>
-        @page { size: 50mm 30mm; margin: 2mm; }
-        body{font-family:'Courier Prime',monospace;background:#fff;color:#000;margin:0;padding:0;}
-        .etiqueta{width:50mm;padding:2mm;box-sizing:border-box;}
-        .nombre{font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:2px;}
-        .linea{font-size:8px;line-height:1.4;}
-        .qr{display:block;width:18mm;height:18mm;margin:2mm auto 0;}
-        .toolbar{padding:16px;text-align:center;}
-        .toolbar button{font-family:'Courier Prime',monospace;font-size:13px;background:#15140F;color:#F2EEE4;border:none;padding:10px 18px;cursor:pointer;}
-        @media print { .toolbar{ display:none; } }
-      </style>
-    </head>
-    <body>
-      <div class="toolbar"><button onclick="window.print()">Imprimir etiqueta</button></div>
-      <div class="etiqueta">
-        <div class="nombre">${etiqueta.nombre_preparacion}</div>
-        <div class="linea">Lote: ${etiqueta.codigo_lote}</div>
-        <div class="linea">Producido: ${new Date(etiqueta.fecha_produccion).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>
-        <div class="linea">Consumir antes: ${new Date(etiqueta.fecha_consumo_recomendada).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>
-        <div class="linea">Responsable: ${etiqueta.responsable}</div>
-        <div class="linea">Cantidad: ${etiqueta.cantidad_inicial} ${etiqueta.unidad}</div>
-        <img class="qr" src="${etiqueta.qr_data_url}" />
+  const prod = new Date(etiqueta.fecha_produccion).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const cons = new Date(etiqueta.fecha_consumo_recomendada).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Etiqueta ${etiqueta.codigo_lote}</title>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: 62mm 40mm; margin: 0; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Courier Prime',monospace; background:#fff; color:#000; }
+
+  .toolbar{
+    padding:20px 24px;
+    display:flex; align-items:center; gap:12px;
+    border-bottom:1px solid #E0DDD4;
+  }
+  .toolbar button{
+    font-family:'Courier Prime',monospace;font-size:13px;
+    background:#111009;color:#F0EBE0;border:none;padding:10px 20px;cursor:pointer;
+  }
+  .toolbar .info{ font-size:11px; color:#888; }
+  @media print { .toolbar{ display:none; } }
+
+  /* ETIQUETA */
+  .label{
+    width:62mm; height:40mm;
+    padding:3mm;
+    display:flex; flex-direction:row; gap:2mm;
+  }
+  .label-left{
+    flex:1;
+    display:flex; flex-direction:column; justify-content:space-between;
+    overflow:hidden;
+  }
+  .label-right{
+    width:22mm; flex-shrink:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .l-nombre{
+    font-size:9px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.04em; line-height:1.2;
+    border-bottom:0.5pt solid #000; padding-bottom:1.5mm; margin-bottom:1.5mm;
+  }
+  .l-rows{ display:flex; flex-direction:column; gap:0.8mm; }
+  .l-row{ display:flex; flex-direction:column; }
+  .l-key{ font-size:5.5px; text-transform:uppercase; letter-spacing:0.08em; color:#555; line-height:1; }
+  .l-val{ font-size:7px; font-weight:700; line-height:1.2; }
+  .l-lote{ font-size:6px; color:#555; margin-top:auto; padding-top:1mm; }
+  .qr{ width:22mm; height:22mm; display:block; }
+  .qr-label{ font-size:5px; text-align:center; color:#888; margin-top:1mm; letter-spacing:0.05em; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="window.print()">Imprimir etiqueta</button>
+  <span class="info">${etiqueta.codigo_lote} · ${etiqueta.nombre_preparacion}</span>
+</div>
+<div class="label">
+  <div class="label-left">
+    <div class="l-nombre">${etiqueta.nombre_preparacion}</div>
+    <div class="l-rows">
+      <div class="l-row">
+        <span class="l-key">Producido</span>
+        <span class="l-val">${prod}</span>
       </div>
-    </body>
-    </html>
-  `);
+      <div class="l-row">
+        <span class="l-key">Consumir antes de</span>
+        <span class="l-val">${cons}</span>
+      </div>
+      <div class="l-row">
+        <span class="l-key">Cantidad</span>
+        <span class="l-val">${etiqueta.cantidad_inicial} ${etiqueta.unidad}</span>
+      </div>
+      <div class="l-row">
+        <span class="l-key">Responsable</span>
+        <span class="l-val">${etiqueta.responsable}</span>
+      </div>
+    </div>
+    <div class="l-lote">${etiqueta.codigo_lote}</div>
+  </div>
+  <div class="label-right">
+    <img class="qr" src="${etiqueta.qr_data_url}" />
+    <div class="qr-label">ESCANEAR</div>
+  </div>
+</div>
+</body>
+</html>`);
 });
 app.get("/lote/:id", (req, res) => {
   const store = require("./data-store");

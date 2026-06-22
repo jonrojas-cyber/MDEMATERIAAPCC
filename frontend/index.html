@@ -560,6 +560,22 @@ async function renderInicio() {
         <span>${d.estado_servicio}</span>
       </div>`;
 
+    const k = d.kpis || {};
+    const kpisHTML = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:28px;">
+        ${[
+          ["Producción hoy", k.coste_produccion_hoy!=null ? k.coste_produccion_hoy.toFixed(2)+" €" : "—", k.preparaciones_hoy!=null ? k.preparaciones_hoy+" preparaciones" : ""],
+          ["Mermas hoy", k.coste_mermas_hoy!=null ? k.coste_mermas_hoy.toFixed(2)+" €" : "—", k.ajustes_hoy!=null ? k.ajustes_hoy+" ajustes" : ""],
+          ["Valor stock", k.valor_stock_total!=null ? k.valor_stock_total.toFixed(2)+" €" : "—", "materias activas"],
+          ["Estado producción", d.preparar && d.preparar.length>0 ? d.preparar.length+" pendientes" : "Al día", ""],
+        ].map(([label,val,sub]) => `
+          <div style="background:var(--paper);border:1px solid var(--line);padding:14px 16px;">
+            <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">${label}</div>
+            <div style="font-size:18px;font-weight:700;line-height:1;">${val}</div>
+            ${sub ? `<div style="font-size:10px;color:var(--muted);margin-top:4px;">${sub}</div>` : ""}
+          </div>`).join("")}
+      </div>`;
+
     const enCursoHTML = section("En curso", d.en_curso, p => card(
       `${p.nombre} — ${p.cantidad_objetivo} ${p.unidad}`,
       p.responsable,
@@ -585,7 +601,7 @@ async function renderInicio() {
     const pedirHTML = section("Pedir", d.pedir, m => card(
       m.nombre,
       `${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.proveedor}`,
-      m.whatsapp ? `<button class="btn-primary" onclick="whatsapp('${m.whatsapp.replace(/[^0-9+]/g,'')}','${encodeURIComponent("Hola "+m.contacto+", necesitamos "+m.cantidad_sugerida+" "+m.unidad+" de "+m.nombre+" para M de Materia.")}')">Pedir por WhatsApp</button>` : ""
+      m.whatsapp ? `<button class="btn-primary" onclick="whatsapp('${m.whatsapp}','${encodeURIComponent("Hola "+m.contacto+", necesitamos "+m.cantidad_sugerida+" "+m.unidad+" de "+m.nombre+" para M de Materia.")}')">Pedir por WhatsApp</button>` : ""
     ), "Todas las materias en rango.");
 
     const revisarHTML = section("Revisar", d.revisar, r => card(
@@ -599,7 +615,7 @@ async function renderInicio() {
       l.caducado ? `<button class="btn-warn" onclick="darDeBaja('${l.id}', renderInicio)">Dar de baja</button>` : ""
     ), "Ningún lote requiere atención.");
 
-    setContent(bannerHTML + enCursoHTML + prepararHTML + pedirHTML + revisarHTML + lotesHTML);
+    setContent(bannerHTML + kpisHTML + enCursoHTML + prepararHTML + pedirHTML + revisarHTML + lotesHTML);
   } catch(e) {
     setContent(`<div class="err">${e.message}</div>`);
   }

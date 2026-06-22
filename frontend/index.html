@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <title>Control M · M de Materia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
@@ -12,164 +12,242 @@
   --paper: #F7F3EA;
   --ink:   #111009;
   --olive: #5C6145;
-  --olive-soft: #DDE0D0;
+  --olive-light: #DDE0D0;
   --line:  #D4CDB8;
   --muted: #8A8470;
   --warn:  #9C5A2E;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html { height: 100%; }
+html, body { height: 100%; overflow: hidden; }
 
 body {
   background: var(--cream);
   color: var(--ink);
   font-family: 'Courier Prime', 'Courier New', monospace;
   font-size: 14px;
-  line-height: 1.6;
-  min-height: 100%;
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
 }
 
 button { font-family: inherit; cursor: pointer; }
 input, select { font-family: inherit; font-size: 13px; }
 
-/* ─── LAYOUT ─────────────────────────────────────────── */
-
-.shell {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  min-height: 100vh;
-}
-
-/* ─── SIDEBAR ────────────────────────────────────────── */
-
-.side {
+/* ── TOP BAR ──────────────────────────────────────────── */
+.topbar {
   background: var(--ink);
   color: var(--cream);
   display: flex;
-  flex-direction: column;
-  padding: 32px 20px 24px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  gap: 0;
+  align-items: center;
+  padding: 0 24px;
+  height: 52px;
+  flex-shrink: 0;
+  gap: 16px;
 }
 
-.side-logo {
-  font-size: 22px;
+.topbar-logo {
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  margin-bottom: 4px;
+  letter-spacing: 0.04em;
 }
 
-.side-sub {
-  font-size: 9px;
-  letter-spacing: 0.2em;
+.topbar-sep { color: #333020; }
+
+.topbar-section {
+  font-size: 11px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #888070;
-  margin-bottom: 36px;
-}
-
-.side-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  overflow-y: auto;
-}
-
-.nav-btn {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 9px 10px;
-  font-size: 12px;
   color: #AAA490;
+  flex: 1;
+}
+
+.topbar-back {
   background: none;
   border: none;
-  text-align: left;
-  width: 100%;
-  letter-spacing: 0.01em;
-  transition: color 0.1s, background 0.1s;
-}
-
-.nav-btn .n { font-size: 9px; color: #555040; min-width: 14px; }
-.nav-btn:hover { color: var(--cream); background: #1E1C14; }
-.nav-btn.on { color: var(--cream); background: var(--olive); }
-.nav-btn.on .n { color: var(--olive-soft); }
-
-.side-user {
-  border-top: 1px solid #222018;
-  padding-top: 16px;
-  margin-top: 16px;
-}
-
-.user-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #555040; margin-bottom: 8px; }
-
-.user-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.chip {
+  color: var(--olive-light);
   font-size: 11px;
-  padding: 4px 9px;
-  border: 1px solid #333020;
-  color: #888070;
-  background: none;
-  transition: all 0.1s;
-}
-
-.chip:hover { border-color: var(--olive); color: var(--cream); }
-.chip.on { background: var(--olive); border-color: var(--olive); color: var(--cream); }
-
-/* ─── MAIN ───────────────────────────────────────────── */
-
-.main {
-  padding: 40px 52px;
-  max-width: 900px;
-}
-
-.page-head {
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 18px;
-  margin-bottom: 32px;
-}
-
-.page-eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--olive);
-  margin-bottom: 6px;
+  padding: 6px 0;
+  display: none;
+  align-items: center;
+  gap: 6px;
 }
 
-.page-title {
-  font-size: 20px;
+.topbar-back.visible { display: flex; }
+.topbar-back:hover { color: var(--cream); }
+
+.topbar-user {
+  display: flex;
+  gap: 6px;
+}
+
+.user-chip {
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid #2A2820;
+  color: #666050;
+  background: none;
+}
+
+.user-chip.on {
+  background: var(--olive);
+  border-color: var(--olive);
+  color: var(--cream);
+}
+
+/* ── MAIN VIEWPORT ───────────────────────────────────── */
+.viewport {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 32px 36px;
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  background: var(--cream);
+}
+
+.screen.active {
+  transform: translateX(0);
+}
+
+.screen.exit {
+  transform: translateX(-30%);
+}
+
+/* ── HOME GRID ───────────────────────────────────────── */
+.home-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.kpi-box {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 16px 18px;
+}
+
+.kpi-label {
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.kpi-val {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.kpi-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.home-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.tile {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 24px 22px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  position: relative;
+}
+
+.tile:hover {
+  border-color: var(--olive);
+  background: #F2EFE6;
+}
+
+.tile:active { opacity: 0.85; }
+
+.tile.urgente {
+  border-left: 3px solid var(--warn);
+}
+
+.tile.ok {
+  border-left: 3px solid var(--olive);
+}
+
+.tile-num {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.tile-title {
+  font-size: 15px;
   font-weight: 700;
 }
 
-/* ─── CARDS ──────────────────────────────────────────── */
+.tile-badge {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
 
-.section { margin-bottom: 32px; }
+.tile-badge.alert { color: var(--warn); }
+
+.tile-arrow {
+  position: absolute;
+  bottom: 18px;
+  right: 18px;
+  font-size: 16px;
+  color: var(--line);
+}
+
+/* ── INNER SCREENS ───────────────────────────────────── */
+.screen-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
 .section-label {
   font-size: 9px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--olive);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  margin-top: 24px;
 }
+
+.section-label:first-child { margin-top: 0; }
 
 .card {
   background: var(--paper);
   border: 1px solid var(--line);
-  padding: 18px 20px;
+  padding: 16px 18px;
   margin-bottom: 8px;
 }
 
-.card-top { display: flex; justify-content: space-between; align-items: flex-start; }
 .card-name { font-size: 14px; font-weight: 700; }
 .card-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-.card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
 .btn-primary {
   background: var(--ink);
@@ -177,11 +255,9 @@ input, select { font-family: inherit; font-size: 13px; }
   border: none;
   padding: 10px 16px;
   font-size: 12px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
 }
-
 .btn-primary:hover { background: var(--olive); }
-.btn-primary:active { opacity: 0.85; }
 .btn-primary:disabled { opacity: 0.4; cursor: default; }
 
 .btn-ghost {
@@ -190,9 +266,7 @@ input, select { font-family: inherit; font-size: 13px; }
   border: 1px solid var(--line);
   padding: 10px 16px;
   font-size: 12px;
-  letter-spacing: 0.03em;
 }
-
 .btn-ghost:hover { border-color: var(--ink); }
 
 .btn-warn {
@@ -203,87 +277,52 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 12px;
 }
 
-.badge {
-  font-size: 10px;
-  padding: 2px 7px;
-  border: 1px solid var(--line);
-  color: var(--muted);
+.badge-low {
+  font-size: 9px;
+  padding: 2px 6px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  margin-left: 8px;
 }
 
-.badge.low { color: var(--warn); border-color: var(--warn); }
+.empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 12px 0; }
+.loading { font-size: 12px; color: var(--muted); padding: 32px 0; }
+.err { font-size: 12px; color: var(--warn); padding: 32px 0; }
 
-.empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 4px 0 12px; }
-.loading { font-size: 12px; color: var(--muted); padding: 24px 0; }
-.err { font-size: 12px; color: var(--warn); padding: 24px 0; }
-
-.placeholder-block {
-  border: 1px dashed var(--line);
-  padding: 40px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* ─── STATUS BANNER ─────────────────────────────────── */
-
+/* ── BANNER ──────────────────────────────────────────── */
 .banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  border: 1px solid var(--line);
+  gap: 10px;
   border-left: 3px solid var(--olive);
-  padding: 13px 16px;
-  margin-bottom: 28px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
   font-size: 13px;
   background: var(--paper);
+  border-top: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .banner.warn { border-left-color: var(--warn); }
 .banner .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--olive); flex-shrink: 0; }
 .banner.warn .dot { background: var(--warn); }
 
-/* ─── FORM ELEMENTS ─────────────────────────────────── */
-
+/* ── FORM ────────────────────────────────────────────── */
 .field { margin-top: 12px; }
-.field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
-
-.field select,
-.field input[type="number"],
-.field input[type="text"] {
-  background: var(--cream);
-  border: 1px solid var(--line);
-  color: var(--ink);
-  padding: 8px 10px;
-  width: 100%;
-}
-
+.field label { display: block; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.field select, .field input { background: var(--cream); border: 1px solid var(--line); color: var(--ink); padding: 9px 10px; width: 100%; }
 .field input[type="number"] { width: 140px; }
 
 .toggle-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-
-.toggle {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  color: var(--ink);
-  font-size: 12px;
-  padding: 7px 12px;
-  transition: all 0.1s;
-}
-
+.toggle { background: var(--paper); border: 1px solid var(--line); color: var(--ink); font-size: 12px; padding: 7px 12px; }
 .toggle.on { background: var(--olive); border-color: var(--olive); color: var(--cream); }
 .toggle:hover:not(.on) { border-color: var(--ink); }
 
-/* ─── TABLE ──────────────────────────────────────────── */
-
-.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.tbl th { text-align: left; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--olive); padding: 6px 8px; border-bottom: 1px solid var(--line); }
-.tbl td { padding: 9px 8px; border-bottom: 1px solid var(--line); }
-
-/* ─── WIZARD OVERLAY ─────────────────────────────────── */
-
-.wizard {
+/* ── WIZARD ──────────────────────────────────────────── */
+.wizard-overlay {
   position: fixed;
   inset: 0;
   background: var(--cream);
@@ -292,788 +331,689 @@ input, select { font-family: inherit; font-size: 13px; }
   flex-direction: column;
 }
 
-.wizard-progress {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+.wiz-bar {
   height: 3px;
   background: var(--line);
+  flex-shrink: 0;
 }
 
-.wizard-progress-fill {
+.wiz-bar-fill {
   height: 100%;
   background: var(--olive);
   transition: width 0.3s ease;
 }
 
-.wizard-close {
-  position: absolute;
-  top: 20px;
-  right: 24px;
+.wiz-top {
+  padding: 20px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.wiz-close {
   background: none;
   border: none;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.wizard-close:hover { color: var(--ink); }
+.wiz-close:hover { color: var(--ink); }
 
-.wizard-body {
+.wiz-step {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--olive);
+}
+
+.wiz-body {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 32px;
+  padding: 0 40px;
   text-align: center;
 }
 
-.wizard-step-label {
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--olive);
-  margin-bottom: 24px;
-}
-
-.wizard-recipe-name {
-  font-size: 12px;
+.wiz-recipe {
+  font-size: 11px;
   color: var(--muted);
-  margin-bottom: 8px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
 }
 
-.wizard-action {
-  font-size: clamp(22px, 5vw, 36px);
+.wiz-action {
+  font-size: clamp(24px, 5.5vw, 40px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  line-height: 1.15;
-  max-width: 600px;
+  line-height: 1.1;
+  max-width: 640px;
 }
 
-.wizard-number {
-  font-size: clamp(80px, 18vw, 148px);
+.wiz-num {
+  font-size: clamp(88px, 20vw, 160px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
   margin-top: 4px;
 }
 
-.wizard-unit {
-  font-size: clamp(16px, 3vw, 22px);
+.wiz-unit {
+  font-size: clamp(18px, 3vw, 26px);
   color: var(--muted);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
-.wizard-footer {
-  padding: 0 32px 48px;
-  display: flex;
-  justify-content: center;
+.wiz-done {
+  font-size: clamp(30px, 6vw, 52px);
+  font-weight: 700;
+  margin-bottom: 10px;
 }
 
-.wizard-ok {
+.wiz-done-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 48px;
+}
+
+.wiz-footer {
+  padding: 0 40px 48px;
+  flex-shrink: 0;
+}
+
+.wiz-ok {
   background: var(--ink);
   color: var(--cream);
   border: none;
   width: 100%;
-  max-width: 560px;
-  padding: 24px;
-  font-size: 16px;
+  padding: 26px;
+  font-size: 17px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  transition: background 0.15s;
 }
 
-.wizard-ok:hover { background: var(--olive); }
-.wizard-ok:active { opacity: 0.85; }
+.wiz-ok:hover { background: var(--olive); }
 
-.wizard-done-title {
-  font-size: clamp(28px, 6vw, 48px);
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  margin-bottom: 8px;
-}
+/* ── MANUAL ──────────────────────────────────────────── */
+.manual-block { margin-bottom: 24px; }
+.manual-block h3 { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--olive); margin-bottom: 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.manual-block ul { padding-left: 18px; font-size: 13px; line-height: 1.9; }
 
-.wizard-done-meta {
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 40px;
-}
-
-/* ─── MANUAL ─────────────────────────────────────────── */
-
-.manual-section { margin-bottom: 28px; }
-.manual-section h3 { font-size: 13px; color: var(--olive); margin-bottom: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
-.manual-section ul { padding-left: 18px; font-size: 13px; line-height: 1.8; }
-
-/* ─── RESPONSIVE ─────────────────────────────────────── */
-
-@media (max-width: 720px) {
-  .shell { grid-template-columns: 1fr; }
-  .side { position: relative; height: auto; padding: 24px 18px; }
-  .side-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; overflow: visible; }
-  .nav-btn { padding: 6px 10px; font-size: 11px; }
-  .nav-btn .n { display: none; }
-  .main { padding: 24px 18px; }
+/* ── RESPONSIVE MOBILE ───────────────────────────────── */
+@media (max-width: 680px) {
+  .topbar { padding: 0 16px; }
+  .screen { padding: 20px 18px; }
+  .home-kpis { grid-template-columns: repeat(2, 1fr); }
+  .home-tiles { grid-template-columns: repeat(2, 1fr); }
+  .topbar-user { display: none; }
 }
 </style>
 </head>
 <body>
 
-<div class="shell">
-  <aside class="side">
-    <div class="side-logo">M</div>
-    <div class="side-sub">Control M · Producción</div>
-    <nav class="side-nav" id="nav"></nav>
-    <div class="side-user">
-      <div class="user-label">Preparas como</div>
-      <div class="user-chips" id="user-chips"></div>
-    </div>
-  </aside>
-  <main class="main">
-    <div class="page-head">
-      <div class="page-eyebrow" id="page-eyebrow">Sección 1</div>
-      <div class="page-title" id="page-title">Inicio</div>
-    </div>
-    <div id="content"></div>
-  </main>
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-logo">M</div>
+  <span class="topbar-sep">·</span>
+  <div class="topbar-section" id="topbar-section">Control M</div>
+  <button class="topbar-back" id="topbar-back" onclick="goHome()">← Inicio</button>
+  <div class="topbar-user" id="topbar-user"></div>
+</header>
+
+<!-- VIEWPORT -->
+<div class="viewport" id="viewport">
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div id="home-content"><div class="loading">Cargando…</div></div>
+  </div>
+  <!-- INNER SCREEN -->
+  <div class="screen" id="screen-inner">
+    <div id="inner-content"></div>
+  </div>
 </div>
 
+<!-- WIZARD -->
 <div id="wizard-root"></div>
 
 <script>
 const API = "/api";
 const EQUIPO = ["Diego", "Laura", "Mónica"];
-
-const SECCIONES = [
-  { id:"inicio",        num:1,  label:"Inicio" },
-  { id:"preparaciones", num:2,  label:"Preparaciones" },
-  { id:"lotes",         num:3,  label:"Lotes activos" },
-  { id:"materias",      num:4,  label:"Materias" },
-  { id:"revisiones",    num:5,  label:"Revisiones" },
-  { id:"ajustes",       num:6,  label:"Ajustes" },
-  { id:"proveedores",   num:7,  label:"Proveedores" },
-  { id:"recepcion",     num:8,  label:"Recepción" },
-  { id:"pagos",         num:9,  label:"Pagos pendientes" },
-  { id:"manual",        num:10, label:"La forma de hacer las cosas" },
-];
-
-let vista = "inicio";
+let currentSection = "home";
 
 // ── USUARIO ───────────────────────────────────────────
 function getUser() { return localStorage.getItem("cm_user") || null; }
-function setUser(u) { localStorage.setItem("cm_user", u); renderUser(); }
+function setUser(u) { localStorage.setItem("cm_user", u); renderUserChips(); }
 
-function renderUser() {
-  const chips = document.getElementById("user-chips");
-  chips.innerHTML = EQUIPO.map(u => `
-    <button class="chip ${getUser()===u?"on":""}" onclick="setUser('${u}')">${u}</button>
-  `).join("");
+function renderUserChips() {
+  const el = document.getElementById("topbar-user");
+  el.innerHTML = EQUIPO.map(u =>
+    `<button class="user-chip ${getUser()===u?"on":""}" onclick="setUser('${u}')">${u}</button>`
+  ).join("");
 }
 
-// ── NAV ───────────────────────────────────────────────
-function renderNav() {
-  document.getElementById("nav").innerHTML = SECCIONES.map(s => `
-    <button class="nav-btn ${vista===s.id?"on":""}" onclick="irA('${s.id}')">
-      <span class="n">${String(s.num).padStart(2,"0")}</span>${s.label}
-    </button>
-  `).join("");
+// ── NAVEGACIÓN ────────────────────────────────────────
+function goHome() {
+  currentSection = "home";
+  document.getElementById("topbar-section").textContent = "Control M";
+  document.getElementById("topbar-back").classList.remove("visible");
+  document.getElementById("screen-inner").classList.remove("active");
+  document.getElementById("screen-inner").classList.add("exit");
+  document.getElementById("screen-home").classList.add("active");
+  document.getElementById("screen-home").classList.remove("exit");
+  setTimeout(() => {
+    document.getElementById("screen-inner").classList.remove("exit");
+  }, 300);
+  loadHome();
 }
 
-function irA(id) {
-  vista = id;
-  const s = SECCIONES.find(x => x.id === id);
-  document.getElementById("page-eyebrow").textContent = `Sección ${s.num}`;
-  document.getElementById("page-title").textContent = s.label;
-  renderNav();
-  const mapa = {
-    inicio: renderInicio,
-    preparaciones: renderPreparaciones,
-    lotes: renderLotes,
-    materias: renderMaterias,
-    revisiones: renderRevisiones,
-    ajustes: renderAjustes,
-    proveedores: renderProveedores,
-    recepcion: renderRecepcion,
-    pagos: renderPagos,
-    manual: renderManual,
-  };
-  (mapa[id] || renderPlaceholder)();
+function openSection(id, title) {
+  currentSection = id;
+  document.getElementById("topbar-section").textContent = title;
+  document.getElementById("topbar-back").classList.add("visible");
+  document.getElementById("screen-home").classList.add("exit");
+  document.getElementById("screen-home").classList.remove("active");
+  document.getElementById("screen-inner").classList.add("active");
+  document.getElementById("screen-inner").classList.remove("exit");
+  document.getElementById("inner-content").innerHTML = `<div class="loading">Cargando…</div>`;
+  setTimeout(() => {
+    document.getElementById("screen-home").classList.remove("exit");
+  }, 300);
 }
 
 // ── HELPERS ───────────────────────────────────────────
-function el(id) { return document.getElementById(id); }
-
-function section(label, items, renderFn, empty) {
-  if (!items || !items.length) return `
-    <div class="section">
-      <div class="section-label">${label}</div>
-      <div class="empty">${empty || "Sin elementos."}</div>
-    </div>`;
-  return `
-    <div class="section">
-      <div class="section-label">${label}</div>
-      ${items.map(renderFn).join("")}
-    </div>`;
-}
-
-function card(name, meta, actionsHTML, extraHTML) {
-  return `
-    <div class="card">
-      <div class="card-top">
-        <div>
-          <div class="card-name">${name}</div>
-          ${meta ? `<div class="card-meta">${meta}</div>` : ""}
-        </div>
-      </div>
-      ${extraHTML || ""}
-      ${actionsHTML ? `<div class="card-actions">${actionsHTML}</div>` : ""}
-    </div>`;
-}
-
 async function api(path, opts) {
   const r = await fetch(API + path, opts);
   if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
   return r.json();
 }
 
-function setContent(html) { el("content").innerHTML = html; }
+function el(id) { return document.getElementById(id); }
+function setInner(html) { el("inner-content").innerHTML = html; }
 
-function fmt(iso) {
-  return new Date(iso).toLocaleString("es-ES", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+function card(name, meta, actions, extra) {
+  return `<div class="card">
+    <div class="card-name">${name}</div>
+    ${meta ? `<div class="card-meta">${meta}</div>` : ""}
+    ${extra || ""}
+    ${actions ? `<div class="card-actions">${actions}</div>` : ""}
+  </div>`;
 }
 
-// ── INICIO ────────────────────────────────────────────
-async function renderInicio() {
-  setContent(`<div class="loading">Cargando estado del servicio…</div>`);
+function section(label, items, fn, empty) {
+  return `<div class="section-label">${label}</div>` +
+    (items && items.length ? items.map(fn).join("") : `<div class="empty">${empty||"Sin elementos."}</div>`);
+}
+
+function fmt(iso) {
+  return new Date(iso).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+
+function whatsapp(num, msg) { window.open(`https://wa.me/${num}?text=${msg}`, "_blank"); }
+
+// ── HOME ──────────────────────────────────────────────
+async function loadHome() {
   try {
     const d = await api("/inicio");
+    const k = d.kpis || {};
     const alerta = d.estado_servicio !== "Servicio en orden";
 
-    const bannerHTML = `
-      <div class="banner ${alerta?"warn":""}">
-        <span class="dot"></span>
-        <span>${d.estado_servicio}</span>
+    const kpisHTML = `
+      <div class="home-kpis">
+        <div class="kpi-box">
+          <div class="kpi-label">Producción hoy</div>
+          <div class="kpi-val">${k.coste_produccion_hoy!=null?k.coste_produccion_hoy.toFixed(2)+" €":"—"}</div>
+          <div class="kpi-sub">${k.preparaciones_hoy||0} preparaciones</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-label">Mermas hoy</div>
+          <div class="kpi-val" style="${(k.coste_mermas_hoy||0)>0?"color:var(--warn)":""}">${k.coste_mermas_hoy!=null?k.coste_mermas_hoy.toFixed(2)+" €":"—"}</div>
+          <div class="kpi-sub">${k.ajustes_hoy||0} ajustes</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-label">Valor stock</div>
+          <div class="kpi-val">${k.valor_stock_total!=null?k.valor_stock_total.toFixed(2)+" €":"—"}</div>
+          <div class="kpi-sub">en materias</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-label">Estado</div>
+          <div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div>
+          <div class="kpi-sub">${d.preparar&&d.preparar.length?d.preparar.length+" pendientes de prep.":"Producción al día"}</div>
+        </div>
       </div>`;
 
-    const k = d.kpis || {};
-    const kpisHTML = `
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:28px;">
-        ${[
-          ["Producción hoy", k.coste_produccion_hoy!=null ? k.coste_produccion_hoy.toFixed(2)+" €" : "—", k.preparaciones_hoy!=null ? k.preparaciones_hoy+" preparaciones" : ""],
-          ["Mermas hoy", k.coste_mermas_hoy!=null ? k.coste_mermas_hoy.toFixed(2)+" €" : "—", k.ajustes_hoy!=null ? k.ajustes_hoy+" ajustes" : ""],
-          ["Valor stock", k.valor_stock_total!=null ? k.valor_stock_total.toFixed(2)+" €" : "—", "materias activas"],
-          ["Estado producción", d.preparar && d.preparar.length>0 ? d.preparar.length+" pendientes" : "Al día", ""],
-        ].map(([label,val,sub]) => `
-          <div style="background:var(--paper);border:1px solid var(--line);padding:14px 16px;">
-            <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">${label}</div>
-            <div style="font-size:18px;font-weight:700;line-height:1;">${val}</div>
-            ${sub ? `<div style="font-size:10px;color:var(--muted);margin-top:4px;">${sub}</div>` : ""}
+    const enCurso = d.en_curso && d.en_curso.length;
+    const pendPrep = d.preparar && d.preparar.length;
+    const pendPedir = d.pedir && d.pedir.length;
+    const pendRevisar = d.revisar && d.revisar.length;
+    const pendLotes = d.lotes_a_vigilar && d.lotes_a_vigilar.length;
+
+    const tiles = [
+      { id:"preparaciones", title:"Preparaciones", num:"02", badge: enCurso ? `${enCurso} en curso` : (pendPrep ? `${pendPrep} recomendadas` : "Al día"), urgent: enCurso||pendPrep },
+      { id:"lotes", title:"Lotes activos", num:"03", badge: pendLotes ? `${pendLotes} requieren atención` : "Sin alertas", urgent: pendLotes },
+      { id:"materias", title:"Materias", num:"04", badge: pendPedir ? `${pendPedir} con disponibilidad baja` : "Stock correcto", urgent: pendPedir },
+      { id:"revisiones", title:"Revisiones", num:"05", badge: pendRevisar ? `${pendRevisar} pendientes` : "Completadas", urgent: pendRevisar },
+      { id:"ajustes", title:"Ajustes", num:"06", badge: `${k.ajustes_hoy||0} registrados hoy` },
+      { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes" },
+      { id:"recepcion", title:"Recepción", num:"08", badge: "Entrada de mercancía" },
+      { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor" },
+      { id:"manual", title:"La forma de hacer las cosas", num:"10", badge: "Manual operativo" },
+    ];
+
+    const tilesHTML = `
+      <div class="home-tiles">
+        ${tiles.map(t => `
+          <div class="tile ${t.urgent?"urgente":""}" onclick="irA_${t.id}()">
+            <div class="tile-num">${t.num}</div>
+            <div class="tile-title">${t.title}</div>
+            <div class="tile-badge ${t.urgent?"alert":""}">${t.badge}</div>
+            <span class="tile-arrow">›</span>
           </div>`).join("")}
       </div>`;
 
-    const enCursoHTML = section("En curso", d.en_curso, p => card(
-      `${p.nombre} — ${p.cantidad_objetivo} ${p.unidad}`,
-      p.responsable,
-      `<button class="btn-primary" onclick="abrirWizard('${p.id}')">Continuar preparación</button>`
-    ), "No hay preparaciones en curso.");
-
-    const prepararHTML = section("Conviene preparar", d.preparar, p => `
-      <div class="card">
-        <div class="card-top">
-          <div>
-            <div class="card-name">${p.nombre}</div>
-            <div class="card-meta">Disponible: ${p.disponible_ahora} ${p.unidad}</div>
-          </div>
-        </div>
-        <div class="card-actions">
-          ${p.opciones_tamano.map(o => `
-            <button class="btn-ghost" onclick="iniciarYAbrir('${p.receta_id}', ${o.cantidad}, this)">
-              ${o.cantidad} ${p.unidad} · ${o.coste_estimado.toFixed(2)} €
-            </button>`).join("")}
-        </div>
-      </div>`, "No hay preparaciones recomendadas.");
-
-    const pedirHTML = section("Pedir", d.pedir, m => card(
-      m.nombre,
-      `${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.proveedor}`,
-      m.whatsapp ? `<button class="btn-primary" onclick="whatsapp('${m.whatsapp}','${encodeURIComponent("Hola "+m.contacto+", necesitamos "+m.cantidad_sugerida+" "+m.unidad+" de "+m.nombre+" para M de Materia.")}')">Pedir por WhatsApp</button>` : ""
-    ), "Todas las materias en rango.");
-
-    const revisarHTML = section("Revisar", d.revisar, r => card(
-      r.tipo, `${r.valor} · ${r.estado}${r.accion_correctiva ? " · "+r.accion_correctiva : ""}`,
-      `<button class="btn-primary" onclick="resolverRevision('${r.id}', renderInicio)">Marcar revisado</button>`
-    ), "Revisiones del día completadas.");
-
-    const lotesHTML = section("Lotes a vigilar", d.lotes_a_vigilar, l => card(
-      `${l.codigo} — ${l.nombre}`,
-      `${l.ubicacion} · ${l.cantidad_restante} g · ${l.caducado ? "Fuera de plazo" : l.horas_restantes+" h restantes"}`,
-      l.caducado ? `<button class="btn-warn" onclick="darDeBaja('${l.id}', renderInicio)">Dar de baja</button>` : ""
-    ), "Ningún lote requiere atención.");
-
-    setContent(bannerHTML + kpisHTML + enCursoHTML + prepararHTML + pedirHTML + revisarHTML + lotesHTML);
+    el("home-content").innerHTML = `
+      <div class="banner ${alerta?"warn":""}">
+        <span class="dot"></span>
+        <span>${d.estado_servicio}</span>
+      </div>
+      ${kpisHTML}
+      ${tilesHTML}`;
   } catch(e) {
-    setContent(`<div class="err">${e.message}</div>`);
+    el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }
 }
 
 // ── PREPARACIONES ─────────────────────────────────────
-async function renderPreparaciones() {
-  setContent(`<div class="loading">Cargando…</div>`);
+async function irA_preparaciones() {
+  openSection("preparaciones","Preparaciones");
   try {
     const [recetas, enCurso, recientes] = await Promise.all([
       api("/recetas"),
       api("/preparaciones?estado=En curso"),
       api("/preparaciones?estado=Finalizada"),
     ]);
-
-    const enCursoHTML = section("En curso", enCurso, p => card(
-      `${p.nombre_receta} — ${p.cantidad_objetivo}`,
-      `${p.responsable} · Paso ${Math.min(p.paso_actual+1, p.pasos.length)} de ${p.pasos.length}`,
-      `<button class="btn-primary" onclick="abrirWizard('${p.id}')">Continuar</button>`
-    ), "No hay preparaciones en curso.");
-
-    const elegirHTML = `
-      <div class="section">
-        <div class="section-label">Elegir preparación</div>
-        ${recetas.map(r => `
-          <div class="card">
-            <div class="card-top">
-              <div>
-                <div class="card-name">${r.nombre}</div>
-                <div class="card-meta">Disponible: ${r.disponible_ahora} ${r.unidad} · vida útil ${r.vida_util_horas} h</div>
-              </div>
-            </div>
-            <div class="card-actions">
-              ${r.opciones_tamano.map(o => `
-                <button class="btn-ghost" onclick="iniciarYAbrir('${r.id}', ${o.cantidad}, this)">
-                  ${o.cantidad} ${r.unidad} · ${o.coste_estimado.toFixed(2)} €
-                </button>`).join("")}
-            </div>
-          </div>`).join("")}
-      </div>`;
-
-    const histHTML = section("Historial reciente", recientes.slice(-6).reverse(), p => card(
-      `${p.nombre_receta} — ${p.cantidad_objetivo} g`,
-      `${p.responsable} · ${fmt(p.finalizada_en)}`
-    ), "Aún no hay preparaciones finalizadas.");
-
-    setContent(enCursoHTML + elegirHTML + histHTML);
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+    let html = "";
+    if (enCurso.length) {
+      html += `<div class="section-label">En curso</div>`;
+      html += enCurso.map(p => card(
+        `${p.nombre_receta} — ${p.cantidad_objetivo} g`,
+        `${p.responsable} · Paso ${Math.min(p.paso_actual+1,p.pasos.length)} de ${p.pasos.length}`,
+        `<button class="btn-primary" onclick="abrirWizard('${p.id}')">Continuar</button>`
+      )).join("");
+    }
+    html += `<div class="section-label">Elegir preparación</div>`;
+    html += recetas.map(r => `
+      <div class="card">
+        <div class="card-name">${r.nombre}</div>
+        <div class="card-meta">Disponible: ${r.disponible_ahora} ${r.unidad} · vida útil ${r.vida_util_horas} h</div>
+        <div class="card-actions">
+          ${r.opciones_tamano.map(o => `
+            <button class="btn-ghost" onclick="iniciarYAbrir('${r.id}',${o.cantidad},this)">
+              ${o.cantidad} ${r.unidad} · ${o.coste_estimado.toFixed(2)} €
+            </button>`).join("")}
+        </div>
+      </div>`).join("");
+    if (recientes.length) {
+      html += section("Historial reciente", recientes.slice(-5).reverse(), p =>
+        card(`${p.nombre_receta} — ${p.cantidad_objetivo} g`, `${p.responsable} · ${fmt(p.finalizada_en)}`)
+      );
+    }
+    setInner(html);
+  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }
 
 // ── WIZARD ────────────────────────────────────────────
-async function iniciarYAbrir(recetaId, cantidad, btn) {
-  if (btn) btn.disabled = true;
+async function iniciarYAbrir(rid, cantidad, btn) {
+  if(btn) btn.disabled=true;
   try {
-    const p = await api("/preparaciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receta_id: recetaId, cantidad_objetivo: cantidad, responsable: getUser() || "Sin asignar" }),
-    });
+    const p = await api("/preparaciones",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({receta_id:rid,cantidad_objetivo:cantidad,responsable:getUser()||"Sin asignar"})});
     pintarWizard(p);
-  } catch(e) { alert(e.message); if (btn) btn.disabled = false; }
+  } catch(e){alert(e.message);if(btn)btn.disabled=false;}
 }
 
 async function abrirWizard(id) {
   try {
     const todas = await api("/preparaciones?estado=En curso");
-    const p = todas.find(x => x.id === id);
-    if (!p) { alert("Preparación no encontrada."); return; }
+    const p = todas.find(x=>x.id===id);
+    if(!p){alert("No encontrada.");return;}
     pintarWizard(p);
-  } catch(e) { alert(e.message); }
+  } catch(e){alert(e.message);}
 }
 
 function cerrarWizard() {
-  el("wizard-root").innerHTML = "";
-  if (vista === "preparaciones") renderPreparaciones();
-  else if (vista === "inicio") renderInicio();
+  el("wizard-root").innerHTML="";
+  if(currentSection==="preparaciones") irA_preparaciones();
+  else loadHome();
 }
 
 function pintarWizard(p) {
-  const total = p.pasos.length;
-  const actual = p.paso_actual;
-  const pct = Math.round((actual / total) * 100);
-  const terminado = actual >= total;
-
-  if (terminado) {
-    el("wizard-root").innerHTML = `
-      <div class="wizard">
-        <div class="wizard-progress"><div class="wizard-progress-fill" style="width:100%"></div></div>
-        <button class="wizard-close" onclick="cerrarWizard()">Cerrar</button>
-        <div class="wizard-body">
-          <div class="wizard-done-title">Preparación finalizada</div>
-          <div class="wizard-done-meta">${p.nombre_receta} · ${p.cantidad_objetivo} g · ${p.responsable}</div>
-          <button class="wizard-ok" onclick="finalizarPrep('${p.id}')">Crear lote</button>
+  const total=p.pasos.length, actual=p.paso_actual;
+  const pct=Math.round((actual/total)*100);
+  if(actual>=total){
+    el("wizard-root").innerHTML=`
+      <div class="wizard-overlay">
+        <div class="wiz-bar"><div class="wiz-bar-fill" style="width:100%"></div></div>
+        <div class="wiz-top"><span class="wiz-step">Completado</span><button class="wiz-close" onclick="cerrarWizard()">Cerrar</button></div>
+        <div class="wiz-body">
+          <div class="wiz-done">Preparación finalizada</div>
+          <div class="wiz-done-meta">${p.nombre_receta} · ${p.cantidad_objetivo} g · ${p.responsable}</div>
+          <button class="wiz-ok" onclick="finalizarPrep('${p.id}')">Crear lote</button>
         </div>
       </div>`;
     return;
   }
-
-  const paso = p.pasos[actual];
-  const esIng = paso.tipo === "ingrediente";
-
-  el("wizard-root").innerHTML = `
-    <div class="wizard">
-      <div class="wizard-progress"><div class="wizard-progress-fill" style="width:${pct}%"></div></div>
-      <button class="wizard-close" onclick="cerrarWizard()">Cerrar</button>
-      <div class="wizard-body">
-        <div class="wizard-step-label">Paso ${actual + 1} de ${total}</div>
-        <div class="wizard-recipe-name">${p.nombre_receta}</div>
-        <div class="wizard-action">${paso.texto}</div>
-        ${esIng ? `
-          <div class="wizard-number">${paso.cantidad}</div>
-          <div class="wizard-unit">${paso.unidad}</div>` : ""}
+  const paso=p.pasos[actual];
+  const esIng=paso.tipo==="ingrediente";
+  el("wizard-root").innerHTML=`
+    <div class="wizard-overlay">
+      <div class="wiz-bar"><div class="wiz-bar-fill" style="width:${pct}%"></div></div>
+      <div class="wiz-top">
+        <span class="wiz-step">Paso ${actual+1} de ${total}</span>
+        <button class="wiz-close" onclick="cerrarWizard()">Cerrar</button>
       </div>
-      <div class="wizard-footer">
-        <button class="wizard-ok" onclick="confirmarPaso('${p.id}')">OK — Siguiente</button>
+      <div class="wiz-body">
+        <div class="wiz-recipe">${p.nombre_receta}</div>
+        <div class="wiz-action">${paso.texto}</div>
+        ${esIng?`<div class="wiz-num">${paso.cantidad}</div><div class="wiz-unit">${paso.unidad}</div>`:""}
+      </div>
+      <div class="wiz-footer">
+        <button class="wiz-ok" onclick="confirmarPaso('${p.id}')">OK — Siguiente</button>
       </div>
     </div>`;
 }
 
-async function confirmarPaso(id) {
-  try {
-    const p = await api(`/preparaciones/${id}/confirmar-paso`, { method: "POST" });
-    pintarWizard(p);
-  } catch(e) { alert(e.message); }
+async function confirmarPaso(id){
+  try{const p=await api(`/preparaciones/${id}/confirmar-paso`,{method:"POST"});pintarWizard(p);}
+  catch(e){alert(e.message);}
 }
 
-async function finalizarPrep(id) {
-  try {
-    const d = await api(`/preparaciones/${id}/finalizar`, { method: "POST" });
-    if (d.etiqueta) window.open(`/etiqueta/${d.etiqueta.id}`, "_blank");
+async function finalizarPrep(id){
+  try{
+    const d=await api(`/preparaciones/${id}/finalizar`,{method:"POST"});
+    if(d.etiqueta) window.open(`/etiqueta/${d.etiqueta.id}`,"_blank");
     cerrarWizard();
-  } catch(e) { alert(e.message); }
+  }catch(e){alert(e.message);}
 }
 
 // ── LOTES ─────────────────────────────────────────────
-async function renderLotes() {
-  setContent(`<div class="loading">Cargando lotes…</div>`);
-  try {
-    const lotes = await api("/lotes");
-    const orden = { "Requiere atención":0, "Priorizar uso":1, "Correcto":2, "Fuera de servicio":3 };
-    const sorted = lotes.slice().sort((a,b) => (orden[a.estado]??9)-(orden[b.estado]??9));
-    setContent(section("Todos los lotes", sorted, l => card(
+async function irA_lotes(){
+  openSection("lotes","Lotes activos");
+  try{
+    const lotes=await api("/lotes");
+    const orden={"Requiere atención":0,"Priorizar uso":1,"Correcto":2,"Fuera de servicio":3};
+    const sorted=lotes.slice().sort((a,b)=>(orden[a.estado]??9)-(orden[b.estado]??9));
+    setInner(section("Todos los lotes", sorted, l=>card(
       `${l.codigo} — ${l.nombre}`,
       `${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}`,
-      (l.caducado && l.estado!=="Fuera de servicio" ? `<button class="btn-warn" onclick="darDeBaja('${l.id}', renderLotes)">Dar de baja</button>` : "")
-      + (!l.caducado ? `<button class="btn-ghost" onclick="reimprimir('${l.id}')">Reimprimir etiqueta</button>` : "")
-    ), "No hay lotes registrados."));
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+      (l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',irA_lotes)">Dar de baja</button>`:"")
+      +(!l.caducado?`<button class="btn-ghost" onclick="reimprimir('${l.id}')">Reimprimir etiqueta</button>`:"")
+    ),"No hay lotes registrados."));
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-async function darDeBaja(id, cb) {
-  try { await api(`/lotes/${id}/dar-de-baja`, { method:"POST" }); cb(); }
-  catch(e) { alert(e.message); }
+async function darDeBaja(id,cb){
+  try{await api(`/lotes/${id}/dar-de-baja`,{method:"POST"});cb();}
+  catch(e){alert(e.message);}
 }
 
-async function reimprimir(loteId) {
-  try {
-    const etqs = await api(`/etiquetas/lote/${loteId}`);
-    if (!etqs.length) { alert("Sin etiqueta generada para este lote."); return; }
-    window.open(`/etiqueta/${etqs[0].id}`, "_blank");
-  } catch(e) { alert(e.message); }
+async function reimprimir(loteId){
+  try{
+    const etqs=await api(`/etiquetas/lote/${loteId}`);
+    if(!etqs.length){alert("Sin etiqueta para este lote.");return;}
+    window.open(`/etiqueta/${etqs[0].id}`,"_blank");
+  }catch(e){alert(e.message);}
 }
 
 // ── MATERIAS ──────────────────────────────────────────
-async function renderMaterias() {
-  setContent(`<div class="loading">Cargando materias…</div>`);
-  try {
-    const mat = await api("/materias");
-    const sorted = mat.slice().sort((a,b) => a.disponibilidad_estado==="Disponibilidad baja"?-1:1);
-    setContent(section("Materias", sorted, m => card(
-      `${m.nombre} ${m.disponibilidad_estado==="Disponibilidad baja"?'<span class="badge low">Baja</span>':""}`,
+async function irA_materias(){
+  openSection("materias","Materias");
+  try{
+    const mat=await api("/materias");
+    const sorted=mat.slice().sort((a,b)=>a.disponibilidad_estado==="Disponibilidad baja"?-1:1);
+    setInner(section("Materias",sorted,m=>card(
+      m.nombre+(m.disponibilidad_estado==="Disponibilidad baja"?`<span class="badge-low">Baja</span>`:""),
       `${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.ubicacion} · ${m.proveedor_nombre}`,
-      m.disponibilidad_estado==="Disponibilidad baja" && m.proveedor_whatsapp
-        ? `<button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para M de Materia.")}')">Pedir por WhatsApp</button>`
-        : ""
+      m.disponibilidad_estado==="Disponibilidad baja"&&m.proveedor_whatsapp
+        ?`<button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para M de Materia.")}')">Pedir por WhatsApp</button>`:""
     )));
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
 // ── REVISIONES ────────────────────────────────────────
-async function renderRevisiones() {
-  setContent(`<div class="loading">Cargando revisiones…</div>`);
-  try {
-    const [tipos, revs] = await Promise.all([api("/revisiones/tipos"), api("/revisiones")]);
-    const hoy = new Date().toDateString();
-    const deHoy = revs.filter(r => new Date(r.fecha).toDateString()===hoy);
-
-    const html = tipos.map(t => {
-      const reg = deHoy.filter(r => r.tipo===t.tipo).slice(-1)[0];
-      if (reg?.estado === "Correcto") return card(t.tipo, `${reg.valor} · registrado`);
-      if (reg && reg.estado !== "Correcto") return card(
-        t.tipo,
-        `${reg.valor} · ${reg.estado}${reg.accion_correctiva?" · "+reg.accion_correctiva:""}`,
-        `<button class="btn-primary" onclick="resolverRevision('${reg.id}', renderRevisiones)">Marcar revisado</button>`
-      );
-      if (t.clase === "temperatura") return `
+async function irA_revisiones(){
+  openSection("revisiones","Revisiones");
+  try{
+    const [tipos,revs]=await Promise.all([api("/revisiones/tipos"),api("/revisiones")]);
+    const hoy=new Date().toDateString();
+    const deHoy=revs.filter(r=>new Date(r.fecha).toDateString()===hoy);
+    let html=`<div class="section-label">Revisiones de hoy</div>`;
+    html+=tipos.map(t=>{
+      const reg=deHoy.filter(r=>r.tipo===t.tipo).slice(-1)[0];
+      if(reg?.estado==="Correcto") return card(t.tipo,`${reg.valor} · registrado`);
+      if(reg&&reg.estado!=="Correcto") return card(
+        t.tipo,`${reg.valor} · ${reg.estado}${reg.accion_correctiva?" · "+reg.accion_correctiva:""}`,
+        `<button class="btn-primary" onclick="resolverRev('${reg.id}',irA_revisiones)">Marcar revisado</button>`);
+      if(t.clase==="temperatura") return `
         <div class="card">
           <div class="card-name">${t.tipo}</div>
-          <div class="field" style="margin-top:12px;">
+          <div class="field" style="margin-top:10px;">
             <label>Temperatura en ${t.unidad}</label>
-            <input type="number" step="0.1" id="rev-${t.tipo.replace(/\s/g,"_")}" style="width:110px;">
+            <input type="number" step="0.1" id="rev_${t.tipo.replace(/\s/g,"_")}" style="width:110px;">
           </div>
           <div class="card-actions">
-            <button class="btn-ghost" onclick="registrarRev('${t.tipo}', document.getElementById('rev-${t.tipo.replace(/\s/g,"_")}').value)">Registrar</button>
+            <button class="btn-ghost" onclick="regRev('${t.tipo}',document.getElementById('rev_${t.tipo.replace(/\s/g,"_")}').value)">Registrar</button>
           </div>
         </div>`;
-      return card(t.tipo, "", `<button class="btn-ghost" onclick="registrarRev('${t.tipo}','Realizada')">Marcar realizada</button>`);
+      return card(t.tipo,"",`<button class="btn-ghost" onclick="regRev('${t.tipo}','Realizada')">Marcar realizada</button>`);
     }).join("");
-
-    setContent(`<div class="section"><div class="section-label">Revisiones de hoy</div>${html}</div>`);
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+    setInner(html);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-async function registrarRev(tipo, valor) {
-  if (!valor) { alert("Introduce un valor."); return; }
-  try {
-    await api("/revisiones/registrar", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ tipo, valor, responsable: getUser()||"Sin asignar" }),
-    });
-    renderRevisiones();
-  } catch(e) { alert(e.message); }
+async function regRev(tipo,valor){
+  if(!valor){alert("Introduce un valor.");return;}
+  try{
+    await api("/revisiones/registrar",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({tipo,valor,responsable:getUser()||"Sin asignar"})});
+    irA_revisiones();
+  }catch(e){alert(e.message);}
 }
 
-async function resolverRevision(id, cb) {
-  try { await api(`/revisiones/${id}/resolver`, { method:"POST" }); cb(); }
-  catch(e) { alert(e.message); }
+async function resolverRev(id,cb){
+  try{await api(`/revisiones/${id}/resolver`,{method:"POST"});cb();}
+  catch(e){alert(e.message);}
 }
 
 // ── AJUSTES ───────────────────────────────────────────
-let _ajState = { tipo:"materia", objetivoId:null, motivo:null };
+let _aj={tipo:"materia",motivo:null};
 
-async function renderAjustes() {
-  setContent(`<div class="loading">Cargando…</div>`);
-  try {
-    const [mat, lotes, motivos, hist] = await Promise.all([
-      api("/materias"), api("/lotes"), api("/ajustes/motivos"), api("/ajustes"),
-    ]);
-    _ajState = { tipo:"materia", objetivoId:null, motivo:null };
-    window._ajMat = mat; window._ajLotes = lotes;
-
-    const opsMat = mat.map(m => `<option value="${m.id}">${m.nombre} (${m.disponibilidad_actual} ${m.unidad})</option>`).join("");
-
-    const form = `
-      <div class="section">
-        <div class="section-label">Registrar ajuste</div>
-        <div class="card">
-          <div class="field">
-            <label>¿Qué se ajusta?</label>
-            <div class="toggle-row">
-              <button class="toggle on" id="aj-mat" onclick="ajTipo('materia')">Materia</button>
-              <button class="toggle" id="aj-lote" onclick="ajTipo('lote')">Lote</button>
-            </div>
-          </div>
-          <div class="field">
-            <label id="aj-obj-label">Materia</label>
-            <select id="aj-obj" onchange="_ajState.objetivoId=this.value">
-              <option value="">Selecciona…</option>
-              ${opsMat}
-            </select>
-          </div>
-          <div class="field">
-            <label>Cantidad</label>
-            <input type="number" id="aj-cant" style="width:130px;">
-          </div>
-          <div class="field">
-            <label>Motivo</label>
-            <div class="toggle-row" id="aj-motivos">
-              ${motivos.map(m => `<button class="toggle" onclick="ajMotivo('${m}',this)">${m}</button>`).join("")}
-            </div>
-          </div>
-          <div class="field">
-            <label>Observación (opcional)</label>
-            <input type="text" id="aj-obs">
-          </div>
-          <div class="card-actions">
-            <button class="btn-primary" onclick="registrarAjuste()">Registrar ajuste</button>
+async function irA_ajustes(){
+  openSection("ajustes","Ajustes");
+  try{
+    const [mat,lotes,motivos,hist]=await Promise.all([
+      api("/materias"),api("/lotes"),api("/ajustes/motivos"),api("/ajustes")]);
+    _aj={tipo:"materia",motivo:null};
+    window._ajMat=mat; window._ajLotes=lotes;
+    let html=`
+      <div class="section-label">Registrar ajuste</div>
+      <div class="card">
+        <div class="field">
+          <label>¿Qué se ajusta?</label>
+          <div class="toggle-row">
+            <button class="toggle on" id="aj-m" onclick="ajTipo('materia')">Materia</button>
+            <button class="toggle" id="aj-l" onclick="ajTipo('lote')">Lote</button>
           </div>
         </div>
+        <div class="field">
+          <label id="aj-ol">Materia</label>
+          <select id="aj-obj" onchange="_aj.objetivoId=this.value">
+            <option value="">Selecciona…</option>
+            ${mat.map(m=>`<option value="${m.id}">${m.nombre} (${m.disponibilidad_actual} ${m.unidad})</option>`).join("")}
+          </select>
+        </div>
+        <div class="field"><label>Cantidad</label><input type="number" id="aj-cant" style="width:130px;"></div>
+        <div class="field">
+          <label>Motivo</label>
+          <div class="toggle-row" id="aj-motivos">
+            ${motivos.map(m=>`<button class="toggle" onclick="ajMotivo('${m}',this)">${m}</button>`).join("")}
+          </div>
+        </div>
+        <div class="field"><label>Observación (opcional)</label><input type="text" id="aj-obs" style="width:100%;"></div>
+        <div class="card-actions"><button class="btn-primary" onclick="regAjuste()">Registrar ajuste</button></div>
       </div>`;
-
-    const histHTML = section("Historial", hist.slice(0,8), a => card(
+    html+=section("Historial reciente",hist.slice(0,6),a=>card(
       `${a.objetivo_nombre} — ${a.cantidad}`,
       `${a.motivo} · ${a.coste_estimado.toFixed(2)} € · ${a.responsable} · ${fmt(a.fecha)}`
-    ), "Sin ajustes registrados.");
-
-    setContent(form + histHTML);
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+    ),"Sin ajustes.");
+    setInner(html);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-function ajTipo(t) {
-  _ajState.tipo = t; _ajState.objetivoId = null;
-  el("aj-mat").classList.toggle("on", t==="materia");
-  el("aj-lote").classList.toggle("on", t==="lote");
-  el("aj-obj-label").textContent = t==="materia" ? "Materia" : "Lote";
-  const ops = t==="materia"
-    ? window._ajMat.map(m => `<option value="${m.id}">${m.nombre} (${m.disponibilidad_actual} ${m.unidad})</option>`)
-    : window._ajLotes.map(l => `<option value="${l.id}">${l.codigo} — ${l.nombre} (${l.cantidad_restante} restantes)</option>`);
-  el("aj-obj").innerHTML = `<option value="">Selecciona…</option>${ops.join("")}`;
+function ajTipo(t){
+  _aj.tipo=t;_aj.objetivoId=null;
+  el("aj-m").classList.toggle("on",t==="materia");
+  el("aj-l").classList.toggle("on",t==="lote");
+  el("aj-ol").textContent=t==="materia"?"Materia":"Lote";
+  const ops=t==="materia"
+    ?window._ajMat.map(m=>`<option value="${m.id}">${m.nombre} (${m.disponibilidad_actual} ${m.unidad})</option>`)
+    :window._ajLotes.map(l=>`<option value="${l.id}">${l.codigo} — ${l.nombre} (${l.cantidad_restante} restantes)</option>`);
+  el("aj-obj").innerHTML=`<option value="">Selecciona…</option>${ops.join("")}`;
 }
 
-function ajMotivo(m, btn) {
-  _ajState.motivo = m;
-  document.querySelectorAll("#aj-motivos .toggle").forEach(b => b.classList.remove("on"));
+function ajMotivo(m,btn){
+  _aj.motivo=m;
+  document.querySelectorAll("#aj-motivos .toggle").forEach(b=>b.classList.remove("on"));
   btn.classList.add("on");
 }
 
-async function registrarAjuste() {
-  const obj = el("aj-obj").value;
-  const cant = Number(el("aj-cant").value);
-  const obs = el("aj-obs").value;
-  if (!obj) { alert("Selecciona materia o lote."); return; }
-  if (!cant || cant<=0) { alert("Introduce una cantidad válida."); return; }
-  if (!_ajState.motivo) { alert("Selecciona un motivo."); return; }
-  try {
-    await api("/ajustes", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ tipo_objetivo:_ajState.tipo, objetivo_id:obj, cantidad:cant, motivo:_ajState.motivo, observacion:obs, responsable:getUser()||"Sin asignar" }),
-    });
-    renderAjustes();
-  } catch(e) { alert(e.message); }
+async function regAjuste(){
+  const obj=el("aj-obj").value,cant=Number(el("aj-cant").value),obs=el("aj-obs").value;
+  if(!obj){alert("Selecciona materia o lote.");return;}
+  if(!cant||cant<=0){alert("Cantidad inválida.");return;}
+  if(!_aj.motivo){alert("Selecciona un motivo.");return;}
+  try{
+    await api("/ajustes",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({tipo_objetivo:_aj.tipo,objetivo_id:obj,cantidad:cant,motivo:_aj.motivo,observacion:obs,responsable:getUser()||"Sin asignar"})});
+    irA_ajustes();
+  }catch(e){alert(e.message);}
 }
 
 // ── PROVEEDORES ───────────────────────────────────────
-async function renderProveedores() {
-  setContent(`<div class="loading">Cargando proveedores…</div>`);
-  try {
-    const provs = await api("/proveedores");
-    setContent(section("Proveedores", provs, p => card(
+async function irA_proveedores(){
+  openSection("proveedores","Proveedores");
+  try{
+    const provs=await api("/proveedores");
+    setInner(section("Proveedores",provs,p=>card(
       p.nombre,
       `${p.contacto} · ${p.dias_reparto.join(", ")} · ${p.productos_nombres.join(", ")}`,
       `<button class="btn-ghost" onclick="whatsapp('${p.whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola "+p.contacto+", ")}')">Contactar por WhatsApp</button>`
     )));
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
 // ── RECEPCIÓN ────────────────────────────────────────
-async function renderRecepcion() {
-  setContent(`<div class="loading">Cargando…</div>`);
-  try {
-    const [provs, recs] = await Promise.all([api("/proveedores"), api("/recepciones")]);
-
-    const opsProv = provs.map(p => `<option value="${p.id}">${p.nombre}</option>`).join("");
-    const form = `
-      <div class="section">
-        <div class="section-label">Entrada manual</div>
-        <div class="card">
-          <div class="field">
-            <label>Proveedor</label>
-            <select id="rcp-prov"><option value="">Selecciona…</option>${opsProv}</select>
-          </div>
-          <div class="field">
-            <label>Importe total (€)</label>
-            <input type="number" step="0.01" id="rcp-imp">
-          </div>
-          <div class="card-actions">
-            <button class="btn-primary" onclick="nuevaRecepcion()">Registrar recepción</button>
-          </div>
+async function irA_recepcion(){
+  openSection("recepcion","Recepción");
+  try{
+    const [provs,recs]=await Promise.all([api("/proveedores"),api("/recepciones")]);
+    let html=`
+      <div class="section-label">Entrada manual</div>
+      <div class="card">
+        <div class="field"><label>Proveedor</label>
+          <select id="rcp-prov">
+            <option value="">Selecciona…</option>
+            ${provs.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join("")}
+          </select>
         </div>
-        <div class="card" style="opacity:0.55;">
-          <div class="card-name">Escanear albarán</div>
-          <div class="card-meta">Disponible en una fase posterior.</div>
-        </div>
+        <div class="field"><label>Importe total (€)</label><input type="number" step="0.01" id="rcp-imp" style="width:140px;"></div>
+        <div class="card-actions"><button class="btn-primary" onclick="nuevaRcp()">Registrar recepción</button></div>
+      </div>
+      <div class="card" style="opacity:0.55;">
+        <div class="card-name">Escanear albarán</div>
+        <div class="card-meta">Disponible en una fase posterior.</div>
       </div>`;
-
-    const histHTML = section("Recepciones", recs.slice().reverse(), r => {
-      const prov = provs.find(p => p.id===r.proveedor_id);
+    html+=section("Recepciones",recs.slice().reverse(),r=>{
+      const prov=provs.find(p=>p.id===r.proveedor_id);
       return card(
         `${prov?.nombre||r.proveedor_id} — ${r.importe_total.toFixed(2)} €`,
         `${r.estado} · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}`,
-        r.estado==="Pendiente de confirmar" ? `<button class="btn-primary" onclick="confirmarRecepcion('${r.id}')">Confirmar entrada</button>` : ""
+        r.estado==="Pendiente de confirmar"?`<button class="btn-primary" onclick="confirmarRcp('${r.id}')">Confirmar entrada</button>`:""
       );
-    }, "Sin recepciones registradas.");
-
-    setContent(form + histHTML);
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+    },"Sin recepciones.");
+    setInner(html);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-async function nuevaRecepcion() {
-  const prov = el("rcp-prov").value;
-  const imp = Number(el("rcp-imp").value);
-  if (!prov) { alert("Selecciona un proveedor."); return; }
-  if (!imp || imp<=0) { alert("Introduce un importe válido."); return; }
-  try {
-    await api("/recepciones", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({proveedor_id:prov, importe_total:imp}) });
-    renderRecepcion();
-  } catch(e) { alert(e.message); }
+async function nuevaRcp(){
+  const prov=el("rcp-prov").value,imp=Number(el("rcp-imp").value);
+  if(!prov){alert("Selecciona un proveedor.");return;}
+  if(!imp||imp<=0){alert("Importe inválido.");return;}
+  try{await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({proveedor_id:prov,importe_total:imp})});irA_recepcion();}
+  catch(e){alert(e.message);}
 }
 
-async function confirmarRecepcion(id) {
-  try { await api(`/recepciones/${id}/confirmar`, {method:"POST"}); renderRecepcion(); }
-  catch(e) { alert(e.message); }
+async function confirmarRcp(id){
+  try{await api(`/recepciones/${id}/confirmar`,{method:"POST"});irA_recepcion();}
+  catch(e){alert(e.message);}
 }
 
 // ── PAGOS ─────────────────────────────────────────────
-async function renderPagos() {
-  setContent(`<div class="loading">Cargando pagos…</div>`);
-  try {
-    const pagos = await api("/pagos");
-    setContent(section("Pagos pendientes por proveedor", pagos, p => card(
+async function irA_pagos(){
+  openSection("pagos","Pagos pendientes");
+  try{
+    const pagos=await api("/pagos");
+    setInner(section("Por proveedor",pagos,p=>card(
       p.proveedor_nombre,
       `${p.importe_pendiente.toFixed(2)} € · ${p.albaranes_pendientes} albarán(es)`,
       `<button class="btn-ghost" onclick="marcarPagado('${p.proveedor_id}')">Marcar como pagado</button>`
-    ), "No hay pagos pendientes."));
-  } catch(e) { setContent(`<div class="err">${e.message}</div>`); }
+    ),"No hay pagos pendientes."));
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-async function marcarPagado(id) {
-  try { await api(`/pagos/${id}/marcar-pagado`, {method:"POST"}); renderPagos(); }
-  catch(e) { alert(e.message); }
+async function marcarPagado(id){
+  try{await api(`/pagos/${id}/marcar-pagado`,{method:"POST"});irA_pagos();}
+  catch(e){alert(e.message);}
 }
 
 // ── MANUAL ────────────────────────────────────────────
-function renderManual() {
-  setContent(`
-    <div class="card" style="margin-bottom:16px;opacity:0.7;font-size:12px;color:var(--muted);">
-      Primer borrador — revisa los pasos y dime qué ajustar antes de usarlo como referencia definitiva.
-    </div>
-    <div class="manual-section"><h3>Abrir</h3><ul>
-      <li>Registrar temperaturas de neveras y leche en sección Revisiones</li>
-      <li>Comprobar lotes activos — priorizar los marcados "Priorizar uso" o "Requiere atención"</li>
-      <li>Revisar disponibilidad baja en Materias y lanzar pedidos pendientes</li>
+function irA_manual(){
+  openSection("manual","La forma de hacer las cosas");
+  setInner(`
+    <div class="manual-block"><h3>Abrir</h3><ul>
+      <li>Registrar temperaturas de neveras y leche en Revisiones</li>
+      <li>Comprobar lotes activos — priorizar "Priorizar uso" y "Requiere atención"</li>
+      <li>Revisar disponibilidad baja en Materias y lanzar pedidos</li>
       <li>Limpieza de grifos antes del primer servicio</li>
     </ul></div>
-    <div class="manual-section"><h3>Preparar</h3><ul>
-      <li>Seguir siempre las cantidades del asistente — nunca a ojo</li>
+    <div class="manual-block"><h3>Preparar</h3><ul>
+      <li>Seguir siempre el asistente — nunca a ojo</li>
       <li>Un lote, un código, una caducidad — no mezclar lotes</li>
-      <li>Ubicar el lote inmediatamente al finalizar la preparación</li>
+      <li>Ubicar el lote inmediatamente al finalizar</li>
     </ul></div>
-    <div class="manual-section"><h3>Servir</h3><ul>
+    <div class="manual-block"><h3>Servir</h3><ul>
       <li>Usar siempre el lote más próximo a caducar primero (FIFO)</li>
-      <li>Todo producto retirado se registra en Ajustes — nunca se descarta sin registrar</li>
+      <li>Todo producto retirado se registra en Ajustes</li>
     </ul></div>
-    <div class="manual-section"><h3>Cuidar producto</h3><ul>
+    <div class="manual-block"><h3>Cuidar producto</h3><ul>
       <li>Revisar lotes a vigilar varias veces durante el servicio</li>
       <li>Dar de baja un lote en el momento en que caduque</li>
     </ul></div>
-    <div class="manual-section"><h3>Cerrar</h3><ul>
-      <li>Limpieza de barra y mesa fría en sección Revisiones</li>
-      <li>Comprobar que no quedan preparaciones "En curso" sin finalizar</li>
+    <div class="manual-block"><h3>Cerrar</h3><ul>
+      <li>Limpieza de barra y mesa fría en Revisiones</li>
+      <li>Verificar que no quedan preparaciones en curso</li>
       <li>Revisar disponibilidad baja para el pedido del día siguiente</li>
     </ul></div>`);
 }
 
-function renderPlaceholder() {
-  setContent(`<div class="placeholder-block"><div class="page-eyebrow" style="margin-bottom:10px;">En preparación</div>Este módulo se incorpora en el siguiente paso.</div>`);
-}
-
-// ── UTILIDADES ────────────────────────────────────────
-function whatsapp(num, msg) {
-  window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
-}
-
 // ── INIT ──────────────────────────────────────────────
-renderNav();
-renderUser();
-renderInicio();
-setInterval(() => { if (vista==="inicio") renderInicio(); }, 60000);
+renderUserChips();
+loadHome();
+setInterval(()=>{ if(currentSection==="home") loadHome(); }, 60000);
 </script>
 </body>
 </html>

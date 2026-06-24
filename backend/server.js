@@ -170,8 +170,12 @@ app.get("/api/salud", (req, res) => {
   res.json({ estado: "Control M · Producción en marcha", hora: new Date().toISOString() });
 });
 
-// Sirve el frontend estático (single-file app)
-app.use(express.static(path.join(__dirname, "..", "frontend")));
+// Sirve el frontend estático desde /public (compatible con Render)
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);

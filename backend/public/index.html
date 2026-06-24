@@ -482,18 +482,97 @@ input, select { font-family: inherit; font-size: 13px; }
 
 <script>
 const API = "/api";
-const EQUIPO = ["Diego", "Laura", "Mónica"];
 let currentSection = "home";
 
-// ── USUARIO ───────────────────────────────────────────
-function getUser() { return localStorage.getItem("cm_user") || null; }
-function setUser(u) { localStorage.setItem("cm_user", u); renderUserChips(); }
+// ── SISTEMA DE USUARIOS CON ROLES ─────────────────────
+const USUARIOS = {
+  "Jon":  { pin: "1111", rol: "admin",  nombre: "Jon" },
+  "Lara": { pin: "2222", rol: "equipo", nombre: "Lara" },
+  "Moni": { pin: "3333", rol: "admin",  nombre: "Mónica" },
+};
+
+const MODULOS_EQUIPO = ["preparaciones","lotes","revisiones","ajustes"];
+const MODULOS_ADMIN  = ["preparaciones","lotes","materias","revisiones","ajustes","proveedores","recepcion","pagos","manual"];
+
+function getUser()  { try{ return JSON.parse(localStorage.getItem("cm_session")); }catch{ return null; } }
+function setSession(u) { localStorage.setItem("cm_session", JSON.stringify(u)); }
+function logout()   { localStorage.removeItem("cm_session"); location.reload(); }
+
+function puedeVer(seccion) {
+  const u = getUser();
+  if (!u) return false;
+  if (u.rol === "admin") return true;
+  return MODULOS_EQUIPO.includes(seccion);
+}
+
+function modulosVisibles() {
+  const u = getUser();
+  if (!u) return [];
+  return u.rol === "admin" ? MODULOS_ADMIN : MODULOS_EQUIPO;
+}
+
+// ── LOGIN SCREEN ──────────────────────────────────────
+let _loginKey = null;
+
+function mostrarLogin() {
+  document.body.style.overflow = "auto";
+  document.body.innerHTML = `
+    <div style="min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;">
+      <div style="text-align:center;color:var(--cream);">
+        <div style="font-size:52px;font-weight:700;line-height:1;">M</div>
+        <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:6px;margin-bottom:52px;">Control M · Producción</div>
+        <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:18px;">¿Quién prepara hoy?</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">
+          ${Object.entries(USUARIOS).map(([k,u]) => `
+            <button id="ubtn-${k}" onclick="seleccionarUsuario('${k}')"
+              style="font-family:inherit;font-size:13px;padding:14px 28px;background:none;border:1px solid #2A2820;color:#888070;cursor:pointer;">
+              ${u.nombre}
+            </button>`).join("")}
+        </div>
+        <div id="pin-wrap" style="display:none;">
+          <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:12px;">PIN</div>
+          <input type="password" inputmode="numeric" maxlength="4" id="pin-inp" autocomplete="off"
+            style="font-family:inherit;font-size:28px;letter-spacing:0.4em;text-align:center;width:130px;background:none;border:none;border-bottom:1px solid #2A2820;color:var(--cream);padding:8px;outline:none;"
+            oninput="if(this.value.length===4)checkPin();">
+          <div id="pin-err" style="font-size:11px;color:#9C5A2E;margin-top:14px;min-height:16px;"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function seleccionarUsuario(key) {
+  _loginKey = key;
+  Object.keys(USUARIOS).forEach(k => {
+    const b = document.getElementById("ubtn-"+k);
+    if(b) b.style.borderColor = k===key ? "#5C6145" : "#2A2820";
+    if(b) b.style.color = k===key ? "#F0EBE0" : "#888070";
+  });
+  const w = document.getElementById("pin-wrap");
+  w.style.display = "block";
+  document.getElementById("pin-inp").value = "";
+  document.getElementById("pin-err").textContent = "";
+  document.getElementById("pin-inp").focus();
+}
+
+function checkPin() {
+  const pin = document.getElementById("pin-inp").value;
+  const u = USUARIOS[_loginKey];
+  if (pin === u.pin) {
+    setSession({ key: _loginKey, nombre: u.nombre, rol: u.rol });
+    location.reload();
+  } else if (pin.length === 4) {
+    document.getElementById("pin-err").textContent = "PIN incorrecto";
+    document.getElementById("pin-inp").value = "";
+  }
+}
 
 function renderUserChips() {
+  const u = getUser();
   const el = document.getElementById("topbar-user");
-  el.innerHTML = EQUIPO.map(u =>
-    `<button class="user-chip ${getUser()===u?"on":""}" onclick="setUser('${u}')">${u}</button>`
-  ).join("");
+  if (!el || !u) return;
+  el.innerHTML = `
+    <span style="font-size:11px;color:#AAA490;margin-right:10px;">${u.nombre}</span>
+    <button class="user-chip" onclick="logout()">Salir</button>`;
 }
 
 // ── NAVEGACIÓN ────────────────────────────────────────
@@ -562,7 +641,10 @@ async function loadHome() {
     const k = d.kpis || {};
     const alerta = d.estado_servicio !== "Servicio en orden";
 
-    const kpisHTML = `
+    const u = getUser();
+    const esAdmin = u && u.rol === "admin";
+
+    const kpisHTML = esAdmin ? `
       <div class="home-kpis">
         <div class="kpi-box">
           <div class="kpi-label">Producción hoy</div>
@@ -584,7 +666,7 @@ async function loadHome() {
           <div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div>
           <div class="kpi-sub">${d.preparar&&d.preparar.length?d.preparar.length+" pendientes de prep.":"Producción al día"}</div>
         </div>
-      </div>`;
+      </div>` : "";
 
     const enCurso = d.en_curso && d.en_curso.length;
     const pendPrep = d.preparar && d.preparar.length;
@@ -592,17 +674,22 @@ async function loadHome() {
     const pendRevisar = d.revisar && d.revisar.length;
     const pendLotes = d.lotes_a_vigilar && d.lotes_a_vigilar.length;
 
-    const tiles = [
+    const u = getUser();
+    const esAdmin = u && u.rol === "admin";
+
+    const todosLosTiles = [
       { id:"preparaciones", title:"Preparaciones", num:"02", badge: enCurso ? `${enCurso} en curso` : (pendPrep ? `${pendPrep} recomendadas` : "Al día"), urgent: enCurso||pendPrep },
       { id:"lotes", title:"Lotes activos", num:"03", badge: pendLotes ? `${pendLotes} requieren atención` : "Sin alertas", urgent: pendLotes },
-      { id:"materias", title:"Materias", num:"04", badge: pendPedir ? `${pendPedir} con disponibilidad baja` : "Stock correcto", urgent: pendPedir },
+      { id:"materias", title:"Materias", num:"04", badge: pendPedir ? `${pendPedir} con disponibilidad baja` : "Stock correcto", urgent: pendPedir, soloAdmin: false },
       { id:"revisiones", title:"Revisiones", num:"05", badge: pendRevisar ? `${pendRevisar} pendientes` : "Completadas", urgent: pendRevisar },
       { id:"ajustes", title:"Ajustes", num:"06", badge: `${k.ajustes_hoy||0} registrados hoy` },
-      { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes" },
-      { id:"recepcion", title:"Recepción", num:"08", badge: "Entrada de mercancía" },
-      { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor" },
-      { id:"manual", title:"La forma de hacer las cosas", num:"10", badge: "Manual operativo" },
+      { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes", soloAdmin: true },
+      { id:"recepcion", title:"Recepción", num:"08", badge: "Entrada de mercancía", soloAdmin: true },
+      { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor", soloAdmin: true },
+      { id:"manual", title:"La forma de hacer las cosas", num:"10", badge: "Manual operativo", soloAdmin: true },
     ];
+
+    const tiles = todosLosTiles.filter(t => !t.soloAdmin || esAdmin);
 
     const tilesHTML = `
       <div class="home-tiles">
@@ -1011,9 +1098,13 @@ function irA_manual(){
 }
 
 // ── INIT ──────────────────────────────────────────────
-renderUserChips();
-loadHome();
-setInterval(()=>{ if(currentSection==="home") loadHome(); }, 60000);
+if (!getUser()) {
+  mostrarLogin();
+} else {
+  renderUserChips();
+  loadHome();
+  setInterval(()=>{ if(currentSection==="home") loadHome(); }, 60000);
+}
 </script>
 </body>
 </html>

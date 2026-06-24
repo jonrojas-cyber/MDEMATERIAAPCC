@@ -171,11 +171,20 @@ app.get("/api/salud", (req, res) => {
 });
 
 // Sirve el frontend estático desde /public (compatible con Render)
-app.use(express.static(path.join(__dirname, "public")));
+const fs = require("fs");
+const FRONTEND_HTML = fs.readFileSync(path.join(__dirname, "public", "index.html"), "utf-8");
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+function servirFrontend(req, res) {
+  res.set({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Surrogate-Control": "no-store",
+  });
+  res.send(FRONTEND_HTML);
+}
+
+app.get("/", servirFrontend);
+app.get("/index.html", servirFrontend);
 
 app.listen(PORT, () => {
   console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);

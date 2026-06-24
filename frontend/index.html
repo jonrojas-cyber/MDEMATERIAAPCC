@@ -1098,13 +1098,54 @@ function irA_manual(){
 }
 
 // ── INIT ──────────────────────────────────────────────
-if (!getUser()) {
-  mostrarLogin();
-} else {
-  renderUserChips();
-  loadHome();
-  setInterval(()=>{ if(currentSection==="home") loadHome(); }, 60000);
+async function arrancar() {
+  // Pantalla de bienvenida mientras el servidor despierta
+  document.body.style.overflow = "auto";
+  document.body.innerHTML = `
+    <div id="splash" style="min-height:100vh;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;text-align:center;">
+      <div style="font-size:64px;font-weight:700;color:var(--cream);line-height:1;">M</div>
+      <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:56px;">Control M · Producción</div>
+      <div id="splash-estado" style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#555040;">Conectando…</div>
+      <div style="margin-top:20px;width:48px;height:1px;background:#2A2820;position:relative;overflow:hidden;">
+        <div id="splash-bar" style="position:absolute;top:0;left:-100%;width:100%;height:100%;background:var(--olive);animation:slidebar 1.4s ease-in-out infinite;"></div>
+      </div>
+      <style>@keyframes slidebar{0%{left:-100%}50%{left:0}100%{left:100%}}</style>
+    </div>`;
+
+  // Intentar conectar hasta que el servidor responda
+  let intentos = 0;
+  while (intentos < 30) {
+    try {
+      const r = await fetch("/api/salud");
+      if (r.ok) break;
+    } catch(e) {}
+    intentos++;
+    if (intentos === 3) el("splash-estado").textContent = "El sistema está arrancando…";
+    if (intentos === 8) el("splash-estado").textContent = "Un momento, casi listo…";
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  // Reconstruir la app completa
+  location.reload();
 }
+
+// Comprobar si el servidor está despierto antes de mostrar nada
+fetch("/api/salud").then(r => {
+  if (r.ok) {
+    // Servidor despierto — mostrar login o app directamente
+    if (!getUser()) {
+      mostrarLogin();
+    } else {
+      renderUserChips();
+      loadHome();
+      setInterval(()=>{ if(currentSection==="home") loadHome(); }, 60000);
+    }
+  } else {
+    arrancar();
+  }
+}).catch(() => {
+  arrancar();
+});
 </script>
 </body>
 </html>

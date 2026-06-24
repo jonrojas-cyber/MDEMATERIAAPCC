@@ -170,25 +170,12 @@ app.get("/api/salud", (req, res) => {
   res.json({ estado: "Control M · Producción en marcha", hora: new Date().toISOString() });
 });
 
-// Sirve el frontend directamente desde el filesystem en cada request
-// (no usa caché estático — siempre lee el archivo actual)
-const fs = require("fs");
+// Sirve el frontend estático desde /public (compatible con Render)
+app.use(express.static(path.join(__dirname, "public")));
 
-const FRONTEND_PATH = path.join(__dirname, "public", "index.html");
-
-function servirFrontend(req, res) {
-  res.set({
-    "Content-Type": "text/html; charset=utf-8",
-    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-    "Pragma": "no-cache",
-    "Expires": "0",
-    "Surrogate-Control": "no-store",
-  });
-  res.sendFile(FRONTEND_PATH);
-}
-
-app.get("/", servirFrontend);
-app.get("/index.html", servirFrontend);
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 app.listen(PORT, () => {
   console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);

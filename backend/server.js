@@ -170,7 +170,7 @@ app.get("/api/salud", (req, res) => {
   res.json({ estado: "Control M · Producción en marcha", hora: new Date().toISOString() });
 });
 
-// HTML del frontend embebido directamente (sin archivos externos)
+// Frontend embebido como string — sin dependencia de archivos estáticos
 const FRONTEND_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1063,10 +1063,10 @@ async function irA_revisiones(){
           <div class="card-name">\${t.tipo}</div>
           <div class="field" style="margin-top:10px;">
             <label>Temperatura en \${t.unidad}</label>
-            <input type="number" step="0.1" id="rev_\${t.tipo.replace(/\s/g,"_")}" style="width:110px;">
+            <input type="number" step="0.1" id="rev_\${t.tipo.replace(/\\s/g,"_")}" style="width:110px;">
           </div>
           <div class="card-actions">
-            <button class="btn-ghost" onclick="regRev('\${t.tipo}',document.getElementById('rev_\${t.tipo.replace(/\s/g,"_")}').value)">Registrar</button>
+            <button class="btn-ghost" onclick="regRev('\${t.tipo}',document.getElementById('rev_\${t.tipo.replace(/\\s/g,"_")}').value)">Registrar</button>
           </div>
         </div>\`;
       return card(t.tipo,"",\`<button class="btn-ghost" onclick="regRev('\${t.tipo}','Realizada')">Marcar realizada</button>\`);
@@ -1320,19 +1320,16 @@ async function arrancar() {
   el("splash-count").textContent = "Recarga la página para intentarlo de nuevo";
 }
 
-// Siempre arrancar con splash — nunca quedarse en Cargando
+// Init
 arrancar();
 </script>
 </body>
-</html>
-`;
+</html>`;
 
 function servirFrontend(req, res) {
   res.set({
     "Content-Type": "text/html; charset=utf-8",
-    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-    "Pragma": "no-cache",
-    "Expires": "0",
+    "Cache-Control": "no-store, no-cache, must-revalidate",
     "Surrogate-Control": "no-store",
   });
   res.send(FRONTEND_HTML);

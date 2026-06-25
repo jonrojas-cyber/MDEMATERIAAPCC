@@ -541,6 +541,48 @@ input, select { font-family: inherit; font-size: 13px; }
   .cats { grid-template-columns:1fr; }
   .home-brand h1 { font-size:34px; }
 }
+
+/* ════════════════════════════════════════════════════════
+   PANTALLAS INTERNAS · misma línea minimalista que la home
+   ════════════════════════════════════════════════════════ */
+/* Título serif en cada módulo (inyectado por setInner). */
+.screen-head {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  line-height: 1;
+  margin: 4px 0 26px;
+}
+.cat-title { /* alias: mismo estilo que .screen-head */
+  font-family: var(--serif); font-size: 30px; font-weight: 500;
+  letter-spacing: .01em; margin-bottom: 26px;
+}
+/* La cabecera reemplaza al antiguo título con borde. */
+.screen-title { display: none; }
+/* Etiquetas de sección más aireadas y discretas. */
+.section-label {
+  font-size: 9px; letter-spacing: .2em; color: var(--muted);
+  margin: 30px 0 12px;
+}
+.section-label:first-child { margin-top: 4px; }
+/* Tarjetas más limpias, con la misma elevación sutil y hover de la home. */
+.card {
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 20px; margin-bottom: 10px;
+  box-shadow: none; transition: border-color .12s, box-shadow .12s, transform .12s;
+}
+.card:hover { border-color: #c4bda4; box-shadow: 0 6px 18px rgba(17,16,9,.06); }
+.card-name { font-size: 15px; font-weight: 700; }
+.card-meta { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.card-actions { margin-top: 14px; }
+/* Botones con un toque más editorial. */
+.btn-primary, .btn-ghost, .btn-warn { border-radius: 999px; padding: 10px 20px; letter-spacing: .03em; }
+.btn-ghost { border-color: var(--line); }
+.btn-ghost:hover { border-color: var(--olive); color: var(--olive); }
+.banner { border-radius: 12px; }
+.field select, .field input { border-radius: 10px; padding: 10px 12px; }
+.field label { letter-spacing: .12em; }
 </style>
 </head>
 <body>
@@ -692,8 +734,10 @@ function goHome() {
   loadHome();
 }
 
+let _sectionTitle = "";
 function openSection(id, title) {
   currentSection = id;
+  _sectionTitle = title;
   document.getElementById("topbar-section").textContent = title;
   document.getElementById("topbar-back").classList.add("visible");
   document.getElementById("screen-home").classList.add("exit");
@@ -718,7 +762,11 @@ async function api(path, opts = {}) {
 }
 
 function el(id) { return document.getElementById(id); }
-function setInner(html) { el("inner-content").innerHTML = html; }
+// Cada pantalla interna lleva su título serif (misma línea que la home).
+function setInner(html) {
+  el("inner-content").innerHTML =
+    (_sectionTitle ? `<div class="screen-head">${_sectionTitle}</div>` : "") + html;
+}
 
 function card(name, meta, actions, extra) {
   return `<div class="card">
@@ -843,7 +891,7 @@ async function irA_resumen() {
   try {
     const d = await api("/inicio");
     const u = getUser();
-    setInner(`<div class="cat-title">Resumen del día</div>${dashboardHTML(d, u && u.rol==="admin")}`);
+    setInner(dashboardHTML(d, u && u.rol==="admin"));
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }
 
@@ -865,7 +913,7 @@ async function irA_categoria(cat) {
         <span class="marrow">›</span>
       </div>`;
     }).join("");
-    setInner(`<div class="cat-title">${c.name}</div>${rows}`);
+    setInner(rows);
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }
 

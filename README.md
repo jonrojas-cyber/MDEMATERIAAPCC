@@ -1,130 +1,131 @@
 # Control M · Producción
 
-Base de la app de producción de M de Materia. Esta primera entrega cubre la
-estructura completa de datos y backend, y un frontend funcional para el
-módulo **1. Inicio**. El resto de módulos (Preparaciones, Lotes, Materias,
-Revisiones, Ajustes, Proveedores, Recepción, Manual) están visibles en la
-navegación como "Próximamente" y se incorporan en pasos sucesivos, previa
-revisión conjunta.
+Sistema operativo de producción y rentabilidad para **M de Materia** (cafetería
+de especialidad, El Palo/Pedregalejo, Málaga). Filosofía: **no pensar, ejecutar**
+— cada pantalla responde a una sola pregunta: *¿qué hago ahora?*
 
-No hay conexión con Ágora, con el sistema de grifos ni con OCR de albaranes
-todavía — son fases posteriores, según lo acordado.
+Backend Node.js/Express + frontend de una sola página (sin frameworks).
+Persistencia en **PostgreSQL** (con fallback a ficheros JSON en local).
 
 ---
 
-## Estructura
-
-```
-control-m-produccion/
-├── backend/
-│   ├── server.js          → servidor Express, expone /api/* y sirve el frontend
-│   ├── data-store.js       → lectura/escritura sobre los ficheros JSON (mock DB)
-│   ├── routes/
-│   │   ├── inicio.js        → agrega estado del servicio, recomendaciones, próximos pasos
-│   │   ├── materias.js
-│   │   ├── recetas.js
-│   │   ├── lotes.js
-│   │   ├── preparaciones.js → cálculo de ingredientes, inicio y cierre de preparación
-│   │   ├── revisiones.js
-│   │   ├── ajustes.js
-│   │   ├── proveedores.js
-│   │   └── recepciones.js
-│   ├── data/                → datos mock en JSON (se actualizan al usar la app)
-│   └── package.json
-└── frontend/
-    └── index.html          → app de una sola página (sin frameworks)
-```
-
-## Cómo arrancarla
+## Arrancar en local
 
 ```bash
-cd control-m-produccion/backend
+cd backend
 npm install
 npm start
 ```
 
-Esto levanta el servidor en `http://localhost:4001` y sirve el frontend
-directamente — no hace falta nada adicional. Abre esa URL en el navegador.
+Levanta `http://localhost:4001`. Sin `DATABASE_URL` usa los JSON de `backend/data/`
+(no se pierde nada en local). Con `DATABASE_URL` definido usa PostgreSQL.
 
-## Qué funciona ya
+### Variables de entorno
 
-### Inicio
-Lee `/api/inicio`, que calcula en tiempo real:
-- **Estado del servicio**: una lectura general según haya revisiones
-  pendientes, lotes que requieren atención o disponibilidad baja en varias
-  materias a la vez.
-- **Preparaciones recomendadas**: cuando lo que queda vigente de una receta
-  cae por debajo del 40% de su resultado base.
-- **Disponibilidad baja**: materias en o por debajo de su stock mínimo.
-- **Lotes que requieren atención**: por estado manual o por caducar en
-  menos de 6 horas.
-- **Revisiones pendientes**: las del día que no están en estado "Correcto".
-- **Próximos pasos**: lista priorizada, redactada en el tono de M (sin
-  lenguaje de alarma).
+| Variable | Para qué |
+|----------|----------|
+| `PORT` | Puerto (por defecto 4001) |
+| `DATABASE_URL` | Cadena de conexión PostgreSQL. Si está, persiste ahí. |
+| `JWT_SECRET` | Clave de firma de los tokens. **Definir en producción.** |
+| `AGORA_CSV_PATH` | Ruta a un CSV de ventas de Ágora para el cron horario (opcional). |
 
-### Preparaciones (backend listo, pendiente de pantalla)
-Ya puedes probarlo por API:
+## Usuarios y acceso
 
-```bash
-# Calcula ingredientes para una cantidad objetivo, sin crear nada
-curl -X POST http://localhost:4001/api/preparaciones/calcular \
-  -H "Content-Type: application/json" \
-  -d '{"receta_id":"rec-001","cantidad_objetivo":1500}'
+Autenticación **JWT** (12 h). Los PIN viven en el backend (`auth.js`), no en el
+frontend.
 
-# Inicia la preparación (queda "En curso")
-curl -X POST http://localhost:4001/api/preparaciones \
-  -H "Content-Type: application/json" \
-  -d '{"receta_id":"rec-001","cantidad_objetivo":1500,"responsable":"Diego"}'
+| Usuario | PIN | Rol | Ve |
+|---------|-----|-----|----|
+| Jon | 1111 | admin | Todo |
+| Mónica | 3333 | admin | Todo |
+| Lara | 2222 | equipo | Solo operativa (preparaciones, lotes, revisiones, ajustes) |
 
-# Finaliza: descuenta materias y crea el lote automáticamente
-curl -X POST http://localhost:4001/api/preparaciones/<id>/finalizar
+## Módulos
+
+1. **Inicio** — estado del servicio, KPIs (producción, mermas, valor stock,
+   margen de carta), recomendaciones de preparación (JIT), pedidos, revisiones,
+   lotes a vigilar y sincronización con Ágora.
+2. **Preparaciones** — asistente paso a paso, cálculo de ingredientes, cierre
+   que descuenta materias y crea el lote.
+3. **Lotes** — control, baja por caducidad, **impresión de etiqueta** (Phomemo).
+4. **Materias** — stock, coste medio, mínimos.
+5. **Revisiones** — registros del día y acciones correctivas.
+6. **Ajustes** — mermas con coste estimado.
+7. **Proveedores** · **Recepción** · **Pagos** — compras y pagos por proveedor.
+8. **Carta y márgenes** — escandallos: coste, margen y rentabilidad por producto.
+9. **Análisis** — reportes de día/semana/stock con gráficos en CSS puro.
+10. **Manual** — la forma de hacer las cosas.
+
+## API REST
+
+Todo bajo `/api`. Requiere `Authorization: Bearer <token>` salvo `/api/salud`,
+`/api/auth/*` y la página pública de etiqueta.
+
+```
+POST /api/auth/login           { usuario, pin } -> { token, usuario }
+GET  /api/auth/me
+
+GET  /api/inicio               dashboard (KPIs, JIT, Ágora)
+GET  /api/materias             /:id, PATCH /:id
+GET  /api/recetas              /:id
+GET  /api/lotes                /:id, PATCH /:id
+POST /api/lotes/:id/consumo    registra consumo real (JIT)
+POST /api/lotes/:id/dar-de-baja
+GET  /api/preparaciones        POST /calcular, POST /, /:id/confirmar-paso, /:id/finalizar
+GET  /api/revisiones           /tipos, POST /registrar, /:id/resolver
+GET  /api/ajustes              /motivos, POST /
+GET  /api/proveedores          /:id
+GET  /api/recepciones          POST /, /:id/confirmar
+GET  /api/pagos                POST /:proveedorId/marcar-pagado
+GET  /api/etiquetas            /lote/:loteId, /historial, POST /:id/reimprimir
+GET  /api/carta                /:id   (escandallos, coste, margen, rentabilidad)
+GET  /api/reportes/dia?fecha=  /semana, /stock
+POST /api/ventas/importar      CSV de Ágora (descuenta stock)
+GET  /api/ventas               /sincronizacion
+
+GET  /etiqueta/lote/:loteId    página imprimible 62x40mm (pública)
+GET  /api/salud                (pública)
 ```
 
-Al finalizar, la app:
-1. Descuenta de cada materia la cantidad usada (escalada según la receta).
-2. Crea un lote nuevo con código automático (ej. `AGM-190626-B`), cantidad
-   inicial y restante igual a la cantidad objetivo, y caducidad calculada
-   según la vida útil de la receta.
-3. Marca la preparación como "Finalizada" y la vincula al lote creado.
+## Producción JIT (just-in-time)
 
-### Resto de módulos
-Backend y datos mock ya preparados (rutas `materias`, `lotes`, `revisiones`,
-`ajustes`, `proveedores`, `recepciones`), pero sin pantalla todavía. Se
-construyen módulo a módulo, en el orden de la navegación, cuando confirmes
-que el Inicio funciona como esperas.
+Cada uso de un lote se registra como **consumo** con timestamp. Con eso se calcula
+la **velocidad de consumo** por receta (unidades/hora, últimos 7 días) y se
+recomienda preparar cuando *horas de stock < vida útil × 0.5*. El dashboard
+muestra: *"Aguacate M — quedan 4.2 horas de stock al ritmo actual"*. Sin
+histórico suficiente cae al umbral fijo del 40 %.
 
-## Datos iniciales (mock)
+## Etiquetas Phomemo D520BT
 
-- 16 materias + Agua filtrada y Café como insumos de Matcha base y Cold
-  brew (no estaban en el listado original de materias pero son necesarios
-  para que esas dos recetas se puedan calcular; si prefieres tratarlas de
-  otra forma, lo ajustamos).
-- 4 recetas: Aguacate M, Tomate trabajado M, Matcha base, Cold brew.
-- 6 lotes activos, con distintos estados para poder ver el Inicio en
-  todas sus variantes (Correcto, Priorizar uso, Requiere atención, Fuera
-  de servicio).
-- 8 proveedores de ejemplo.
-- 6 revisiones del día (2 con acción correctiva pendiente, para que el
-  panel de "Revisiones pendientes" no esté vacío).
-- 2 ajustes de ejemplo.
+Etiquetas térmicas de **62 × 40 mm** con QR. Desde **Lotes → Imprimir etiqueta**.
+Guía de emparejado y configuración: [`docs/PHOMEMO-D520BT.md`](docs/PHOMEMO-D520BT.md).
 
-Todo esto es desechable: en cuanto quieras, lo sustituimos por datos reales
-o por una base de datos real (SQLite/Postgres) sin tocar la estructura de
-rutas.
+## Integración con Ágora (TPV)
 
-## Notas técnicas
+Ágora no expone API REST pública en tiempo real; exporta CSV/Excel. Se importa su
+CSV de ventas (`POST /api/ventas/importar`), que **descuenta el stock de materias
+automáticamente** según el escandallo. Un **cron horario** importa `AGORA_CSV_PATH`
+si está configurado. El dashboard muestra la última sincronización.
 
-- Los datos se guardan en ficheros JSON dentro de `backend/data/`. Cada
-  escritura (crear preparación, finalizar, registrar revisión o ajuste)
-  se persiste ahí. Es intencionadamente simple para esta fase; migrar a
-  una base de datos real no debería requerir tocar el frontend.
-- El frontend es HTML/CSS/JS sin dependencias, para que sea fácil de leer,
-  modificar y, si hace falta, portar a React más adelante sin arrastrar
-  decisiones prematuras.
-- Tipografía Courier Prime, fondo crema, negro profundo, verde oliva —
-  mismo lenguaje visual que el resto de Control M.
+## Persistencia (PostgreSQL)
 
-## Siguiente paso
+`db.js` crea una tabla JSONB por entidad (materias, recetas, lotes, preparaciones,
+revisiones, ajustes, proveedores, recepciones, etiquetas, productos, ventas,
+impresiones, consumos, sincronizaciones). Al arrancar contra una base vacía,
+siembra desde los JSON. La API no cambia: las rutas siguen usando objetos JS.
 
-Cuando confirmes que esta base funciona como esperas, seguimos con el
-módulo 2 (Preparaciones) en pantalla, manteniendo la misma estructura.
+## Despliegue en Railway
+
+El repo está listo (`railway.json`, `nixpacks.toml`). Pasos:
+
+1. En Railway: **New Project → Deploy from GitHub repo** → este repositorio.
+2. **Add → Database → PostgreSQL** (Railway inyecta `DATABASE_URL` solo).
+3. En el servicio, variables: `JWT_SECRET` (una cadena larga aleatoria).
+4. Deploy. La URL pública la da Railway en **Settings → Networking**.
+
+## Pendiente de confirmar por M
+
+Los escandallos de la carta usan **cantidades y costes estimados** (marcados
+`estimado` en la app) para *short rib, berenjena, labneh, miso, tahini* y los
+gramajes de cada producto. Al pasar los valores reales, los márgenes serán
+exactos.

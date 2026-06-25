@@ -214,5 +214,70 @@
     "stock_ideal": 6000,
     "ubicacion": "Almacén seco · Estantería bebidas",
     "vida_util_horas": 4320
+  },
+  {
+    "id": "mat-019",
+    "nombre": "Short rib",
+    "unidad": "g",
+    "proveedor_id": "prov-001",
+    "coste_medio": 0.026,
+    "disponibilidad_actual": 2000,
+    "stock_minimo": 800,
+    "stock_ideal": 3000,
+    "ubicacion": "Cámara producción · Balda 2",
+    "vida_util_horas": 120,
+    "coste_estimado": true
+  },
+  {
+    "id": "mat-020",
+    "nombre": "Berenjena",
+    "unidad": "g",
+    "proveedor_id": "prov-001",
+    "coste_medio": 0.0024,
+    "disponibilidad_actual": 3000,
+    "stock_minimo": 1000,
+    "stock_ideal": 4000,
+    "ubicacion": "Cámara producción · Balda 1",
+    "vida_util_horas": 120,
+    "coste_estimado": true
+  },
+  {
+    "id": "mat-021",
+    "nombre": "Labneh",
+    "unidad": "g",
+    "proveedor_id": "prov-002",
+    "coste_medio": 0.012,
+    "disponibilidad_actual": 1500,
+    "stock_minimo": 500,
+    "stock_ideal": 2000,
+    "ubicacion": "Nevera barra",
+    "vida_util_horas": 240,
+    "coste_estimado": true
+  },
+  {
+    "id": "mat-022",
+    "nombre": "Miso",
+    "unidad": "g",
+    "proveedor_id": "prov-002",
+    "coste_medio": 0.018,
+    "disponibilidad_actual": 1000,
+    "stock_minimo": 300,
+    "stock_ideal": 1200,
+    "ubicacion": "Despensa",
+    "vida_util_horas": 2160,
+    "coste_estimado": true
+  },
+  {
+    "id": "mat-023",
+    "nombre": "Tahini",
+    "unidad": "g",
+    "proveedor_id": "prov-002",
+    "coste_medio": 0.014,
+    "disponibilidad_actual": 1000,
+    "stock_minimo": 300,
+    "stock_ideal": 1200,
+    "ubicacion": "Despensa",
+    "vida_util_horas": 2160,
+    "coste_estimado": true
   }
 ]

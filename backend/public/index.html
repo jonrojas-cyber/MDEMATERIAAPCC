@@ -485,16 +485,19 @@ const API = "/api";
 let currentSection = "home";
 
 // ── SISTEMA DE USUARIOS CON ROLES ─────────────────────
+// Solo para pintar los botones de login. La autenticación (PIN) la valida el
+// backend vía JWT; los PIN ya no viven en el frontend.
 const USUARIOS = {
-  "Jon":  { pin: "1111", rol: "admin",  nombre: "Jon" },
-  "Lara": { pin: "2222", rol: "equipo", nombre: "Lara" },
-  "Moni": { pin: "3333", rol: "admin",  nombre: "Mónica" },
+  "Jon":  { rol: "admin",  nombre: "Jon" },
+  "Lara": { rol: "equipo", nombre: "Lara" },
+  "Moni": { rol: "admin",  nombre: "Mónica" },
 };
 
 const MODULOS_EQUIPO = ["preparaciones","lotes","revisiones","ajustes"];
 const MODULOS_ADMIN  = ["preparaciones","lotes","materias","revisiones","ajustes","proveedores","recepcion","pagos","manual"];
 
 function getUser()  { try{ return JSON.parse(localStorage.getItem("cm_session")); }catch{ return null; } }
+function getToken() { const u = getUser(); return u && u.token; }
 function setSession(u) { localStorage.setItem("cm_session", JSON.stringify(u)); }
 function logout()   { localStorage.removeItem("cm_session"); location.reload(); }
 
@@ -554,15 +557,24 @@ function seleccionarUsuario(key) {
   document.getElementById("pin-inp").focus();
 }
 
-function checkPin() {
+async function checkPin() {
   const pin = document.getElementById("pin-inp").value;
-  const u = USUARIOS[_loginKey];
-  if (pin === u.pin) {
-    setSession({ key: _loginKey, nombre: u.nombre, rol: u.rol });
-    location.reload();
-  } else if (pin.length === 4) {
+  if (pin.length !== 4) return;
+  document.getElementById("pin-err").textContent = "";
+  try {
+    const r = await fetch(API + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario: _loginKey, pin }),
+    });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    setSession({ key: data.usuario.key, nombre: data.usuario.nombre, rol: data.usuario.rol, token: data.token });
+    entrarApp();
+  } catch (e) {
     document.getElementById("pin-err").textContent = "PIN incorrecto";
     document.getElementById("pin-inp").value = "";
+    document.getElementById("pin-inp").focus();
   }
 }
 
@@ -605,8 +617,12 @@ function openSection(id, title) {
 }
 
 // ── HELPERS ───────────────────────────────────────────
-async function api(path, opts) {
-  const r = await fetch(API + path, opts);
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  const t = getToken();
+  if (t) headers["Authorization"] = "Bearer " + t;
+  const r = await fetch(API + path, Object.assign({}, opts, { headers }));
+  if (r.status === 401) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Sesión expirada"); }
   if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
   return r.json();
 }
@@ -662,6 +678,11 @@ async function loadHome() {
           <div class="kpi-sub">en materias</div>
         </div>
         <div class="kpi-box">
+          <div class="kpi-label">Margen carta</div>
+          <div class="kpi-val">${k.margen_medio_carta!=null?Math.round(k.margen_medio_carta*100)+" %":"—"}</div>
+          <div class="kpi-sub">${k.productos_carta||0} productos</div>
+        </div>
+        <div class="kpi-box">
           <div class="kpi-label">Estado</div>
           <div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div>
           <div class="kpi-sub">${d.preparar&&d.preparar.length?d.preparar.length+" pendientes de prep.":"Producción al día"}</div>
@@ -683,7 +704,9 @@ async function loadHome() {
       { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes", soloAdmin: true },
       { id:"recepcion", title:"Recepción", num:"08", badge: "Entrada de mercancía", soloAdmin: true },
       { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor", soloAdmin: true },
-      { id:"manual", title:"La forma de hacer las cosas", num:"10", badge: "Manual operativo", soloAdmin: true },
+      { id:"carta", title:"Carta y márgenes", num:"10", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", soloAdmin: true },
+      { id:"analisis", title:"Análisis", num:"11", badge: "Reportes y stock", soloAdmin: true },
+      { id:"manual", title:"La forma de hacer las cosas", num:"12", badge: "Manual operativo", soloAdmin: true },
     ];
 
     const tiles = todosLosTiles.filter(t => !t.soloAdmin || esAdmin);
@@ -704,6 +727,7 @@ async function loadHome() {
         <span class="dot"></span>
         <span>${d.estado_servicio}</span>
       </div>
+      ${esAdmin && d.agora ? `<div style="font-size:10px;color:#888070;margin:-4px 0 14px;letter-spacing:0.04em;">${d.agora.mensaje}</div>` : ""}
       ${kpisHTML}
       ${tilesHTML}`;
   } catch(e) {
@@ -835,7 +859,7 @@ async function irA_lotes(){
       `${l.codigo} — ${l.nombre}`,
       `${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}`,
       (l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',irA_lotes)">Dar de baja</button>`:"")
-      +(!l.caducado?`<button class="btn-ghost" onclick="reimprimir('${l.id}')">Reimprimir etiqueta</button>`:"")
+      +(!l.caducado?`<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`:"")
     ),"No hay lotes registrados."));
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
@@ -845,12 +869,11 @@ async function darDeBaja(id,cb){
   catch(e){alert(e.message);}
 }
 
-async function reimprimir(loteId){
-  try{
-    const etqs=await api(`/etiquetas/lote/${loteId}`);
-    if(!etqs.length){alert("Sin etiqueta para este lote.");return;}
-    window.open(`/etiqueta/${etqs[0].id}`,"_blank");
-  }catch(e){alert(e.message);}
+function imprimirEtiqueta(loteId){
+  const u=getUser();
+  const resp=encodeURIComponent(u?u.nombre:"");
+  // Abre la etiqueta 62x40mm y lanza el diálogo de impresión (Phomemo D520BT).
+  window.open(`/etiqueta/lote/${loteId}?print=1&usuario=${resp}&responsable=${resp}`,"_blank");
 }
 
 // ── MATERIAS ──────────────────────────────────────────
@@ -1064,6 +1087,62 @@ async function marcarPagado(id){
   catch(e){alert(e.message);}
 }
 
+// ── CARTA Y MÁRGENES ──────────────────────────────────
+async function irA_carta(){
+  openSection("carta","Carta y márgenes");
+  try{
+    const d=await api("/carta");
+    const resumen=`<div class="section-label">Resumen de la carta</div>
+      <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
+        <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
+    const items=section("Productos", d.productos, p=>{
+      const col=p.rentabilidad==="alta"?"#5C6145":(p.rentabilidad==="media"?"#9C7A2E":"#9C5A2E");
+      const w=Math.max(2,Math.round(p.margen_bruto*100));
+      const barra=`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
+      const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
+      return card(
+        `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:#9C7A2E;">(estimado)</span>':""}`,
+        `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
+        null,
+        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`
+      );
+    }, "No hay productos en la carta.");
+    setInner(resumen+items);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── ANÁLISIS ──────────────────────────────────────────
+async function irA_analisis(){
+  openSection("analisis","Análisis");
+  try{
+    const [sem,stock]=await Promise.all([api("/reportes/semana"),api("/reportes/stock")]);
+    const maxCoste=Math.max(1,...sem.dias.map(x=>Math.max(x.coste_produccion,x.coste_mermas)));
+    const barrasDias=sem.dias.map(x=>{
+      const wp=Math.round(x.coste_produccion/maxCoste*100), wm=Math.round(x.coste_mermas/maxCoste*100);
+      return `<div style="margin-bottom:10px;">
+        <div style="font-size:10px;color:#888070;display:flex;justify-content:space-between;"><span>${x.fecha.slice(5)}</span><span>${x.coste_produccion.toFixed(2)} €</span></div>
+        <div style="height:8px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wp}%;background:#5C6145;"></div></div>
+        ${x.coste_mermas>0?`<div style="height:5px;margin-top:2px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wm}%;background:#9C5A2E;"></div></div>`:""}
+      </div>`;
+    }).join("");
+    const masUsadas=section("Materias más usadas (7 días)", sem.materias_mas_usadas,
+      m=>card(m.nombre, `${m.cantidad} ${m.unidad} · ${m.coste.toFixed(2)} €`), "Sin datos de uso esta semana.");
+    const maxVal=Math.max(1,...stock.materias.map(m=>m.valor_stock));
+    const barrasStock=section("Proyección de stock", stock.materias.slice(0,10), m=>{
+      const w=Math.max(2,Math.round(m.valor_stock/maxVal*100));
+      const dias=m.dias_restantes!=null?`${m.dias_restantes} días`:"sin ritmo";
+      return `<div class="card"><div class="card-name">${m.nombre}${m.bajo_minimo?' <span style="color:#9C5A2E;font-size:9px;">bajo mínimo</span>':""}</div>
+        <div class="card-meta">${m.valor_stock.toFixed(2)} € · ${m.disponibilidad_actual} ${m.unidad} · ${dias} restantes</div>
+        <div style="margin-top:6px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:#5C6145;"></div></div></div>`;
+    }, "Sin materias.");
+    setInner(
+      `<div class="section-label">Producción vs mermas (7 días)</div><div class="card">${barrasDias}</div>`+
+      `<div class="card" style="font-size:11px;color:#888070;">Total semana — producción ${sem.totales.coste_produccion.toFixed(2)} € · mermas ${sem.totales.coste_mermas.toFixed(2)} € · ${sem.totales.preparaciones} preparaciones</div>`+
+      masUsadas+barrasStock
+    );
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
 // ── MANUAL ────────────────────────────────────────────
 function irA_manual(){
   openSection("manual","La forma de hacer las cosas");
@@ -1097,6 +1176,14 @@ function irA_manual(){
 // ── INIT ──────────────────────────────────────────────
 const APP_SHELL = document.body.innerHTML;
 
+// Pinta la app ya autenticada. Sin recargar la página (la recarga causaba el
+// bucle de splash y la pérdida del contexto JS tras el login).
+function entrarApp() {
+  document.body.innerHTML = APP_SHELL;
+  renderUserChips();
+  loadHome();
+}
+
 async function arrancar() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
@@ -1129,9 +1216,7 @@ async function arrancar() {
         if (!getUser()) {
           mostrarLogin();
         } else {
-          document.body.innerHTML = APP_SHELL;
-          renderUserChips();
-          loadHome();
+          entrarApp();
         }
         return;
       }

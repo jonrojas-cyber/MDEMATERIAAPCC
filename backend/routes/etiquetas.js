@@ -8,6 +8,11 @@ router.get("/", (req, res) => {
   res.json(store.readAll("etiquetas").slice().reverse());
 });
 
+// Historial de impresiones (todas, persistente en BD).
+router.get("/historial", (req, res) => {
+  res.json(store.readAll("impresiones").slice().reverse());
+});
+
 router.get("/lote/:loteId", (req, res) => {
   const etiquetas = store.readAll("etiquetas").filter((e) => e.lote_id === req.params.loteId);
   res.json(etiquetas.slice().reverse());

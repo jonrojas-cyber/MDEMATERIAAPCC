@@ -1,8 +1,20 @@
 const express = require("express");
 const store = require("../data-store");
 const mailer = require("../mailer");
+const pdf = require("../pdf");
 
 const router = express.Router();
+
+// Envía un justificante por email con el PDF adjunto.
+async function enviarJustificanteEmail(j) {
+  const pdfBuf = await pdf.justificanteBuffer(j);
+  return mailer.enviarEmail({
+    to: j.proveedor_email,
+    subject: `Justificante de pago ${j.codigo}`,
+    html: mailer.htmlJustificante(j),
+    attachments: [{ filename: `justificante-${j.codigo}.pdf`, content: pdfBuf.toString("base64") }],
+  });
+}
 
 router.get("/", (req, res) => {
   const recepciones = store.readAll("recepciones");
@@ -66,7 +78,7 @@ router.post("/justificantes/:id/email", async (req, res) => {
   if (!j.proveedor_email) return res.status(400).json({ error: "El proveedor no tiene email" });
   if (!mailer.disponible()) return res.status(503).json({ error: "Email no configurado (RESEND_API_KEY)", code: "EMAIL_NO_CONFIG" });
   try {
-    await mailer.enviarEmail({ to: j.proveedor_email, subject: `Justificante de pago ${j.codigo}`, html: mailer.htmlJustificante(j) });
+    await enviarJustificanteEmail(j);
     const upd = store.update("justificantes", j.id, { email_estado: "enviado", email_enviado_en: new Date().toISOString() });
     res.json({ email_estado: "enviado", justificante: upd });
   } catch (e) {
@@ -120,7 +132,7 @@ router.post("/:proveedorId/marcar-pagado", async (req, res) => {
   // Envío automático del justificante por email (si está configurado).
   if (mailer.disponible() && justificante.proveedor_email) {
     try {
-      await mailer.enviarEmail({ to: justificante.proveedor_email, subject: `Justificante de pago ${justificante.codigo}`, html: mailer.htmlJustificante(justificante) });
+      await enviarJustificanteEmail(justificante);
       justificante.email_estado = "enviado";
       justificante.email_enviado_en = ahora.toISOString();
     } catch (e) {

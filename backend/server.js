@@ -47,6 +47,20 @@ app.get("/etiqueta/lote/:loteId", async (req, res) => {
   }
 });
 
+// Descarga del PDF del justificante (pública por id, para enlazar en email/WhatsApp).
+app.get("/justificante/:id/pdf", async (req, res) => {
+  const j = store.readAll("justificantes").find((x) => x.id === req.params.id);
+  if (!j) return res.status(404).send("Justificante no encontrado");
+  try {
+    const buf = await require("./pdf").justificanteBuffer(j);
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `inline; filename="justificante-${j.codigo}.pdf"`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).send("No se pudo generar el PDF: " + e.message);
+  }
+});
+
 // ── A partir de aquí, todo /api/* exige sesión válida (y respeta el rol) ───────
 app.use("/api", auth.requerido);
 

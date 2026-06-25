@@ -7,19 +7,21 @@ function disponible() {
   return !!process.env.RESEND_API_KEY;
 }
 
-async function enviarEmail({ to, subject, html }) {
+async function enviarEmail({ to, subject, html, attachments }) {
   if (!disponible()) {
     const e = new Error("Email no configurado (define RESEND_API_KEY)");
     e.code = "EMAIL_NO_CONFIG";
     throw e;
   }
+  const payload = { from: FROM, to: [to], subject, html };
+  if (Array.isArray(attachments) && attachments.length) payload.attachments = attachments;
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+    body: JSON.stringify(payload),
   });
   if (!r.ok) {
     const t = await r.text().catch(() => "");

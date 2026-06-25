@@ -1,1 +1,154 @@
-[]
+[
+  {
+    "id": "prod-001",
+    "clave": "Brasa",
+    "nombre": "Brasa",
+    "descripcion": "Short rib",
+    "categoria": "sandwich",
+    "precio_venta": 8.5,
+    "activo": true,
+    "cantidades_estimadas": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-010",
+        "cantidad": 1
+      },
+      {
+        "materia_id": "mat-019",
+        "cantidad": 90
+      },
+      {
+        "materia_id": "mat-003",
+        "cantidad": 5
+      },
+      {
+        "materia_id": "mat-004",
+        "cantidad": 2
+      }
+    ]
+  },
+  {
+    "id": "prod-002",
+    "clave": "Sal",
+    "nombre": "Sal",
+    "descripcion": "Jamón serrano y tomate",
+    "categoria": "sandwich",
+    "precio_venta": 5.9,
+    "activo": true,
+    "cantidades_estimadas": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-010",
+        "cantidad": 1
+      },
+      {
+        "materia_id": "mat-012",
+        "cantidad": 40
+      },
+      {
+        "materia_id": "mat-005",
+        "cantidad": 60
+      },
+      {
+        "materia_id": "mat-003",
+        "cantidad": 5
+      }
+    ]
+  },
+  {
+    "id": "prod-003",
+    "clave": "Raíz",
+    "nombre": "Raíz",
+    "descripcion": "Berenjena con labneh-miso-tahini",
+    "categoria": "sandwich",
+    "precio_venta": 6.9,
+    "activo": true,
+    "cantidades_estimadas": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-010",
+        "cantidad": 1
+      },
+      {
+        "materia_id": "mat-020",
+        "cantidad": 80
+      },
+      {
+        "materia_id": "mat-021",
+        "cantidad": 30
+      },
+      {
+        "materia_id": "mat-022",
+        "cantidad": 8
+      },
+      {
+        "materia_id": "mat-023",
+        "cantidad": 10
+      }
+    ]
+  },
+  {
+    "id": "prod-004",
+    "clave": "Savia",
+    "nombre": "Savia",
+    "descripcion": "Pollo sous-vide y aguacate frío",
+    "categoria": "sandwich",
+    "precio_venta": 7.5,
+    "activo": true,
+    "cantidades_estimadas": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-010",
+        "cantidad": 1
+      },
+      {
+        "materia_id": "mat-006",
+        "cantidad": 80
+      },
+      {
+        "materia_id": "mat-001",
+        "cantidad": 50
+      },
+      {
+        "materia_id": "mat-004",
+        "cantidad": 2
+      }
+    ]
+  },
+  {
+    "id": "prod-005",
+    "clave": "Matcha latte",
+    "nombre": "Matcha latte",
+    "descripcion": "On-tap · Matcha base + leche de avena",
+    "categoria": "bebida",
+    "precio_venta": 3.8,
+    "activo": true,
+    "cantidades_estimadas": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-007",
+        "cantidad": 8
+      },
+      {
+        "materia_id": "mat-009",
+        "cantidad": 220
+      }
+    ]
+  },
+  {
+    "id": "prod-006",
+    "clave": "Cold brew nitro",
+    "nombre": "Cold brew nitro",
+    "descripcion": "On-tap · nitrógeno",
+    "categoria": "bebida",
+    "precio_venta": 3.5,
+    "activo": true,
+    "cantidades_estimadas": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-008",
+        "cantidad": 250
+      }
+    ]
+  }
+]

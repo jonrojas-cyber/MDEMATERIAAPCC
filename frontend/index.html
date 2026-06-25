@@ -1125,8 +1125,14 @@ async function arrancar() {
       const r = await fetch("/api/salud", { cache: "no-store" });
       if (r.ok) {
         el("splash-estado").textContent = "Listo";
-        await new Promise(r => setTimeout(r, 500));
-        location.reload();
+        await new Promise(r => setTimeout(r, 400));
+        // Mostrar login o app directamente sin recargar
+        document.body.innerHTML = document.body.innerHTML; // reset
+        if (!getUser()) {
+          mostrarLogin();
+        } else {
+          location.reload();
+        }
         return;
       }
     } catch(e) {}
@@ -1141,23 +1147,8 @@ async function arrancar() {
   el("splash-count").textContent = "Recarga la página para intentarlo de nuevo";
 }
 
-// Comprobar si el servidor está despierto antes de mostrar nada
-fetch("/api/salud").then(r => {
-  if (r.ok) {
-    // Servidor despierto — mostrar login o app directamente
-    if (!getUser()) {
-      mostrarLogin();
-    } else {
-      renderUserChips();
-      loadHome();
-      setInterval(()=>{ if(currentSection==="home") loadHome(); }, 60000);
-    }
-  } else {
-    arrancar();
-  }
-}).catch(() => {
-  arrancar();
-});
+// Siempre arrancar con splash — nunca quedarse en Cargando
+arrancar();
 </script>
 </body>
 </html>

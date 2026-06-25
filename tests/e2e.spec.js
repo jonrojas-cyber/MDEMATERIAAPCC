@@ -1,0 +1,62 @@
+// Tests E2E de Control M · m de materia.
+// Cubren: salud de la API, login con PIN, render del inicio sin errores de JS,
+// navegación a categoría y apertura de la ficha técnica de una materia, además
+// de comprobaciones básicas de accesibilidad por teclado.
+const { test, expect } = require("@playwright/test");
+
+// Inicia sesión como Mónica (admin, PIN 3333) y espera el inicio cargado.
+async function login(page) {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Moni", { timeout: 30_000 });
+  await page.click("#ubtn-Moni");
+  await page.waitForSelector("#pin-inp", { state: "visible" });
+  await page.fill("#pin-inp", "3333");
+  await page.waitForSelector(".cats", { timeout: 15_000 });
+}
+
+test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
+  const r = await request.get("/api/salud");
+  expect(r.ok()).toBeTruthy();
+  const j = await r.json();
+  expect(j.estado).toContain("Producción");
+  expect(["persistente", "efimera"]).toContain(j.persistencia);
+});
+
+test("login + inicio: 4 categorías (admin) y cero errores de JS", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await expect(page.locator(".cat")).toHaveCount(4);
+  // Accesibilidad: las tarjetas son operables por teclado (role=button).
+  await expect(page.locator(".cat").first()).toHaveAttribute("role", "button");
+  await expect(page.locator(".cat").first()).toHaveAttribute("tabindex", "0");
+  expect(errors, "no debe haber errores de JS en consola").toEqual([]);
+});
+
+test("navegación: categoría → módulos y ficha técnica de materia", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+
+  // Entra en la categoría Operación y comprueba que lista sus módulos.
+  await page.evaluate(() => irA_categoria("operacion"));
+  await expect(page.locator(".modrow").first()).toBeVisible();
+
+  // Vuelve al inicio y abre la ficha de una materia.
+  await page.evaluate(() => goHome());
+  await page.waitForSelector(".cats");
+  await page.evaluate(() => irA_materias());
+  await page.locator(".card.clickable").first().click();
+  await expect(page.locator(".ficha-overlay")).toBeVisible();
+  await expect(page.locator(".ficha-name")).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
+  await login(page);
+  await page.locator(".cat").first().focus();
+  await page.keyboard.press("Enter");
+  // La primera tarjeta es "Resumen del día" → abre la pantalla de resumen.
+  await expect(page.locator(".screen-head, .cat-title")).toContainText(/resumen/i);
+});

@@ -674,9 +674,6 @@ async function loadHome() {
     const pendRevisar = d.revisar && d.revisar.length;
     const pendLotes = d.lotes_a_vigilar && d.lotes_a_vigilar.length;
 
-    const u = getUser();
-    const esAdmin = u && u.rol === "admin";
-
     const todosLosTiles = [
       { id:"preparaciones", title:"Preparaciones", num:"02", badge: enCurso ? `${enCurso} en curso` : (pendPrep ? `${pendPrep} recomendadas` : "Al día"), urgent: enCurso||pendPrep },
       { id:"lotes", title:"Lotes activos", num:"03", badge: pendLotes ? `${pendLotes} requieren atención` : "Sin alertas", urgent: pendLotes },
@@ -1098,6 +1095,8 @@ function irA_manual(){
 }
 
 // ── INIT ──────────────────────────────────────────────
+const APP_SHELL = document.body.innerHTML;
+
 async function arrancar() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
@@ -1126,12 +1125,13 @@ async function arrancar() {
       if (r.ok) {
         el("splash-estado").textContent = "Listo";
         await new Promise(r => setTimeout(r, 400));
-        // Mostrar login o app directamente sin recargar
-        document.body.innerHTML = document.body.innerHTML; // reset
+        // Mostrar login o pintar la app — sin recargar (evita bucle de splash)
         if (!getUser()) {
           mostrarLogin();
         } else {
-          location.reload();
+          document.body.innerHTML = APP_SHELL;
+          renderUserChips();
+          loadHome();
         }
         return;
       }

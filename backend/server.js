@@ -63,6 +63,7 @@ app.use("/api/pagos", require("./routes/pagos"));
 app.use("/api/etiquetas", require("./routes/etiquetas"));
 app.use("/api/carta", require("./routes/carta"));
 app.use("/api/reportes", require("./routes/reportes"));
+app.use("/api/ventas", require("./routes/ventas"));
 
 // Sirve el frontend estático (single-file app)
 app.use(express.static(path.join(__dirname, "..", "frontend")));
@@ -74,6 +75,10 @@ store
     app.listen(PORT, () => {
       console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);
     });
+    // Cron horario de importación de ventas de Ágora (si AGORA_CSV_PATH está configurado).
+    const agora = require("./agora");
+    setInterval(() => agora.cronImport(), 60 * 60 * 1000).unref();
+    agora.cronImport(); // intento inicial al arrancar
   })
   .catch((e) => {
     console.error("Fallo al inicializar el almacén de datos:", e);

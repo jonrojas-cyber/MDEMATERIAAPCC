@@ -727,6 +727,7 @@ async function loadHome() {
         <span class="dot"></span>
         <span>${d.estado_servicio}</span>
       </div>
+      ${esAdmin && d.agora ? `<div style="font-size:10px;color:#888070;margin:-4px 0 14px;letter-spacing:0.04em;">${d.agora.mensaje}</div>` : ""}
       ${kpisHTML}
       ${tilesHTML}`;
   } catch(e) {

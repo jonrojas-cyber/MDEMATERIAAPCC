@@ -2,6 +2,7 @@ const express = require("express");
 const store = require("../data-store");
 const { costePorUnidad, tamanosLote } = require("../costing");
 const { velocidadConsumo, horasDeStock } = require("../consumo");
+const agora = require("../agora");
 
 const router = express.Router();
 
@@ -200,9 +201,19 @@ router.get("/", (req, res) => {
   if (revisar.length > 0 || lotesAtencion.length > 0) estadoServicio = "Requiere atención antes del próximo servicio";
   if (pedir.length >= 3) estadoServicio = "Disponibilidad baja en varias materias";
 
+  // Estado de sincronización con Ágora (TPV)
+  const sync = agora.ultimaSync();
+  let agoraEstado = { ultima_sync: null, hace_minutos: null, mensaje: "Sin sincronizar con Ágora aún" };
+  if (sync && sync.cuando) {
+    const min = Math.round((ahora - new Date(sync.cuando).getTime()) / 60000);
+    const cuando = min < 60 ? `hace ${min} minutos` : `hace ${Math.round(min / 60)} h`;
+    agoraEstado = { ultima_sync: sync.cuando, hace_minutos: min, mensaje: `Última sincronización con Ágora: ${cuando}` };
+  }
+
   res.json({
     estado_servicio: estadoServicio,
     kpis,
+    agora: agoraEstado,
     preparar,
     stock_en_horas: stockEnHoras,
     pedir,

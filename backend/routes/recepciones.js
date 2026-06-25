@@ -45,7 +45,26 @@ router.post("/escanear", jsonGrande, async (req, res) => {
     const norm = (s) => String(s || "").toLowerCase().trim();
     const match = proveedores.find((p) => norm(p.nombre) && norm(datos.proveedor).includes(norm(p.nombre)));
 
-    res.json({ ...datos, proveedor_id: match ? match.id : null });
+    // Emparejar cada línea con una materia del almacén (por nombre) para sugerir
+    // qué cargar al stock. El usuario lo revisa antes de confirmar.
+    const materias = store.readAll("materias");
+    const lineas = (datos.lineas || []).map((l) => {
+      const d = norm(l.descripcion);
+      const m = materias.find((x) => {
+        const n = norm(x.nombre);
+        return n && (d.includes(n) || n.includes(d));
+      });
+      return {
+        descripcion: l.descripcion,
+        cantidad: l.cantidad,
+        precio_unitario: l.precio_unitario,
+        importe: l.importe,
+        materia_id: m ? m.id : null,
+        materia_unidad: m ? m.unidad : null,
+      };
+    });
+
+    res.json({ ...datos, lineas, proveedor_id: match ? match.id : null });
   } catch (e) {
     if (e.code === "OCR_NO_CONFIG") {
       return res.status(503).json({ error: "OCR no configurado. Adjunta la foto y rellena a mano.", code: "OCR_NO_CONFIG" });
@@ -73,9 +92,31 @@ router.post("/", jsonGrande, (req, res) => {
 });
 
 router.post("/:id/confirmar", (req, res) => {
-  const recepcion = store.update("recepciones", req.params.id, { estado: "Confirmada" });
+  const recepcion = store.findById("recepciones", req.params.id);
   if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
-  res.json(recepcion);
+
+  // Cargar al almacén las líneas con materia asignada (una sola vez).
+  const aplicado = [];
+  if (!recepcion.stock_aplicado && Array.isArray(recepcion.lineas)) {
+    const materias = store.readAll("materias");
+    recepcion.lineas.forEach((l) => {
+      const cant = Number(l.cantidad);
+      if (l.materia_id && Number.isFinite(cant) && cant > 0) {
+        const m = materias.find((x) => x.id === l.materia_id);
+        if (m) {
+          m.disponibilidad_actual = Math.round((m.disponibilidad_actual + cant) * 100) / 100;
+          aplicado.push({ materia_id: m.id, nombre: m.nombre, cantidad: cant, unidad: m.unidad });
+        }
+      }
+    });
+    if (aplicado.length) store.writeAll("materias", materias);
+  }
+
+  const actualizada = store.update("recepciones", req.params.id, {
+    estado: "Confirmada",
+    stock_aplicado: true,
+  });
+  res.json({ ...actualizada, stock_cargado: aplicado });
 });
 
 module.exports = router;

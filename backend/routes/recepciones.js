@@ -7,12 +7,27 @@ const router = express.Router();
 // Cuerpo grande para la imagen del albarán (base64).
 const jsonGrande = express.json({ limit: "12mb" });
 
+// Versión ligera (sin la foto en base64) para listados.
+function slim(r) {
+  const { foto_albaran_url, ...resto } = r;
+  return { ...resto, tiene_foto: !!foto_albaran_url };
+}
+
 router.get("/", (req, res) => {
-  res.json(store.readAll("recepciones"));
+  res.json(store.readAll("recepciones").map(slim));
 });
 
 router.get("/ocr-estado", (req, res) => {
   res.json({ disponible: ocr.disponible() });
+});
+
+// Documento digital del albarán: recepción completa (con foto y líneas) + proveedor.
+// (Va después de las rutas concretas para no capturar "/ocr-estado".)
+router.get("/:id", (req, res) => {
+  const r = store.findById("recepciones", req.params.id);
+  if (!r) return res.status(404).json({ error: "Recepción no encontrada" });
+  const proveedor = store.findById("proveedores", r.proveedor_id);
+  res.json({ ...r, proveedor_nombre: proveedor ? proveedor.nombre : r.proveedor_id });
 });
 
 // Escanea un albarán: recibe la imagen y devuelve los datos extraídos (sin guardar).

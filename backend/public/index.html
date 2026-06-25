@@ -18,14 +18,16 @@
   font-display: swap; src: url('/fonts/Newsreader-Regular.ttf') format('truetype');
 }
 :root {
-  --cream: #F0EBE0;
-  --paper: #F7F3EA;
-  --ink:   #111009;
-  --olive: #5C6145;
-  --olive-light: #DDE0D0;
-  --line:  #D4CDB8;
-  --muted: #8A8470;
-  --warn:  #9C5A2E;
+  /* Paleta monocroma cálida (ficha técnica · estilo etiquetas m de materia) */
+  --cream: #ECEAE3;   /* fondo papel */
+  --paper: #F1EFE9;   /* celdas / tarjetas */
+  --ink:   #17150F;   /* tinta casi negra */
+  --olive: #17150F;   /* acentos = tinta (monocromo) */
+  --olive-light: #CFCABB;
+  --line:  #C6C1B3;   /* líneas finas (keyline) */
+  --muted: #8B8779;   /* gris secundario */
+  --warn:  #17150F;   /* alertas en monocromo (peso/recuadro, sin color) */
+  --sans:  'Helvetica Neue', 'Inter', Arial, 'Roboto', system-ui, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -466,7 +468,7 @@ input, select { font-family: inherit; font-size: 13px; }
 /* ════════════════════════════════════════════════════════
    REDISEÑO · EFICIENCIA Y CLARIDAD (capa de mejora)
    ════════════════════════════════════════════════════════ */
-:root { --ok:#5C6145; --alert:#9C5A2E; --gold:#9C7A2E; --shadow:0 1px 2px rgba(17,16,9,.05); }
+:root { --ok:#17150F; --alert:#17150F; --gold:#17150F; --shadow:none; }
 
 .screen { padding: 28px 32px; }
 
@@ -590,6 +592,104 @@ input, select { font-family: inherit; font-size: 13px; }
 .banner { border-radius: 12px; }
 .field select, .field input { border-radius: 10px; padding: 10px 12px; }
 .field label { letter-spacing: .12em; }
+
+/* ════════════════════════════════════════════════════════
+   FICHA TÉCNICA · sistema visual estilo etiquetas m de materia
+   Monocromo · rejilla de keylines · sans tracked + monoespaciada
+   ════════════════════════════════════════════════════════ */
+/* Esquinas rectas y sin sombras en todo (look técnico/etiqueta). */
+.cat, .card, .tile, .kpi-box, .banner, .modrow, .btn-primary, .btn-ghost,
+.btn-warn, .toggle, .field select, .field input, .todo, .todo-chip,
+.cat-alert, .user-chip, .badge-low { border-radius: 0 !important; box-shadow: none !important; }
+
+/* Tipos de letra display: grotesca neutra para titulares en mayúscula. */
+.brandword { font-family: var(--sans); font-weight: 500; font-size: 13px;
+  letter-spacing: .02em; text-transform: lowercase; }
+
+/* Home: bloque de marca como cabecera de etiqueta. */
+.home-brand { padding: 30px 0 6px; }
+.home-brand .mark { color: var(--ink); }
+.home-brand .mark i { width: 2.5px; height: 24px; }
+.home-brand h1 { font-family: var(--sans); font-weight: 500; font-size: 30px;
+  text-transform: lowercase; letter-spacing: .005em; margin-top: 14px; }
+.home-brand .tag { font-size: 9px; letter-spacing: .26em; color: var(--muted); margin-top: 10px; }
+.home-status { font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); margin: 8px 0 30px; }
+.home-status b { color: var(--ink); font-weight: 700; }
+
+/* Tarjetas de categoría = celdas keyline con índice y código de estado. */
+.cats { gap: 0; border: 1px solid var(--line); max-width: 820px; }
+.cat { background: transparent; border: none; border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); padding: 22px 24px 26px; min-height: 150px;
+  display: block; transition: background .12s; }
+.cat:hover { transform: none; background: var(--paper); }
+.cats .cat:nth-child(2n) { border-right: none; }
+.cat-top { display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1px solid var(--line); padding-bottom: 9px; margin-bottom: 16px; }
+.cat-idx { font-family: var(--mono, 'Courier Prime', monospace); font-size: 11px;
+  letter-spacing: .1em; color: var(--ink); }
+.cat-code { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.cat-code.alerta { color: var(--ink); font-weight: 700; }
+.cat-name { font-family: var(--sans); font-weight: 500; font-size: 21px;
+  text-transform: uppercase; letter-spacing: .04em; line-height: 1.05; }
+.cat-desc { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.7;
+  letter-spacing: .03em; text-transform: uppercase; }
+.cat-arrow, .cat-alert { display: none; }
+
+/* Cabecera de pantalla interna = título técnico en mayúscula. */
+.screen-head, .cat-title { font-family: var(--sans); font-weight: 500; font-size: 19px;
+  text-transform: uppercase; letter-spacing: .06em; margin: 2px 0 24px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+
+/* Etiquetas de sección. */
+.section-label { font-size: 9px; letter-spacing: .22em; color: var(--muted); text-transform: uppercase; }
+
+/* Filas de módulo = renglones keyline con índice mono y nombre tracked. */
+.modrow { background: transparent; border: none; border-bottom: 1px solid var(--line);
+  margin: 0; padding: 16px 4px; gap: 16px; }
+.modrow:hover { transform: none; background: var(--paper); border-color: var(--line); }
+.modrow .mnum { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .1em; color: var(--ink); }
+.modrow .mname { font-family: var(--sans); font-weight: 500; text-transform: uppercase;
+  letter-spacing: .04em; font-size: 13px; }
+.modrow .mbadge { font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.modrow .marrow { color: var(--muted); }
+
+/* Tarjetas de contenido = celdas keyline tipo ficha. */
+.card { background: transparent; border: 1px solid var(--line); padding: 16px 18px; margin-bottom: -1px; }
+.card:hover { border-color: var(--line); background: var(--paper); }
+.card-name { font-family: var(--sans); font-weight: 500; text-transform: uppercase;
+  letter-spacing: .04em; font-size: 13px; }
+.card-meta { font-size: 11px; letter-spacing: .02em; }
+
+/* Botones rectangulares, monoespaciada en mayúscula. */
+.btn-primary, .btn-ghost, .btn-warn { font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; padding: 11px 18px; }
+.btn-primary { background: var(--ink); color: var(--cream); }
+.btn-primary:hover { background: #2c2920; }
+.btn-ghost { background: transparent; border: 1px solid var(--ink); color: var(--ink); }
+.btn-ghost:hover { background: var(--ink); color: var(--cream); }
+.btn-warn { background: var(--ink); color: var(--cream); }
+
+/* Indicadores en monocromo: punto/recuadro de tinta, sin color. */
+.banner { background: transparent; border: 1px solid var(--line); border-left: 1px solid var(--line); }
+.banner .dot, .banner.warn .dot { background: var(--ink); border-radius: 0; width: 6px; height: 6px; }
+.badge-low { border: 1px solid var(--ink); color: var(--ink); }
+
+/* "Qué hacer ahora": caja de tinta con chips keyline. */
+.todo { background: var(--ink); }
+.todo-chip { background: transparent; border: 1px solid #3a3729; }
+.todo-chip .n { background: var(--cream); color: var(--ink); border-radius: 0; }
+
+/* KPIs como celdas de ficha técnica (key/val). */
+.home-kpis { border: 1px solid var(--line); gap: 0; }
+.kpi-box { border: none; border-right: 1px solid var(--line); padding: 16px 16px; }
+.kpi-box:last-child { border-right: none; }
+.kpi-box::before { display: none; }
+.kpi-label { font-size: 8.5px; letter-spacing: .14em; }
+.kpi-val { font-family: 'Courier Prime', monospace; }
+
+/* Imagotipo ||| más fino y en tinta. */
+.mark i { background: currentColor; }
 </style>
 </head>
 <body>
@@ -660,8 +760,8 @@ function mostrarLogin() {
   document.body.innerHTML = `
     <div style="min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;">
       <div style="text-align:center;color:var(--cream);">
-        <span class="mark" style="color:var(--olive);justify-content:center;"><i style="height:34px;width:5px;"></i><i style="height:34px;width:5px;"></i><i style="height:34px;width:5px;"></i></span>
-        <div style="font-family:var(--serif);font-size:36px;font-weight:300;line-height:1;margin-top:18px;">m de Materia</div>
+        <span class="mark" style="color:var(--cream);justify-content:center;gap:5px;"><i style="height:30px;width:3px;"></i><i style="height:30px;width:3px;"></i><i style="height:30px;width:3px;"></i></span>
+        <div style="font-family:var(--sans);font-size:30px;font-weight:500;line-height:1;margin-top:18px;letter-spacing:.01em;">m de materia</div>
         <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:52px;">Control de producción</div>
         <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:18px;">¿Quién prepara hoy?</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">
@@ -876,15 +976,17 @@ async function loadHome() {
       <div class="home-brand">
         <span class="mark"><i></i><i></i><i></i></span>
         <h1>m de Materia</h1>
-        <div class="tag">Control de producción</div>
+        <div class="tag">Sistema RTD 01 · Control de producción</div>
       </div>
       <div class="home-status">${alerta?`<b>${d.estado_servicio}</b>`:d.estado_servicio}</div>
       <div class="cats">
-        ${cats.map(c=>`<div class="cat" onclick="${c.onclick}">
-          <span class="cat-arrow">›</span>
+        ${cats.map((c,i)=>`<div class="cat" onclick="${c.onclick}">
+          <div class="cat-top">
+            <span class="cat-idx">${String(i+1).padStart(2,"0")}</span>
+            <span class="cat-code${c.pend?" alerta":""}">${c.pend?`${c.pend} pend.`:"al día"}</span>
+          </div>
           <div class="cat-name">${c.name}</div>
           <div class="cat-desc">${c.desc}</div>
-          ${c.pend?`<span class="cat-alert">${c.pend}</span>`:""}
         </div>`).join("")}
       </div>`;
   } catch(e) {
@@ -1740,8 +1842,8 @@ async function arrancar() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
     <div id="splash" style="min-height:100vh;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;text-align:center;">
-      <span class="mark" style="color:var(--olive);justify-content:center;"><i style="height:40px;width:6px;"></i><i style="height:40px;width:6px;"></i><i style="height:40px;width:6px;"></i></span>
-      <div style="font-family:var(--serif);font-size:40px;font-weight:300;color:var(--cream);line-height:1;margin-top:20px;">m de Materia</div>
+      <span class="mark" style="color:var(--cream);justify-content:center;gap:5px;"><i style="height:34px;width:3px;"></i><i style="height:34px;width:3px;"></i><i style="height:34px;width:3px;"></i></span>
+      <div style="font-family:var(--sans);font-size:34px;font-weight:500;color:var(--cream);line-height:1;margin-top:20px;letter-spacing:.01em;">m de materia</div>
       <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:56px;">Control de producción</div>
       <div id="splash-estado" style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#555040;">Conectando…</div>
       <div id="splash-count" style="font-size:10px;color:#333020;margin-top:8px;"></div>

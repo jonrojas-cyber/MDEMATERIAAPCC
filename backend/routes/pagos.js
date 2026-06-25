@@ -19,7 +19,16 @@ router.get("/", (req, res) => {
     }
     porProveedor[r.proveedor_id].importe_pendiente += r.pendiente_pago;
     if (r.estado !== "Pagado") porProveedor[r.proveedor_id].albaranes_pendientes += 1;
-    porProveedor[r.proveedor_id].recepciones.push(r);
+    // Sin la foto base64 (pesada); el visor la pide aparte por id.
+    porProveedor[r.proveedor_id].recepciones.push({
+      id: r.id,
+      fecha: r.fecha,
+      importe_total: r.importe_total,
+      pendiente_pago: r.pendiente_pago,
+      estado: r.estado,
+      tiene_foto: !!r.foto_albaran_url,
+      n_lineas: Array.isArray(r.lineas) ? r.lineas.length : 0,
+    });
   });
 
   const resultado = Object.values(porProveedor)

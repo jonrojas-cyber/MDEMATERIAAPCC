@@ -1050,10 +1050,12 @@ async function irA_recepcion(){
       </div>`;
     html+=section("Recepciones",recs.slice().reverse(),r=>{
       const prov=provs.find(p=>p.id===r.proveedor_id);
+      const acciones=(r.estado==="Pendiente de confirmar"?`<button class="btn-primary" onclick="confirmarRcp('${r.id}')">Confirmar entrada</button>`:"")
+        +(r.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`:"");
       return card(
         `${prov?.nombre||r.proveedor_id} — ${r.importe_total.toFixed(2)} €`,
         `${r.estado} · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}`,
-        r.estado==="Pendiente de confirmar"?`<button class="btn-primary" onclick="confirmarRcp('${r.id}')">Confirmar entrada</button>`:""
+        acciones
       );
     },"Sin recepciones.");
     setInner(html);
@@ -1155,15 +1157,83 @@ async function irA_pagos(){
   openSection("pagos","Pagos pendientes");
   try{
     const pagos=await api("/pagos");
-    setInner(section("Por proveedor",pagos,p=>card(
-      p.proveedor_nombre,
-      `${p.importe_pendiente.toFixed(2)} € · ${p.albaranes_pendientes} albarán(es)`,
-      `<button class="btn-ghost" onclick="marcarPagado('${p.proveedor_id}')">Marcar como pagado</button>`
-    ),"No hay pagos pendientes."));
+    setInner(section("Por proveedor",pagos,p=>{
+      const listId=`alb-${p.proveedor_id}`;
+      const filas=(p.recepciones||[]).slice().reverse().map(r=>{
+        const f=new Date(r.fecha).toLocaleDateString("es-ES");
+        const btn=r.tiene_foto
+          ? `<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`
+          : `<span style="font-size:10px;color:#aaa490;">sin foto</span>`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #E2DBCB;">
+          <span style="font-size:11px;color:#555040;">${f} · ${(r.importe_total||0).toFixed(2)} € · ${r.estado}${r.n_lineas?` · ${r.n_lineas} líneas`:""}</span>
+          ${btn}</div>`;
+      }).join("");
+      const extra=`
+        <div onclick="toggleAlb('${listId}')" style="cursor:pointer;font-size:11px;color:var(--olive);margin-top:8px;user-select:none;">
+          <span id="${listId}-arrow">▸</span> Desplegar ${(p.recepciones||[]).length} albarán(es)</div>
+        <div id="${listId}" style="display:none;margin-top:4px;">${filas}</div>`;
+      return card(
+        p.proveedor_nombre,
+        `${p.importe_pendiente.toFixed(2)} € · ${p.albaranes_pendientes} albarán(es)`,
+        `<button class="btn-ghost" onclick="marcarPagado('${p.proveedor_id}')">Marcar como pagado</button>`,
+        extra
+      );
+    },"No hay pagos pendientes."));
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
+function toggleAlb(id){
+  const d=el(id); if(!d) return;
+  const abierto=d.style.display!=="none";
+  d.style.display=abierto?"none":"block";
+  const a=el(id+"-arrow"); if(a) a.textContent=abierto?"▸":"▾";
+}
+
+// Abre el albarán como documento digital (foto + datos) en una ventana nueva.
+async function verAlbaran(id){
+  const w=window.open("","_blank");
+  if(w) w.document.write("<p style='font-family:sans-serif;padding:20px;'>Cargando albarán…</p>");
+  try{
+    const r=await api(`/recepciones/${id}`);
+    const f=new Date(r.fecha).toLocaleString("es-ES");
+    const lineas=(r.lineas||[]).map(l=>`<tr>
+      <td>${l.descripcion||""}</td>
+      <td style="text-align:right;">${l.cantidad??""}</td>
+      <td style="text-align:right;">${l.precio_unitario!=null?Number(l.precio_unitario).toFixed(2)+" €":""}</td>
+      <td style="text-align:right;">${l.importe!=null?Number(l.importe).toFixed(2)+" €":""}</td></tr>`).join("");
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Albarán ${r.id}</title>
+      <style>
+        body{font-family:'Courier Prime',monospace;background:#F0EBE0;color:#111009;margin:0;padding:20px;}
+        .doc{max-width:680px;margin:0 auto;background:#fff;border:1px solid #d8d0bf;border-radius:8px;padding:22px;}
+        h1{font-size:18px;margin:0 0 2px;} .sub{font-size:11px;color:#5C6145;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;}
+        .meta{font-size:12px;margin:4px 0;} .meta b{color:#5C6145;}
+        table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;}
+        th,td{padding:6px 4px;border-bottom:1px solid #eee3cf;} th{text-align:left;color:#5C6145;font-size:10px;text-transform:uppercase;}
+        .total{font-size:15px;font-weight:700;margin-top:12px;text-align:right;}
+        img{max-width:100%;margin-top:18px;border-radius:6px;border:1px solid #e2dbcb;}
+        @media print{button{display:none}}
+        button{margin-top:16px;font-family:inherit;font-size:12px;padding:8px 16px;background:#5C6145;color:#F0EBE0;border:none;border-radius:4px;cursor:pointer;}
+      </style></head><body><div class="doc">
+        <h1>Albarán — ${r.proveedor_nombre||r.proveedor_id}</h1>
+        <div class="sub">Control M · Documento digital</div>
+        <div class="meta"><b>Fecha:</b> ${f}</div>
+        <div class="meta"><b>Estado:</b> ${r.estado} · pendiente ${Number(r.pendiente_pago||0).toFixed(2)} €</div>
+        ${lineas?`<table><thead><tr><th>Concepto</th><th style="text-align:right;">Cant.</th><th style="text-align:right;">Precio</th><th style="text-align:right;">Importe</th></tr></thead><tbody>${lineas}</tbody></table>`:""}
+        <div class="total">Total: ${Number(r.importe_total||0).toFixed(2)} €</div>
+        ${r.foto_albaran_url?`<img src="${r.foto_albaran_url}" alt="Foto del albarán">`:'<p style="font-size:11px;color:#888;margin-top:14px;">Sin foto adjunta.</p>'}
+        <button onclick="window.print()">Imprimir / Guardar PDF</button>
+      </div></body></html>`;
+    if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+  }catch(e){
+    if(w) w.document.body.innerHTML=`<p style='font-family:sans-serif;padding:20px;color:#9C5A2E;'>No se pudo abrir el albarán: ${e.message}</p>`;
+    else alert(e.message);
+  }
+}
+
 async function marcarPagado(id){
+  if(!confirm("¿Marcar todos los albaranes de este proveedor como pagados?")) return;
   try{await api(`/pagos/${id}/marcar-pagado`,{method:"POST"});irA_pagos();}
   catch(e){alert(e.message);}
 }

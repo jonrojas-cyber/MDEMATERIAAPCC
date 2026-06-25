@@ -706,7 +706,8 @@ async function loadHome() {
       { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor", soloAdmin: true },
       { id:"carta", title:"Carta y márgenes", num:"10", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", soloAdmin: true },
       { id:"analisis", title:"Análisis", num:"11", badge: "Reportes y stock", soloAdmin: true },
-      { id:"manual", title:"La forma de hacer las cosas", num:"12", badge: "Manual operativo", soloAdmin: true },
+      { id:"ventas", title:"Importar ventas", num:"12", badge: "CSV de Ágora", soloAdmin: true },
+      { id:"manual", title:"La forma de hacer las cosas", num:"13", badge: "Manual operativo", soloAdmin: true },
     ];
 
     const tiles = todosLosTiles.filter(t => !t.soloAdmin || esAdmin);
@@ -1040,9 +1041,12 @@ async function irA_recepcion(){
         <div class="field"><label>Importe total (€)</label><input type="number" step="0.01" id="rcp-imp" style="width:140px;"></div>
         <div class="card-actions"><button class="btn-primary" onclick="nuevaRcp()">Registrar recepción</button></div>
       </div>
-      <div class="card" style="opacity:0.55;">
+      <div class="card">
         <div class="card-name">Escanear albarán</div>
-        <div class="card-meta">Disponible en una fase posterior.</div>
+        <div class="card-meta" id="ocr-hint">Haz una foto del albarán y se rellenan proveedor, importe y líneas solos.</div>
+        <input type="file" accept="image/*" capture="environment" id="alb-file" style="display:none" onchange="escanearAlbaran(this)">
+        <div class="card-actions"><button class="btn-ghost" onclick="document.getElementById('alb-file').click()">Tomar / elegir foto</button></div>
+        <div id="alb-preview"></div>
       </div>`;
     html+=section("Recepciones",recs.slice().reverse(),r=>{
       const prov=provs.find(p=>p.id===r.proveedor_id);
@@ -1060,8 +1064,85 @@ async function nuevaRcp(){
   const prov=el("rcp-prov").value,imp=Number(el("rcp-imp").value);
   if(!prov){alert("Selecciona un proveedor.");return;}
   if(!imp||imp<=0){alert("Importe inválido.");return;}
-  try{await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({proveedor_id:prov,importe_total:imp})});irA_recepcion();}
-  catch(e){alert(e.message);}
+  const body={proveedor_id:prov,importe_total:imp,foto_albaran:window._albFoto||null,lineas:window._albLineas||[]};
+  try{
+    await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    window._albFoto=null; window._albLineas=null;
+    irA_recepcion();
+  }catch(e){alert(e.message);}
+}
+
+// Reduce la imagen en el navegador antes de enviarla (tamaño y coste OCR).
+function reducirImagen(file,maxLado,calidad){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      const escala=Math.min(1,maxLado/Math.max(w,h));
+      w=Math.round(w*escala); h=Math.round(h*escala);
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      resolve(c.toDataURL("image/jpeg",calidad));
+    };
+    img.onerror=reject;
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+async function escanearAlbaran(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const hint=el("ocr-hint");
+  hint.textContent="Procesando imagen…";
+  try{
+    const dataUrl=await reducirImagen(file,1500,0.7);
+    window._albFoto=dataUrl;
+    el("alb-preview").innerHTML=`<img src="${dataUrl}" style="max-width:100%;border-radius:6px;margin-top:8px;">`;
+    hint.textContent="Leyendo el albarán…";
+    const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
+    if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
+    if(r.importe_total) el("rcp-imp").value=r.importe_total;
+    window._albLineas=r.lineas||[];
+    hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:#9C5A2E">elige el proveedor</span>'}`;
+    const lin=(r.lineas||[]).map(l=>`${l.descripcion} · ${l.cantidad} · ${(l.importe||0).toFixed(2)} €`).join("<br>");
+    if(lin) el("alb-preview").innerHTML+=`<div style="font-size:10px;color:#888070;margin-top:8px;">${lin}</div>`;
+  }catch(e){
+    if(/no configurado|503/i.test(e.message)){
+      hint.innerHTML="Lectura automática no activada. La foto queda adjunta; rellena proveedor e importe a mano y registra.";
+    }else{
+      hint.textContent="No se pudo leer: "+e.message;
+    }
+  }
+}
+
+// ── IMPORTAR VENTAS (Ágora) ───────────────────────────
+async function irA_ventas(){
+  openSection("ventas","Importar ventas");
+  try{
+    const sync=await api("/ventas/sincronizacion").catch(()=>({cuando:null}));
+    const cuando=sync&&sync.cuando?new Date(sync.cuando).toLocaleString("es-ES"):"nunca";
+    setInner(`
+      <div class="section-label">Importar ventas de Ágora</div>
+      <div class="card">
+        <div class="card-name">Subir CSV de ventas</div>
+        <div class="card-meta">Última sincronización: ${cuando}. Al importar, se descuenta el stock de materias según el escandallo de cada producto.</div>
+        <input type="file" accept=".csv,text/csv" id="csv-file" style="display:none" onchange="importarVentasCSV(this)">
+        <div class="card-actions"><button class="btn-primary" onclick="document.getElementById('csv-file').click()">Elegir archivo CSV</button></div>
+        <div id="csv-res" style="font-size:11px;color:#888070;margin-top:10px;"></div>
+      </div>
+      <div class="card" style="font-size:10px;color:#888070;">Formato esperado: una columna de producto (por nombre) y una de cantidad. También admite importe y fecha.</div>`);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+async function importarVentasCSV(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const res=el("csv-res");
+  res.textContent="Importando…";
+  try{
+    const texto=await file.text();
+    const r=await api("/ventas/importar",{method:"POST",headers:{"Content-Type":"text/csv"},body:texto});
+    const noRec=(r.productos_no_reconocidos&&r.productos_no_reconocidos.length)?` · No reconocidos: ${r.productos_no_reconocidos.join(", ")}`:"";
+    res.innerHTML=`✓ Importadas <b>${r.ventas_importadas}</b> ventas de ${r.lineas} líneas. Stock actualizado.${noRec}`;
+  }catch(e){res.textContent="Error: "+e.message;}
 }
 
 async function confirmarRcp(id){

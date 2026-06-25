@@ -28,6 +28,8 @@ Levanta `http://localhost:4001`. Sin `DATABASE_URL` usa los JSON de `backend/dat
 | `DATABASE_URL` | Cadena de conexión PostgreSQL. Si está, persiste ahí. |
 | `JWT_SECRET` | Clave de firma de los tokens. **Definir en producción.** |
 | `AGORA_CSV_PATH` | Ruta a un CSV de ventas de Ágora para el cron horario (opcional). |
+| `ANTHROPIC_API_KEY` | Activa el OCR de albaranes (lectura de la foto con IA). Sin ella, se adjunta la foto y se rellena a mano. |
+| `OCR_MODEL` | Modelo de visión para el OCR (por defecto `claude-opus-4-8`). |
 
 ## Usuarios y acceso
 

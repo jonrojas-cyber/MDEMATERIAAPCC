@@ -858,7 +858,7 @@ async function irA_lotes(){
       `${l.codigo} — ${l.nombre}`,
       `${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}`,
       (l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',irA_lotes)">Dar de baja</button>`:"")
-      +(!l.caducado?`<button class="btn-ghost" onclick="reimprimir('${l.id}')">Reimprimir etiqueta</button>`:"")
+      +(!l.caducado?`<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`:"")
     ),"No hay lotes registrados."));
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
@@ -868,12 +868,11 @@ async function darDeBaja(id,cb){
   catch(e){alert(e.message);}
 }
 
-async function reimprimir(loteId){
-  try{
-    const etqs=await api(`/etiquetas/lote/${loteId}`);
-    if(!etqs.length){alert("Sin etiqueta para este lote.");return;}
-    window.open(`/etiqueta/${etqs[0].id}`,"_blank");
-  }catch(e){alert(e.message);}
+function imprimirEtiqueta(loteId){
+  const u=getUser();
+  const resp=encodeURIComponent(u?u.nombre:"");
+  // Abre la etiqueta 62x40mm y lanza el diálogo de impresión (Phomemo D520BT).
+  window.open(`/etiqueta/lote/${loteId}?print=1&usuario=${resp}&responsable=${resp}`,"_blank");
 }
 
 // ── MATERIAS ──────────────────────────────────────────

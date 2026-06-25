@@ -22,6 +22,31 @@ app.get("/api/salud", (req, res) => {
   });
 });
 
+// Página de impresión de etiqueta (pública: se abre en ventana nueva / sistema
+// de impresión, donde no viaja la cabecera Authorization). 62x40mm Phomemo.
+app.get("/etiqueta/lote/:loteId", async (req, res) => {
+  const labelService = require("./label-service");
+  const lote = store.findById("lotes", req.params.loteId);
+  if (!lote) return res.status(404).send("Lote no encontrado");
+  const receta = store.findById("recetas", lote.receta_id);
+  try {
+    const html = await labelService.renderEtiquetaHTML(req, {
+      lote,
+      receta,
+      responsable: req.query.responsable || "—",
+      autoprint: req.query.print === "1",
+    });
+    labelService.guardarHistorial({
+      lote_id: lote.id,
+      usuario: req.query.usuario || "Sin asignar",
+      impresora: "Phomemo D520BT",
+    });
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(500).send("No se pudo generar la etiqueta: " + e.message);
+  }
+});
+
 // ── A partir de aquí, todo /api/* exige sesión válida (y respeta el rol) ───────
 app.use("/api", auth.requerido);
 

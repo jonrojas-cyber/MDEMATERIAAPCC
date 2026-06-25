@@ -15,9 +15,14 @@ app.use(express.json());
 app.use("/api/auth", require("./routes/auth"));
 
 app.get("/api/salud", (req, res) => {
+  const persistente = db.isActive();
   res.json({
     estado: "Control M · Producción en marcha",
-    almacen: db.isActive() ? "postgres" : "json",
+    almacen: persistente ? "postgres" : "json",
+    // "persistente": los datos sobreviven a reinicios (Postgres).
+    // "efimera": modo ficheros JSON; en Render el disco es efímero -> riesgo
+    // de pérdida de datos al reiniciar. El frontend avisa si es efímera.
+    persistencia: persistente ? "persistente" : "efimera",
     hora: new Date().toISOString(),
   });
 });
@@ -87,6 +92,22 @@ app.use(express.static(path.join(__dirname, "..", "frontend")));
 store
   .init()
   .then(() => {
+    // ── Blindaje de persistencia ──────────────────────────────────────────
+    // En producción sin Postgres, los datos viven en ficheros JSON sobre un
+    // disco efímero (Render) y se PIERDEN al reiniciar. Avisamos fuerte; y con
+    // REQUIRE_DB=1 el arranque se aborta para impedir la pérdida silenciosa.
+    if (!db.isActive()) {
+      const enProd = process.env.NODE_ENV === "production";
+      console.warn(
+        "\n⚠️  PERSISTENCIA EFÍMERA: sin DATABASE_URL, los datos se guardan en\n" +
+        "   ficheros JSON locales. En un disco efímero (Render) se PERDERÁN al\n" +
+        "   reiniciar. Configura DATABASE_URL (PostgreSQL) para conservarlos.\n"
+      );
+      if (enProd && process.env.REQUIRE_DB === "1") {
+        console.error("REQUIRE_DB=1 y sin DATABASE_URL en producción: arranque abortado.");
+        process.exit(1);
+      }
+    }
     app.listen(PORT, () => {
       console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);
     });

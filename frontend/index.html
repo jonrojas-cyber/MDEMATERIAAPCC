@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>Control M · M de Materia</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#3E4534"/>
+<title>Control M · m de materia</title>
+<!-- Tipografía autoalojada (Courier Prime WOFF2). Sin dependencias externas. -->
 <style>
 /* Courier Prime autoalojada (clon de Courier New con NEGRITA REAL) en WOFF2.
    Evita el engordado sintético que duplica trazos en móviles sin Courier New. */
@@ -788,6 +788,8 @@ input, select { font-family: inherit; font-size: 13px; }
 .home-head { padding: 6px 2px 22px; }
 .home-sys { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .14em;
   text-transform: uppercase; color: var(--muted); }
+.home-efimera { font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: .04em;
+  color: #fff; background: var(--olivebar); display: inline-block; padding: 4px 10px; margin-top: 10px; }
 .home-alert { font-family: 'Courier Prime', monospace; font-size: 12px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; color: var(--ink); margin-top: 8px; }
 .home-status { display: none; }
@@ -830,6 +832,13 @@ input, select { font-family: inherit; font-size: 13px; }
   .cat-l1, .cat-l2 { font-size: 9.5px; }
   .cat-go { flex-basis: 44px; }
 }
+
+/* ── Accesibilidad: foco visible por teclado (no afecta al ratón) ── */
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.topbar :focus-visible, .botbar :focus-visible { outline-color: var(--oliveink); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
 </style>
 </head>
 <body>
@@ -868,6 +877,15 @@ input, select { font-family: inherit; font-size: 13px; }
 <script>
 const API = "/api";
 let currentSection = "home";
+
+// Accesibilidad: Enter/Espacio activan los elementos role="button" (tarjetas,
+// filas) igual que un clic, para navegación por teclado.
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target && e.target.matches && e.target.matches('[role="button"]')) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
 
 // ── SISTEMA DE USUARIOS CON ROLES ─────────────────────
 // Solo para pintar los botones de login. La autenticación (PIN) la valida el
@@ -1127,9 +1145,10 @@ async function loadHome() {
       <div class="home-head">
         <div class="home-sys">Sistema RTD 01 · Control de producción</div>
         <div class="home-alert">${estadoSrv}</div>
+        ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
       </div>
       <div class="cats">
-        ${cats.map((c,i)=>`<div class="cat" onclick="${c.onclick}">
+        ${cats.map((c,i)=>`<div class="cat" role="button" tabindex="0" onclick="${c.onclick}">
           <div class="cat-numcol">
             <div class="cat-big">${String(i+1).padStart(2,"0")}</div>
             <div class="cat-state">${estLabel(c.pend)}</div>
@@ -1169,7 +1188,7 @@ async function irA_categoria(cat) {
     const rows = c.ids.map(id => {
       const m = meta[id];
       if (!m) return "";
-      return `<div class="modrow" onclick="irA_${id}()">
+      return `<div class="modrow" role="button" tabindex="0" onclick="irA_${id}()">
         <span class="mnum">${m.num}</span>
         <span class="mname">${m.name}</span>
         <span class="mbadge" style="${m.urgent?"color:var(--alert)":""}">${m.badge}</span>
@@ -1381,7 +1400,7 @@ async function irA_lotes(){
     const orden={"Requiere atención":0,"Priorizar uso":1,"Correcto":2,"Fuera de servicio":3};
     const sorted=lotes.slice().sort((a,b)=>(orden[a.estado]??9)-(orden[b.estado]??9));
     setInner(section("Todos los lotes", sorted, l=>`
-      <div class="card clickable" onclick="verLote('${l.id}')">
+      <div class="card clickable" role="button" tabindex="0" onclick="verLote('${l.id}')">
         <div class="card-name">${l.codigo} — ${l.nombre||""}</div>
         <div class="card-meta">${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}</div>
       </div>`,"No hay lotes registrados."));
@@ -1410,7 +1429,7 @@ async function irA_materias(){
       const baja=m.disponibilidad_estado==="Disponibilidad baja";
       const acc=baja&&m.proveedor_whatsapp
         ?`<div class="card-acts" onclick="event.stopPropagation()"><button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para m de materia.")}')">Pedir por WhatsApp</button></div>`:"";
-      return `<div class="card clickable" onclick="verMateria('${m.id}')">
+      return `<div class="card clickable" role="button" tabindex="0" onclick="verMateria('${m.id}')">
         <div class="card-name">${m.nombre}${baja?`<span class="badge-low">Baja</span>`:""}</div>
         <div class="card-meta">${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.ubicacion} · ${m.proveedor_nombre}</div>
         ${acc}
@@ -2102,6 +2121,7 @@ async function arrancar() {
     try {
       const r = await fetch("/api/salud", { cache: "no-store" });
       if (r.ok) {
+        try { window.__persistencia = (await r.clone().json()).persistencia; } catch(e) {}
         el("splash-estado").textContent = "Listo";
         await new Promise(r => setTimeout(r, 400));
         // Mostrar login o pintar la app — sin recargar (evita bucle de splash)

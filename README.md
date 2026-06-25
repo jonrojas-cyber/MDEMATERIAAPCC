@@ -32,6 +32,23 @@ Levanta `http://localhost:4001`. Sin `DATABASE_URL` usa los JSON de `backend/dat
 | `OCR_MODEL` | Modelo de visión para el OCR (por defecto `claude-opus-4-8`). |
 | `RESEND_API_KEY` | Activa el envío automático del justificante por email (servicio Resend). |
 | `RESEND_FROM` | Remitente del email (ej. `M de Materia <pagos@tudominio.com>`). |
+| `REQUIRE_DB` | Si vale `1` y `NODE_ENV=production`, el servidor **no arranca sin `DATABASE_URL`** (evita perder datos en disco efímero por error). |
+
+> Sin `DATABASE_URL` los datos viven en ficheros JSON sobre disco efímero
+> (en Render se pierden al reiniciar). El arranque avisa por consola, la API
+> `GET /api/salud` devuelve `"persistencia": "efimera"` y el inicio muestra un
+> aviso. Para producción, define `DATABASE_URL`.
+
+## Tests E2E
+
+```bash
+npm install              # dependencias de test (Playwright) en la raíz
+npm install --prefix backend
+npx playwright install chromium
+npm test                 # arranca el servidor y corre los specs de ./tests
+```
+
+Se ejecutan también en cada push/PR mediante GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Usuarios y acceso
 

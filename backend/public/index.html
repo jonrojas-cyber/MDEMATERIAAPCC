@@ -5,8 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <title>Control M · M de Materia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+/* Newsreader (serif editorial de marca) autoalojado: render garantizado
+   sin depender de Google Fonts. Licencia OFL. */
+@font-face {
+  font-family: 'Newsreader'; font-style: normal; font-weight: 300;
+  font-display: swap; src: url('/fonts/Newsreader-Light.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Newsreader'; font-style: normal; font-weight: 400;
+  font-display: swap; src: url('/fonts/Newsreader-Regular.ttf') format('truetype');
+}
 :root {
   --cream: #F0EBE0;
   --paper: #F7F3EA;
@@ -501,35 +511,35 @@ input, select { font-family: inherit; font-size: 13px; }
 /* ════════════════════════════════════════════════════════
    IDENTIDAD M DE MATERIA · home por categorías (minimal)
    ════════════════════════════════════════════════════════ */
-:root { --serif:'Cormorant Garamond', Georgia, serif; }
+:root { --serif:'Newsreader', Georgia, serif; }
 
 /* Imagotipo ||| */
 .mark { display:inline-flex; gap:3px; align-items:center; line-height:0; }
-.mark i { display:block; width:3px; height:16px; background:currentColor; }
+.mark i { display:block; width:2px; height:15px; background:currentColor; }
 
 /* Topbar con marca */
-.topbar-logo { display:flex; align-items:center; gap:9px; color:var(--cream); }
-.brandword { font-family:var(--serif); font-size:19px; font-weight:500; letter-spacing:.03em; }
+.topbar-logo { display:flex; align-items:center; gap:10px; color:var(--cream); }
+.brandword { font-family:var(--serif); font-size:18px; font-weight:400; letter-spacing:.01em; }
 
 /* Home: marca y categorías */
-.home-brand { text-align:center; padding:30px 0 8px; color:var(--ink); }
-.home-brand .mark { color:var(--olive); }
-.home-brand .mark i { width:4px; height:30px; }
-.home-brand h1 { font-family:var(--serif); font-size:42px; font-weight:500; margin-top:14px; letter-spacing:.02em; line-height:1; }
-.home-brand .tag { font-size:9.5px; letter-spacing:.26em; text-transform:uppercase; color:var(--muted); margin-top:9px; }
+.home-brand { text-align:center; padding:34px 0 8px; color:var(--ink); }
+.home-brand .mark { color:var(--olive); gap:4px; }
+.home-brand .mark i { width:2.5px; height:26px; }
+.home-brand h1 { font-family:var(--serif); font-size:46px; font-weight:300; margin-top:18px; letter-spacing:0; line-height:1; }
+.home-brand .tag { font-size:9px; letter-spacing:.28em; text-transform:uppercase; color:var(--muted); margin-top:12px; }
 .home-status { text-align:center; font-size:11px; color:var(--muted); letter-spacing:.04em; margin:6px 0 34px; }
 .home-status b { color:var(--alert); font-weight:400; }
 
 .cats { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; max-width:780px; margin:0 auto; }
 .cat { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:30px 28px; cursor:pointer; transition:transform .14s, box-shadow .14s; position:relative; min-height:158px; display:flex; flex-direction:column; justify-content:flex-end; }
 .cat:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(17,16,9,.08); }
-.cat-name { font-family:var(--serif); font-size:30px; font-weight:500; line-height:1; }
+.cat-name { font-family:var(--serif); font-size:30px; font-weight:300; line-height:1; text-transform:lowercase; }
 .cat-desc { font-size:10.5px; color:var(--muted); margin-top:11px; line-height:1.6; letter-spacing:.02em; }
 .cat-alert { position:absolute; top:22px; right:22px; min-width:22px; text-align:center; font-size:10px; background:var(--alert); color:#fff; border-radius:999px; padding:3px 9px; letter-spacing:.04em; }
 .cat-arrow { position:absolute; top:24px; left:28px; color:var(--line); font-size:18px; }
 
 /* Lista de módulos dentro de una categoría */
-.cat-title { font-family:var(--serif); font-size:30px; font-weight:500; margin-bottom:20px; letter-spacing:.01em; }
+.cat-title { font-family:var(--serif); font-size:30px; font-weight:300; margin-bottom:20px; letter-spacing:.01em; text-transform:lowercase; }
 .modrow { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:17px 20px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; gap:14px; transition:border-color .12s, transform .12s; }
 .modrow:hover { border-color:var(--olive); transform:translateX(3px); }
 .modrow .mnum { font-size:9px; letter-spacing:.14em; color:var(--muted); width:22px; }
@@ -548,15 +558,12 @@ input, select { font-family: inherit; font-size: 13px; }
 /* Título serif en cada módulo (inyectado por setInner). */
 .screen-head {
   font-family: var(--serif);
-  font-size: 30px;
-  font-weight: 500;
-  letter-spacing: .01em;
+  font-size: 32px;
+  font-weight: 300;
+  letter-spacing: .005em;
   line-height: 1;
-  margin: 4px 0 26px;
-}
-.cat-title { /* alias: mismo estilo que .screen-head */
-  font-family: var(--serif); font-size: 30px; font-weight: 500;
-  letter-spacing: .01em; margin-bottom: 26px;
+  margin: 4px 0 28px;
+  text-transform: lowercase;
 }
 /* La cabecera reemplaza al antiguo título con borde. */
 .screen-title { display: none; }
@@ -589,7 +596,7 @@ input, select { font-family: inherit; font-size: 13px; }
 
 <!-- TOP BAR -->
 <header class="topbar">
-  <div class="topbar-logo"><span class="mark"><i></i><i></i><i></i></span><span class="brandword">M de Materia</span></div>
+  <div class="topbar-logo"><span class="mark"><i></i><i></i><i></i></span><span class="brandword">m de Materia</span></div>
   <span class="topbar-sep">·</span>
   <div class="topbar-section" id="topbar-section">Control M</div>
   <button class="topbar-back" id="topbar-back" onclick="goHome()">← Inicio</button>
@@ -654,7 +661,7 @@ function mostrarLogin() {
     <div style="min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;">
       <div style="text-align:center;color:var(--cream);">
         <span class="mark" style="color:var(--olive);justify-content:center;"><i style="height:34px;width:5px;"></i><i style="height:34px;width:5px;"></i><i style="height:34px;width:5px;"></i></span>
-        <div style="font-family:var(--serif);font-size:34px;font-weight:500;line-height:1;margin-top:18px;">M de Materia</div>
+        <div style="font-family:var(--serif);font-size:36px;font-weight:300;line-height:1;margin-top:18px;">m de Materia</div>
         <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:52px;">Control de producción</div>
         <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:18px;">¿Quién prepara hoy?</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">
@@ -868,7 +875,7 @@ async function loadHome() {
     el("home-content").innerHTML = `
       <div class="home-brand">
         <span class="mark"><i></i><i></i><i></i></span>
-        <h1>M de Materia</h1>
+        <h1>m de Materia</h1>
         <div class="tag">Control de producción</div>
       </div>
       <div class="home-status">${alerta?`<b>${d.estado_servicio}</b>`:d.estado_servicio}</div>
@@ -1734,7 +1741,7 @@ async function arrancar() {
   document.body.innerHTML = `
     <div id="splash" style="min-height:100vh;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;text-align:center;">
       <span class="mark" style="color:var(--olive);justify-content:center;"><i style="height:40px;width:6px;"></i><i style="height:40px;width:6px;"></i><i style="height:40px;width:6px;"></i></span>
-      <div style="font-family:var(--serif);font-size:38px;font-weight:500;color:var(--cream);line-height:1;margin-top:20px;">M de Materia</div>
+      <div style="font-family:var(--serif);font-size:40px;font-weight:300;color:var(--cream);line-height:1;margin-top:20px;">m de Materia</div>
       <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:56px;">Control de producción</div>
       <div id="splash-estado" style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#555040;">Conectando…</div>
       <div id="splash-count" style="font-size:10px;color:#333020;margin-top:8px;"></div>

@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const store = require("./data-store");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -18,14 +19,29 @@ app.use("/api/revisiones", require("./routes/revisiones"));
 app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/recepciones", require("./routes/recepciones"));
+app.use("/api/pagos", require("./routes/pagos"));
+app.use("/api/etiquetas", require("./routes/etiquetas"));
 
 app.get("/api/salud", (req, res) => {
-  res.json({ estado: "Control M · Producción en marcha", hora: new Date().toISOString() });
+  res.json({
+    estado: "Control M · Producción en marcha",
+    almacen: store.ENTITIES ? (require("./db").isActive() ? "postgres" : "json") : "json",
+    hora: new Date().toISOString(),
+  });
 });
 
 // Sirve el frontend estático (single-file app)
 app.use(express.static(path.join(__dirname, "..", "frontend")));
 
-app.listen(PORT, () => {
-  console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);
-});
+// Arranca solo cuando el almacén está listo (hidratado desde PostgreSQL o JSON).
+store
+  .init()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);
+    });
+  })
+  .catch((e) => {
+    console.error("Fallo al inicializar el almacén de datos:", e);
+    process.exit(1);
+  });

@@ -1,9 +1,12 @@
 {
   "name": "control-m-produccion-backend",
-  "version": "0.1.0",
-  "description": "Backend local de Control M · Producción — M de Materia",
+  "version": "0.2.0",
+  "description": "Backend de Control M · Producción — M de Materia",
   "main": "server.js",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
@@ -11,6 +14,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0",
     "qrcode": "^1.5.4"
   }
 }

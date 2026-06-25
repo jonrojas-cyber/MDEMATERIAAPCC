@@ -485,16 +485,19 @@ const API = "/api";
 let currentSection = "home";
 
 // ── SISTEMA DE USUARIOS CON ROLES ─────────────────────
+// Solo para pintar los botones de login. La autenticación (PIN) la valida el
+// backend vía JWT; los PIN ya no viven en el frontend.
 const USUARIOS = {
-  "Jon":  { pin: "1111", rol: "admin",  nombre: "Jon" },
-  "Lara": { pin: "2222", rol: "equipo", nombre: "Lara" },
-  "Moni": { pin: "3333", rol: "admin",  nombre: "Mónica" },
+  "Jon":  { rol: "admin",  nombre: "Jon" },
+  "Lara": { rol: "equipo", nombre: "Lara" },
+  "Moni": { rol: "admin",  nombre: "Mónica" },
 };
 
 const MODULOS_EQUIPO = ["preparaciones","lotes","revisiones","ajustes"];
 const MODULOS_ADMIN  = ["preparaciones","lotes","materias","revisiones","ajustes","proveedores","recepcion","pagos","manual"];
 
 function getUser()  { try{ return JSON.parse(localStorage.getItem("cm_session")); }catch{ return null; } }
+function getToken() { const u = getUser(); return u && u.token; }
 function setSession(u) { localStorage.setItem("cm_session", JSON.stringify(u)); }
 function logout()   { localStorage.removeItem("cm_session"); location.reload(); }
 
@@ -554,15 +557,24 @@ function seleccionarUsuario(key) {
   document.getElementById("pin-inp").focus();
 }
 
-function checkPin() {
+async function checkPin() {
   const pin = document.getElementById("pin-inp").value;
-  const u = USUARIOS[_loginKey];
-  if (pin === u.pin) {
-    setSession({ key: _loginKey, nombre: u.nombre, rol: u.rol });
-    location.reload();
-  } else if (pin.length === 4) {
+  if (pin.length !== 4) return;
+  document.getElementById("pin-err").textContent = "";
+  try {
+    const r = await fetch(API + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario: _loginKey, pin }),
+    });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    setSession({ key: data.usuario.key, nombre: data.usuario.nombre, rol: data.usuario.rol, token: data.token });
+    entrarApp();
+  } catch (e) {
     document.getElementById("pin-err").textContent = "PIN incorrecto";
     document.getElementById("pin-inp").value = "";
+    document.getElementById("pin-inp").focus();
   }
 }
 
@@ -605,8 +617,12 @@ function openSection(id, title) {
 }
 
 // ── HELPERS ───────────────────────────────────────────
-async function api(path, opts) {
-  const r = await fetch(API + path, opts);
+async function api(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  const t = getToken();
+  if (t) headers["Authorization"] = "Bearer " + t;
+  const r = await fetch(API + path, Object.assign({}, opts, { headers }));
+  if (r.status === 401) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Sesión expirada"); }
   if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
   return r.json();
 }
@@ -1097,6 +1113,14 @@ function irA_manual(){
 // ── INIT ──────────────────────────────────────────────
 const APP_SHELL = document.body.innerHTML;
 
+// Pinta la app ya autenticada. Sin recargar la página (la recarga causaba el
+// bucle de splash y la pérdida del contexto JS tras el login).
+function entrarApp() {
+  document.body.innerHTML = APP_SHELL;
+  renderUserChips();
+  loadHome();
+}
+
 async function arrancar() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
@@ -1129,9 +1153,7 @@ async function arrancar() {
         if (!getUser()) {
           mostrarLogin();
         } else {
-          document.body.innerHTML = APP_SHELL;
-          renderUserChips();
-          loadHome();
+          entrarApp();
         }
         return;
       }

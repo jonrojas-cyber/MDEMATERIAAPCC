@@ -73,13 +73,62 @@ router.post("/escanear", jsonGrande, async (req, res) => {
   }
 });
 
-// Entrada de recepción (manual o tras escanear). Admite foto y líneas opcionales.
+// Coteja las líneas recibidas con el pedido abierto del proveedor y con el
+// precio habitual de cada materia. Devuelve avisos de cantidad y de precio.
+router.post("/cotejar", jsonGrande, (req, res) => {
+  const { proveedor_id, lineas } = req.body || {};
+  const materias = store.readAll("materias");
+  const matById = {};
+  materias.forEach((m) => (matById[m.id] = m));
+
+  const abiertos = store.readAll("pedidos").filter((p) => p.proveedor_id === proveedor_id && p.estado !== "recibido");
+  const pedido = abiertos.length ? abiertos[abiertos.length - 1] : null;
+  const pedidoLineas = pedido ? pedido.lineas : [];
+  const recibidas = (lineas || []).filter((l) => l.materia_id);
+  const avisos = [];
+
+  recibidas.forEach((l) => {
+    const m = matById[l.materia_id];
+    if (!m) return;
+    const pl = pedidoLineas.find((x) => x.materia_id === l.materia_id);
+    const recCant = Number(l.cantidad) || 0;
+    const precio = Number(l.precio_unitario);
+
+    if (pl) {
+      const dif = Math.round((recCant - pl.cantidad) * 100) / 100;
+      if (Math.abs(dif) > 1e-6) {
+        avisos.push({ tipo: "cantidad", nivel: "medio", mensaje: `${m.nombre}: pedido ${pl.cantidad} ${m.unidad}, recibido ${recCant} ${m.unidad} (${dif > 0 ? "+" : ""}${dif})` });
+      }
+    } else if (pedido) {
+      avisos.push({ tipo: "extra", nivel: "medio", mensaje: `${m.nombre}: llega en el albarán pero no estaba en el pedido` });
+    }
+
+    const esperado = pl && pl.precio_esperado > 0 ? pl.precio_esperado : m.coste_medio;
+    if (Number.isFinite(precio) && precio > 0 && esperado > 0) {
+      const dp = (precio - esperado) / esperado;
+      if (Math.abs(dp) >= 0.05) {
+        avisos.push({ tipo: "precio", nivel: Math.abs(dp) >= 0.15 ? "alto" : "medio", mensaje: `${m.nombre}: precio ${precio.toFixed(4)} € vs ${pl ? "pedido" : "habitual"} ${esperado.toFixed(4)} € (${dp > 0 ? "+" : ""}${Math.round(dp * 100)}%)` });
+      }
+    }
+  });
+
+  pedidoLineas.forEach((pl) => {
+    if (!recibidas.find((l) => l.materia_id === pl.materia_id)) {
+      avisos.push({ tipo: "falta", nivel: "alto", mensaje: `${pl.nombre}: pedido ${pl.cantidad} ${pl.unidad}, no aparece en el albarán` });
+    }
+  });
+
+  res.json({ pedido_id: pedido ? pedido.id : null, pedido_codigo: pedido ? pedido.codigo : null, avisos });
+});
+
+// Entrada de recepción (manual o tras escanear). Admite foto, líneas y pedido.
 router.post("/", jsonGrande, (req, res) => {
-  const { proveedor_id, importe_total, foto_albaran, lineas } = req.body;
+  const { proveedor_id, importe_total, foto_albaran, lineas, pedido_id } = req.body;
   if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor de la recepción" });
   const recepcion = {
     id: store.nextId("rcp", "recepciones"),
     proveedor_id,
+    pedido_id: pedido_id || null,
     fecha: new Date().toISOString(),
     foto_albaran_url: foto_albaran || null,
     lineas: Array.isArray(lineas) ? lineas : [],
@@ -110,6 +159,11 @@ router.post("/:id/confirmar", (req, res) => {
       }
     });
     if (aplicado.length) store.writeAll("materias", materias);
+  }
+
+  // Si la recepción venía de un pedido, marcarlo como recibido.
+  if (recepcion.pedido_id) {
+    store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
   }
 
   const actualizada = store.update("recepciones", req.params.id, {

@@ -702,12 +702,13 @@ async function loadHome() {
       { id:"revisiones", title:"Revisiones", num:"05", badge: pendRevisar ? `${pendRevisar} pendientes` : "Completadas", urgent: pendRevisar },
       { id:"ajustes", title:"Ajustes", num:"06", badge: `${k.ajustes_hoy||0} registrados hoy` },
       { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes", soloAdmin: true },
-      { id:"recepcion", title:"Recepción", num:"08", badge: "Entrada de mercancía", soloAdmin: true },
-      { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor", soloAdmin: true },
-      { id:"carta", title:"Carta y márgenes", num:"10", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", soloAdmin: true },
-      { id:"analisis", title:"Análisis", num:"11", badge: "Reportes y stock", soloAdmin: true },
-      { id:"ventas", title:"Importar ventas", num:"12", badge: "CSV de Ágora", soloAdmin: true },
-      { id:"manual", title:"La forma de hacer las cosas", num:"13", badge: "Manual operativo", soloAdmin: true },
+      { id:"pedidos", title:"Pedidos", num:"08", badge: "A proveedores", soloAdmin: true },
+      { id:"recepcion", title:"Recepción", num:"09", badge: "Entrada de mercancía", soloAdmin: true },
+      { id:"pagos", title:"Pagos pendientes", num:"10", badge: "Por proveedor", soloAdmin: true },
+      { id:"carta", title:"Carta y márgenes", num:"11", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", soloAdmin: true },
+      { id:"analisis", title:"Análisis", num:"12", badge: "Reportes y stock", soloAdmin: true },
+      { id:"ventas", title:"Importar ventas", num:"13", badge: "CSV de Ágora", soloAdmin: true },
+      { id:"manual", title:"La forma de hacer las cosas", num:"14", badge: "Manual operativo", soloAdmin: true },
     ];
 
     const tiles = todosLosTiles.filter(t => !t.soloAdmin || esAdmin);
@@ -1024,6 +1025,98 @@ async function irA_proveedores(){
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
+// ── PEDIDOS ───────────────────────────────────────────
+async function irA_pedidos(){
+  openSection("pedidos","Pedidos");
+  try{
+    const [provs,mats,peds]=await Promise.all([api("/proveedores"),api("/materias"),api("/pedidos")]);
+    window._provPed=provs; window._matPed=mats;
+    let html=`
+      <div class="section-label">Nuevo pedido</div>
+      <div class="card">
+        <div class="field"><label>Proveedor</label>
+          <select id="ped-prov" onchange="renderPedidoLineas()">
+            <option value="">Selecciona…</option>
+            ${provs.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join("")}
+          </select>
+        </div>
+        <div id="ped-lineas"></div>
+        <div class="card-actions"><button class="btn-primary" onclick="crearPedido()">Crear pedido</button></div>
+      </div>`;
+    html+=section("Pedidos realizados",peds,p=>{
+      const prov=provs.find(x=>x.id===p.proveedor_id);
+      const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="enviarPedidoWA('${p.id}')">Enviar por WhatsApp</button>`:"";
+      return card(
+        `${p.codigo} — ${p.proveedor_nombre}`,
+        `${p.estado} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
+        wa,
+        `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>`${l.nombre} ${l.cantidad}${l.unidad}`).join(" · ")}</div>`
+      );
+    },"Aún no hay pedidos.");
+    setInner(html);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+function renderPedidoLineas(){
+  const provId=el("ped-prov").value, cont=el("ped-lineas"); if(!cont) return;
+  if(!provId){cont.innerHTML="";return;}
+  const prov=(window._provPed||[]).find(p=>p.id===provId);
+  const aso=(prov&&prov.productos_asociados)||[];
+  let mats=(window._matPed||[]).filter(m=>aso.includes(m.id));
+  if(!mats.length) mats=window._matPed||[];
+  cont.innerHTML=`<div class="section-label" style="margin-top:8px;">Productos (pon cantidad a los que pidas)</div>`+
+    mats.map(m=>`<div class="ped-row" data-mat="${m.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+      <span style="font-size:11px;flex:1;min-width:90px;">${m.nombre}</span>
+      <input class="ped-cant" type="number" step="0.01" placeholder="0" style="width:62px;font-size:11px;">
+      <span style="font-size:10px;color:#888070;">${m.unidad}</span>
+      <input class="ped-precio" type="number" step="0.0001" value="${m.coste_medio}" style="width:74px;font-size:11px;" title="Precio esperado por ${m.unidad}">
+      <span style="font-size:10px;color:#888070;">€/${m.unidad}</span>
+    </div>`).join("");
+}
+
+async function crearPedido(){
+  const provId=el("ped-prov").value;
+  if(!provId){alert("Selecciona un proveedor.");return;}
+  const lineas=[...document.querySelectorAll(".ped-row")].map(r=>({
+    materia_id:r.dataset.mat,
+    cantidad:Number(r.querySelector(".ped-cant").value)||0,
+    precio_esperado:Number(r.querySelector(".ped-precio").value)||0,
+  })).filter(l=>l.cantidad>0);
+  if(!lineas.length){alert("Pon cantidad en al menos un producto.");return;}
+  try{
+    const p=await api("/pedidos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({proveedor_id:provId,lineas})});
+    if(confirm("Pedido creado. ¿Enviarlo ahora por WhatsApp al proveedor?")){ enviarPedidoWA(p.id); }
+    else { irA_pedidos(); }
+  }catch(e){alert(e.message);}
+}
+
+async function enviarPedidoWA(id){
+  try{
+    const p=await api(`/pedidos/${id}`);
+    let prov=(window._provPed||[]).find(x=>x.id===p.proveedor_id);
+    if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`);
+    const tel=(prov.whatsapp||"").replace(/[^0-9+]/g,"").replace(/^\+/,"");
+    if(!tel){alert("Este proveedor no tiene WhatsApp.");return;}
+    const lineas=p.lineas.map(l=>`• ${l.nombre}: ${l.cantidad} ${l.unidad}`).join("\n");
+    const texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}\n\nGracias.`;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
+    await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
+    irA_pedidos();
+  }catch(e){alert(e.message);}
+}
+
+// Avisos del cotejo albarán↔pedido↔precios.
+function renderAvisos(cot){
+  const cont=el("alb-avisos"); if(!cont) return;
+  const av=(cot&&cot.avisos)||[];
+  if(!av.length){
+    cont.innerHTML=`<div style="font-size:11px;color:#5C6145;margin-top:8px;">✓ Cotejo correcto${cot.pedido_codigo?` con ${cot.pedido_codigo}`:""}: sin diferencias.</div>`;
+    return;
+  }
+  cont.innerHTML=`<div class="section-label" style="margin-top:8px;">Avisos del cotejo${cot.pedido_codigo?` (${cot.pedido_codigo})`:""}</div>`+
+    av.map(a=>`<div style="font-size:11px;color:${a.nivel==="alto"?"#9C5A2E":"#9C7A2E"};margin-top:4px;">⚠ ${a.mensaje}</div>`).join("");
+}
+
 // ── RECEPCIÓN ────────────────────────────────────────
 async function irA_recepcion(){
   openSection("recepcion","Recepción");
@@ -1048,6 +1141,7 @@ async function irA_recepcion(){
         <input type="file" accept="image/*" capture="environment" id="alb-file" style="display:none" onchange="escanearAlbaran(this)">
         <div class="card-actions"><button class="btn-ghost" onclick="document.getElementById('alb-file').click()">Tomar / elegir foto</button></div>
         <div id="alb-preview"></div>
+        <div id="alb-avisos"></div>
         <div id="alb-lineas"></div>
       </div>`;
     html+=section("Recepciones",recs.slice().reverse(),r=>{
@@ -1068,10 +1162,10 @@ async function nuevaRcp(){
   const prov=el("rcp-prov").value,imp=Number(el("rcp-imp").value);
   if(!prov){alert("Selecciona un proveedor.");return;}
   if(!imp||imp<=0){alert("Importe inválido.");return;}
-  const body={proveedor_id:prov,importe_total:imp,foto_albaran:window._albFoto||null,lineas:recogerLineasAlbaran()};
+  const body={proveedor_id:prov,importe_total:imp,foto_albaran:window._albFoto||null,lineas:recogerLineasAlbaran(),pedido_id:window._pedidoId||null};
   try{
     await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    window._albFoto=null;
+    window._albFoto=null; window._pedidoId=null;
     irA_recepcion();
   }catch(e){alert(e.message);}
 }
@@ -1107,6 +1201,14 @@ async function escanearAlbaran(input){
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
     hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:#9C5A2E">elige el proveedor</span>'}`;
     renderLineasAlbaran(r.lineas||[]);
+    // Cotejo: comparar con el pedido del proveedor y los precios habituales.
+    window._pedidoId=null;
+    try{
+      const cot=await api("/recepciones/cotejar",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({proveedor_id:r.proveedor_id||el("rcp-prov").value,lineas:(r.lineas||[]).map(l=>({materia_id:l.materia_id,cantidad:l.cantidad,precio_unitario:l.precio_unitario}))})});
+      window._pedidoId=cot.pedido_id||null;
+      renderAvisos(cot);
+    }catch(_){ }
   }catch(e){
     if(/no configurado|503/i.test(e.message)){
       hint.innerHTML="Lectura automática no activada. La foto queda adjunta; rellena proveedor e importe a mano y registra.";

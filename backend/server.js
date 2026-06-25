@@ -59,6 +59,7 @@ app.use("/api/revisiones", require("./routes/revisiones"));
 app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/recepciones", require("./routes/recepciones"));
+app.use("/api/pedidos", require("./routes/pedidos"));
 app.use("/api/pagos", require("./routes/pagos"));
 app.use("/api/etiquetas", require("./routes/etiquetas"));
 app.use("/api/carta", require("./routes/carta"));

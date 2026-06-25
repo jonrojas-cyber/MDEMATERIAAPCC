@@ -1308,11 +1308,17 @@ async function irA_pagos(){
         extra
       );
     },"No hay pagos pendientes.");
-    const sJust=section("Justificantes emitidos",justs,j=>card(
-      `${j.codigo} — ${j.proveedor_nombre}`,
-      `${(j.importe_pagado||0).toFixed(2)} € · ${new Date(j.fecha_pago).toLocaleDateString("es-ES")} · ${(j.albaranes||[]).length} albarán(es)`,
-      `<button class="btn-ghost" onclick="verJustificante('${j.id}')">Ver justificante</button>`
-    ),"Aún no se ha emitido ningún justificante.");
+    const sJust=section("Justificantes emitidos",justs,j=>{
+      const tel=(j.proveedor_whatsapp||"").replace(/[^0-9+]/g,"").replace(/^\+/,"");
+      const wa=tel?`<button class="btn-ghost" onclick="window.open('https://wa.me/${tel}?text='+encodeURIComponent('Justificante de pago ${j.codigo} de M de Materia.'),'_blank')">WhatsApp</button>`:"";
+      const reenv=j.proveedor_email?`<button class="btn-ghost" onclick="reenviarEmailJust('${j.id}')">Reenviar email</button>`:"";
+      const est=j.email_estado==="enviado"?" · ✉ enviado":(j.email_estado==="error"?" · ✉ no enviado":"");
+      return card(
+        `${j.codigo} — ${j.proveedor_nombre}`,
+        `${(j.importe_pagado||0).toFixed(2)} € · ${new Date(j.fecha_pago).toLocaleDateString("es-ES")} · ${(j.albaranes||[]).length} albarán(es)${est}`,
+        `<button class="btn-ghost" onclick="verJustificante('${j.id}')">Ver justificante</button>${wa}${reenv}`
+      );
+    },"Aún no se ha emitido ningún justificante.");
     setInner(sPagos+sJust);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
@@ -1376,6 +1382,16 @@ async function marcarPagado(id){
   }catch(e){alert(e.message);}
 }
 
+async function reenviarEmailJust(id){
+  try{
+    await api(`/pagos/justificantes/${id}/email`,{method:"POST"});
+    alert("Justificante reenviado por email.");
+    irA_pagos();
+  }catch(e){
+    alert(/no configurado/i.test(e.message)?"El email automático aún no está configurado (falta la clave del servicio de email).":e.message);
+  }
+}
+
 // Justificante de pago: documento detallado (prueba ante reclamación del proveedor).
 async function verJustificante(id){
   const w=window.open("","_blank");
@@ -1383,6 +1399,10 @@ async function verJustificante(id){
   try{
     const j=await api(`/pagos/justificantes/${id}`);
     const fp=new Date(j.fecha_pago).toLocaleString("es-ES");
+    const tel=(j.proveedor_whatsapp||"").replace(/[^0-9+]/g,"").replace(/^\+/,"");
+    const waMsg=`Hola ${j.proveedor_contacto||""}, adjuntamos el justificante de pago ${j.codigo} por ${Number(j.importe_pagado||0).toFixed(2)} € de M de Materia. Gracias.`;
+    const waBtn=tel?`<a href="https://wa.me/${tel}?text=${encodeURIComponent(waMsg)}" target="_blank" style="display:inline-block;margin:16px 8px 0 0;font-family:inherit;font-size:12px;padding:9px 18px;background:#25D366;color:#fff;border-radius:4px;text-decoration:none;">Enviar por WhatsApp</a>`:"";
+    const emailLinea=j.email_estado==="enviado"?`✓ Enviado por email a ${j.proveedor_email}`:(j.email_estado==="error"?`Email no enviado (revisa la configuración)`:`Email automático no configurado`);
     const filas=(j.albaranes||[]).map(a=>`<tr>
       <td>${a.recepcion_id}</td>
       <td>${new Date(a.fecha).toLocaleDateString("es-ES")}</td>
@@ -1417,7 +1437,8 @@ async function verJustificante(id){
           <tbody>${filas}</tbody></table>
         <div class="total">Total pagado: ${Number(j.importe_pagado||0).toFixed(2)} €</div>
         <div class="nota">Este documento certifica que M de Materia ha abonado los albaranes detallados al proveedor indicado en la fecha señalada. Documento generado automáticamente por Control M; conserva tu copia como comprobante.</div>
-        <button onclick="window.print()">Imprimir / Guardar PDF</button>
+        <div style="font-size:11px;color:#5C6145;margin-top:14px;">${emailLinea}</div>
+        <div>${waBtn}<button onclick="window.print()">Imprimir / Guardar PDF</button></div>
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){

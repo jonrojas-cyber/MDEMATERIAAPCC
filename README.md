@@ -30,6 +30,8 @@ Levanta `http://localhost:4001`. Sin `DATABASE_URL` usa los JSON de `backend/dat
 | `AGORA_CSV_PATH` | Ruta a un CSV de ventas de Ágora para el cron horario (opcional). |
 | `ANTHROPIC_API_KEY` | Activa el OCR de albaranes (lectura de la foto con IA). Sin ella, se adjunta la foto y se rellena a mano. |
 | `OCR_MODEL` | Modelo de visión para el OCR (por defecto `claude-opus-4-8`). |
+| `RESEND_API_KEY` | Activa el envío automático del justificante por email (servicio Resend). |
+| `RESEND_FROM` | Remitente del email (ej. `M de Materia <pagos@tudominio.com>`). |
 
 ## Usuarios y acceso
 

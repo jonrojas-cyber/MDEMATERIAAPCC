@@ -41,7 +41,10 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; }
+/* Altura = pantalla VISIBLE real (dvh): así la app no queda por debajo de la
+   barra del navegador en móvil y no aparece scroll de página. 100vh de
+   respaldo para navegadores antiguos. */
+html, body { height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
 
 body {
   background: var(--cream);
@@ -828,17 +831,17 @@ input, select { font-family: inherit; font-size: 13px; }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
 .cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; }
 /* Tamaños que escalan con el alto de la ventana para no desbordar nunca. */
-.cat-big { font-size: clamp(26px, 6vh, 52px); }
-.cat-name { font-size: clamp(15px, 2.5vh, 22px); }
+.cat-big { font-size: clamp(26px, 6dvh, 52px); }
+.cat-name { font-size: clamp(15px, 2.5dvh, 22px); }
 .cat-numcol { padding-top: 0; padding-bottom: 0; }
 .cat-main { padding-top: 0; padding-bottom: 0; }
-.cat-l1 { margin-top: clamp(6px, 1.7vh, 16px); padding-bottom: clamp(6px, 1.3vh, 12px); }
-.cat-l2 { margin-top: clamp(6px, 1.3vh, 12px); }
+.cat-l1 { margin-top: clamp(6px, 1.7dvh, 16px); padding-bottom: clamp(6px, 1.3dvh, 12px); }
+.cat-l2 { margin-top: clamp(6px, 1.3dvh, 12px); }
 /* Pantallas muy bajas (móvil apaisado): simplifica para que quepa sin recortes. */
 @media (max-height: 600px) {
   .cat-l2, .cat-dots { display: none; }
-  .cat-l1 { border-bottom: none; padding-bottom: 0; margin-top: clamp(4px, 1vh, 10px); }
-  .cat-big { font-size: clamp(22px, 7vh, 34px); }
+  .cat-l1 { border-bottom: none; padding-bottom: 0; margin-top: clamp(4px, 1dvh, 10px); }
+  .cat-big { font-size: clamp(22px, 7dvh, 34px); }
   .cat-state { margin-top: 5px; }
   .home-head { padding-bottom: 8px; }
   .home-efimera { display: none; }

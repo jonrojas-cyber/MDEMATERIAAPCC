@@ -1028,7 +1028,8 @@ async function irA_proveedores(){
 async function irA_recepcion(){
   openSection("recepcion","Recepción");
   try{
-    const [provs,recs]=await Promise.all([api("/proveedores"),api("/recepciones")]);
+    const [provs,recs,mats]=await Promise.all([api("/proveedores"),api("/recepciones"),api("/materias")]);
+    window._mat=mats;
     let html=`
       <div class="section-label">Entrada manual</div>
       <div class="card">
@@ -1047,6 +1048,7 @@ async function irA_recepcion(){
         <input type="file" accept="image/*" capture="environment" id="alb-file" style="display:none" onchange="escanearAlbaran(this)">
         <div class="card-actions"><button class="btn-ghost" onclick="document.getElementById('alb-file').click()">Tomar / elegir foto</button></div>
         <div id="alb-preview"></div>
+        <div id="alb-lineas"></div>
       </div>`;
     html+=section("Recepciones",recs.slice().reverse(),r=>{
       const prov=provs.find(p=>p.id===r.proveedor_id);
@@ -1066,10 +1068,10 @@ async function nuevaRcp(){
   const prov=el("rcp-prov").value,imp=Number(el("rcp-imp").value);
   if(!prov){alert("Selecciona un proveedor.");return;}
   if(!imp||imp<=0){alert("Importe inválido.");return;}
-  const body={proveedor_id:prov,importe_total:imp,foto_albaran:window._albFoto||null,lineas:window._albLineas||[]};
+  const body={proveedor_id:prov,importe_total:imp,foto_albaran:window._albFoto||null,lineas:recogerLineasAlbaran()};
   try{
     await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    window._albFoto=null; window._albLineas=null;
+    window._albFoto=null;
     irA_recepcion();
   }catch(e){alert(e.message);}
 }
@@ -1103,10 +1105,8 @@ async function escanearAlbaran(input){
     const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
     if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
-    window._albLineas=r.lineas||[];
     hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:#9C5A2E">elige el proveedor</span>'}`;
-    const lin=(r.lineas||[]).map(l=>`${l.descripcion} · ${l.cantidad} · ${(l.importe||0).toFixed(2)} €`).join("<br>");
-    if(lin) el("alb-preview").innerHTML+=`<div style="font-size:10px;color:#888070;margin-top:8px;">${lin}</div>`;
+    renderLineasAlbaran(r.lineas||[]);
   }catch(e){
     if(/no configurado|503/i.test(e.message)){
       hint.innerHTML="Lectura automática no activada. La foto queda adjunta; rellena proveedor e importe a mano y registra.";
@@ -1114,6 +1114,29 @@ async function escanearAlbaran(input){
       hint.textContent="No se pudo leer: "+e.message;
     }
   }
+}
+
+// Filas editables: cada línea del albarán -> materia del almacén + cantidad.
+function unidadDe(id){const m=(window._mat||[]).find(x=>x.id===id);return m?m.unidad:"";}
+function actualizarUni(sel){const row=sel.closest(".alb-row");if(!row)return;const u=row.querySelector(".alb-uni");if(u)u.textContent=unidadDe(sel.value);}
+function renderLineasAlbaran(lineas){
+  const cont=el("alb-lineas"); if(!cont) return;
+  if(!lineas.length){cont.innerHTML="";return;}
+  const opts=(sel)=>`<option value="">— no cargar —</option>`+(window._mat||[]).map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${m.nombre}</option>`).join("");
+  cont.innerHTML=`<div class="section-label" style="margin-top:10px;">Cargar al almacén (revisa materia y cantidad)</div>`+
+    lineas.map(l=>`<div class="alb-row" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}</span>
+      <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
+      <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" style="width:64px;font-size:11px;">
+      <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>
+    </div>`).join("");
+}
+function recogerLineasAlbaran(){
+  return [...document.querySelectorAll(".alb-row")].map(row=>{
+    const mat=row.querySelector(".alb-mat").value;
+    const cant=Number(row.querySelector(".alb-cant").value);
+    return {descripcion:row.querySelector(".alb-desc").textContent, materia_id:mat||null, cantidad:Number.isFinite(cant)?cant:0};
+  });
 }
 
 // ── IMPORTAR VENTAS (Ágora) ───────────────────────────
@@ -1148,8 +1171,12 @@ async function importarVentasCSV(input){
 }
 
 async function confirmarRcp(id){
-  try{await api(`/recepciones/${id}/confirmar`,{method:"POST"});irA_recepcion();}
-  catch(e){alert(e.message);}
+  try{
+    const r=await api(`/recepciones/${id}/confirmar`,{method:"POST"});
+    const det=r.stock_cargado||[];
+    if(det.length) alert("Entrada confirmada. Cargado al almacén:\n"+det.map(d=>`+${d.cantidad} ${d.unidad} de ${d.nombre}`).join("\n"));
+    irA_recepcion();
+  }catch(e){alert(e.message);}
 }
 
 // ── PAGOS ─────────────────────────────────────────────

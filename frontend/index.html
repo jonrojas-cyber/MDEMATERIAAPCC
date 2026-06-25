@@ -821,6 +821,29 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 22px; color: var(--ink); }
 .cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
 
+/* ── INICIO A PANTALLA FIJA: los 4 menús se reparten el alto, sin scroll ── */
+#screen-home { overflow: hidden; display: flex; flex-direction: column; }
+#screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.home-head { flex: 0 0 auto; padding: 2px 2px 14px; }
+.cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
+.cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; }
+/* Tamaños que escalan con el alto de la ventana para no desbordar nunca. */
+.cat-big { font-size: clamp(26px, 6vh, 52px); }
+.cat-name { font-size: clamp(15px, 2.5vh, 22px); }
+.cat-numcol { padding-top: 0; padding-bottom: 0; }
+.cat-main { padding-top: 0; padding-bottom: 0; }
+.cat-l1 { margin-top: clamp(6px, 1.7vh, 16px); padding-bottom: clamp(6px, 1.3vh, 12px); }
+.cat-l2 { margin-top: clamp(6px, 1.3vh, 12px); }
+/* Pantallas muy bajas (móvil apaisado): simplifica para que quepa sin recortes. */
+@media (max-height: 600px) {
+  .cat-l2, .cat-dots { display: none; }
+  .cat-l1 { border-bottom: none; padding-bottom: 0; margin-top: clamp(4px, 1vh, 10px); }
+  .cat-big { font-size: clamp(22px, 7vh, 34px); }
+  .cat-state { margin-top: 5px; }
+  .home-head { padding-bottom: 8px; }
+  .home-efimera { display: none; }
+}
+
 @media (max-width: 680px) {
   .topbar { padding: 0 16px; height: 54px; }
   .botbar { padding: 0 16px; font-size: 8.5px; }

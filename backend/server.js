@@ -85,8 +85,22 @@ app.use("/api/carta", require("./routes/carta"));
 app.use("/api/reportes", require("./routes/reportes"));
 app.use("/api/ventas", require("./routes/ventas"));
 
-// Sirve el frontend estático (single-file app)
-app.use(express.static(path.join(__dirname, "..", "frontend")));
+// Sirve el frontend estático (single-file app).
+// El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última
+// versión (evita que móviles como Samsung/Chrome sirvan una copia vieja).
+// Las fuentes se cachean a largo plazo (no cambian).
+app.use(
+  express.static(path.join(__dirname, "..", "frontend"), {
+    etag: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".html")) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      } else if (/\.(woff2|ttf|png|jpe?g|svg|ico)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    },
+  })
+);
 
 // Arranca solo cuando el almacén está listo (hidratado desde PostgreSQL o JSON).
 store

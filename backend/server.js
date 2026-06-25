@@ -37,6 +37,7 @@ app.use("/api/recepciones", require("./routes/recepciones"));
 app.use("/api/pagos", require("./routes/pagos"));
 app.use("/api/etiquetas", require("./routes/etiquetas"));
 app.use("/api/carta", require("./routes/carta"));
+app.use("/api/reportes", require("./routes/reportes"));
 
 // Sirve el frontend estático (single-file app)
 app.use(express.static(path.join(__dirname, "..", "frontend")));

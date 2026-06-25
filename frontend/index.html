@@ -678,6 +678,11 @@ async function loadHome() {
           <div class="kpi-sub">en materias</div>
         </div>
         <div class="kpi-box">
+          <div class="kpi-label">Margen carta</div>
+          <div class="kpi-val">${k.margen_medio_carta!=null?Math.round(k.margen_medio_carta*100)+" %":"—"}</div>
+          <div class="kpi-sub">${k.productos_carta||0} productos</div>
+        </div>
+        <div class="kpi-box">
           <div class="kpi-label">Estado</div>
           <div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div>
           <div class="kpi-sub">${d.preparar&&d.preparar.length?d.preparar.length+" pendientes de prep.":"Producción al día"}</div>
@@ -699,7 +704,9 @@ async function loadHome() {
       { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes", soloAdmin: true },
       { id:"recepcion", title:"Recepción", num:"08", badge: "Entrada de mercancía", soloAdmin: true },
       { id:"pagos", title:"Pagos pendientes", num:"09", badge: "Por proveedor", soloAdmin: true },
-      { id:"manual", title:"La forma de hacer las cosas", num:"10", badge: "Manual operativo", soloAdmin: true },
+      { id:"carta", title:"Carta y márgenes", num:"10", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", soloAdmin: true },
+      { id:"analisis", title:"Análisis", num:"11", badge: "Reportes y stock", soloAdmin: true },
+      { id:"manual", title:"La forma de hacer las cosas", num:"12", badge: "Manual operativo", soloAdmin: true },
     ];
 
     const tiles = todosLosTiles.filter(t => !t.soloAdmin || esAdmin);
@@ -1078,6 +1085,62 @@ async function irA_pagos(){
 async function marcarPagado(id){
   try{await api(`/pagos/${id}/marcar-pagado`,{method:"POST"});irA_pagos();}
   catch(e){alert(e.message);}
+}
+
+// ── CARTA Y MÁRGENES ──────────────────────────────────
+async function irA_carta(){
+  openSection("carta","Carta y márgenes");
+  try{
+    const d=await api("/carta");
+    const resumen=`<div class="section-label">Resumen de la carta</div>
+      <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
+        <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
+    const items=section("Productos", d.productos, p=>{
+      const col=p.rentabilidad==="alta"?"#5C6145":(p.rentabilidad==="media"?"#9C7A2E":"#9C5A2E");
+      const w=Math.max(2,Math.round(p.margen_bruto*100));
+      const barra=`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
+      const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
+      return card(
+        `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:#9C7A2E;">(estimado)</span>':""}`,
+        `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
+        null,
+        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`
+      );
+    }, "No hay productos en la carta.");
+    setInner(resumen+items);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── ANÁLISIS ──────────────────────────────────────────
+async function irA_analisis(){
+  openSection("analisis","Análisis");
+  try{
+    const [sem,stock]=await Promise.all([api("/reportes/semana"),api("/reportes/stock")]);
+    const maxCoste=Math.max(1,...sem.dias.map(x=>Math.max(x.coste_produccion,x.coste_mermas)));
+    const barrasDias=sem.dias.map(x=>{
+      const wp=Math.round(x.coste_produccion/maxCoste*100), wm=Math.round(x.coste_mermas/maxCoste*100);
+      return `<div style="margin-bottom:10px;">
+        <div style="font-size:10px;color:#888070;display:flex;justify-content:space-between;"><span>${x.fecha.slice(5)}</span><span>${x.coste_produccion.toFixed(2)} €</span></div>
+        <div style="height:8px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wp}%;background:#5C6145;"></div></div>
+        ${x.coste_mermas>0?`<div style="height:5px;margin-top:2px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wm}%;background:#9C5A2E;"></div></div>`:""}
+      </div>`;
+    }).join("");
+    const masUsadas=section("Materias más usadas (7 días)", sem.materias_mas_usadas,
+      m=>card(m.nombre, `${m.cantidad} ${m.unidad} · ${m.coste.toFixed(2)} €`), "Sin datos de uso esta semana.");
+    const maxVal=Math.max(1,...stock.materias.map(m=>m.valor_stock));
+    const barrasStock=section("Proyección de stock", stock.materias.slice(0,10), m=>{
+      const w=Math.max(2,Math.round(m.valor_stock/maxVal*100));
+      const dias=m.dias_restantes!=null?`${m.dias_restantes} días`:"sin ritmo";
+      return `<div class="card"><div class="card-name">${m.nombre}${m.bajo_minimo?' <span style="color:#9C5A2E;font-size:9px;">bajo mínimo</span>':""}</div>
+        <div class="card-meta">${m.valor_stock.toFixed(2)} € · ${m.disponibilidad_actual} ${m.unidad} · ${dias} restantes</div>
+        <div style="margin-top:6px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:#5C6145;"></div></div></div>`;
+    }, "Sin materias.");
+    setInner(
+      `<div class="section-label">Producción vs mermas (7 días)</div><div class="card">${barrasDias}</div>`+
+      `<div class="card" style="font-size:11px;color:#888070;">Total semana — producción ${sem.totales.coste_produccion.toFixed(2)} € · mermas ${sem.totales.coste_mermas.toFixed(2)} € · ${sem.totales.preparaciones} preparaciones</div>`+
+      masUsadas+barrasStock
+    );
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
 // ── MANUAL ────────────────────────────────────────────

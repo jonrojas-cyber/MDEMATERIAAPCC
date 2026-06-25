@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <title>Control M · M de Materia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --cream: #F0EBE0;
@@ -497,13 +497,57 @@ input, select { font-family: inherit; font-size: 13px; }
   .home-kpis { grid-template-columns: repeat(2, 1fr); }
   .screen { padding: 18px 16px; }
 }
+
+/* ════════════════════════════════════════════════════════
+   IDENTIDAD M DE MATERIA · home por categorías (minimal)
+   ════════════════════════════════════════════════════════ */
+:root { --serif:'Cormorant Garamond', Georgia, serif; }
+
+/* Imagotipo ||| */
+.mark { display:inline-flex; gap:3px; align-items:center; line-height:0; }
+.mark i { display:block; width:3px; height:16px; background:currentColor; }
+
+/* Topbar con marca */
+.topbar-logo { display:flex; align-items:center; gap:9px; color:var(--cream); }
+.brandword { font-family:var(--serif); font-size:19px; font-weight:500; letter-spacing:.03em; }
+
+/* Home: marca y categorías */
+.home-brand { text-align:center; padding:30px 0 8px; color:var(--ink); }
+.home-brand .mark { color:var(--olive); }
+.home-brand .mark i { width:4px; height:30px; }
+.home-brand h1 { font-family:var(--serif); font-size:42px; font-weight:500; margin-top:14px; letter-spacing:.02em; line-height:1; }
+.home-brand .tag { font-size:9.5px; letter-spacing:.26em; text-transform:uppercase; color:var(--muted); margin-top:9px; }
+.home-status { text-align:center; font-size:11px; color:var(--muted); letter-spacing:.04em; margin:6px 0 34px; }
+.home-status b { color:var(--alert); font-weight:400; }
+
+.cats { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; max-width:780px; margin:0 auto; }
+.cat { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:30px 28px; cursor:pointer; transition:transform .14s, box-shadow .14s; position:relative; min-height:158px; display:flex; flex-direction:column; justify-content:flex-end; }
+.cat:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(17,16,9,.08); }
+.cat-name { font-family:var(--serif); font-size:30px; font-weight:500; line-height:1; }
+.cat-desc { font-size:10.5px; color:var(--muted); margin-top:11px; line-height:1.6; letter-spacing:.02em; }
+.cat-alert { position:absolute; top:22px; right:22px; min-width:22px; text-align:center; font-size:10px; background:var(--alert); color:#fff; border-radius:999px; padding:3px 9px; letter-spacing:.04em; }
+.cat-arrow { position:absolute; top:24px; left:28px; color:var(--line); font-size:18px; }
+
+/* Lista de módulos dentro de una categoría */
+.cat-title { font-family:var(--serif); font-size:30px; font-weight:500; margin-bottom:20px; letter-spacing:.01em; }
+.modrow { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:17px 20px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; gap:14px; transition:border-color .12s, transform .12s; }
+.modrow:hover { border-color:var(--olive); transform:translateX(3px); }
+.modrow .mnum { font-size:9px; letter-spacing:.14em; color:var(--muted); width:22px; }
+.modrow .mname { font-size:16px; font-weight:700; flex:1; }
+.modrow .mbadge { font-size:11px; color:var(--muted); }
+.modrow .marrow { color:var(--line); font-size:18px; }
+
+@media (max-width: 680px) {
+  .cats { grid-template-columns:1fr; }
+  .home-brand h1 { font-size:34px; }
+}
 </style>
 </head>
 <body>
 
 <!-- TOP BAR -->
 <header class="topbar">
-  <div class="topbar-logo">M</div>
+  <div class="topbar-logo"><span class="mark"><i></i><i></i><i></i></span><span class="brandword">M de Materia</span></div>
   <span class="topbar-sep">·</span>
   <div class="topbar-section" id="topbar-section">Control M</div>
   <button class="topbar-back" id="topbar-back" onclick="goHome()">← Inicio</button>
@@ -567,8 +611,9 @@ function mostrarLogin() {
   document.body.innerHTML = `
     <div style="min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;">
       <div style="text-align:center;color:var(--cream);">
-        <div style="font-size:52px;font-weight:700;line-height:1;">M</div>
-        <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:6px;margin-bottom:52px;">Control M · Producción</div>
+        <span class="mark" style="color:var(--olive);justify-content:center;"><i style="height:34px;width:5px;"></i><i style="height:34px;width:5px;"></i><i style="height:34px;width:5px;"></i></span>
+        <div style="font-family:var(--serif);font-size:34px;font-weight:500;line-height:1;margin-top:18px;">M de Materia</div>
+        <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:52px;">Control de producción</div>
         <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:18px;">¿Quién prepara hoy?</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">
           ${Object.entries(USUARIOS).map(([k,u]) => `
@@ -696,116 +741,132 @@ function fmt(iso) {
 function whatsapp(num, msg) { window.open(`https://wa.me/${num}?text=${msg}`, "_blank"); }
 
 // ── HOME ──────────────────────────────────────────────
+// Metadatos vivos de cada módulo (nombre, número, aviso) a partir de /inicio.
+function modulosMeta(d) {
+  const k = d.kpis || {};
+  const enCurso = (d.en_curso||[]).length, pendPrep = (d.preparar||[]).length,
+        pendPedir = (d.pedir||[]).length, pendRevisar = (d.revisar||[]).length,
+        pendLotes = (d.lotes_a_vigilar||[]).length;
+  return {
+    preparaciones:{ num:"01", name:"Preparaciones", badge: enCurso?`${enCurso} en curso`:(pendPrep?`${pendPrep} recomendadas`:"Al día"), urgent: !!(enCurso||pendPrep) },
+    lotes:        { num:"02", name:"Lotes activos", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
+    materias:     { num:"03", name:"Materias", badge: pendPedir?`${pendPedir} con disponibilidad baja`:"Stock correcto", urgent: !!pendPedir },
+    revisiones:   { num:"04", name:"Revisiones", badge: pendRevisar?`${pendRevisar} pendientes`:"Completadas", urgent: !!pendRevisar },
+    ajustes:      { num:"05", name:"Ajustes", badge:`${k.ajustes_hoy||0} registrados hoy`, urgent:false },
+    proveedores:  { num:"01", name:"Proveedores", badge: pendPedir?`${pendPedir} a contactar`:"Sin pedidos urgentes", urgent:false },
+    pedidos:      { num:"02", name:"Pedidos", badge:"Crear y enviar a proveedores", urgent:false },
+    recepcion:    { num:"03", name:"Recepción", badge:"Escanear albarán y entrada", urgent:false },
+    pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
+    carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
+    analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
+    ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
+    manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
+  };
+}
+
+const CATS = {
+  operacion: { name:"Operación", desc:"Preparaciones · Lotes · Materias · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
+  compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos", ids:["proveedores","pedidos","recepcion","pagos"], admin:true },
+  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Manual", ids:["carta","analisis","ventas","manual"], admin:true },
+};
+
+// Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
+function dashboardHTML(d, esAdmin) {
+  const k = d.kpis || {};
+  const alerta = d.estado_servicio !== "Servicio en orden";
+  const enCurso=(d.en_curso||[]).length, pendPrep=(d.preparar||[]).length,
+        pendPedir=(d.pedir||[]).length, pendRevisar=(d.revisar||[]).length, pendLotes=(d.lotes_a_vigilar||[]).length;
+  const kpisHTML = esAdmin ? `
+      <div class="home-kpis">
+        <div class="kpi-box"><div class="kpi-label">Producción hoy</div><div class="kpi-val">${k.coste_produccion_hoy!=null?k.coste_produccion_hoy.toFixed(2)+" €":"—"}</div><div class="kpi-sub">${k.preparaciones_hoy||0} preparaciones</div></div>
+        <div class="kpi-box ${(k.coste_mermas_hoy||0)>0?"warn":""}"><div class="kpi-label">Mermas hoy</div><div class="kpi-val" style="${(k.coste_mermas_hoy||0)>0?"color:var(--warn)":""}">${k.coste_mermas_hoy!=null?k.coste_mermas_hoy.toFixed(2)+" €":"—"}</div><div class="kpi-sub">${k.ajustes_hoy||0} ajustes</div></div>
+        <div class="kpi-box"><div class="kpi-label">Valor stock</div><div class="kpi-val">${k.valor_stock_total!=null?k.valor_stock_total.toFixed(2)+" €":"—"}</div><div class="kpi-sub">en materias</div></div>
+        <div class="kpi-box"><div class="kpi-label">Margen carta</div><div class="kpi-val">${k.margen_medio_carta!=null?Math.round(k.margen_medio_carta*100)+" %":"—"}</div><div class="kpi-sub">${k.productos_carta||0} productos</div></div>
+        <div class="kpi-box ${alerta?"warn":""}"><div class="kpi-label">Estado</div><div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div><div class="kpi-sub">${pendPrep?pendPrep+" pendientes de prep.":"Producción al día"}</div></div>
+      </div>` : "";
+  const acc = [];
+  if (enCurso) acc.push({ txt:"Preparaciones en curso", n:enCurso, go:"preparaciones" });
+  else if (pendPrep) acc.push({ txt:"Preparaciones recomendadas", n:pendPrep, go:"preparaciones" });
+  if (pendLotes) acc.push({ txt:"Lotes a vigilar", n:pendLotes, go:"lotes" });
+  if (pendRevisar) acc.push({ txt:"Revisiones pendientes", n:pendRevisar, go:"revisiones" });
+  if (esAdmin && pendPedir) acc.push({ txt:"Materias con stock bajo", n:pendPedir, go:"materias" });
+  const todoHTML = `<div class="todo"><div class="todo-h">Qué hacer ahora</div>${acc.length
+        ? `<div class="todo-row">${acc.map(a=>`<button class="todo-chip" onclick="irA_${a.go}()">${a.txt}<span class="n">${a.n}</span></button>`).join("")}</div>`
+        : `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`}</div>`;
+  return `
+      <div class="banner ${alerta?"warn":""}"><span class="dot"></span><span>${d.estado_servicio}</span></div>
+      ${esAdmin && d.agora ? `<div class="agora-line">${d.agora.mensaje}</div>` : ""}
+      ${todoHTML}
+      ${kpisHTML}`;
+}
+
+// INICIO MINIMAL — solo marca + categorías.
 async function loadHome() {
   try {
     const d = await api("/inicio");
-    const k = d.kpis || {};
-    const alerta = d.estado_servicio !== "Servicio en orden";
-
     const u = getUser();
     const esAdmin = u && u.rol === "admin";
+    const alerta = d.estado_servicio !== "Servicio en orden";
+    const meta = modulosMeta(d);
+    const pendCat = ids => ids.reduce((n, id) => n + (meta[id] && meta[id].urgent ? 1 : 0), 0);
 
-    const kpisHTML = esAdmin ? `
-      <div class="home-kpis">
-        <div class="kpi-box">
-          <div class="kpi-label">Producción hoy</div>
-          <div class="kpi-val">${k.coste_produccion_hoy!=null?k.coste_produccion_hoy.toFixed(2)+" €":"—"}</div>
-          <div class="kpi-sub">${k.preparaciones_hoy||0} preparaciones</div>
-        </div>
-        <div class="kpi-box ${(k.coste_mermas_hoy||0)>0?"warn":""}">
-          <div class="kpi-label">Mermas hoy</div>
-          <div class="kpi-val" style="${(k.coste_mermas_hoy||0)>0?"color:var(--warn)":""}">${k.coste_mermas_hoy!=null?k.coste_mermas_hoy.toFixed(2)+" €":"—"}</div>
-          <div class="kpi-sub">${k.ajustes_hoy||0} ajustes</div>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-label">Valor stock</div>
-          <div class="kpi-val">${k.valor_stock_total!=null?k.valor_stock_total.toFixed(2)+" €":"—"}</div>
-          <div class="kpi-sub">en materias</div>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-label">Margen carta</div>
-          <div class="kpi-val">${k.margen_medio_carta!=null?Math.round(k.margen_medio_carta*100)+" %":"—"}</div>
-          <div class="kpi-sub">${k.productos_carta||0} productos</div>
-        </div>
-        <div class="kpi-box ${alerta?"warn":""}">
-          <div class="kpi-label">Estado</div>
-          <div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div>
-          <div class="kpi-sub">${d.preparar&&d.preparar.length?d.preparar.length+" pendientes de prep.":"Producción al día"}</div>
-        </div>
-      </div>` : "";
-
-    const enCurso = d.en_curso && d.en_curso.length;
-    const pendPrep = d.preparar && d.preparar.length;
-    const pendPedir = d.pedir && d.pedir.length;
-    const pendRevisar = d.revisar && d.revisar.length;
-    const pendLotes = d.lotes_a_vigilar && d.lotes_a_vigilar.length;
-
-    const todosLosTiles = [
-      { id:"preparaciones", title:"Preparaciones", num:"02", badge: enCurso ? `${enCurso} en curso` : (pendPrep ? `${pendPrep} recomendadas` : "Al día"), urgent: enCurso||pendPrep },
-      { id:"lotes", title:"Lotes activos", num:"03", badge: pendLotes ? `${pendLotes} requieren atención` : "Sin alertas", urgent: pendLotes },
-      { id:"materias", title:"Materias", num:"04", badge: pendPedir ? `${pendPedir} con disponibilidad baja` : "Stock correcto", urgent: pendPedir, soloAdmin: false },
-      { id:"revisiones", title:"Revisiones", num:"05", badge: pendRevisar ? `${pendRevisar} pendientes` : "Completadas", urgent: pendRevisar },
-      { id:"ajustes", title:"Ajustes", num:"06", badge: `${k.ajustes_hoy||0} registrados hoy` },
-      { id:"proveedores", title:"Proveedores", num:"07", badge: pendPedir ? `${pendPedir} a contactar` : "Sin pedidos urgentes", soloAdmin: true },
-      { id:"pedidos", title:"Pedidos", num:"08", badge: "A proveedores", soloAdmin: true },
-      { id:"recepcion", title:"Recepción", num:"09", badge: "Entrada de mercancía", soloAdmin: true },
-      { id:"pagos", title:"Pagos pendientes", num:"10", badge: "Por proveedor", soloAdmin: true },
-      { id:"carta", title:"Carta y márgenes", num:"11", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", soloAdmin: true },
-      { id:"analisis", title:"Análisis", num:"12", badge: "Reportes y stock", soloAdmin: true },
-      { id:"ventas", title:"Importar ventas", num:"13", badge: "CSV de Ágora", soloAdmin: true },
-      { id:"manual", title:"La forma de hacer las cosas", num:"14", badge: "Manual operativo", soloAdmin: true },
-    ];
-
-    const tiles = todosLosTiles.filter(t => !t.soloAdmin || esAdmin);
-    const tileById = {}; tiles.forEach(t => tileById[t.id] = t);
-
-    // Módulos agrupados por área (solo se muestran los grupos con módulos visibles).
-    const grupos = [
-      { label:"Operación", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
-      { label:"Compras y proveedores", ids:["proveedores","pedidos","recepcion","pagos"] },
-      { label:"Gestión", ids:["carta","analisis","ventas","manual"] },
-    ];
-    const tileCard = t => `
-      <div class="tile ${t.urgent?"urgente":""}" onclick="irA_${t.id}()">
-        <span class="tile-status"></span>
-        <div class="tile-num">${t.num}</div>
-        <div class="tile-title">${t.title}</div>
-        <div class="tile-badge ${t.urgent?"alert":""}">${t.badge}</div>
-        <span class="tile-arrow">›</span>
-      </div>`;
-    const tilesHTML = grupos.map(g => {
-      const gs = g.ids.map(id => tileById[id]).filter(Boolean);
-      if (!gs.length) return "";
-      return `<div class="group-label">${g.label}</div><div class="home-tiles">${gs.map(tileCard).join("")}</div>`;
-    }).join("");
-
-    // "Qué hacer ahora": accesos directos a lo que requiere acción.
-    const acc = [];
-    if (enCurso) acc.push({ txt:"Preparaciones en curso", n:enCurso, go:"preparaciones" });
-    else if (pendPrep) acc.push({ txt:"Preparaciones recomendadas", n:pendPrep, go:"preparaciones" });
-    if (pendLotes) acc.push({ txt:"Lotes a vigilar", n:pendLotes, go:"lotes" });
-    if (pendRevisar) acc.push({ txt:"Revisiones pendientes", n:pendRevisar, go:"revisiones" });
-    if (esAdmin && pendPedir) acc.push({ txt:"Materias con stock bajo", n:pendPedir, go:"materias" });
-    const todoHTML = `
-      <div class="todo">
-        <div class="todo-h">Qué hacer ahora</div>
-        ${acc.length
-          ? `<div class="todo-row">${acc.map(a=>`<button class="todo-chip" onclick="irA_${a.go}()">${a.txt}<span class="n">${a.n}</span></button>`).join("")}</div>`
-          : `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`}
-      </div>`;
+    const cats = [
+      { name:"Resumen del día", desc:"Estado, KPIs y qué hacer ahora", onclick:"irA_resumen()", pend: alerta?1:0 },
+      { name:CATS.operacion.name, desc:CATS.operacion.desc, onclick:"irA_categoria('operacion')", pend: pendCat(CATS.operacion.ids) },
+      { name:CATS.compras.name, desc:CATS.compras.desc, onclick:"irA_categoria('compras')", pend: pendCat(CATS.compras.ids), admin:true },
+      { name:CATS.gestion.name, desc:CATS.gestion.desc, onclick:"irA_categoria('gestion')", pend:0, admin:true },
+    ].filter(c => !c.admin || esAdmin);
 
     el("home-content").innerHTML = `
-      <div class="banner ${alerta?"warn":""}">
-        <span class="dot"></span>
-        <span>${d.estado_servicio}</span>
+      <div class="home-brand">
+        <span class="mark"><i></i><i></i><i></i></span>
+        <h1>M de Materia</h1>
+        <div class="tag">Control de producción</div>
       </div>
-      ${esAdmin && d.agora ? `<div class="agora-line">${d.agora.mensaje}</div>` : ""}
-      ${todoHTML}
-      ${kpisHTML}
-      ${tilesHTML}`;
+      <div class="home-status">${alerta?`<b>${d.estado_servicio}</b>`:d.estado_servicio}</div>
+      <div class="cats">
+        ${cats.map(c=>`<div class="cat" onclick="${c.onclick}">
+          <span class="cat-arrow">›</span>
+          <div class="cat-name">${c.name}</div>
+          <div class="cat-desc">${c.desc}</div>
+          ${c.pend?`<span class="cat-alert">${c.pend}</span>`:""}
+        </div>`).join("")}
+      </div>`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }
+}
+
+// Resumen del día (el antiguo dashboard).
+async function irA_resumen() {
+  openSection("resumen","Resumen del día");
+  try {
+    const d = await api("/inicio");
+    const u = getUser();
+    setInner(`<div class="cat-title">Resumen del día</div>${dashboardHTML(d, u && u.rol==="admin")}`);
+  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// Pantalla de categoría: lista de sus módulos.
+async function irA_categoria(cat) {
+  const c = CATS[cat];
+  if (!c) return;
+  openSection("cat-"+cat, c.name);
+  try {
+    const d = await api("/inicio");
+    const meta = modulosMeta(d);
+    const rows = c.ids.map(id => {
+      const m = meta[id];
+      if (!m) return "";
+      return `<div class="modrow" onclick="irA_${id}()">
+        <span class="mnum">${m.num}</span>
+        <span class="mname">${m.name}</span>
+        <span class="mbadge" style="${m.urgent?"color:var(--alert)":""}">${m.badge}</span>
+        <span class="marrow">›</span>
+      </div>`;
+    }).join("");
+    setInner(`<div class="cat-title">${c.name}</div>${rows}`);
+  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }
 
 // ── PREPARACIONES ─────────────────────────────────────
@@ -1624,8 +1685,9 @@ async function arrancar() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
     <div id="splash" style="min-height:100vh;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;text-align:center;">
-      <div style="font-size:64px;font-weight:700;color:var(--cream);line-height:1;">M</div>
-      <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:56px;">Control M · Producción</div>
+      <span class="mark" style="color:var(--olive);justify-content:center;"><i style="height:40px;width:6px;"></i><i style="height:40px;width:6px;"></i><i style="height:40px;width:6px;"></i></span>
+      <div style="font-family:var(--serif);font-size:38px;font-weight:500;color:var(--cream);line-height:1;margin-top:20px;">M de Materia</div>
+      <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:56px;">Control de producción</div>
       <div id="splash-estado" style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#555040;">Conectando…</div>
       <div id="splash-count" style="font-size:10px;color:#333020;margin-top:8px;"></div>
       <div style="margin-top:20px;width:48px;height:1px;background:#2A2820;position:relative;overflow:hidden;">

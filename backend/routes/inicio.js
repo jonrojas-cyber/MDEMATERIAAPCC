@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../data-store");
 const { costePorUnidad, tamanosLote } = require("../costing");
+const { velocidadConsumo, horasDeStock } = require("../consumo");
 
 const router = express.Router();
 
@@ -72,19 +73,48 @@ router.get("/", (req, res) => {
     productos_carta: productos.length,
   };
 
-  // ── PREPARAR ──────────────────────────────────────────────────────────────
-  const preparar = recetas
-    .map((r) => {
-      const vigentesDeReceta = lotesVigentes.filter((l) => l.receta_id === r.id);
-      const totalRestante = vigentesDeReceta.reduce((sum, l) => sum + l.cantidad_restante, 0);
-      const umbral = r.resultado_base * 0.4;
-      if (totalRestante >= umbral) return null;
+  // ── PREPARAR (producción JIT con fallback a umbral fijo) ───────────────────
+  const consumos = store.readAll("consumos");
+  const ahora = Date.now();
+
+  // Ritmo de consumo de cada receta (para el dashboard y la decisión de preparar).
+  const ritmoConsumo = recetas.map((r) => {
+    const vigentesDeReceta = lotesVigentes.filter((l) => l.receta_id === r.id);
+    const totalRestante = vigentesDeReceta.reduce((sum, l) => sum + l.cantidad_restante, 0);
+    const velocidad = velocidadConsumo(r.id, consumos, ahora); // unidades/hora o null
+    const horasStock = horasDeStock(totalRestante, velocidad);
+    return { receta: r, totalRestante, velocidad, horasStock };
+  });
+
+  const preparar = ritmoConsumo
+    .map(({ receta: r, totalRestante, velocidad, horasStock }) => {
+      let recomendar = false;
+      let motivo = "";
+      let metodo = "umbral";
+
+      if (horasStock != null) {
+        // JIT: preparar cuando el stock baja de la mitad de la vida útil de la receta.
+        metodo = "ritmo_real";
+        recomendar = horasStock < r.vida_util_horas * 0.5;
+        motivo = `quedan ${horasStock.toFixed(1)} h de stock al ritmo actual`;
+      } else {
+        // Fallback: sin histórico suficiente, umbral del 40% del resultado base.
+        recomendar = totalRestante < r.resultado_base * 0.4;
+        motivo = "por debajo del 40% del resultado base";
+      }
+
+      if (!recomendar) return null;
       const opciones = tamanosLote(r);
       return {
         receta_id: r.id,
         nombre: r.nombre,
-        disponible_ahora: totalRestante,
+        disponible_ahora: Math.round(totalRestante * 100) / 100,
         unidad: r.unidad,
+        metodo,
+        velocidad_por_hora: velocidad != null ? Math.round(velocidad * 100) / 100 : null,
+        horas_stock_restante: horasStock != null ? Math.round(horasStock * 10) / 10 : null,
+        motivo,
+        mensaje: `${r.nombre} — ${motivo}`,
         opciones_tamano: opciones.map((t) => ({
           cantidad: t,
           coste_estimado: Math.round(costePorUnidad(r) * t * 100) / 100,
@@ -92,6 +122,19 @@ router.get("/", (req, res) => {
       };
     })
     .filter(Boolean);
+
+  // Resumen de ritmo para el dashboard (todas las recetas con histórico).
+  const stockEnHoras = ritmoConsumo
+    .filter((x) => x.horasStock != null)
+    .map((x) => ({
+      receta_id: x.receta.id,
+      nombre: x.receta.nombre,
+      horas_restantes: Math.round(x.horasStock * 10) / 10,
+      velocidad_por_hora: Math.round(x.velocidad * 100) / 100,
+      unidad: x.receta.unidad,
+      mensaje: `${x.receta.nombre} — quedan ${x.horasStock.toFixed(1)} horas de stock al ritmo actual`,
+    }))
+    .sort((a, b) => a.horas_restantes - b.horas_restantes);
 
   // ── PEDIR ─────────────────────────────────────────────────────────────────
   const pedir = materias
@@ -161,6 +204,7 @@ router.get("/", (req, res) => {
     estado_servicio: estadoServicio,
     kpis,
     preparar,
+    stock_en_horas: stockEnHoras,
     pedir,
     revisar,
     lotes_a_vigilar: lotesAtencion,

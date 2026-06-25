@@ -35,6 +35,35 @@ router.patch("/:id", (req, res) => {
   res.json(decorate(updated));
 });
 
+// Registra consumo real de un lote (uso en servicio) con timestamp.
+// Descuenta de cantidad_restante y guarda un consumo para el cálculo JIT.
+router.post("/:id/consumo", (req, res) => {
+  const lote = store.findById("lotes", req.params.id);
+  if (!lote) return res.status(404).json({ error: "Lote no encontrado" });
+
+  const cantidad = Number(req.body && req.body.cantidad);
+  if (!Number.isFinite(cantidad) || cantidad <= 0) {
+    return res.status(400).json({ error: "Indica una cantidad de consumo válida" });
+  }
+
+  const consumida = Math.min(cantidad, lote.cantidad_restante);
+  const restante = Math.round((lote.cantidad_restante - consumida) * 100) / 100;
+
+  store.insert("consumos", {
+    id: store.nextId("con", "consumos"),
+    lote_id: lote.id,
+    receta_id: lote.receta_id,
+    cantidad: consumida,
+    origen: (req.body && req.body.origen) || "manual",
+    timestamp: new Date().toISOString(),
+  });
+
+  const patch = { cantidad_restante: restante };
+  if (restante === 0) patch.estado = "Fuera de servicio";
+  const actualizado = store.update("lotes", req.params.id, patch);
+  res.json(decorate(actualizado));
+});
+
 router.post("/:id/dar-de-baja", (req, res) => {
   const lote = store.findById("lotes", req.params.id);
   if (!lote) return res.status(404).json({ error: "Lote no encontrado" });

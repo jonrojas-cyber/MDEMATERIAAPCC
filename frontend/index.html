@@ -1156,8 +1156,8 @@ async function confirmarRcp(id){
 async function irA_pagos(){
   openSection("pagos","Pagos pendientes");
   try{
-    const pagos=await api("/pagos");
-    setInner(section("Por proveedor",pagos,p=>{
+    const [pagos,justs]=await Promise.all([api("/pagos"),api("/pagos/justificantes").catch(()=>[])]);
+    const sPagos=section("Por proveedor",pagos,p=>{
       const listId=`alb-${p.proveedor_id}`;
       const filas=(p.recepciones||[]).slice().reverse().map(r=>{
         const f=new Date(r.fecha).toLocaleDateString("es-ES");
@@ -1178,7 +1178,13 @@ async function irA_pagos(){
         `<button class="btn-ghost" onclick="marcarPagado('${p.proveedor_id}')">Marcar como pagado</button>`,
         extra
       );
-    },"No hay pagos pendientes."));
+    },"No hay pagos pendientes.");
+    const sJust=section("Justificantes emitidos",justs,j=>card(
+      `${j.codigo} — ${j.proveedor_nombre}`,
+      `${(j.importe_pagado||0).toFixed(2)} € · ${new Date(j.fecha_pago).toLocaleDateString("es-ES")} · ${(j.albaranes||[]).length} albarán(es)`,
+      `<button class="btn-ghost" onclick="verJustificante('${j.id}')">Ver justificante</button>`
+    ),"Aún no se ha emitido ningún justificante.");
+    setInner(sPagos+sJust);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
@@ -1233,9 +1239,62 @@ async function verAlbaran(id){
 }
 
 async function marcarPagado(id){
-  if(!confirm("¿Marcar todos los albaranes de este proveedor como pagados?")) return;
-  try{await api(`/pagos/${id}/marcar-pagado`,{method:"POST"});irA_pagos();}
-  catch(e){alert(e.message);}
+  if(!confirm("¿Marcar todos los albaranes de este proveedor como pagados? Se generará un justificante de pago.")) return;
+  try{
+    const r=await api(`/pagos/${id}/marcar-pagado`,{method:"POST"});
+    irA_pagos();
+    if(r.justificante&&r.justificante.id) verJustificante(r.justificante.id);
+  }catch(e){alert(e.message);}
+}
+
+// Justificante de pago: documento detallado (prueba ante reclamación del proveedor).
+async function verJustificante(id){
+  const w=window.open("","_blank");
+  if(w) w.document.write("<p style='font-family:sans-serif;padding:20px;'>Generando justificante…</p>");
+  try{
+    const j=await api(`/pagos/justificantes/${id}`);
+    const fp=new Date(j.fecha_pago).toLocaleString("es-ES");
+    const filas=(j.albaranes||[]).map(a=>`<tr>
+      <td>${a.recepcion_id}</td>
+      <td>${new Date(a.fecha).toLocaleDateString("es-ES")}</td>
+      <td style="text-align:right;">${Number(a.importe_total||0).toFixed(2)} €</td>
+      <td style="text-align:right;">${Number(a.importe_pagado||0).toFixed(2)} €</td></tr>`).join("");
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Justificante ${j.codigo}</title>
+      <style>
+        body{font-family:'Courier Prime',monospace;background:#F0EBE0;color:#111009;margin:0;padding:20px;}
+        .doc{max-width:680px;margin:0 auto;background:#fff;border:1px solid #d8d0bf;border-radius:8px;padding:24px;}
+        .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #5C6145;padding-bottom:12px;margin-bottom:16px;}
+        h1{font-size:18px;margin:0;} .marca{font-size:11px;color:#5C6145;letter-spacing:.14em;text-transform:uppercase;}
+        .cod{font-size:13px;font-weight:700;color:#5C6145;text-align:right;}
+        .meta{font-size:12px;margin:5px 0;} .meta b{color:#5C6145;}
+        table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px;}
+        th,td{padding:7px 5px;border-bottom:1px solid #eee3cf;} th{text-align:left;color:#5C6145;font-size:10px;text-transform:uppercase;}
+        .total{font-size:18px;font-weight:700;margin-top:14px;text-align:right;color:#111009;}
+        .nota{font-size:10px;color:#777;margin-top:18px;line-height:1.5;border-top:1px solid #eee3cf;padding-top:12px;}
+        @media print{button{display:none}}
+        button{margin-top:18px;font-family:inherit;font-size:12px;padding:9px 18px;background:#5C6145;color:#F0EBE0;border:none;border-radius:4px;cursor:pointer;}
+      </style></head><body><div class="doc">
+        <div class="top">
+          <div><div class="marca">M de Materia · Control M</div><h1>Justificante de pago</h1></div>
+          <div class="cod">${j.codigo}</div>
+        </div>
+        <div class="meta"><b>Proveedor:</b> ${j.proveedor_nombre}${j.proveedor_contacto?` (${j.proveedor_contacto})`:""}</div>
+        <div class="meta"><b>Fecha de pago:</b> ${fp}</div>
+        <div class="meta"><b>Método:</b> ${j.metodo||"—"}</div>
+        <div class="meta"><b>Registrado por:</b> ${j.usuario}</div>
+        <table><thead><tr><th>Albarán</th><th>Fecha</th><th style="text-align:right;">Importe</th><th style="text-align:right;">Pagado</th></tr></thead>
+          <tbody>${filas}</tbody></table>
+        <div class="total">Total pagado: ${Number(j.importe_pagado||0).toFixed(2)} €</div>
+        <div class="nota">Este documento certifica que M de Materia ha abonado los albaranes detallados al proveedor indicado en la fecha señalada. Documento generado automáticamente por Control M; conserva tu copia como comprobante.</div>
+        <button onclick="window.print()">Imprimir / Guardar PDF</button>
+      </div></body></html>`;
+    if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+  }catch(e){
+    if(w) w.document.body.innerHTML=`<p style='font-family:sans-serif;padding:20px;color:#9C5A2E;'>No se pudo generar el justificante: ${e.message}</p>`;
+    else alert(e.message);
+  }
 }
 
 // ── CARTA Y MÁRGENES ──────────────────────────────────

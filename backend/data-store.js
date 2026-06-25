@@ -32,6 +32,7 @@ const ENTITIES = [
   "impresiones",
   "consumos",
   "sincronizaciones",
+  "justificantes",
 ];
 
 const cache = {};

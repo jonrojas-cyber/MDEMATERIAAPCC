@@ -26,16 +26,16 @@
 @font-face { font-family:'Inter'; font-style:normal; font-weight:600;
   font-display:swap; src:url('/fonts/Inter-SemiBold.ttf') format('truetype'); }
 :root {
-  /* Paleta monocroma cálida (ficha técnica · estilo etiquetas m de materia) */
+  /* Paleta cálida corporativa · texto en verde botella oscuro (no negro) */
   --cream: #ECEAE3;   /* fondo papel */
   --paper: #F1EFE9;   /* celdas / tarjetas */
-  --ink:   #17150F;   /* tinta casi negra */
-  --olive: #17150F;   /* acentos = tinta (monocromo) */
+  --ink:   #2A332B;   /* verde botella oscuro · texto y superficies */
+  --olive: #2A332B;   /* acentos = verde botella */
   --olive-light: #CFCABB;
   --line:  #C6C1B3;   /* líneas finas (keyline) */
-  --muted: #8B8779;   /* gris secundario */
-  --warn:  #17150F;   /* alertas en monocromo (peso/recuadro, sin color) */
-  --sans:  'Inter', 'Helvetica Neue', Arial, 'Roboto', system-ui, sans-serif;
+  --muted: #82857A;   /* gris ceniza secundario */
+  --warn:  #2A332B;   /* alertas en verde botella (peso, sin rojo) */
+  --sans:  'Courier New', 'Courier Prime', monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,7 +44,7 @@ html, body { height: 100%; overflow: hidden; }
 body {
   background: var(--cream);
   color: var(--ink);
-  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-family: 'Courier New', 'Courier Prime', monospace;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   display: flex;
@@ -476,7 +476,7 @@ input, select { font-family: inherit; font-size: 13px; }
 /* ════════════════════════════════════════════════════════
    REDISEÑO · EFICIENCIA Y CLARIDAD (capa de mejora)
    ════════════════════════════════════════════════════════ */
-:root { --ok:#17150F; --alert:#17150F; --gold:#17150F; --shadow:none; }
+:root { --ok:#2A332B; --alert:#2A332B; --gold:#2A332B; --shadow:none; }
 
 .screen { padding: 28px 32px; }
 
@@ -755,8 +755,16 @@ input, select { font-family: inherit; font-size: 13px; }
 .topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
 .topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 14px;
   font-weight: 400; letter-spacing: .16em; text-transform: lowercase; color: var(--oliveink); }
-.topbar-center .mark { color: var(--oliveink); gap: 4px; }
-.topbar-center .mark i { width: 2.5px; height: 22px; }
+/* Imagotipo ||| incrustado (en relieve) en verde sobre la barra oliva. */
+.topbar-center .mark { gap: 7px; }
+.topbar-center .mark i {
+  width: 4px; height: 28px; border-radius: 4px;
+  background: #353B2B; /* surco un punto más oscuro que la barra */
+  box-shadow:
+    inset 1.2px 1.2px 1.6px rgba(0,0,0,.55),
+    inset -1px -1px 1.2px rgba(231,228,215,.10),
+    0 1px 0 rgba(231,228,215,.14); /* labio de luz al pie (efecto tallado) */
+}
 .topbar-section { font-family: 'Courier Prime', monospace; font-size: 12px;
   letter-spacing: .18em; text-transform: uppercase; color: var(--oliveink); flex: 0; }
 .topbar-back { background: none; border: none; color: var(--oliveink); font-size: 17px;

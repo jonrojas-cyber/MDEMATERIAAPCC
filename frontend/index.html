@@ -309,9 +309,9 @@ input, select { font-family: inherit; font-size: 13px; }
   margin-left: 8px;
 }
 
-.empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 12px 0; }
-.loading { font-size: 12px; color: var(--muted); padding: 32px 0; }
-.err { font-size: 12px; color: var(--warn); padding: 32px 0; }
+.empty { font-size: 11px; color: var(--muted); letter-spacing: .04em; padding: 14px 0; }
+.loading { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; padding: 32px 0; }
+.err { font-size: 12px; color: var(--ink); font-weight: 700; padding: 32px 0; }
 
 /* ── BANNER ──────────────────────────────────────────── */
 .banner {
@@ -941,7 +941,7 @@ function mostrarLogin() {
           <input type="password" inputmode="numeric" maxlength="4" id="pin-inp" autocomplete="off"
             style="font-family:inherit;font-size:28px;letter-spacing:0.4em;text-align:center;width:130px;background:none;border:none;border-bottom:1px solid #2A2820;color:var(--cream);padding:8px;outline:none;"
             oninput="if(this.value.length===4)checkPin();">
-          <div id="pin-err" style="font-size:11px;color:#9C5A2E;margin-top:14px;min-height:16px;"></div>
+          <div id="pin-err" style="font-size:11px;color:#E7E4D7;margin-top:14px;min-height:16px;"></div>
         </div>
       </div>
     </div>`;
@@ -1520,8 +1520,13 @@ async function irA_ajustes(){
         <div class="field"><label>Observación (opcional)</label><input type="text" id="aj-obs" style="width:100%;"></div>
         <div class="card-actions"><button class="btn-primary" onclick="regAjuste()">Registrar ajuste</button></div>
       </div>`;
+    const nombreObjetivo=a=>{
+      if(a.objetivo_nombre) return a.objetivo_nombre;
+      if(a.tipo_objetivo==="materia"){ const m=mat.find(x=>x.id===a.objetivo_id); return m?m.nombre:a.objetivo_id; }
+      const l=lotes.find(x=>x.id===a.objetivo_id); return l?l.codigo:a.objetivo_id;
+    };
     html+=section("Historial reciente",hist.slice(0,6),a=>card(
-      `${a.objetivo_nombre} — ${a.cantidad}`,
+      `${nombreObjetivo(a)} — ${a.cantidad}`,
       `${a.motivo} · ${a.coste_estimado.toFixed(2)} € · ${a.responsable} · ${fmt(a.fecha)}`
     ),"Sin ajustes.");
     setInner(html);
@@ -1659,7 +1664,7 @@ function renderAvisos(cot){
     return;
   }
   cont.innerHTML=`<div class="section-label" style="margin-top:8px;">Avisos del cotejo${cot.pedido_codigo?` (${cot.pedido_codigo})`:""}</div>`+
-    av.map(a=>`<div style="font-size:11px;color:${a.nivel==="alto"?"#9C5A2E":"#9C7A2E"};margin-top:4px;">⚠ ${a.mensaje}</div>`).join("");
+    av.map(a=>`<div style="font-size:11px;color:${a.nivel==="alto"?"var(--ink)":"var(--ink)"};margin-top:4px;">⚠ ${a.mensaje}</div>`).join("");
 }
 
 // ── RECEPCIÓN ────────────────────────────────────────
@@ -1744,7 +1749,7 @@ async function escanearAlbaran(input){
     const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
     if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
-    hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:#9C5A2E">elige el proveedor</span>'}`;
+    hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
     renderLineasAlbaran(r.lineas||[]);
     // Cotejo: comparar con el pedido del proveedor y los precios habituales.
     window._pedidoId=null;
@@ -2006,12 +2011,12 @@ async function irA_carta(){
       <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
         <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
     const items=section("Productos", d.productos, p=>{
-      const col=p.rentabilidad==="alta"?"#5C6145":(p.rentabilidad==="media"?"#9C7A2E":"#9C5A2E");
+      const col=p.rentabilidad==="alta"?"var(--ink)":(p.rentabilidad==="media"?"#5C6145":"var(--muted)");
       const w=Math.max(2,Math.round(p.margen_bruto*100));
       const barra=`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
       const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
       return card(
-        `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:#9C7A2E;">(estimado)</span>':""}`,
+        `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:var(--muted);">(estimado)</span>':""}`,
         `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
         null,
         barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`
@@ -2031,8 +2036,8 @@ async function irA_analisis(){
       const wp=Math.round(x.coste_produccion/maxCoste*100), wm=Math.round(x.coste_mermas/maxCoste*100);
       return `<div style="margin-bottom:10px;">
         <div style="font-size:10px;color:#888070;display:flex;justify-content:space-between;"><span>${x.fecha.slice(5)}</span><span>${x.coste_produccion.toFixed(2)} €</span></div>
-        <div style="height:8px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wp}%;background:#5C6145;"></div></div>
-        ${x.coste_mermas>0?`<div style="height:5px;margin-top:2px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wm}%;background:#9C5A2E;"></div></div>`:""}
+        <div style="height:8px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wp}%;background:var(--ink);"></div></div>
+        ${x.coste_mermas>0?`<div style="height:5px;margin-top:2px;background:#E2DBCB;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${wm}%;background:var(--muted);"></div></div>`:""}
       </div>`;
     }).join("");
     const masUsadas=section("Materias más usadas (7 días)", sem.materias_mas_usadas,
@@ -2041,9 +2046,9 @@ async function irA_analisis(){
     const barrasStock=section("Proyección de stock", stock.materias.slice(0,10), m=>{
       const w=Math.max(2,Math.round(m.valor_stock/maxVal*100));
       const dias=m.dias_restantes!=null?`${m.dias_restantes} días`:"sin ritmo";
-      return `<div class="card"><div class="card-name">${m.nombre}${m.bajo_minimo?' <span style="color:#9C5A2E;font-size:9px;">bajo mínimo</span>':""}</div>
+      return `<div class="card"><div class="card-name">${m.nombre}${m.bajo_minimo?' <span style="color:var(--ink);font-weight:700;font-size:9px;">bajo mínimo</span>':""}</div>
         <div class="card-meta">${m.valor_stock.toFixed(2)} € · ${m.disponibilidad_actual} ${m.unidad} · ${dias} restantes</div>
-        <div style="margin-top:6px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:#5C6145;"></div></div></div>`;
+        <div style="margin-top:6px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:var(--ink);"></div></div></div>`;
     }, "Sin materias.");
     setInner(
       `<div class="section-label">Producción vs mermas (7 días)</div><div class="card">${barrasDias}</div>`+

@@ -741,17 +741,99 @@ input, select { font-family: inherit; font-size: 13px; }
   .ficha-name { font-size: 20px; }
   .ficha-code { position: static; text-align: left; margin-top: 8px; }
 }
+
+/* ════════════════════════════════════════════════════════
+   LAYOUT PRO · marco oliva + inicio en filas (referencia TPV)
+   ════════════════════════════════════════════════════════ */
+:root { --olivebar: #3E4534; --oliveink: #E7E4D7; }
+
+/* Barra superior oliva con 3 zonas: marca · ||| · control total */
+.topbar { background: var(--olivebar); color: var(--oliveink); height: 60px;
+  padding: 0 30px; gap: 0; justify-content: space-between; }
+.topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+.topbar-center { flex: 0 0 auto; }
+.topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+.topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 14px;
+  font-weight: 400; letter-spacing: .16em; text-transform: lowercase; color: var(--oliveink); }
+.topbar-center .mark { color: var(--oliveink); gap: 4px; }
+.topbar-center .mark i { width: 2.5px; height: 22px; }
+.topbar-section { font-family: 'Courier Prime', monospace; font-size: 12px;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--oliveink); flex: 0; }
+.topbar-back { background: none; border: none; color: var(--oliveink); font-size: 17px;
+  width: auto; padding: 0 4px 0 0; display: none; }
+.topbar-back.visible { display: block; }
+.topbar-back:hover { opacity: .65; }
+.topbar .user-chip { border-color: #5b6149; color: var(--oliveink); }
+.topbar .user-chip:hover { background: #5b6149; }
+
+/* Footer oliva (cierra el marco) */
+.botbar { flex-shrink: 0; background: var(--olivebar); color: var(--oliveink);
+  height: 34px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 30px; font-family: 'Courier Prime', monospace; font-size: 9.5px;
+  letter-spacing: .14em; text-transform: lowercase; opacity: .95; }
+
+/* Cabecera del inicio (sin wordmark grande: ya está en la barra). */
+.home-brand { display: none; }
+.home-head { padding: 6px 2px 22px; }
+.home-sys { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); }
+.home-alert { font-family: 'Courier Prime', monospace; font-size: 12px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink); margin-top: 8px; }
+.home-status { display: none; }
+
+/* Inicio en filas horizontales a todo el ancho. */
+.cats { display: block; max-width: 1080px; margin: 0 auto; border: none; }
+.cat { display: flex; flex-direction: row; align-items: stretch; gap: 0; background: var(--paper);
+  border: 1px solid var(--line); padding: 0; margin-bottom: 12px; min-height: 0;
+  transition: border-color .12s, background .12s; }
+.cat:hover { background: #efece4; border-color: #b3ad9c; transform: none; }
+.cats .cat:nth-child(2n) { border-right: 1px solid var(--line); }
+.cat-numcol { flex: 0 0 168px; padding: 26px 24px; border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; justify-content: center; }
+.cat-big { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 50px;
+  line-height: 1; color: var(--ink); letter-spacing: .02em; }
+.cat-state { font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); margin-top: 12px; }
+.cat-dots { font-family: 'Courier Prime', monospace; font-size: 14px; color: var(--ink);
+  margin-top: 8px; letter-spacing: .18em; min-height: 14px; }
+.cat-main { flex: 1; padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; }
+.cat-name { font-family: var(--sans); font-weight: 600; font-size: 22px; text-transform: uppercase;
+  letter-spacing: .1em; line-height: 1; }
+.cat-l1 { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink); margin-top: 16px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--line); }
+.cat-l2 { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); margin-top: 12px; }
+.cat-go { flex: 0 0 76px; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--ink); }
+.cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
+
+@media (max-width: 680px) {
+  .topbar { padding: 0 16px; height: 54px; }
+  .botbar { padding: 0 16px; font-size: 8.5px; }
+  .topbar .brandword { font-size: 12px; letter-spacing: .1em; }
+  .cat-numcol { flex-basis: 96px; padding: 18px 14px; }
+  .cat-big { font-size: 34px; }
+  .cat-main { padding: 18px 16px; }
+  .cat-name { font-size: 17px; letter-spacing: .06em; }
+  .cat-l1, .cat-l2 { font-size: 9.5px; }
+  .cat-go { flex-basis: 44px; }
+}
 </style>
 </head>
 <body>
 
 <!-- TOP BAR -->
 <header class="topbar">
-  <div class="topbar-logo"><span class="mark"><i></i><i></i><i></i></span><span class="brandword">m de Materia</span></div>
-  <span class="topbar-sep">·</span>
-  <div class="topbar-section" id="topbar-section">Control M</div>
-  <button class="topbar-back" id="topbar-back" onclick="goHome()">← Inicio</button>
-  <div class="topbar-user" id="topbar-user"></div>
+  <div class="topbar-left">
+    <button class="topbar-back" id="topbar-back" onclick="goHome()">←</button>
+    <span class="brandword">m de materia</span>
+  </div>
+  <div class="topbar-center"><span class="mark"><i></i><i></i><i></i></span></div>
+  <div class="topbar-right">
+    <span class="topbar-section" id="topbar-section">Control total</span>
+    <div class="topbar-user" id="topbar-user"></div>
+  </div>
 </header>
 
 <!-- VIEWPORT -->
@@ -765,6 +847,9 @@ input, select { font-family: inherit; font-size: 13px; }
     <div id="inner-content"></div>
   </div>
 </div>
+
+<!-- FOOTER (marco oliva) -->
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -880,7 +965,7 @@ function renderUserChips() {
 // ── NAVEGACIÓN ────────────────────────────────────────
 function goHome() {
   currentSection = "home";
-  document.getElementById("topbar-section").textContent = "Control M";
+  document.getElementById("topbar-section").textContent = "Control total";
   document.getElementById("topbar-back").classList.remove("visible");
   document.getElementById("screen-inner").classList.remove("active");
   document.getElementById("screen-inner").classList.add("exit");
@@ -1017,27 +1102,34 @@ async function loadHome() {
     const pendCat = ids => ids.reduce((n, id) => n + (meta[id] && meta[id].urgent ? 1 : 0), 0);
 
     const cats = [
-      { name:"Resumen del día", desc:"Estado, KPIs y qué hacer ahora", onclick:"irA_resumen()", pend: alerta?1:0 },
-      { name:CATS.operacion.name, desc:CATS.operacion.desc, onclick:"irA_categoria('operacion')", pend: pendCat(CATS.operacion.ids) },
-      { name:CATS.compras.name, desc:CATS.compras.desc, onclick:"irA_categoria('compras')", pend: pendCat(CATS.compras.ids), admin:true },
-      { name:CATS.gestion.name, desc:CATS.gestion.desc, onclick:"irA_categoria('gestion')", pend:0, admin:true },
+      { name:"Resumen del día", l1:"Estado · KPIs · Qué hacer ahora", l2:"Producción · Apertura · Incidencias · Checklist", onclick:"irA_resumen()", pend: alerta?1:0 },
+      { name:CATS.operacion.name, l1:"Preparaciones · Lotes · Materias", l2:"Recetas · Batch · Revisiones · Ajustes", onclick:"irA_categoria('operacion')", pend: pendCat(CATS.operacion.ids) },
+      { name:CATS.compras.name, l1:"Proveedores · Pedidos · Recepción", l2:"Pagos · Incidencias · Stock mínimo", onclick:"irA_categoria('compras')", pend: pendCat(CATS.compras.ids), admin:true },
+      { name:CATS.gestion.name, l1:"Carta · Ventas · Manual", l2:"Análisis · Costes · Configuración", onclick:"irA_categoria('gestion')", pend:0, admin:true },
     ].filter(c => !c.admin || esAdmin);
 
+    const estadoSrv = alerta ? d.estado_servicio : "Servicio en orden";
+    const dots = n => n>0 ? "·".repeat(Math.min(n,5)) : "—";
+    const estLabel = n => n>0 ? `${n} pendiente${n>1?"s":""}` : "al día";
+
     el("home-content").innerHTML = `
-      <div class="home-brand">
-        <span class="mark"><i></i><i></i><i></i></span>
-        <h1>m de Materia</h1>
-        <div class="tag">Sistema RTD 01 · Control de producción</div>
+      <div class="home-head">
+        <div class="home-sys">Sistema RTD 01 · Control de producción</div>
+        <div class="home-alert">${estadoSrv}</div>
       </div>
-      <div class="home-status">${alerta?`<b>${d.estado_servicio}</b>`:d.estado_servicio}</div>
       <div class="cats">
         ${cats.map((c,i)=>`<div class="cat" onclick="${c.onclick}">
-          <div class="cat-top">
-            <span class="cat-idx">${String(i+1).padStart(2,"0")}</span>
-            <span class="cat-code${c.pend?" alerta":""}">${c.pend?`${c.pend} pend.`:"al día"}</span>
+          <div class="cat-numcol">
+            <div class="cat-big">${String(i+1).padStart(2,"0")}</div>
+            <div class="cat-state">${estLabel(c.pend)}</div>
+            <div class="cat-dots">${dots(c.pend)}</div>
           </div>
-          <div class="cat-name">${c.name}</div>
-          <div class="cat-desc">${c.desc}</div>
+          <div class="cat-main">
+            <div class="cat-name">${c.name}</div>
+            <div class="cat-l1">${c.l1}</div>
+            <div class="cat-l2">${c.l2}</div>
+          </div>
+          <div class="cat-go">→</div>
         </div>`).join("")}
       </div>`;
   } catch(e) {

@@ -17,6 +17,14 @@
   font-family: 'Newsreader'; font-style: normal; font-weight: 400;
   font-display: swap; src: url('/fonts/Newsreader-Regular.ttf') format('truetype');
 }
+/* Inter (grotesca neutra de titulares) autoalojada: render idéntico en
+   todos los dispositivos. Licencia OFL. */
+@font-face { font-family:'Inter'; font-style:normal; font-weight:400;
+  font-display:swap; src:url('/fonts/Inter-Regular.ttf') format('truetype'); }
+@font-face { font-family:'Inter'; font-style:normal; font-weight:500;
+  font-display:swap; src:url('/fonts/Inter-Medium.ttf') format('truetype'); }
+@font-face { font-family:'Inter'; font-style:normal; font-weight:600;
+  font-display:swap; src:url('/fonts/Inter-SemiBold.ttf') format('truetype'); }
 :root {
   /* Paleta monocroma cálida (ficha técnica · estilo etiquetas m de materia) */
   --cream: #ECEAE3;   /* fondo papel */
@@ -27,7 +35,7 @@
   --line:  #C6C1B3;   /* líneas finas (keyline) */
   --muted: #8B8779;   /* gris secundario */
   --warn:  #17150F;   /* alertas en monocromo (peso/recuadro, sin color) */
-  --sans:  'Helvetica Neue', 'Inter', Arial, 'Roboto', system-ui, sans-serif;
+  --sans:  'Inter', 'Helvetica Neue', Arial, 'Roboto', system-ui, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -690,6 +698,49 @@ input, select { font-family: inherit; font-size: 13px; }
 
 /* Imagotipo ||| más fino y en tinta. */
 .mark i { background: currentColor; }
+
+/* Tarjetas de producto clicables (abren la ficha a pantalla completa). */
+.card.clickable { cursor: pointer; }
+.card.clickable:hover { background: var(--paper); }
+.card-acts { margin-top: 14px; }
+
+/* ── FICHA TÉCNICA a pantalla completa (layout de etiqueta) ── */
+.ficha-overlay { position: fixed; inset: 0; background: var(--cream); z-index: 1000;
+  display: flex; flex-direction: column; overflow-y: auto; }
+.ficha-top { display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 24px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.ficha-eyebrow { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+.ficha-wrap { flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 40px 24px; }
+.ficha-card { width: 100%; max-width: 680px; border: 1px solid var(--ink); display: flex; background: var(--cream); }
+.ficha-spine { width: 92px; flex-shrink: 0; border-right: 1px solid var(--ink);
+  display: flex; flex-direction: column; justify-content: space-between; padding: 18px 0 18px 16px; }
+.ficha-spine .mark i { height: 18px; width: 2.5px; }
+.ficha-brand { font-family: var(--sans); font-size: 11px; font-weight: 500; line-height: 1.3;
+  text-transform: lowercase; letter-spacing: .02em; }
+.ficha-body { flex: 1; }
+.ficha-head { padding: 18px 20px; border-bottom: 1px solid var(--ink); position: relative; }
+.ficha-name { font-family: var(--sans); font-size: 24px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em; line-height: 1; }
+.ficha-sub { font-size: 11px; color: var(--muted); margin-top: 7px; letter-spacing: .04em; }
+.ficha-code { position: absolute; top: 18px; right: 20px; text-align: right;
+  font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: .08em; color: var(--muted); line-height: 1.5; }
+.ficha-rows { padding: 6px 20px 14px; }
+.frow { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 10px 0; border-bottom: 1px solid var(--line); font-family: 'Courier Prime', monospace; font-size: 12px; }
+.frow:last-child { border-bottom: none; }
+.frow .k { color: var(--muted); letter-spacing: .12em; text-transform: uppercase; font-size: 10px; }
+.frow .v { color: var(--ink); text-align: right; }
+.frow .v.alert { font-weight: 700; }
+.ficha-note { padding: 14px 20px; border-top: 1px solid var(--ink);
+  font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted); line-height: 1.7; }
+.ficha-actions { width: 100%; max-width: 680px; display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+@media (max-width: 680px) {
+  .ficha-spine { width: 64px; padding: 14px 0 14px 12px; }
+  .ficha-name { font-size: 20px; }
+  .ficha-code { position: static; text-align: left; margin-top: 8px; }
+}
 </style>
 </head>
 <body>
@@ -1139,6 +1190,86 @@ async function finalizarPrep(id){
   }catch(e){alert(e.message);}
 }
 
+// ── FICHA TÉCNICA · detalle de producto a pantalla completa (layout etiqueta) ──
+function fmtFecha(iso){ try{return new Date(iso).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric"});}catch(e){return "—";} }
+
+function fichaTecnica({ eyebrow, nombre, sub, code, filas, nota, acciones }){
+  const rows = (filas||[]).map(f=>`<div class="frow"><span class="k">${f.k}</span><span class="v${f.alerta?" alert":""}">${f.v}</span></div>`).join("");
+  el("wizard-root").innerHTML = `
+    <div class="ficha-overlay">
+      <div class="ficha-top">
+        <span class="ficha-eyebrow">${eyebrow||"Ficha técnica"}</span>
+        <button class="wiz-close" onclick="cerrarFicha()">Cerrar ✕</button>
+      </div>
+      <div class="ficha-wrap">
+        <div class="ficha-card">
+          <div class="ficha-spine">
+            <span class="mark"><i></i><i></i><i></i></span>
+            <div class="ficha-brand">m de<br>materia</div>
+          </div>
+          <div class="ficha-body">
+            <div class="ficha-head">
+              <div class="ficha-name">${nombre}</div>
+              ${sub?`<div class="ficha-sub">${sub}</div>`:""}
+              ${code?`<div class="ficha-code">${code}</div>`:""}
+            </div>
+            <div class="ficha-rows">${rows}</div>
+            ${nota?`<div class="ficha-note">${nota}</div>`:""}
+          </div>
+        </div>
+        ${acciones?`<div class="ficha-actions">${acciones}</div>`:""}
+      </div>
+    </div>`;
+  document.body.style.overflow="hidden";
+}
+function cerrarFicha(){ el("wizard-root").innerHTML=""; document.body.style.overflow=""; }
+
+async function verMateria(id){
+  try{
+    const m=await api("/materias/"+id);
+    const baja=m.disponibilidad_estado==="Disponibilidad baja";
+    const filas=[
+      { k:"Referencia", v:(m.id||"").toUpperCase() },
+      { k:"Disponible", v:`${m.disponibilidad_actual} ${m.unidad}`, alerta:baja },
+      { k:"Stock mín · ideal", v:`${m.stock_minimo} · ${m.stock_ideal} ${m.unidad}` },
+      { k:"Coste medio", v:`${m.coste_medio.toFixed(4)} €/${m.unidad}` },
+      { k:"Valor stock", v:`${m.valor_stock_actual.toFixed(2)} €` },
+      { k:"Vida útil", v:`${m.vida_util_horas} h` },
+      { k:"Ubicación", v:m.ubicacion },
+      { k:"Proveedor", v:m.proveedor_nombre },
+      { k:"Estado", v:baja?"Disponibilidad baja":"Correcto", alerta:baja },
+    ];
+    const acc=baja&&m.proveedor_whatsapp
+      ?`<button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para m de materia.")}')">Pedir por WhatsApp</button>`:"";
+    fichaTecnica({ eyebrow:"Ficha técnica · Materia", nombre:m.nombre, sub:`materia prima · ${m.unidad}`,
+      code:`${(m.id||"").toUpperCase()}<br>SERIE 01`, filas,
+      nota:"Materia prima · control de stock m de materia. Sin colorantes, sin conservantes.", acciones:acc });
+  }catch(e){alert(e.message);}
+}
+
+async function verLote(id){
+  try{
+    const lotes=await api("/lotes");
+    const l=lotes.find(x=>x.id===id); if(!l){alert("Lote no encontrado");return;}
+    const alerta=(l.estado==="Requiere atención"||l.caducado);
+    const filas=[
+      { k:"Código", v:l.codigo },
+      { k:"Producto", v:l.nombre||"—" },
+      { k:"Cantidad", v:`${l.cantidad_restante} / ${l.cantidad_inicial} g` },
+      { k:"Estado", v:l.estado, alerta },
+      { k:"Ubicación", v:l.ubicacion },
+      { k:"Producido", v:fmtFecha(l.producido_en) },
+      { k:"Caduca", v:l.caducado?"Fuera de plazo":fmtFecha(l.caduca_en), alerta:l.caducado },
+      { k:"Restante", v:l.caducado?"—":`${l.horas_restantes} h` },
+    ];
+    const acc=(l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',()=>{cerrarFicha();irA_lotes();})">Dar de baja</button>`:"")
+      +(!l.caducado?`<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`:"");
+    fichaTecnica({ eyebrow:"Ficha técnica · Lote", nombre:l.codigo, sub:l.nombre||"lote de producción",
+      code:"LOTE<br>SERIE 01", filas,
+      nota:"Lote de producción · conservar siempre en frío. Elaborado en pequeñas cantidades.", acciones:acc });
+  }catch(e){alert(e.message);}
+}
+
 // ── LOTES ─────────────────────────────────────────────
 async function irA_lotes(){
   openSection("lotes","Lotes activos");
@@ -1146,12 +1277,11 @@ async function irA_lotes(){
     const lotes=await api("/lotes");
     const orden={"Requiere atención":0,"Priorizar uso":1,"Correcto":2,"Fuera de servicio":3};
     const sorted=lotes.slice().sort((a,b)=>(orden[a.estado]??9)-(orden[b.estado]??9));
-    setInner(section("Todos los lotes", sorted, l=>card(
-      `${l.codigo} — ${l.nombre}`,
-      `${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}`,
-      (l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',irA_lotes)">Dar de baja</button>`:"")
-      +(!l.caducado?`<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`:"")
-    ),"No hay lotes registrados."));
+    setInner(section("Todos los lotes", sorted, l=>`
+      <div class="card clickable" onclick="verLote('${l.id}')">
+        <div class="card-name">${l.codigo} — ${l.nombre||""}</div>
+        <div class="card-meta">${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}</div>
+      </div>`,"No hay lotes registrados."));
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
@@ -1173,12 +1303,16 @@ async function irA_materias(){
   try{
     const mat=await api("/materias");
     const sorted=mat.slice().sort((a,b)=>a.disponibilidad_estado==="Disponibilidad baja"?-1:1);
-    setInner(section("Materias",sorted,m=>card(
-      m.nombre+(m.disponibilidad_estado==="Disponibilidad baja"?`<span class="badge-low">Baja</span>`:""),
-      `${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.ubicacion} · ${m.proveedor_nombre}`,
-      m.disponibilidad_estado==="Disponibilidad baja"&&m.proveedor_whatsapp
-        ?`<button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para M de Materia.")}')">Pedir por WhatsApp</button>`:""
-    )));
+    setInner(section("Materias",sorted,m=>{
+      const baja=m.disponibilidad_estado==="Disponibilidad baja";
+      const acc=baja&&m.proveedor_whatsapp
+        ?`<div class="card-acts" onclick="event.stopPropagation()"><button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para m de materia.")}')">Pedir por WhatsApp</button></div>`:"";
+      return `<div class="card clickable" onclick="verMateria('${m.id}')">
+        <div class="card-name">${m.nombre}${baja?`<span class="badge-low">Baja</span>`:""}</div>
+        <div class="card-meta">${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.ubicacion} · ${m.proveedor_nombre}</div>
+        ${acc}
+      </div>`;
+    }));
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 

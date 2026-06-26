@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v42</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v43</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1343,7 +1343,13 @@ async function api(path, opts = {}) {
   if (t) headers["Authorization"] = "Bearer " + t;
   const r = await fetch(API + path, Object.assign({}, opts, { headers }));
   if (r.status === 401) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Sesión expirada"); }
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    // Nunca dejar el mensaje vacío: si el servidor no da detalle (502/timeout,
+    // HTTP/2 sin statusText…), mostramos al menos el código para diagnosticar.
+    const detalle = e.error || r.statusText || (r.status === 502 || r.status === 504 ? "el servidor tardó demasiado en responder" : "");
+    throw new Error(detalle || ("error " + r.status));
+  }
   return r.json();
 }
 
@@ -2115,7 +2121,9 @@ async function escanearAlbaran(input){
   const file=input.files&&input.files[0]; if(!file)return;
   const hint=el("ocr-hint"); if(hint) hint.textContent="Procesando imagen…";
   try{
-    const dataUrl=await reducirImagen(file,2400,0.88);
+    // Tamaño moderado: nítido para leer texto, pero lo bastante ligero para que
+    // el lector responda sin agotar tiempo/memoria del servidor.
+    const dataUrl=await reducirImagen(file,1600,0.72);
     await procesarFotoAlbaran(dataUrl);
   }catch(e){ if(hint) hint.textContent="No se pudo leer: "+e.message; }
   input.value=""; // permite re-elegir la misma foto
@@ -2194,20 +2202,22 @@ async function capturarFoto(){
   const shot=el("cam-shot"); if(shot) shot.disabled=true;
   try{
     let dataUrl=null;
-    // 1) Mejor calidad: foto fija a resolución completa del sensor (si el navegador lo permite).
+    // Tamaño moderado (1600px): nítido para leer texto y ligero para que el
+    // lector responda sin agotar tiempo/memoria del servidor.
+    // 1) Foto fija del sensor (si el navegador lo permite).
     if(_imageCapture&&_imageCapture.takePhoto){
-      try{ const blob=await _imageCapture.takePhoto(); dataUrl=await reducirImagen(blob,2400,0.88); }catch(_){ dataUrl=null; }
+      try{ const blob=await _imageCapture.takePhoto(); dataUrl=await reducirImagen(blob,1600,0.72); }catch(_){ dataUrl=null; }
     }
-    // 2) Fallback: fotograma completo del vídeo (sin recortar, para no perder texto).
+    // 2) Fallback: fotograma completo del vídeo.
     if(!dataUrl){
       const v=el("cam-video");
       if(v&&v.videoWidth){
         const vw=v.videoWidth, vh=v.videoHeight;
-        const escala=Math.min(1,2400/Math.max(vw,vh));
+        const escala=Math.min(1,1600/Math.max(vw,vh));
         const c=document.createElement("canvas");
         c.width=Math.round(vw*escala); c.height=Math.round(vh*escala);
         c.getContext("2d").drawImage(v,0,0,c.width,c.height);
-        dataUrl=c.toDataURL("image/jpeg",0.88);
+        dataUrl=c.toDataURL("image/jpeg",0.72);
       }
     }
     cerrarCamara();

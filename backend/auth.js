@@ -32,6 +32,7 @@ const EQUIPO_ALLOWED = new Set([
   "materias", // lectura necesaria para preparaciones/ajustes
   "recetas", // lectura necesaria para preparaciones
   "carta",
+  "notificaciones", // ver avisos (la config la protege la propia ruta a admin)
 ]);
 
 function login(usuario, pin) {

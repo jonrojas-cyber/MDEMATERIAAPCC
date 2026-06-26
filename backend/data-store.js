@@ -34,6 +34,7 @@ const ENTITIES = [
   "sincronizaciones",
   "justificantes",
   "pedidos",
+  "configuracion",
 ];
 
 const cache = {};

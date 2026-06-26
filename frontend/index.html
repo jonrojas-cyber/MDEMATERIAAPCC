@@ -794,6 +794,18 @@ input, select { font-family: inherit; font-size: 13px; }
 .topbar .user-chip { border-color: #5b6149; color: var(--oliveink); }
 .topbar .user-chip:hover { background: #5b6149; }
 
+/* Campana de avisos */
+.bell { position: relative; background: none; border: none; color: var(--oliveink);
+  cursor: pointer; padding: 4px; display: flex; align-items: center; opacity: .92; }
+.bell:hover { opacity: 1; }
+.bell:focus-visible { outline: 1px solid var(--oliveink); outline-offset: 2px; border-radius: 4px; }
+.bell-badge { position: absolute; top: -2px; right: -3px; min-width: 16px; height: 16px;
+  padding: 0 4px; border-radius: 9px; background: var(--alert, #c0492f); color: #fff;
+  font-family: var(--sans); font-size: 10px; font-weight: 700; line-height: 16px;
+  text-align: center; box-shadow: 0 0 0 2px var(--olivebar); }
+.bell.activa svg { animation: bellring 1.6s ease-in-out 1; }
+@keyframes bellring { 0%,100%{transform:rotate(0)} 20%{transform:rotate(12deg)} 40%{transform:rotate(-10deg)} 60%{transform:rotate(6deg)} 80%{transform:rotate(-4deg)} }
+
 /* Footer oliva (cierra el marco) */
 .botbar { flex-shrink: 0; background: var(--olivebar); color: var(--oliveink);
   height: 62px; display: flex; align-items: center; justify-content: space-between;
@@ -1150,6 +1162,10 @@ input, select { font-family: inherit; font-size: 13px; }
   <div class="topbar-center"><span class="mark" role="button" tabindex="0" title="Ir al inicio" onclick="goHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome();}"><i></i><i></i><i></i></span></div>
   <div class="topbar-right">
     <span class="topbar-section" id="topbar-section">Control total</span>
+    <button class="bell" id="bell-btn" title="Avisos" aria-label="Avisos" onclick="irA_notificaciones()">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+      <span class="bell-badge" id="bell-badge" hidden>0</span>
+    </button>
     <div class="topbar-user" id="topbar-user"></div>
   </div>
 </header>
@@ -1374,6 +1390,169 @@ function fmt(iso) {
 
 function whatsapp(num, msg) { window.open(`https://wa.me/${num}?text=${msg}`, "_blank"); }
 
+// ── NOTIFICACIONES ───────────────────────────────────
+// Campana en la barra: avisa de productos a punto de caducar y de materias que
+// hay que pedir. Además, un envío por email a una hora concreta (configurable).
+let _notiTimer = null;
+let _notiPrev = -1; // total anterior, para "tocar" la campana solo al subir
+
+function venceTxt(l) {
+  if (l.caducado) return "CADUCADO";
+  if (l.horas_restantes < 1) return "caduca en menos de 1 h";
+  return `caduca en ${l.horas_restantes} h`;
+}
+
+async function actualizarBadge(opts = {}) {
+  try {
+    const r = await api("/notificaciones");
+    window._noti = r;
+    const badge = el("bell-badge"), bell = el("bell-btn");
+    if (!badge || !bell) return r;
+    if (r.total > 0) {
+      badge.textContent = r.total > 99 ? "99+" : r.total;
+      badge.hidden = false;
+      if (_notiPrev >= 0 && r.total > _notiPrev) {
+        bell.classList.remove("activa"); void bell.offsetWidth; bell.classList.add("activa");
+        avisarNavegador(r);
+      }
+    } else {
+      badge.hidden = true;
+    }
+    _notiPrev = r.total;
+    return r;
+  } catch (e) { return null; }
+}
+
+// Notificación del navegador (si el usuario dio permiso). Resume lo más urgente.
+function avisarNavegador(r) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const partes = [];
+  if (r.por_caducar.length) partes.push(`${r.por_caducar.length} producto(s) por caducar`);
+  if (r.para_pedir.length) partes.push(`${r.para_pedir.length} materia(s) por pedir`);
+  if (!partes.length) return;
+  try {
+    new Notification("M de Materia · Avisos", { body: partes.join(" · "), tag: "control-m-avisos" });
+  } catch (e) {}
+}
+
+async function pedirPermisoNavegador() {
+  if (!("Notification" in window)) { alert("Este navegador no admite notificaciones."); return; }
+  const p = await Notification.requestPermission();
+  if (p === "granted") { avisarNavegador(window._noti || { por_caducar: [], para_pedir: [] }); irA_notificaciones(); }
+  else alert("Permiso de notificaciones denegado. Puedes activarlo en los ajustes del navegador.");
+}
+
+function arrancarNotificaciones() {
+  actualizarBadge();
+  if (_notiTimer) clearInterval(_notiTimer);
+  _notiTimer = setInterval(actualizarBadge, 5 * 60 * 1000); // refresco cada 5 min
+}
+
+async function irA_notificaciones() {
+  openSection("notificaciones", "Avisos");
+  try {
+    const r = await actualizarBadge();
+    if (!r) { setInner(`<div class="err">No se pudieron cargar los avisos.</div>`); return; }
+    const u = getUser(), esAdmin = u && u.rol === "admin";
+
+    const caducar = section(
+      `Productos a punto de caducar (${r.por_caducar.length})`,
+      r.por_caducar,
+      (l) => card(
+        `${l.nombre} — ${l.codigo}`,
+        `${venceTxt(l)} · ${l.ubicacion || "—"} · quedan ${l.cantidad_restante}`,
+        `<button class="btn-ghost" onclick="irA_lotes()">Ver lotes</button>`
+      ),
+      "✓ Nada caduca pronto."
+    );
+
+    const pedir = section(
+      `Materias por pedir (${r.para_pedir.length})`,
+      r.para_pedir,
+      (m) => card(
+        m.nombre,
+        `Stock ${m.disponibilidad_actual} ${m.unidad} · pedir ~${m.cantidad_sugerida} ${m.unidad} · ${m.proveedor}`,
+        esAdmin ? `<button class="btn-ghost" onclick="irA_pedidos()">Hacer pedido</button>` : ""
+      ),
+      "✓ Nada que pedir."
+    );
+
+    let permiso = "";
+    if ("Notification" in window && Notification.permission !== "granted") {
+      permiso = `<div class="card"><div class="card-meta">Recibe los avisos como notificación del navegador cuando la app esté abierta.</div>
+        <div class="card-actions"><button class="btn-ghost" onclick="pedirPermisoNavegador()">Activar notificaciones del navegador</button></div></div>`;
+    }
+    const cfgBtn = esAdmin
+      ? `<div class="section-label" style="margin-top:18px;">Configuración</div>
+         <div class="card"><div class="card-name">Aviso diario por email</div>
+           <div class="card-meta">${r.config.activo ? `Activo · cada día a las ${r.config.alerta_hora}` : "Desactivado"} · ${r.config.alerta_email || "sin email"}${r.email_listo ? "" : " · ⚠ email no operativo en el servidor"}</div>
+           <div class="card-actions"><button class="btn-primary" onclick="irA_configNotif()">Configurar avisos</button></div></div>`
+      : "";
+
+    setInner(caducar + pedir + permiso + cfgBtn);
+  } catch (e) { setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// Pantalla de configuración (solo admin): hora del aviso, email, ventana y switches.
+// Alias para que el menú de Gestión (id "avisos") abra el panel de avisos.
+function irA_avisos() { return irA_notificaciones(); }
+
+async function irA_configNotif() {
+  openSection("config-notif", "Configurar avisos");
+  try {
+    const c = await api("/notificaciones/config");
+    const r = window._noti || { email_listo: false };
+    setInner(`
+      <div class="card">
+        <div class="card-name">Aviso diario por email</div>
+        <div class="field" style="margin-top:10px;"><label>Hora del aviso (hora de Málaga)</label>
+          <input id="cfg-hora" type="time" value="${c.alerta_hora}"></div>
+        <div class="field"><label>Email donde recibir el aviso</label>
+          <input id="cfg-email" type="email" placeholder="tucorreo@ejemplo.com" value="${c.alerta_email || ""}"></div>
+        <div class="field"><label>Avisar de lo que caduca en las próximas (horas)</label>
+          <input id="cfg-horas" type="number" min="1" step="1" value="${c.horas_aviso_caducidad}"></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:8px;">
+          <input id="cfg-cad" type="checkbox" ${c.avisar_caducidad ? "checked" : ""}> Avisar de productos por caducar</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:6px;">
+          <input id="cfg-ped" type="checkbox" ${c.avisar_pedidos ? "checked" : ""}> Avisar de materias por pedir</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:6px;">
+          <input id="cfg-act" type="checkbox" ${c.activo ? "checked" : ""}> Enviar el aviso diario automático</label>
+        ${r.email_listo ? "" : `<div style="font-size:11px;color:var(--alert);margin-top:10px;">⚠ El servidor no tiene el envío de email activo (RESEND_API_KEY). Los avisos se ven en la app, pero no llegarán por correo hasta configurarlo.</div>`}
+        <div class="card-actions" style="margin-top:12px;">
+          <button class="btn-primary" onclick="guardarConfigNotif()">Guardar</button>
+          <button class="btn-ghost" onclick="enviarAvisoAhora()">Enviar prueba ahora</button>
+        </div>
+        <div id="cfg-msg" style="font-size:11px;margin-top:8px;"></div>
+      </div>`);
+  } catch (e) { setInner(`<div class="err">${e.message}</div>`); }
+}
+
+async function guardarConfigNotif() {
+  const body = {
+    alerta_hora: el("cfg-hora").value,
+    alerta_email: el("cfg-email").value,
+    horas_aviso_caducidad: Number(el("cfg-horas").value),
+    avisar_caducidad: el("cfg-cad").checked,
+    avisar_pedidos: el("cfg-ped").checked,
+    activo: el("cfg-act").checked,
+  };
+  try {
+    await api("/notificaciones/config", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    el("cfg-msg").style.color = "#5C6145";
+    el("cfg-msg").textContent = "✓ Guardado.";
+    actualizarBadge();
+  } catch (e) { el("cfg-msg").style.color = "var(--alert)"; el("cfg-msg").textContent = e.message; }
+}
+
+async function enviarAvisoAhora() {
+  el("cfg-msg").textContent = "Enviando…";
+  try {
+    const r = await api("/notificaciones/enviar", { method: "POST" });
+    el("cfg-msg").style.color = "#5C6145";
+    el("cfg-msg").textContent = `✓ Enviado a ${r.enviado_a} (${r.por_caducar} por caducar, ${r.para_pedir} por pedir).`;
+  } catch (e) { el("cfg-msg").style.color = "var(--alert)"; el("cfg-msg").textContent = e.message; }
+}
+
 // ── HOME ──────────────────────────────────────────────
 // Metadatos vivos de cada módulo (nombre, número, aviso) a partir de /inicio.
 function modulosMeta(d) {
@@ -1395,14 +1574,15 @@ function modulosMeta(d) {
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
-    manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
+    avisos:       { num:"04", name:"Avisos", badge: ((window._noti&&window._noti.total)? `${window._noti.total} avisos activos`:"Caducidad y pedidos"), urgent: !!(window._noti&&window._noti.total) },
+    manual:       { num:"05", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
   };
 }
 
 const CATS = {
   operacion: { name:"Operación", desc:"Preparaciones · Lotes · Materias · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
   compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
-  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Manual", ids:["carta","analisis","ventas","manual"], admin:true },
+  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Avisos · Manual", ids:["carta","analisis","ventas","avisos","manual"], admin:true },
 };
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
@@ -2528,6 +2708,7 @@ function entrarApp() {
   document.body.innerHTML = APP_SHELL;
   renderUserChips();
   loadHome();
+  arrancarNotificaciones();
 }
 
 async function arrancar() {

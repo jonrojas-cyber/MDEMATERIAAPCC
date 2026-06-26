@@ -1,0 +1,13 @@
+[
+  {
+    "id": "notificaciones",
+    "alerta_email": "monicamendz12@gmail.com",
+    "alerta_hora": "09:00",
+    "horas_aviso_caducidad": 24,
+    "avisar_caducidad": true,
+    "avisar_pedidos": true,
+    "activo": true,
+    "ultimo_envio_dia": null,
+    "ultimo_envio": null
+  }
+]

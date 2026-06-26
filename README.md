@@ -30,8 +30,10 @@ Levanta `http://localhost:4001`. Sin `DATABASE_URL` usa los JSON de `backend/dat
 | `AGORA_CSV_PATH` | Ruta a un CSV de ventas de Ágora para el cron horario (opcional). |
 | `ANTHROPIC_API_KEY` | Activa el OCR de albaranes (lectura de la foto con IA). Sin ella, se adjunta la foto y se rellena a mano. |
 | `OCR_MODEL` | Modelo de visión para el OCR (por defecto `claude-opus-4-8`). |
-| `RESEND_API_KEY` | Activa el envío automático del justificante por email (servicio Resend). |
+| `RESEND_API_KEY` | Activa el envío automático del justificante **y de los avisos diarios** por email (servicio Resend). |
 | `RESEND_FROM` | Remitente del email (ej. `M de Materia <pagos@tudominio.com>`). |
+| `ALERTA_EMAIL` | Email por defecto que recibe el aviso diario (se puede cambiar en la app). |
+| `ALERTA_HORA` | Hora por defecto del aviso diario en formato `HH:MM`, hora de Málaga (por defecto `09:00`). |
 | `REQUIRE_DB` | Si vale `1` y `NODE_ENV=production`, el servidor **no arranca sin `DATABASE_URL`** (evita perder datos en disco efímero por error). |
 
 > Sin `DATABASE_URL` los datos viven en ficheros JSON sobre disco efímero
@@ -75,7 +77,11 @@ frontend.
 7. **Proveedores** · **Recepción** · **Pagos** — compras y pagos por proveedor.
 8. **Carta y márgenes** — escandallos: coste, margen y rentabilidad por producto.
 9. **Análisis** — reportes de día/semana/stock con gráficos en CSS puro.
-10. **Manual** — la forma de hacer las cosas.
+10. **Avisos** — notificaciones de productos a punto de caducar y de materias por
+    pedir. Campana en la barra superior con resumen en vivo y **aviso diario por
+    email a una hora concreta** (configurable). Opcional: notificaciones del
+    navegador mientras la app esté abierta.
+11. **Manual** — la forma de hacer las cosas.
 
 ## API REST
 
@@ -100,6 +106,8 @@ GET  /api/recepciones          POST /, /:id/confirmar
 GET  /api/pagos                POST /:proveedorId/marcar-pagado
 GET  /api/etiquetas            /lote/:loteId, /historial, POST /:id/reimprimir
 GET  /api/carta                /:id   (escandallos, coste, margen, rentabilidad)
+GET  /api/notificaciones       resumen vivo (por caducar + por pedir)
+GET  /api/notificaciones/config   PATCH (admin), POST /enviar (admin, envía ya)
 GET  /api/reportes/dia?fecha=  /semana, /stock
 POST /api/ventas/importar      CSV de Ágora (descuenta stock)
 GET  /api/ventas               /sincronizacion
@@ -115,6 +123,29 @@ la **velocidad de consumo** por receta (unidades/hora, últimos 7 días) y se
 recomienda preparar cuando *horas de stock < vida útil × 0.5*. El dashboard
 muestra: *"Aguacate M — quedan 4.2 horas de stock al ritmo actual"*. Sin
 histórico suficiente cae al umbral fijo del 40 %.
+
+## Avisos (caducidad y pedidos)
+
+Dos avisos pensados para *no pensar, ejecutar*:
+
+- **Productos a punto de caducar** — lotes que vencen dentro de la ventana
+  configurada (por defecto 24 h) o ya caducados, para usarlos o darlos de baja.
+- **Materias por pedir** — materias en o por debajo del mínimo, con la cantidad
+  sugerida hasta el stock ideal y el proveedor.
+
+Se ven de tres formas:
+
+1. **Campana** en la barra superior, con un contador en vivo (se refresca cada
+   5 min). Al pulsarla se abre el panel de **Avisos** con ambas listas.
+2. **Email diario a una hora concreta** (configurable, hora de Málaga): junta lo
+   que caduca y lo que hay que pedir en un solo correo. Requiere `RESEND_API_KEY`.
+   Un *cron* de un minuto comprueba la hora y envía una sola vez al día.
+3. **Notificaciones del navegador** (opcional, con permiso) mientras la app esté
+   abierta.
+
+La configuración (hora, email, ventana de caducidad, activar/desactivar) está en
+**Gestión › Avisos** (solo admin) y se guarda en la entidad `configuracion`. Hay
+un botón *“Enviar prueba ahora”* para comprobar que el correo llega.
 
 ## Etiquetas Phomemo D520BT
 

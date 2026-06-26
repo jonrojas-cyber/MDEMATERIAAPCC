@@ -79,6 +79,7 @@ app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/recepciones", require("./routes/recepciones"));
 app.use("/api/pedidos", require("./routes/pedidos"));
+app.use("/api/notificaciones", require("./routes/notificaciones"));
 app.use("/api/pagos", require("./routes/pagos"));
 app.use("/api/etiquetas", require("./routes/etiquetas"));
 app.use("/api/carta", require("./routes/carta"));
@@ -129,6 +130,12 @@ store
     const agora = require("./agora");
     setInterval(() => agora.cronImport(), 60 * 60 * 1000).unref();
     agora.cronImport(); // intento inicial al arrancar
+
+    // Avisos: cada minuto comprueba si toca el envío diario (hora configurable)
+    // de productos por caducar y materias por pedir. El envío real solo ocurre
+    // a la hora marcada y una vez al día.
+    const notificaciones = require("./notificaciones");
+    setInterval(() => notificaciones.tick(), 60 * 1000).unref();
   })
   .catch((e) => {
     console.error("Fallo al inicializar el almacén de datos:", e);

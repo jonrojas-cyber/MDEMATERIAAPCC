@@ -1003,6 +1003,71 @@ input, select { font-family: inherit; font-size: 13px; }
   transform: translateY(1px);
   box-shadow: inset 0 1px 4px rgba(23,21,15,.14), inset 0 1px 0 rgba(255,255,255,.4) !important;
 }
+
+/* Teclas de login (Jon/Lara/Mónica): teclas oscuras en relieve. */
+.ubtn {
+  border-radius: 5px !important;
+  background: linear-gradient(180deg, #24221A 0%, #1A1812 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    inset 0 -1px 0 rgba(0,0,0,.4),
+    0 3px 7px rgba(0,0,0,.45),
+    0 1px 2px rgba(0,0,0,.3) !important;
+  transition: transform .1s ease, box-shadow .14s ease, border-color .12s ease;
+}
+.ubtn:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 5px 12px rgba(0,0,0,.5),
+    0 1px 2px rgba(0,0,0,.3) !important;
+}
+.ubtn:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+/* "Salir" en la barra: chip en relieve sobre el oliva. */
+.topbar .user-chip {
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #4A5040 0%, #3A4031 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 2px 4px rgba(0,0,0,.28) !important;
+  transition: transform .1s ease, box-shadow .12s ease;
+}
+.topbar .user-chip:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 4px 8px rgba(0,0,0,.34) !important; }
+.topbar .user-chip:active { transform: translateY(1px); box-shadow: inset 0 1px 3px rgba(0,0,0,.4) !important; }
+
+/* Chips de "qué hacer ahora" (sobre la caja verde): relieve sutil. */
+.todo-chip {
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.03) 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 2px 5px rgba(0,0,0,.30) !important;
+  transition: transform .1s ease, box-shadow .12s ease;
+}
+.todo-chip:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 4px 9px rgba(0,0,0,.36) !important; }
+.todo-chip:active { transform: translateY(1px); box-shadow: inset 0 1px 4px rgba(0,0,0,.4) !important; }
+
+/* Botón grande del asistente (Crear lote / OK siguiente): tecla maestra. */
+.wiz-ok {
+  border-radius: 6px;
+  background: linear-gradient(180deg, #38422F 0%, #2A332B 58%, #232B22 100%) !important;
+  border: 1px solid #1B2117;
+  text-shadow: 0 1px 0 rgba(0,0,0,.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -1px 0 rgba(0,0,0,.3),
+    0 4px 10px rgba(23,21,15,.28),
+    0 1px 2px rgba(23,21,15,.16) !important;
+  transition: transform .1s ease, box-shadow .14s ease, background .14s ease;
+}
+.wiz-ok:hover {
+  background: linear-gradient(180deg, #3F4936 0%, #2F382E 58%, #283026 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 6px 16px rgba(23,21,15,.32), 0 1px 2px rgba(23,21,15,.18) !important;
+}
+.wiz-ok:active { transform: translateY(1px); box-shadow: inset 0 2px 6px rgba(0,0,0,.34) !important; }
+.wiz-close {
+  border-radius: 4px; padding: 6px 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(23,21,15,.10);
+}
 </style>
 </head>
 <body>
@@ -1033,7 +1098,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v30</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v31</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1095,8 +1160,8 @@ function mostrarLogin() {
         <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:18px;">¿Quién prepara hoy?</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">
           ${Object.entries(USUARIOS).map(([k,u]) => `
-            <button id="ubtn-${k}" onclick="seleccionarUsuario('${k}')"
-              style="font-family:inherit;font-size:13px;padding:14px 28px;background:none;border:1px solid #2A2820;color:#888070;cursor:pointer;">
+            <button id="ubtn-${k}" class="ubtn" onclick="seleccionarUsuario('${k}')"
+              style="font-family:inherit;font-size:13px;padding:15px 30px;border:1px solid #2A2820;color:#888070;cursor:pointer;">
               ${u.nombre}
             </button>`).join("")}
         </div>

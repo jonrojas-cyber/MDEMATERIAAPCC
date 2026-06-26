@@ -215,20 +215,26 @@ function ahoraLocal() {
   return { hora: Number(get("hour")), fecha: `${get("year")}-${get("month")}-${get("day")}` };
 }
 
-// Se llama periódicamente; envía el resumen una sola vez al llegar la hora.
+// Se llama periódicamente (cron interno y disparador externo de GitHub Actions);
+// envía el resumen una sola vez al llegar la hora. Devuelve un estado para que el
+// endpoint externo pueda reportarlo.
 async function cronTick() {
   const cfg = getConfig();
-  if (!cfg.activo || !cfg.email || !mailer.disponible()) return;
+  if (!cfg.activo) return { ok: true, accion: "omitido", motivo: "desactivado" };
+  if (!cfg.email) return { ok: true, accion: "omitido", motivo: "sin_email" };
+  if (!mailer.disponible()) return { ok: true, accion: "omitido", motivo: "sin_mailer" };
   const { hora, fecha } = ahoraLocal();
-  if (hora !== cfg.hora) return;
-  if (cfg.ultimo_envio_fecha === fecha) return; // ya enviado hoy
+  if (hora !== cfg.hora) return { ok: true, accion: "omitido", motivo: `fuera_de_hora (${hora}!=${cfg.hora})` };
+  if (cfg.ultimo_envio_fecha === fecha) return { ok: true, accion: "omitido", motivo: "ya_enviado_hoy" };
   // Marcamos la fecha antes de enviar para no reintentar en el mismo minuto si tarda.
   setConfig({ ultimo_envio_fecha: fecha });
   try {
     const r = await enviarResumen({ force: true, fecha });
     console.log(`Avisos: resumen diario ${r.enviado ? "enviado" : "(sin novedades)"} a ${cfg.email}`);
+    return { ok: true, accion: r.enviado ? "enviado" : "sin_novedades", email: cfg.email };
   } catch (e) {
     console.error("Avisos cron error:", e.message);
+    return { ok: false, accion: "error", error: e.message };
   }
 }
 

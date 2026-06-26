@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v36</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v37</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1396,7 +1396,7 @@ function modulosMeta(d) {
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
     manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
-    avisos:       { num:"05", name:"Avisos por email", badge:"Pedidos y caducidades", urgent:false },
+    avisos:       { num:"05", name:"Avisos", badge:"Notificación · pedidos y caducidades", urgent:false },
   };
 }
 
@@ -2254,24 +2254,57 @@ async function importarVentasCSV(input){
   }catch(e){res.textContent="Error: "+e.message;}
 }
 
-// ── AVISOS POR EMAIL (recordatorio de pedidos + caducidades) ──
+// ── AVISOS EN EL DISPOSITIVO (recordatorio de pedidos + caducidades) ──
+// Convierte la clave VAPID (base64url) en el formato que pide PushManager.
+function urlBase64ToUint8Array(base64String){
+  const padding="=".repeat((4 - base64String.length % 4) % 4);
+  const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64); const arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+
+async function estadoPushDispositivo(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)) return "no-soportado";
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription();
+    return sub?"activo":"inactivo";
+  }catch(_){ return "inactivo"; }
+}
+
 async function irA_avisos(){
-  openSection("avisos","Avisos por email");
+  openSection("avisos","Avisos en el dispositivo");
   try{
     const d=await api("/avisos");
     const c=d.config||{};
     const r=d.resumen||{pedir:[],caducando:[]};
+    window._vapidKey=d.push&&d.push.vapid_public_key||"";
+    const estado=await estadoPushDispositivo();
     const horas=Array.from({length:24},(_,h)=>`<option value="${h}" ${h===c.hora?"selected":""}>${String(h).padStart(2,"0")}:00</option>`).join("");
     const ultimo=c.ultimo_envio?new Date(c.ultimo_envio).toLocaleString("es-ES"):"nunca";
-    const warnMailer=d.mailer_ok?"":`<div class="card" style="border:1px solid var(--alert);"><div class="card-meta" style="color:var(--alert)">El envío de email no está activado en el servidor (falta RESEND_API_KEY). Avísame y lo configuro.</div></div>`;
+    let bloqueDispositivo;
+    if(estado==="no-soportado"){
+      bloqueDispositivo=`<div class="card" style="border:1px solid var(--alert);"><div class="card-meta" style="color:var(--alert)">Este navegador no admite avisos en el dispositivo. En iPhone: añade la app a la pantalla de inicio (Compartir → Añadir a inicio) y ábrela desde ahí.</div></div>`;
+    }else if(estado==="activo"){
+      bloqueDispositivo=`<div class="card">
+        <div class="card-name">✓ Avisos activados en este dispositivo</div>
+        <div class="card-meta">Recibirás la notificación aunque la app esté cerrada (${d.push.dispositivos} dispositivo${d.push.dispositivos===1?"":"s"} en total).</div>
+        <div class="card-actions"><button class="btn-ghost" onclick="desactivarPush(this)">Desactivar en este dispositivo</button></div>
+      </div>`;
+    }else{
+      bloqueDispositivo=`<div class="card">
+        <div class="card-name">Activa los avisos en este dispositivo</div>
+        <div class="card-meta">Te llegarán como notificación del móvil aunque la app esté cerrada. Te pedirá permiso una vez.</div>
+        <div class="card-actions"><button class="btn-primary" onclick="activarPush(this)">Activar avisos en este dispositivo</button></div>
+      </div>`;
+    }
     setInner(`
-      <div class="section-label">Avisos automáticos (funcionan con la app cerrada)</div>
-      <div class="card" style="font-size:11px;color:var(--muted);">Los avisos los envía un robot en la nube cada hora: tu móvil puede estar apagado y la app cerrada. Llegan por email.</div>
-      ${warnMailer}
+      <div class="section-label">Avisos automáticos (notificación, app cerrada)</div>
+      <div class="card" style="font-size:11px;color:var(--muted);">El aviso salta en el dispositivo como una notificación del móvil. No es email. Hay que activarlo una vez en cada dispositivo donde lo quieras recibir.</div>
+      ${bloqueDispositivo}
       <div class="card">
         <div class="card-name">Configuración</div>
-        <div class="field"><label>Email donde recibir los avisos</label>
-          <input type="email" id="av-email" value="${c.email||""}" placeholder="tucorreo@ejemplo.com" style="width:100%;"></div>
         <div class="field"><label>Hora del recordatorio diario de pedidos</label>
           <select id="av-hora" style="width:140px;">${horas}</select></div>
         <div class="field"><label>Avisar de lotes que caducan en las próximas… (horas)</label>
@@ -2281,12 +2314,12 @@ async function irA_avisos(){
         </label>
         <div class="card-actions">
           <button class="btn-primary" onclick="guardarAvisos(this)">Guardar</button>
-          <button class="btn-ghost" onclick="probarAvisos(this)">Enviar email de prueba ahora</button>
+          <button class="btn-ghost" onclick="probarAvisos(this)">Enviar aviso de prueba ahora</button>
         </div>
         <div id="av-msg" style="font-size:12px;color:var(--olive);margin-top:8px;"></div>
-        <div class="card-meta" style="margin-top:6px;">Último envío: ${ultimo}</div>
+        <div class="card-meta" style="margin-top:6px;">Último aviso: ${ultimo}</div>
       </div>
-      <div class="section-label">Vista previa de lo que se enviaría ahora</div>
+      <div class="section-label">Vista previa de lo que se avisaría ahora</div>
       <div class="card">
         <div class="card-name">Materias que conviene pedir (${r.pedir.length})</div>
         ${r.pedir.length?r.pedir.map(m=>`<div class="card-meta">· ${m.nombre} — quedan ${m.disponibilidad_actual} ${m.unidad}, pedir ${m.cantidad_sugerida} ${m.unidad} (${m.proveedor})</div>`).join(""):`<div class="card-meta">✔ Nada por debajo del stock mínimo.</div>`}
@@ -2298,9 +2331,35 @@ async function irA_avisos(){
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
 
+async function activarPush(btn){
+  const msg=el("av-msg");
+  const prev=btn?btn.textContent:""; if(btn){btn.disabled=true;btn.textContent="Activando…";}
+  try{
+    if(!("serviceWorker" in navigator)||!("PushManager" in window)){ throw new Error("Este navegador no admite avisos push."); }
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted") throw new Error("No diste permiso para notificaciones. Actívalo en los ajustes del navegador.");
+    const reg=await navigator.serviceWorker.ready;
+    if(!window._vapidKey) throw new Error("Falta la clave del servidor. Recarga la página.");
+    const sub=await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(window._vapidKey) });
+    await api("/avisos/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sub)});
+    if(msg){ msg.style.color="var(--olive)"; msg.textContent="✓ Avisos activados en este dispositivo."; }
+    irA_avisos();
+  }catch(e){ if(msg){ msg.style.color="var(--alert)"; msg.textContent="Error: "+e.message; } }
+  finally{ if(btn){btn.disabled=false;btn.textContent=prev;} }
+}
+
+async function desactivarPush(btn){
+  const prev=btn?btn.textContent:""; if(btn){btn.disabled=true;btn.textContent="Desactivando…";}
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription();
+    if(sub){ await api("/avisos/desuscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({endpoint:sub.endpoint})}); await sub.unsubscribe(); }
+    irA_avisos();
+  }catch(e){ alert("Error: "+e.message); if(btn){btn.disabled=false;btn.textContent=prev;} }
+}
+
 async function guardarAvisos(btn){
   const body={
-    email:el("av-email").value.trim(),
     hora:Number(el("av-hora").value),
     caducidad_horas:Number(el("av-cad").value),
     activo:el("av-activo").checked
@@ -2308,8 +2367,8 @@ async function guardarAvisos(btn){
   const msg=el("av-msg"); if(btn){btn.disabled=true;}
   try{
     await api("/avisos",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    msg.style.color="var(--olive)"; msg.textContent="Guardado. Recibirás el aviso cada día a las "+String(body.hora).padStart(2,"0")+":00.";
-  }catch(e){ msg.style.color="var(--alert)"; msg.textContent="Error: "+e.message; }
+    if(msg){ msg.style.color="var(--olive)"; msg.textContent="Guardado. Recibirás el aviso cada día a las "+String(body.hora).padStart(2,"0")+":00."; }
+  }catch(e){ if(msg){ msg.style.color="var(--alert)"; msg.textContent="Error: "+e.message; } }
   finally{ if(btn){btn.disabled=false;} }
 }
 
@@ -2317,12 +2376,12 @@ async function probarAvisos(btn){
   const msg=el("av-msg"); const prev=btn?btn.textContent:"";
   if(btn){btn.disabled=true;btn.textContent="Enviando…";}
   try{
-    // Guarda primero para que la prueba use el email/plazo actuales.
-    await guardarAvisos(null);
+    await guardarAvisos(null); // guarda hora/plazo actuales antes de la prueba
     const r=await api("/avisos/probar",{method:"POST"});
-    msg.style.color="var(--olive)";
-    msg.textContent=r.enviado?"✓ Email de prueba enviado. Revisa tu bandeja (y spam).":"Enviado (sin novedades que reportar).";
-  }catch(e){ msg.style.color="var(--alert)"; msg.textContent="Error: "+e.message; }
+    if(msg){ msg.style.color="var(--olive)";
+      msg.textContent=r.enviado?"✓ Aviso de prueba enviado a este dispositivo.":"Enviado (sin novedades que reportar)."; }
+  }catch(e){ if(msg){ msg.style.color="var(--alert)";
+    msg.textContent=/PUSH_NO_SUBS/.test(e.message)||/dispositivo activado/.test(e.message)?"Primero activa los avisos en este dispositivo (botón de arriba).":"Error: "+e.message; } }
   finally{ if(btn){btn.disabled=false;btn.textContent=prev;} }
 }
 
@@ -2651,6 +2710,11 @@ async function arrancar() {
   // Tras 2 minutos sin respuesta
   el("splash-estado").textContent = "Sin respuesta del servidor";
   el("splash-count").textContent = "Recarga la página para intentarlo de nuevo";
+}
+
+// Registro del Service Worker (necesario para los avisos push en el dispositivo).
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
 // Init

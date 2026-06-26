@@ -78,7 +78,7 @@ app.all("/avisos/cron", async (req, res) => {
   if (got !== token) return res.status(401).json({ error: "Token inválido" });
   try {
     const avisos = require("./avisos");
-    const r = req.query.force === "1" ? await avisos.enviarResumen({ force: true }) : await avisos.cronTick();
+    const r = req.query.force === "1" ? await avisos.enviarAviso({ force: true }) : await avisos.cronTick();
     res.json({ ok: true, ...r });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -113,7 +113,8 @@ app.use(
   express.static(path.join(__dirname, "..", "frontend"), {
     etag: true,
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".html")) {
+      if (filePath.endsWith(".html") || filePath.endsWith("sw.js")) {
+        // El service worker también sin caché, para que se actualice siempre.
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       } else if (/\.(woff2|ttf|png|jpe?g|svg|ico)$/i.test(filePath)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");

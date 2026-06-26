@@ -90,17 +90,19 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
-test("avisos: la pantalla de configuración carga con formulario y vista previa", async ({ page }) => {
+test("avisos: la pantalla carga con activación de dispositivo, config y vista previa", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page); // Moni es admin
   await page.evaluate(() => irA_avisos());
-  // Formulario de configuración.
-  await expect(page.locator("#av-email")).toBeVisible();
+  // Configuración (hora, plazo de caducidad, activar/desactivar global).
   await expect(page.locator("#av-hora")).toBeVisible();
   await expect(page.locator("#av-cad")).toBeVisible();
   await expect(page.locator("#av-activo")).toBeVisible();
-  // Vista previa (al menos las tarjetas de pedidos y caducidades).
+  // Botón de guardar y de prueba.
+  await expect(page.locator("button", { hasText: /Guardar/ })).toBeVisible();
+  await expect(page.locator("button", { hasText: /aviso de prueba/i })).toBeVisible();
+  // Vista previa (tarjetas de pedidos y caducidades).
   await expect(page.locator(".card-name", { hasText: /conviene pedir/i })).toBeVisible();
   await expect(page.locator(".card-name", { hasText: /caducar/i })).toBeVisible();
   expect(errors).toEqual([]);

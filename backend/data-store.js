@@ -35,6 +35,7 @@ const ENTITIES = [
   "justificantes",
   "pedidos",
   "config",
+  "push_subs",
 ];
 
 const cache = {};

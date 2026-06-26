@@ -2,8 +2,7 @@
   {
     "id": "avisos",
     "activo": true,
-    "email": "",
-    "hora": 9,
+    "hora": 16,
     "caducidad_horas": 48
   }
 ]

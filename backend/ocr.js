@@ -41,7 +41,7 @@ const ESQUEMA = {
               "(cópialo literalmente de la lista que se te da). Cadena vacía si ninguna encaja con claridad.",
           },
         },
-        required: ["descripcion", "cantidad", "importe", "materia"],
+        required: ["descripcion", "cantidad", "importe"],
         additionalProperties: false,
       },
     },
@@ -72,7 +72,9 @@ async function extraerAlbaran(base64, mediaType, catalogo) {
 
   const response = await client.messages.create({
     model: MODELO,
-    max_tokens: 2000,
+    // Margen amplio: un albarán con muchas líneas + el catálogo puede ser largo;
+    // si se queda corto, el JSON llega cortado y no se puede parsear.
+    max_tokens: 8000,
     output_config: { format: { type: "json_schema", schema: ESQUEMA } },
     messages: [
       {
@@ -97,8 +99,18 @@ async function extraerAlbaran(base64, mediaType, catalogo) {
   });
 
   const texto = (response.content || []).find((b) => b.type === "text");
-  if (!texto) throw new Error("No se pudo leer el albarán");
-  return JSON.parse(texto.text);
+  if (!texto) {
+    if (response.stop_reason === "refusal") throw new Error("La IA no pudo procesar esta imagen. Prueba con otra foto más nítida.");
+    throw new Error("No se pudo leer el albarán (respuesta vacía)");
+  }
+  try {
+    return JSON.parse(texto.text);
+  } catch (e) {
+    if (response.stop_reason === "max_tokens") {
+      throw new Error("El albarán tiene demasiadas líneas para leerlo de una vez. Hazle una foto más cercana o por partes.");
+    }
+    throw new Error("La lectura no devolvió datos válidos. Inténtalo otra vez con una foto más nítida.");
+  }
 }
 
 module.exports = { disponible, extraerAlbaran };

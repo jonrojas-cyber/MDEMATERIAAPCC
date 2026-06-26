@@ -78,6 +78,18 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   expect(errors).toEqual([]);
 });
 
+test("el logo del encabezado vuelve al inicio desde cualquier sección", async ({ page }) => {
+  await login(page);
+  // Entra profundo: submenú Operación → sección Materias.
+  await page.evaluate(() => irA_categoria("operacion"));
+  await page.evaluate(() => irA_materias());
+  await expect(page.locator(".screen-head")).toContainText(/materias/i);
+  // Clic en el logotipo de texto → inicio.
+  await page.click(".topbar .brandword");
+  await expect(page.locator(".cat").first()).toBeVisible();
+  await expect(page.locator("#topbar-back")).not.toBeVisible();
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

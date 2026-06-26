@@ -771,9 +771,12 @@ input, select { font-family: inherit; font-size: 13px; }
 .topbar-center { flex: 0 0 auto; }
 .topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
 .topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 15px;
-  font-weight: 400; letter-spacing: .2em; text-transform: lowercase; color: var(--oliveink); }
+  font-weight: 400; letter-spacing: .2em; text-transform: lowercase; color: var(--oliveink);
+  cursor: pointer; transition: opacity .15s ease; }
+.topbar .brandword:hover { opacity: .7; }
+.topbar .brandword:focus-visible { outline: 1px solid var(--oliveink); outline-offset: 3px; border-radius: 2px; }
 /* Imagotipo ||| incrustado (en relieve) en verde sobre la barra oliva. */
-.topbar-center .mark { gap: 8px; }
+.topbar-center .mark { gap: 8px; cursor: pointer; }
 .topbar-center .mark i {
   width: 4.5px; height: 36px; border-radius: 4px;
   background: #353B2B; /* surco un punto más oscuro que la barra */
@@ -1142,9 +1145,9 @@ input, select { font-family: inherit; font-size: 13px; }
 <header class="topbar">
   <div class="topbar-left">
     <button class="topbar-back" id="topbar-back" onclick="goBack()">←</button>
-    <span class="brandword">m de materia</span>
+    <span class="brandword" role="button" tabindex="0" title="Ir al inicio" onclick="goHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome();}">m de materia</span>
   </div>
-  <div class="topbar-center"><span class="mark"><i></i><i></i><i></i></span></div>
+  <div class="topbar-center"><span class="mark" role="button" tabindex="0" title="Ir al inicio" onclick="goHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome();}"><i></i><i></i><i></i></span></div>
   <div class="topbar-right">
     <span class="topbar-section" id="topbar-section">Control total</span>
     <div class="topbar-user" id="topbar-user"></div>
@@ -1164,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v33</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v34</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>

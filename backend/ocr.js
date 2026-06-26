@@ -1,6 +1,9 @@
 // OCR de albaranes con Claude (visión). Lee la foto de un albarán y extrae
 // proveedor, líneas e importe en datos estructurados para rellenar la recepción.
 //
+// El emparejado de cada línea con la materia del almacén se hace FUERA de aquí
+// (en la ruta /escanear), para no recargar la lectura ni empeorar el OCR.
+//
 // Requiere ANTHROPIC_API_KEY en el entorno. Si no está configurada, la app sigue
 // funcionando: la pantalla de recepción permite adjuntar la foto y rellenar a mano.
 
@@ -30,16 +33,10 @@ const ESQUEMA = {
       items: {
         type: "object",
         properties: {
-          descripcion: { type: "string", description: "Descripción tal cual aparece en el albarán" },
+          descripcion: { type: "string" },
           cantidad: { type: "number" },
           precio_unitario: { type: "number" },
           importe: { type: "number" },
-          materia: {
-            type: "string",
-            description:
-              "Nombre EXACTO de la materia del catálogo del almacén que corresponde a esta línea " +
-              "(cópialo literalmente de la lista que se te da). Cadena vacía si ninguna encaja con claridad.",
-          },
         },
         required: ["descripcion", "cantidad", "importe"],
         additionalProperties: false,
@@ -50,9 +47,27 @@ const ESQUEMA = {
   additionalProperties: false,
 };
 
-// Extrae los datos del albarán a partir de una imagen en base64. Si se pasa el
-// catálogo de materias del almacén, la IA empareja cada línea con su materia.
-async function extraerAlbaran(base64, mediaType, catalogo) {
+// Interpreta el JSON de la respuesta de forma tolerante: admite que venga limpio,
+// envuelto en ```json ... ``` o con algo de texto alrededor.
+function parseJsonTolerante(txt) {
+  if (!txt) return null;
+  let s = String(txt).trim();
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try {
+    return JSON.parse(s);
+  } catch (_) {}
+  const i = s.indexOf("{");
+  const j = s.lastIndexOf("}");
+  if (i !== -1 && j !== -1 && j > i) {
+    try {
+      return JSON.parse(s.slice(i, j + 1));
+    } catch (_) {}
+  }
+  return null;
+}
+
+// Extrae los datos del albarán a partir de una imagen en base64.
+async function extraerAlbaran(base64, mediaType) {
   if (!disponible()) {
     const err = new Error("OCR no configurado (define ANTHROPIC_API_KEY)");
     err.code = "OCR_NO_CONFIG";
@@ -61,20 +76,9 @@ async function extraerAlbaran(base64, mediaType, catalogo) {
 
   const client = new Anthropic(); // toma ANTHROPIC_API_KEY del entorno
 
-  const nombres = Array.isArray(catalogo) ? catalogo.filter(Boolean) : [];
-  const bloqueCatalogo = nombres.length
-    ? "\n\nCatálogo de materias del almacén (empareja cada línea con la materia que corresponda, " +
-      "copiando su nombre EXACTO en el campo \"materia\"; usa el sentido común con abreviaturas, " +
-      "plurales, formatos, marcas y sinónimos —p. ej. 'AGUACATE HASS 5KG' → 'Aguacate M'—; " +
-      "si ninguna encaja con claridad, deja \"materia\" vacío):\n- " +
-      nombres.join("\n- ")
-    : "";
-
   const response = await client.messages.create({
     model: MODELO,
-    // Margen amplio: un albarán con muchas líneas + el catálogo puede ser largo;
-    // si se queda corto, el JSON llega cortado y no se puede parsear.
-    max_tokens: 8000,
+    max_tokens: 1500,
     output_config: { format: { type: "json_schema", schema: ESQUEMA } },
     messages: [
       {
@@ -90,8 +94,8 @@ async function extraerAlbaran(base64, mediaType, catalogo) {
               "Esto es la foto de un albarán de un proveedor de hostelería. " +
               "Extrae el proveedor, la fecha, el importe total y las líneas de producto " +
               "(descripción, cantidad, precio unitario e importe). Importes en euros con punto decimal. " +
-              "Si un dato no es legible, deja la cadena vacía o 0." +
-              bloqueCatalogo,
+              "Si un dato no es legible, deja la cadena vacía o 0. " +
+              "Responde ÚNICAMENTE con el objeto JSON, sin texto adicional ni markdown.",
           },
         ],
       },
@@ -99,18 +103,9 @@ async function extraerAlbaran(base64, mediaType, catalogo) {
   });
 
   const texto = (response.content || []).find((b) => b.type === "text");
-  if (!texto) {
-    if (response.stop_reason === "refusal") throw new Error("La IA no pudo procesar esta imagen. Prueba con otra foto más nítida.");
-    throw new Error("No se pudo leer el albarán (respuesta vacía)");
-  }
-  try {
-    return JSON.parse(texto.text);
-  } catch (e) {
-    if (response.stop_reason === "max_tokens") {
-      throw new Error("El albarán tiene demasiadas líneas para leerlo de una vez. Hazle una foto más cercana o por partes.");
-    }
-    throw new Error("La lectura no devolvió datos válidos. Inténtalo otra vez con una foto más nítida.");
-  }
+  const datos = texto ? parseJsonTolerante(texto.text) : null;
+  if (!datos) throw new Error("No se pudo leer el albarán");
+  return datos;
 }
 
 module.exports = { disponible, extraerAlbaran };

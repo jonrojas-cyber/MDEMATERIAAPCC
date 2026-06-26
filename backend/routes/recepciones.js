@@ -119,23 +119,19 @@ router.post("/escanear", jsonGrande, async (req, res) => {
 
   try {
     const materias = store.readAll("materias");
-    // Le damos a la IA el catálogo de materias para que empareje cada línea.
-    const datos = await ocr.extraerAlbaran(base64, media_type, materias.map((m) => m.nombre));
+    // El OCR solo LEE el albarán (no se le carga con el catálogo, para no
+    // empeorar la lectura). El emparejado con la materia se hace aquí.
+    const datos = await ocr.extraerAlbaran(base64, media_type);
 
     // Intentar emparejar el proveedor por nombre con los existentes.
     const proveedores = store.readAll("proveedores");
     const norm = (s) => String(s || "").toLowerCase().trim();
     const match = proveedores.find((p) => norm(p.nombre) && norm(datos.proveedor).includes(norm(p.nombre)));
 
-    // Emparejar cada línea con una materia del almacén. Prioridad:
-    //   1) La materia que la IA asignó (nombre exacto del catálogo).
-    //   2) Respaldo: solapamiento de palabras (más listo que "contiene"),
-    //      p. ej. "Tomate triturado lata" ↔ "Tomate trabajado M".
-    const byNombre = {};
-    materias.forEach((m) => (byNombre[norm(m.nombre)] = m));
+    // Emparejar cada línea con una materia del almacén por solapamiento de
+    // palabras (más listo que "contiene"): "Tomate triturado lata" ↔ "Tomate trabajado M".
     const lineas = (datos.lineas || []).map((l) => {
-      let m = l.materia ? byNombre[norm(l.materia)] : null;
-      if (!m) m = mejorMateriaPorPalabras(l.descripcion, materias);
+      const m = mejorMateriaPorPalabras(l.descripcion, materias);
       return {
         descripcion: l.descripcion,
         cantidad: l.cantidad,

@@ -30,12 +30,18 @@ const ESQUEMA = {
       items: {
         type: "object",
         properties: {
-          descripcion: { type: "string" },
+          descripcion: { type: "string", description: "Descripción tal cual aparece en el albarán" },
           cantidad: { type: "number" },
           precio_unitario: { type: "number" },
           importe: { type: "number" },
+          materia: {
+            type: "string",
+            description:
+              "Nombre EXACTO de la materia del catálogo del almacén que corresponde a esta línea " +
+              "(cópialo literalmente de la lista que se te da). Cadena vacía si ninguna encaja con claridad.",
+          },
         },
-        required: ["descripcion", "cantidad", "importe"],
+        required: ["descripcion", "cantidad", "importe", "materia"],
         additionalProperties: false,
       },
     },
@@ -44,8 +50,9 @@ const ESQUEMA = {
   additionalProperties: false,
 };
 
-// Extrae los datos del albarán a partir de una imagen en base64.
-async function extraerAlbaran(base64, mediaType) {
+// Extrae los datos del albarán a partir de una imagen en base64. Si se pasa el
+// catálogo de materias del almacén, la IA empareja cada línea con su materia.
+async function extraerAlbaran(base64, mediaType, catalogo) {
   if (!disponible()) {
     const err = new Error("OCR no configurado (define ANTHROPIC_API_KEY)");
     err.code = "OCR_NO_CONFIG";
@@ -54,9 +61,18 @@ async function extraerAlbaran(base64, mediaType) {
 
   const client = new Anthropic(); // toma ANTHROPIC_API_KEY del entorno
 
+  const nombres = Array.isArray(catalogo) ? catalogo.filter(Boolean) : [];
+  const bloqueCatalogo = nombres.length
+    ? "\n\nCatálogo de materias del almacén (empareja cada línea con la materia que corresponda, " +
+      "copiando su nombre EXACTO en el campo \"materia\"; usa el sentido común con abreviaturas, " +
+      "plurales, formatos, marcas y sinónimos —p. ej. 'AGUACATE HASS 5KG' → 'Aguacate M'—; " +
+      "si ninguna encaja con claridad, deja \"materia\" vacío):\n- " +
+      nombres.join("\n- ")
+    : "";
+
   const response = await client.messages.create({
     model: MODELO,
-    max_tokens: 1500,
+    max_tokens: 2000,
     output_config: { format: { type: "json_schema", schema: ESQUEMA } },
     messages: [
       {
@@ -72,7 +88,8 @@ async function extraerAlbaran(base64, mediaType) {
               "Esto es la foto de un albarán de un proveedor de hostelería. " +
               "Extrae el proveedor, la fecha, el importe total y las líneas de producto " +
               "(descripción, cantidad, precio unitario e importe). Importes en euros con punto decimal. " +
-              "Si un dato no es legible, deja la cadena vacía o 0.",
+              "Si un dato no es legible, deja la cadena vacía o 0." +
+              bloqueCatalogo,
           },
         ],
       },

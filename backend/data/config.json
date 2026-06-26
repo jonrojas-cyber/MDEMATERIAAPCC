@@ -1,0 +1,9 @@
+[
+  {
+    "id": "avisos",
+    "activo": true,
+    "email": "",
+    "hora": 9,
+    "caducidad_horas": 48
+  }
+]

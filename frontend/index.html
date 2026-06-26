@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v34</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v35</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1396,13 +1396,14 @@ function modulosMeta(d) {
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
     manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
+    avisos:       { num:"05", name:"Avisos por email", badge:"Pedidos y caducidades", urgent:false },
   };
 }
 
 const CATS = {
   operacion: { name:"Operación", desc:"Preparaciones · Lotes · Materias · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
   compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
-  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Manual", ids:["carta","analisis","ventas","manual"], admin:true },
+  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Avisos · Manual", ids:["carta","analisis","ventas","manual","avisos"], admin:true },
 };
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
@@ -2251,6 +2252,77 @@ async function importarVentasCSV(input){
     const noRec=(r.productos_no_reconocidos&&r.productos_no_reconocidos.length)?` · No reconocidos: ${r.productos_no_reconocidos.join(", ")}`:"";
     res.innerHTML=`✓ Importadas <b>${r.ventas_importadas}</b> ventas de ${r.lineas} líneas. Stock actualizado.${noRec}`;
   }catch(e){res.textContent="Error: "+e.message;}
+}
+
+// ── AVISOS POR EMAIL (recordatorio de pedidos + caducidades) ──
+async function irA_avisos(){
+  openSection("avisos","Avisos por email");
+  try{
+    const d=await api("/avisos");
+    const c=d.config||{};
+    const r=d.resumen||{pedir:[],caducando:[]};
+    const horas=Array.from({length:24},(_,h)=>`<option value="${h}" ${h===c.hora?"selected":""}>${String(h).padStart(2,"0")}:00</option>`).join("");
+    const ultimo=c.ultimo_envio?new Date(c.ultimo_envio).toLocaleString("es-ES"):"nunca";
+    const warnMailer=d.mailer_ok?"":`<div class="card" style="border:1px solid var(--alert);"><div class="card-meta" style="color:var(--alert)">El envío de email no está activado en el servidor (falta RESEND_API_KEY). Avísame y lo configuro.</div></div>`;
+    setInner(`
+      <div class="section-label">Avisos automáticos (funcionan con la app cerrada)</div>
+      ${warnMailer}
+      <div class="card">
+        <div class="card-name">Configuración</div>
+        <div class="field"><label>Email donde recibir los avisos</label>
+          <input type="email" id="av-email" value="${c.email||""}" placeholder="tucorreo@ejemplo.com" style="width:100%;"></div>
+        <div class="field"><label>Hora del recordatorio diario de pedidos</label>
+          <select id="av-hora" style="width:140px;">${horas}</select></div>
+        <div class="field"><label>Avisar de lotes que caducan en las próximas… (horas)</label>
+          <input type="number" id="av-cad" min="1" step="1" value="${c.caducidad_horas||48}" style="width:120px;"></div>
+        <label class="toggle" style="margin-top:8px;display:inline-flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="av-activo" ${c.activo!==false?"checked":""}> Avisos activados
+        </label>
+        <div class="card-actions">
+          <button class="btn-primary" onclick="guardarAvisos(this)">Guardar</button>
+          <button class="btn-ghost" onclick="probarAvisos(this)">Enviar email de prueba ahora</button>
+        </div>
+        <div id="av-msg" style="font-size:12px;color:var(--olive);margin-top:8px;"></div>
+        <div class="card-meta" style="margin-top:6px;">Último envío: ${ultimo}</div>
+      </div>
+      <div class="section-label">Vista previa de lo que se enviaría ahora</div>
+      <div class="card">
+        <div class="card-name">Materias que conviene pedir (${r.pedir.length})</div>
+        ${r.pedir.length?r.pedir.map(m=>`<div class="card-meta">· ${m.nombre} — quedan ${m.disponibilidad_actual} ${m.unidad}, pedir ${m.cantidad_sugerida} ${m.unidad} (${m.proveedor})</div>`).join(""):`<div class="card-meta">✔ Nada por debajo del stock mínimo.</div>`}
+      </div>
+      <div class="card">
+        <div class="card-name">Lotes a punto de caducar (${r.caducando.length})</div>
+        ${r.caducando.length?r.caducando.map(l=>`<div class="card-meta">· ${l.nombre} (${l.codigo}) — ${l.caducado?"CADUCADO":"caduca en "+l.horas_restantes+" h"}${l.ubicacion?" · "+l.ubicacion:""}</div>`).join(""):`<div class="card-meta">✔ Ningún lote caduca en el plazo vigilado.</div>`}
+      </div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+async function guardarAvisos(btn){
+  const body={
+    email:el("av-email").value.trim(),
+    hora:Number(el("av-hora").value),
+    caducidad_horas:Number(el("av-cad").value),
+    activo:el("av-activo").checked
+  };
+  const msg=el("av-msg"); if(btn){btn.disabled=true;}
+  try{
+    await api("/avisos",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    msg.style.color="var(--olive)"; msg.textContent="Guardado. Recibirás el aviso cada día a las "+String(body.hora).padStart(2,"0")+":00.";
+  }catch(e){ msg.style.color="var(--alert)"; msg.textContent="Error: "+e.message; }
+  finally{ if(btn){btn.disabled=false;} }
+}
+
+async function probarAvisos(btn){
+  const msg=el("av-msg"); const prev=btn?btn.textContent:"";
+  if(btn){btn.disabled=true;btn.textContent="Enviando…";}
+  try{
+    // Guarda primero para que la prueba use el email/plazo actuales.
+    await guardarAvisos(null);
+    const r=await api("/avisos/probar",{method:"POST"});
+    msg.style.color="var(--olive)";
+    msg.textContent=r.enviado?"✓ Email de prueba enviado. Revisa tu bandeja (y spam).":"Enviado (sin novedades que reportar).";
+  }catch(e){ msg.style.color="var(--alert)"; msg.textContent="Error: "+e.message; }
+  finally{ if(btn){btn.disabled=false;btn.textContent=prev;} }
 }
 
 async function confirmarRcp(id){

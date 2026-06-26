@@ -84,6 +84,7 @@ app.use("/api/etiquetas", require("./routes/etiquetas"));
 app.use("/api/carta", require("./routes/carta"));
 app.use("/api/reportes", require("./routes/reportes"));
 app.use("/api/ventas", require("./routes/ventas"));
+app.use("/api/avisos", require("./routes/avisos"));
 
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última
@@ -129,6 +130,12 @@ store
     const agora = require("./agora");
     setInterval(() => agora.cronImport(), 60 * 60 * 1000).unref();
     agora.cronImport(); // intento inicial al arrancar
+
+    // Avisos por email (recordatorio de pedidos a una hora + lotes por caducar).
+    // Se comprueba cada 5 min y envía una sola vez al día al llegar la hora fijada.
+    const avisos = require("./avisos");
+    setInterval(() => avisos.cronTick(), 5 * 60 * 1000).unref();
+    avisos.cronTick(); // comprobación inicial al arrancar
   })
   .catch((e) => {
     console.error("Fallo al inicializar el almacén de datos:", e);

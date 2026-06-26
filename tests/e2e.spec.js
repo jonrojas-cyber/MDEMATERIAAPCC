@@ -53,6 +53,31 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
   expect(errors).toEqual([]);
 });
 
+test("volver: desde una sección regresa a su submenú y luego al inicio", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+
+  // Inicio → submenú Operación → sección Materias.
+  await page.evaluate(() => irA_categoria("operacion"));
+  await expect(page.locator(".modrow").first()).toBeVisible();
+  await page.evaluate(() => irA_materias());
+  await expect(page.locator(".screen-head")).toContainText(/materias/i);
+
+  // "Volver" debe llevar al submenú de Operación (no al inicio).
+  await page.click("#topbar-back");
+  await expect(page.locator(".modrow").first()).toBeVisible();
+  await expect(page.locator("#topbar-section")).toHaveText(/operación/i);
+  await expect(page.locator("#topbar-back")).toBeVisible();
+
+  // "Volver" otra vez debe llevar al inicio (categorías visibles, sin botón volver).
+  await page.click("#topbar-back");
+  await expect(page.locator(".cat").first()).toBeVisible();
+  await expect(page.locator("#topbar-back")).not.toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

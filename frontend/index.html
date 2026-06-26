@@ -1141,7 +1141,7 @@ input, select { font-family: inherit; font-size: 13px; }
 <!-- TOP BAR -->
 <header class="topbar">
   <div class="topbar-left">
-    <button class="topbar-back" id="topbar-back" onclick="goHome()">←</button>
+    <button class="topbar-back" id="topbar-back" onclick="goBack()">←</button>
     <span class="brandword">m de materia</span>
   </div>
   <div class="topbar-center"><span class="mark"><i></i><i></i><i></i></span></div>
@@ -1164,7 +1164,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v32</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v33</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1299,6 +1299,22 @@ function goHome() {
     document.getElementById("screen-inner").classList.remove("exit");
   }, 300);
   loadHome();
+}
+
+// "Volver": si estamos en una sección que pertenece a una categoría, regresa
+// a su submenú (no al inicio). Desde un submenú o el resumen, va al inicio.
+function goBack() {
+  const s = currentSection;
+  if (s === "home" || s === "resumen" || (typeof s === "string" && s.indexOf("cat-") === 0)) {
+    goHome();
+    return;
+  }
+  let parent = null;
+  for (const k in CATS) {
+    if (CATS[k].ids && CATS[k].ids.indexOf(s) !== -1) { parent = k; break; }
+  }
+  if (parent) irA_categoria(parent);
+  else goHome();
 }
 
 let _sectionTitle = "";

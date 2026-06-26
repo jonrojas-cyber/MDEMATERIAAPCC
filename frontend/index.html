@@ -764,17 +764,18 @@ input, select { font-family: inherit; font-size: 13px; }
    ════════════════════════════════════════════════════════ */
 
 /* Barra superior oliva con 3 zonas: marca · ||| · control total */
-.topbar { background: var(--olivebar); color: var(--oliveink); height: 60px;
-  padding: 0 30px; gap: 0; justify-content: space-between; }
+.topbar { background: var(--olivebar); color: var(--oliveink); height: 84px;
+  padding: 0 42px; gap: 0; justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(23,21,15,.16); z-index: 5; position: relative; }
 .topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
 .topbar-center { flex: 0 0 auto; }
 .topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
-.topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 14px;
-  font-weight: 400; letter-spacing: .16em; text-transform: lowercase; color: var(--oliveink); }
+.topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 15px;
+  font-weight: 400; letter-spacing: .2em; text-transform: lowercase; color: var(--oliveink); }
 /* Imagotipo ||| incrustado (en relieve) en verde sobre la barra oliva. */
-.topbar-center .mark { gap: 7px; }
+.topbar-center .mark { gap: 8px; }
 .topbar-center .mark i {
-  width: 4px; height: 28px; border-radius: 4px;
+  width: 4.5px; height: 36px; border-radius: 4px;
   background: #353B2B; /* surco un punto más oscuro que la barra */
   box-shadow:
     inset 1.2px 1.2px 1.6px rgba(0,0,0,.55),
@@ -792,9 +793,10 @@ input, select { font-family: inherit; font-size: 13px; }
 
 /* Footer oliva (cierra el marco) */
 .botbar { flex-shrink: 0; background: var(--olivebar); color: var(--oliveink);
-  height: 34px; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 30px; font-family: 'Courier Prime', monospace; font-size: 9.5px;
-  letter-spacing: .14em; text-transform: lowercase; opacity: .95; }
+  height: 52px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 42px; font-family: 'Courier Prime', monospace; font-size: 10px;
+  letter-spacing: .16em; text-transform: lowercase; opacity: .95;
+  box-shadow: 0 -2px 10px rgba(23,21,15,.14); z-index: 5; position: relative; }
 
 /* Cabecera del inicio (sin wordmark grande: ya está en la barra). */
 .home-brand { display: none; }
@@ -858,9 +860,10 @@ input, select { font-family: inherit; font-size: 13px; }
 }
 
 @media (max-width: 680px) {
-  .topbar { padding: 0 16px; height: 54px; }
-  .botbar { padding: 0 16px; font-size: 8px; }
-  .topbar .brandword { font-size: 12px; letter-spacing: .1em; }
+  .topbar { padding: 0 20px; height: 66px; }
+  .botbar { padding: 0 20px; height: 42px; font-size: 8.5px; }
+  .topbar .brandword { font-size: 12px; letter-spacing: .12em; }
+  .topbar-center .mark i { height: 28px; width: 4px; }
   /* Cabecera compacta para dejar alto a los menús. */
   .home-head { padding: 0 2px 10px; }
   .home-sys { font-size: 9px; letter-spacing: .1em; }
@@ -938,18 +941,40 @@ input, select { font-family: inherit; font-size: 13px; }
 .toggle { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 1px 1.5px rgba(23,21,15,.08) !important; border-radius: 3px !important; }
 .toggle.on { box-shadow: inset 0 1px 2px rgba(0,0,0,.28) !important; }
 
-/* Tarjetas tappables con elevación suave (ya no se ven planas). */
+/* Teclas del menú: relieve marcado (luz arriba, sombra abajo, borde inferior
+   oscuro) para que se vean como teclas físicas serias. */
 .cat {
-  background: linear-gradient(180deg, #F8F6F1 0%, #EFEDE6 100%) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 2px 6px rgba(23,21,15,.14), 0 1px 2px rgba(23,21,15,.08) !important;
+  border: 1px solid #CBC5B3 !important;
+  border-radius: 5px !important;
+  background: linear-gradient(180deg, #FBF9F4 0%, #F1EFE8 52%, #E9E7DF 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -2px 0 rgba(23,21,15,.07),
+    0 4px 10px rgba(23,21,15,.17),
+    0 1px 2px rgba(23,21,15,.10) !important;
+  transition: transform .1s ease, box-shadow .14s ease, background .14s ease;
 }
 .cat:hover {
-  background: linear-gradient(180deg, #FBFAF6 0%, #F0EEE7 100%) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 6px 16px rgba(23,21,15,.18), 0 1px 2px rgba(23,21,15,.07) !important;
-  transform: translateY(-1px);
+  background: linear-gradient(180deg, #FFFFFF 0%, #F3F1EA 52%, #EBE9E1 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    inset 0 -2px 0 rgba(23,21,15,.08),
+    0 10px 24px rgba(23,21,15,.22),
+    0 2px 4px rgba(23,21,15,.10) !important;
+  transform: translateY(-2px);
 }
-.card.clickable { box-shadow: 0 1px 2px rgba(23,21,15,.06) !important; transition: box-shadow .12s ease, background .12s ease; }
-.card.clickable:hover { box-shadow: 0 3px 9px rgba(23,21,15,.12) !important; }
+.cat:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 2px 6px rgba(23,21,15,.16),
+    inset 0 1px 0 rgba(255,255,255,.4),
+    0 1px 2px rgba(23,21,15,.10) !important;
+}
+.card.clickable { border-radius: 5px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 2px 5px rgba(23,21,15,.10), 0 1px 1px rgba(23,21,15,.06) !important;
+  transition: box-shadow .12s ease, background .12s ease, transform .1s ease; }
+.card.clickable:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 5px 13px rgba(23,21,15,.16) !important; }
+.card.clickable:active { transform: translateY(1px); box-shadow: inset 0 1px 4px rgba(23,21,15,.14) !important; }
 </style>
 </head>
 <body>
@@ -980,7 +1005,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v26</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v27</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>

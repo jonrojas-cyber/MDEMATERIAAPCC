@@ -13,6 +13,39 @@ function slim(r) {
   return { ...resto, tiene_foto: !!foto_albaran_url };
 }
 
+// Respaldo de emparejado línea↔materia por solapamiento de palabras (cuando la
+// IA no asignó materia). Ignora unidades/palabras de relleno y exige al menos
+// una palabra significativa en común.
+const STOP = new Set([
+  "de","la","el","los","las","con","sin","para","por","kg","kgs","gr","grs","g",
+  "l","lt","lts","ml","ud","uds","unidad","unidades","caja","cajas","bote","botes",
+  "lata","latas","bolsa","bolsas","pack","palet","bandeja","bandejas","x","und","u",
+]);
+function palabrasClave(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "") // quita acentos
+    .replace(/[^a-z0-9ñ ]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w));
+}
+function mejorMateriaPorPalabras(descripcion, materias) {
+  const toks = new Set(palabrasClave(descripcion));
+  if (!toks.size) return null;
+  let mejor = null, mejorScore = 0;
+  for (const m of materias) {
+    const mt = palabrasClave(m.nombre);
+    if (!mt.length) continue;
+    let score = 0;
+    for (const w of mt) if (toks.has(w)) score += 1;
+    // Normaliza un poco por longitud para no premiar nombres muy largos.
+    const ratio = score / mt.length;
+    const puntos = score + ratio;
+    if (score >= 1 && puntos > mejorScore) { mejorScore = puntos; mejor = m; }
+  }
+  return mejor;
+}
+
 router.get("/", (req, res) => {
   res.json(store.readAll("recepciones").map(slim));
 });
@@ -85,22 +118,24 @@ router.post("/escanear", jsonGrande, async (req, res) => {
   const base64 = String(imagen).replace(/^data:[^,]+,/, ""); // admite data URL
 
   try {
-    const datos = await ocr.extraerAlbaran(base64, media_type);
+    const materias = store.readAll("materias");
+    // Le damos a la IA el catálogo de materias para que empareje cada línea.
+    const datos = await ocr.extraerAlbaran(base64, media_type, materias.map((m) => m.nombre));
 
     // Intentar emparejar el proveedor por nombre con los existentes.
     const proveedores = store.readAll("proveedores");
     const norm = (s) => String(s || "").toLowerCase().trim();
     const match = proveedores.find((p) => norm(p.nombre) && norm(datos.proveedor).includes(norm(p.nombre)));
 
-    // Emparejar cada línea con una materia del almacén (por nombre) para sugerir
-    // qué cargar al stock. El usuario lo revisa antes de confirmar.
-    const materias = store.readAll("materias");
+    // Emparejar cada línea con una materia del almacén. Prioridad:
+    //   1) La materia que la IA asignó (nombre exacto del catálogo).
+    //   2) Respaldo: solapamiento de palabras (más listo que "contiene"),
+    //      p. ej. "Tomate triturado lata" ↔ "Tomate trabajado M".
+    const byNombre = {};
+    materias.forEach((m) => (byNombre[norm(m.nombre)] = m));
     const lineas = (datos.lineas || []).map((l) => {
-      const d = norm(l.descripcion);
-      const m = materias.find((x) => {
-        const n = norm(x.nombre);
-        return n && (d.includes(n) || n.includes(d));
-      });
+      let m = l.materia ? byNombre[norm(l.materia)] : null;
+      if (!m) m = mejorMateriaPorPalabras(l.descripcion, materias);
       return {
         descripcion: l.descripcion,
         cantidad: l.cantidad,

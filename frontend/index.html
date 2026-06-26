@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v37</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v38</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2100,7 +2100,7 @@ async function escanearAlbaran(input){
   const file=input.files&&input.files[0]; if(!file)return;
   const hint=el("ocr-hint"); if(hint) hint.textContent="Procesando imagen…";
   try{
-    const dataUrl=await reducirImagen(file,1600,0.72);
+    const dataUrl=await reducirImagen(file,2400,0.88);
     await procesarFotoAlbaran(dataUrl);
   }catch(e){ if(hint) hint.textContent="No se pudo leer: "+e.message; }
   input.value=""; // permite re-elegir la misma foto
@@ -2137,9 +2137,10 @@ async function procesarFotoAlbaran(dataUrl){
 }
 
 // ── CÁMARA EN VIVO PARA ESCANEAR ALBARANES ──────────────────────────────
-// Encuadre serio: vídeo a pantalla completa, guía rectangular con foco, y
-// recorte a la zona del marco para que la foto salga centrada y nítida.
-let _camStream=null;
+// El marco es solo una guía visual para encuadrar; la captura se hace a la
+// MÁXIMA resolución posible y SIN recortar, para que el lector (OCR) tenga todo
+// el texto bien nítido. La calidad de lectura depende de la resolución.
+let _camStream=null, _camTrack=null, _imageCapture=null;
 async function abrirCamara(){
   const root=el("wizard-root"); if(!root) return;
   root.innerHTML=`
@@ -2151,7 +2152,7 @@ async function abrirCamara(){
           <i class="cam-corner bl"></i><i class="cam-corner br"></i>
         </div>
       </div>
-      <div class="cam-hint" id="cam-hint">Encuadra el albarán dentro del marco · buena luz · sin sombras</div>
+      <div class="cam-hint" id="cam-hint">Llena el marco con el albarán · plano · buena luz · sin sombras</div>
       <div class="cam-bar">
         <button class="cam-cancel" onclick="cerrarCamara()">Cancelar</button>
         <button class="cam-shot" id="cam-shot" onclick="capturarFoto()" aria-label="Capturar"><span></span></button>
@@ -2161,42 +2162,47 @@ async function abrirCamara(){
   root.classList.add("show");
   try{
     _camStream=await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:{ ideal:"environment" }, width:{ ideal:2560 }, height:{ ideal:1440 } },
+      video:{ facingMode:{ ideal:"environment" }, width:{ ideal:3840 }, height:{ ideal:2160 } },
       audio:false
     });
     const v=el("cam-video"); v.srcObject=_camStream; await v.play().catch(()=>{});
+    _camTrack=_camStream.getVideoTracks()[0]||null;
+    // ImageCapture permite una foto fija a resolución completa del sensor (mejor que el vídeo).
+    try{ _imageCapture=(window.ImageCapture&&_camTrack)?new ImageCapture(_camTrack):null; }catch(_){ _imageCapture=null; }
   }catch(e){
     const h=el("cam-hint");
-    if(h) h.innerHTML="No se pudo abrir la cámara. Usa “Tomar / elegir foto”.";
+    if(h) h.innerHTML="No se pudo abrir la cámara. Usa “Elegir de la galería”.";
     setTimeout(cerrarCamara,1800);
   }
 }
-function capturarFoto(){
-  const v=el("cam-video"); if(!v||!v.videoWidth){ return; }
+async function capturarFoto(){
   const shot=el("cam-shot"); if(shot) shot.disabled=true;
-  const vw=v.videoWidth, vh=v.videoHeight;
-  // Recorta al marco visible (≈90% ancho, relación documento vertical ~1.41).
-  const frame=document.querySelector(".cam-frame");
-  let cw=vw*0.92, ch=cw*1.32;
-  if(frame){
-    const fr=frame.getBoundingClientRect();
-    const ratio=fr.width/fr.height;
-    ch=Math.min(vh, vw/ratio); cw=ch*ratio;
-    if(cw>vw){ cw=vw; ch=cw/ratio; }
-  }
-  if(ch>vh){ ch=vh; }
-  const sx=(vw-cw)/2, sy=(vh-ch)/2;
-  // Limita el lado mayor a 1600px para no enviar imágenes gigantes.
-  const escala=Math.min(1,1600/Math.max(cw,ch));
-  const c=document.createElement("canvas");
-  c.width=Math.round(cw*escala); c.height=Math.round(ch*escala);
-  c.getContext("2d").drawImage(v,sx,sy,cw,ch,0,0,c.width,c.height);
-  const dataUrl=c.toDataURL("image/jpeg",0.78);
-  cerrarCamara();
-  procesarFotoAlbaran(dataUrl);
+  try{
+    let dataUrl=null;
+    // 1) Mejor calidad: foto fija a resolución completa del sensor (si el navegador lo permite).
+    if(_imageCapture&&_imageCapture.takePhoto){
+      try{ const blob=await _imageCapture.takePhoto(); dataUrl=await reducirImagen(blob,2400,0.88); }catch(_){ dataUrl=null; }
+    }
+    // 2) Fallback: fotograma completo del vídeo (sin recortar, para no perder texto).
+    if(!dataUrl){
+      const v=el("cam-video");
+      if(v&&v.videoWidth){
+        const vw=v.videoWidth, vh=v.videoHeight;
+        const escala=Math.min(1,2400/Math.max(vw,vh));
+        const c=document.createElement("canvas");
+        c.width=Math.round(vw*escala); c.height=Math.round(vh*escala);
+        c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+        dataUrl=c.toDataURL("image/jpeg",0.88);
+      }
+    }
+    cerrarCamara();
+    if(dataUrl) procesarFotoAlbaran(dataUrl);
+    else alert("No se pudo capturar la foto. Prueba con “Elegir de la galería”.");
+  }catch(e){ cerrarCamara(); alert("No se pudo capturar: "+e.message); }
 }
 function cerrarCamara(){
   if(_camStream){ _camStream.getTracks().forEach(t=>t.stop()); _camStream=null; }
+  _camTrack=null; _imageCapture=null;
   const root=el("wizard-root"); if(root){ root.classList.remove("show"); root.innerHTML=""; }
 }
 

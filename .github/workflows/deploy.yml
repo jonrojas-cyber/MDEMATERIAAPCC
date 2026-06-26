@@ -1,0 +1,31 @@
+name: Deploy a Render
+
+# Dispara un despliegue en Render en cada push a main, de forma fiable, sin
+# depender del auto-deploy interno de Render (que se quedaba atascado).
+#
+# Para activarlo (una sola vez):
+#   1) En Render → servicio controlm-mdemateria → Settings → "Deploy Hook" →
+#      copia la URL.
+#   2) En GitHub → repo → Settings → Secrets and variables → Actions →
+#      "New repository secret" → nombre: RENDER_DEPLOY_HOOK_URL → pega la URL.
+# A partir de ahí, cada cambio en main se despliega solo.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar despliegue en Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL no configurado todavía. Salto el despliegue."
+            echo "Configúralo en Settings → Secrets → Actions para activarlo."
+            exit 0
+          fi
+          echo "Disparando despliegue en Render..."
+          curl -fsS -X POST "$HOOK" && echo "✓ Despliegue de Render disparado."

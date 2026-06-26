@@ -1068,6 +1068,72 @@ input, select { font-family: inherit; font-size: 13px; }
   border-radius: 4px; padding: 6px 12px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 1px 2px rgba(23,21,15,.10);
 }
+
+/* ── CÁMARA DE ESCANEO DE ALBARANES ─────────────────────────────────── */
+.cam-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: #0c0d0b; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.cam-video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+}
+.cam-mask {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.cam-frame {
+  position: relative;
+  width: 86%; max-width: 460px;
+  aspect-ratio: 1 / 1.32;
+  border-radius: 8px;
+  /* foco: oscurece todo menos el interior del marco */
+  box-shadow: 0 0 0 100vmax rgba(8,9,7,.62);
+  outline: 1.5px solid rgba(231,228,215,.55);
+}
+.cam-corner {
+  position: absolute; width: 26px; height: 26px;
+  border: 2.5px solid #E7E4D7;
+}
+.cam-corner.tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 8px; }
+.cam-corner.tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 8px; }
+.cam-corner.bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 8px; }
+.cam-corner.br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 8px; }
+.cam-hint {
+  position: absolute; left: 0; right: 0; top: max(22px, env(safe-area-inset-top));
+  text-align: center; color: #E7E4D7;
+  font-family: var(--sans); font-size: 12.5px; letter-spacing: .02em;
+  padding: 0 28px; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.cam-bar {
+  position: absolute; left: 0; right: 0;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; gap: 14px;
+}
+.cam-spacer { width: 86px; }
+.cam-cancel {
+  width: 86px; text-align: left;
+  background: none; border: 0; color: #E7E4D7;
+  font-family: var(--sans); font-size: 14px; letter-spacing: .03em;
+  padding: 10px 0; cursor: pointer;
+}
+.cam-shot {
+  width: 72px; height: 72px; border-radius: 50%;
+  border: 3px solid rgba(231,228,215,.9);
+  background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; transition: transform .1s ease;
+}
+.cam-shot > span {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #E7E4D7;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 2px 6px rgba(0,0,0,.4);
+}
+.cam-shot:active { transform: scale(.94); }
+.cam-shot:disabled { opacity: .5; }
 </style>
 </head>
 <body>
@@ -1098,7 +1164,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v31</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v32</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1306,6 +1372,7 @@ function modulosMeta(d) {
     pedidos:      { num:"02", name:"Pedidos", badge:"Crear y enviar a proveedores", urgent:false },
     recepcion:    { num:"03", name:"Recepción", badge:"Escanear albarán y entrada", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
+    archivo:      { num:"05", name:"Archivo albaranes", badge:"Por trimestre · gestoría", urgent:false },
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
@@ -1315,7 +1382,7 @@ function modulosMeta(d) {
 
 const CATS = {
   operacion: { name:"Operación", desc:"Preparaciones · Lotes · Materias · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
-  compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos", ids:["proveedores","pedidos","recepcion","pagos"], admin:true },
+  compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
   gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Manual", ids:["carta","analisis","ventas","manual"], admin:true },
 };
 
@@ -1922,9 +1989,12 @@ async function irA_recepcion(){
       </div>
       <div class="card">
         <div class="card-name">Escanear albarán</div>
-        <div class="card-meta" id="ocr-hint">Haz una foto del albarán y se rellenan proveedor, importe y líneas solos.</div>
+        <div class="card-meta" id="ocr-hint">Encuadra el albarán dentro del marco y se rellenan proveedor, importe y líneas solos.</div>
         <input type="file" accept="image/*" capture="environment" id="alb-file" style="display:none" onchange="escanearAlbaran(this)">
-        <div class="card-actions"><button class="btn-ghost" onclick="document.getElementById('alb-file').click()">Tomar / elegir foto</button></div>
+        <div class="card-actions">
+          <button class="btn-primary" onclick="abrirCamara()">Escanear con cámara</button>
+          <button class="btn-ghost" onclick="document.getElementById('alb-file').click()">Elegir de la galería</button>
+        </div>
         <div id="alb-preview"></div>
         <div id="alb-avisos"></div>
         <div id="alb-lineas"></div>
@@ -1941,6 +2011,39 @@ async function irA_recepcion(){
     },"Sin recepciones.");
     setInner(html);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── ARCHIVO DE ALBARANES POR TRIMESTRE (para la gestoría) ──
+async function irA_archivo(){
+  openSection("archivo","Archivo albaranes");
+  try{
+    const tri=await api("/recepciones/trimestres");
+    if(!tri.length){ setInner(`<div class="empty">Aún no hay albaranes archivados. Escanea albaranes en Recepción y aparecerán aquí agrupados por trimestre, listos para la gestoría.</div>`); return; }
+    const html=`<div class="section-label">Por trimestre · listo para la gestoría</div>`+
+      tri.map(t=>`<div class="card">
+        <div class="card-name">${t.label} · ${t.rango}</div>
+        <div class="card-meta">${t.count} albarán${t.count===1?"":"es"} · ${t.con_foto} con foto · total ${t.total.toFixed(2)} €</div>
+        <div class="card-acts" onclick="event.stopPropagation()">
+          <button class="btn-primary" onclick="descargarTrimestre(${t.year},${t.q},this)">Descargar PDF del trimestre</button>
+        </div>
+      </div>`).join("");
+    setInner(html);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// Descarga el PDF del trimestre con la sesión (token), para enviar a la gestoría.
+async function descargarTrimestre(year,q,btn){
+  const prev=btn?btn.textContent:""; if(btn){btn.disabled=true;btn.textContent="Generando PDF…";}
+  try{
+    const r=await fetch(API+`/recepciones/trimestre/${year}/${q}/pdf`,{headers:{Authorization:"Bearer "+getToken()}});
+    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error||"No se pudo generar el PDF"); }
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=`albaranes-${year}-T${q}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),8000);
+  }catch(e){ alert(e.message); }
+  finally{ if(btn){btn.disabled=false;btn.textContent=prev;} }
 }
 
 async function nuevaRcp(){
@@ -1972,19 +2075,29 @@ function reducirImagen(file,maxLado,calidad){
   });
 }
 
+// Entrada desde el selector de archivo (galería). Reduce y procesa.
 async function escanearAlbaran(input){
   const file=input.files&&input.files[0]; if(!file)return;
-  const hint=el("ocr-hint");
-  hint.textContent="Procesando imagen…";
+  const hint=el("ocr-hint"); if(hint) hint.textContent="Procesando imagen…";
   try{
-    const dataUrl=await reducirImagen(file,1500,0.7);
-    window._albFoto=dataUrl;
-    el("alb-preview").innerHTML=`<img src="${dataUrl}" style="max-width:100%;border-radius:6px;margin-top:8px;">`;
-    hint.textContent="Leyendo el albarán…";
+    const dataUrl=await reducirImagen(file,1600,0.72);
+    await procesarFotoAlbaran(dataUrl);
+  }catch(e){ if(hint) hint.textContent="No se pudo leer: "+e.message; }
+  input.value=""; // permite re-elegir la misma foto
+}
+
+// Lógica compartida: guarda la foto, muestra preview, OCR, cotejo y avisos.
+// La usan tanto el selector de archivo como la cámara en vivo.
+async function procesarFotoAlbaran(dataUrl){
+  const hint=el("ocr-hint");
+  window._albFoto=dataUrl;
+  const prev=el("alb-preview"); if(prev) prev.innerHTML=`<img src="${dataUrl}" style="max-width:100%;border-radius:6px;margin-top:8px;">`;
+  if(hint) hint.textContent="Leyendo el albarán…";
+  try{
     const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
     if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
-    hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
+    if(hint) hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
     renderLineasAlbaran(r.lineas||[]);
     // Cotejo: comparar con el pedido del proveedor y los precios habituales.
     window._pedidoId=null;
@@ -1996,11 +2109,75 @@ async function escanearAlbaran(input){
     }catch(_){ }
   }catch(e){
     if(/no configurado|503/i.test(e.message)){
-      hint.innerHTML="Lectura automática no activada. La foto queda adjunta; rellena proveedor e importe a mano y registra.";
+      if(hint) hint.innerHTML="Lectura automática no activada. La foto queda adjunta; rellena proveedor e importe a mano y registra.";
     }else{
-      hint.textContent="No se pudo leer: "+e.message;
+      if(hint) hint.textContent="No se pudo leer: "+e.message;
     }
   }
+}
+
+// ── CÁMARA EN VIVO PARA ESCANEAR ALBARANES ──────────────────────────────
+// Encuadre serio: vídeo a pantalla completa, guía rectangular con foco, y
+// recorte a la zona del marco para que la foto salga centrada y nítida.
+let _camStream=null;
+async function abrirCamara(){
+  const root=el("wizard-root"); if(!root) return;
+  root.innerHTML=`
+    <div class="cam-overlay">
+      <video id="cam-video" class="cam-video" playsinline autoplay muted></video>
+      <div class="cam-mask">
+        <div class="cam-frame">
+          <i class="cam-corner tl"></i><i class="cam-corner tr"></i>
+          <i class="cam-corner bl"></i><i class="cam-corner br"></i>
+        </div>
+      </div>
+      <div class="cam-hint" id="cam-hint">Encuadra el albarán dentro del marco · buena luz · sin sombras</div>
+      <div class="cam-bar">
+        <button class="cam-cancel" onclick="cerrarCamara()">Cancelar</button>
+        <button class="cam-shot" id="cam-shot" onclick="capturarFoto()" aria-label="Capturar"><span></span></button>
+        <div class="cam-spacer"></div>
+      </div>
+    </div>`;
+  root.classList.add("show");
+  try{
+    _camStream=await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:"environment" }, width:{ ideal:2560 }, height:{ ideal:1440 } },
+      audio:false
+    });
+    const v=el("cam-video"); v.srcObject=_camStream; await v.play().catch(()=>{});
+  }catch(e){
+    const h=el("cam-hint");
+    if(h) h.innerHTML="No se pudo abrir la cámara. Usa “Tomar / elegir foto”.";
+    setTimeout(cerrarCamara,1800);
+  }
+}
+function capturarFoto(){
+  const v=el("cam-video"); if(!v||!v.videoWidth){ return; }
+  const shot=el("cam-shot"); if(shot) shot.disabled=true;
+  const vw=v.videoWidth, vh=v.videoHeight;
+  // Recorta al marco visible (≈90% ancho, relación documento vertical ~1.41).
+  const frame=document.querySelector(".cam-frame");
+  let cw=vw*0.92, ch=cw*1.32;
+  if(frame){
+    const fr=frame.getBoundingClientRect();
+    const ratio=fr.width/fr.height;
+    ch=Math.min(vh, vw/ratio); cw=ch*ratio;
+    if(cw>vw){ cw=vw; ch=cw/ratio; }
+  }
+  if(ch>vh){ ch=vh; }
+  const sx=(vw-cw)/2, sy=(vh-ch)/2;
+  // Limita el lado mayor a 1600px para no enviar imágenes gigantes.
+  const escala=Math.min(1,1600/Math.max(cw,ch));
+  const c=document.createElement("canvas");
+  c.width=Math.round(cw*escala); c.height=Math.round(ch*escala);
+  c.getContext("2d").drawImage(v,sx,sy,cw,ch,0,0,c.width,c.height);
+  const dataUrl=c.toDataURL("image/jpeg",0.78);
+  cerrarCamara();
+  procesarFotoAlbaran(dataUrl);
+}
+function cerrarCamara(){
+  if(_camStream){ _camStream.getTracks().forEach(t=>t.stop()); _camStream=null; }
+  const root=el("wizard-root"); if(root){ root.classList.remove("show"); root.innerHTML=""; }
 }
 
 // Filas editables: cada línea del albarán -> materia del almacén + cantidad.

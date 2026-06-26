@@ -21,6 +21,53 @@ router.get("/ocr-estado", (req, res) => {
   res.json({ disponible: ocr.disponible() });
 });
 
+// Trimestre (año + 1-4) a partir de una fecha.
+function trimestreDe(fecha) {
+  const d = new Date(fecha);
+  return { year: d.getFullYear(), q: Math.floor(d.getMonth() / 3) + 1 };
+}
+const RANGOS = { 1: "Ene–Mar", 2: "Abr–Jun", 3: "Jul–Sep", 4: "Oct–Dic" };
+
+// Archivo de albaranes agrupado por trimestre (resumen para la gestoría).
+router.get("/trimestres", (req, res) => {
+  const grupos = {};
+  store.readAll("recepciones").forEach((r) => {
+    const { year, q } = trimestreDe(r.fecha);
+    const key = `${year}-T${q}`;
+    if (!grupos[key]) grupos[key] = { year, q, key, label: `T${q} ${year}`, rango: RANGOS[q], count: 0, total: 0, con_foto: 0 };
+    grupos[key].count += 1;
+    grupos[key].total += r.importe_total || 0;
+    if (r.foto_albaran_url) grupos[key].con_foto += 1;
+  });
+  res.json(
+    Object.values(grupos)
+      .map((g) => ({ ...g, total: Math.round(g.total * 100) / 100 }))
+      .sort((a, b) => b.year - a.year || b.q - a.q)
+  );
+});
+
+// PDF de un trimestre: portada con resumen + una página por albarán fotografiado.
+router.get("/trimestre/:year/:q/pdf", async (req, res) => {
+  const year = Number(req.params.year), q = Number(req.params.q);
+  const proveedores = store.readAll("proveedores");
+  const nombre = (id) => { const p = proveedores.find((x) => x.id === id); return p ? p.nombre : id; };
+  const recs = store
+    .readAll("recepciones")
+    .filter((r) => { const t = trimestreDe(r.fecha); return t.year === year && t.q === q; })
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+    .map((r) => ({ ...r, proveedor_nombre: nombre(r.proveedor_id) }));
+  if (!recs.length) return res.status(404).json({ error: "Sin albaranes en ese trimestre" });
+  const total = Math.round(recs.reduce((s, r) => s + (r.importe_total || 0), 0) * 100) / 100;
+  try {
+    const buf = await require("../pdf").albaranesTrimestreBuffer(recs, { label: `T${q} ${year}`, rango: RANGOS[q] || "", total });
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `inline; filename="albaranes-${year}-T${q}.pdf"`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Documento digital del albarán: recepción completa (con foto y líneas) + proveedor.
 // (Va después de las rutas concretas para no capturar "/ocr-estado".)
 router.get("/:id", (req, res) => {

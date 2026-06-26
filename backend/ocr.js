@@ -78,7 +78,7 @@ async function extraerAlbaran(base64, mediaType) {
 
   const response = await client.messages.create({
     model: MODELO,
-    max_tokens: 1500,
+    max_tokens: 8000,
     output_config: { format: { type: "json_schema", schema: ESQUEMA } },
     messages: [
       {

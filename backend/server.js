@@ -66,6 +66,25 @@ app.get("/justificante/:id/pdf", async (req, res) => {
   }
 });
 
+// Disparador externo de avisos (lo llama un cron de GitHub Actions cada hora).
+// Es público pero exige un token secreto. Clave: aunque Render esté "dormido",
+// esta petición lo DESPIERTA y entonces envía el aviso → llega aunque no haya
+// nada del usuario encendido. El propio servidor decide si toca enviar (hora
+// local Europe/Madrid + una vez al día); con ?force=1 envía siempre (pruebas).
+app.all("/avisos/cron", async (req, res) => {
+  const token = process.env.AVISOS_CRON_TOKEN;
+  if (!token) return res.status(503).json({ error: "AVISOS_CRON_TOKEN no configurado en el servidor" });
+  const got = req.headers["x-cron-token"] || req.query.token;
+  if (got !== token) return res.status(401).json({ error: "Token inválido" });
+  try {
+    const avisos = require("./avisos");
+    const r = req.query.force === "1" ? await avisos.enviarResumen({ force: true }) : await avisos.cronTick();
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── A partir de aquí, todo /api/* exige sesión válida (y respeta el rol) ───────
 app.use("/api", auth.requerido);
 

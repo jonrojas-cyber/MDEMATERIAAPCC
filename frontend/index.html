@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v35</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v36</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2266,6 +2266,7 @@ async function irA_avisos(){
     const warnMailer=d.mailer_ok?"":`<div class="card" style="border:1px solid var(--alert);"><div class="card-meta" style="color:var(--alert)">El envío de email no está activado en el servidor (falta RESEND_API_KEY). Avísame y lo configuro.</div></div>`;
     setInner(`
       <div class="section-label">Avisos automáticos (funcionan con la app cerrada)</div>
+      <div class="card" style="font-size:11px;color:var(--muted);">Los avisos los envía un robot en la nube cada hora: tu móvil puede estar apagado y la app cerrada. Llegan por email.</div>
       ${warnMailer}
       <div class="card">
         <div class="card-name">Configuración</div>

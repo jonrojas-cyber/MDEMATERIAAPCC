@@ -1,0 +1,40 @@
+name: Avisos por email (recordatorios)
+
+# Robot en la nube de GitHub que llama al servidor cada hora. Esa llamada
+# DESPIERTA a Render si estaba dormido y, si es la hora configurada, envía el
+# aviso por email. Así los avisos llegan aunque no haya nada del usuario
+# encendido (móvil apagado, app cerrada, servidor dormido).
+#
+# Activación (una sola vez):
+#   1) En Render → servicio → Settings → Environment → añade
+#        AVISOS_CRON_TOKEN = (una contraseña larga, la que quieras)
+#      (y, si no estaban, RESEND_API_KEY y RESEND_FROM para poder enviar email).
+#   2) En GitHub → repo → Settings → Secrets and variables → Actions:
+#        AVISOS_CRON_URL   = https://TU-SERVICIO.onrender.com/avisos/cron
+#        AVISOS_CRON_TOKEN = (el MISMO valor que pusiste en Render)
+#
+# La hora del aviso se cambia desde la app (Gestión → Avisos); este robot solo
+# "toca el timbre" cada hora y el servidor decide si toca enviar.
+
+on:
+  schedule:
+    - cron: "5 * * * *" # cada hora, al minuto 5 (UTC); la app decide si envía
+  workflow_dispatch: {} # permite dispararlo a mano desde la pestaña Actions
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al disparador de avisos
+        env:
+          URL: ${{ secrets.AVISOS_CRON_URL }}
+          TOKEN: ${{ secrets.AVISOS_CRON_TOKEN }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$TOKEN" ]; then
+            echo "AVISOS_CRON_URL o AVISOS_CRON_TOKEN no configurados todavía. Salto."
+            echo "Configúralos en Settings → Secrets → Actions para activarlo."
+            exit 0
+          fi
+          echo "Despertando al servidor y comprobando avisos..."
+          # --max-time alto: si Render estaba dormido, tarda en arrancar.
+          curl -fsS --max-time 120 -H "X-Cron-Token: $TOKEN" "$URL" && echo "" && echo "✓ Comprobación de avisos completada."

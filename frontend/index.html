@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v41</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v42</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2030,7 +2030,22 @@ async function irA_recepcion(){
       );
     },"Sin recepciones.");
     setInner(html);
+    // Indicador claro de si el lector automático (OCR) está activado en el servidor.
+    mostrarEstadoLector();
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// Comprueba si el lector automático está activado y lo muestra de forma evidente.
+async function mostrarEstadoLector(){
+  const hint=el("ocr-hint"); if(!hint) return;
+  try{
+    const e=await api("/recepciones/ocr-estado");
+    if(e && e.disponible){
+      hint.innerHTML=`<span style="color:var(--olive);font-weight:700">Lector automático: ACTIVADO ✓</span> · haz una foto del albarán y se rellenan proveedor, importe y líneas.`;
+    }else{
+      hint.innerHTML=`<span style="color:var(--alert);font-weight:700">Lector automático: NO ACTIVADO</span> · falta la clave del lector en el servidor (ANTHROPIC_API_KEY en Render). La foto se adjunta, pero proveedor e importe se rellenan a mano.`;
+    }
+  }catch(_){ /* deja el texto por defecto */ }
 }
 
 // ── ARCHIVO DE ALBARANES POR TRIMESTRE (para la gestoría) ──

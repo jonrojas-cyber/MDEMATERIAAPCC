@@ -124,7 +124,6 @@ test("proveedores: abre el formulario de alta con todos los campos", async ({ pa
   expect(errors).toEqual([]);
 });
 
-<<<<<<< HEAD
 test("productos por proveedor: formulario con cálculo de IVA y unitario", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -144,8 +143,6 @@ test("productos por proveedor: formulario con cálculo de IVA y unitario", async
   expect(errors).toEqual([]);
 });
 
-=======
->>>>>>> origin/main
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

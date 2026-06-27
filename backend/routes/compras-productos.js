@@ -100,8 +100,38 @@ router.put("/:id", jsonGrande, (req, res) => {
   const d = camposDe(req.body || {});
   if (d.nombre === "") return res.status(400).json({ error: "El nombre no puede quedar vacío." });
   const fusion = calcular({ ...existe, ...d });
+
+  // Histórico de precios: si cambia el precio pactado, lo registramos.
+  const antes = round(num(existe.precio_con_iva), 4);
+  const ahora = round(num(fusion.precio_con_iva), 4);
+  if (Math.abs(ahora - antes) > 1e-6) {
+    store.insert("precios_historico", {
+      id: store.nextId("ph", "precios_historico"),
+      producto_id: existe.id,
+      proveedor_id: existe.proveedor_id,
+      fecha: new Date().toISOString(),
+      precio_anterior: antes,
+      precio_nuevo: ahora,
+      precio_anterior_sin_iva: round(num(existe.precio_sin_iva), 4),
+      precio_nuevo_sin_iva: round(num(fusion.precio_sin_iva), 4),
+      motivo: (req.body && req.body.motivo ? String(req.body.motivo).trim() : "") || "Actualización de precio",
+      responsable: (req.body && req.body.responsable ? String(req.body.responsable).trim() : "") || "Sin asignar",
+      documento_url: (req.body && req.body.precio_doc) ? String(req.body.precio_doc) : null,
+    });
+  }
+
   const actualizado = store.update("compras_productos", req.params.id, fusion);
   res.json(actualizado);
+});
+
+// Histórico de precios de un producto (más reciente primero).
+router.get("/:id/historico", (req, res) => {
+  const hist = store
+    .readAll("precios_historico")
+    .filter((h) => h.producto_id === req.params.id)
+    .map((h) => { const { documento_url, ...resto } = h; return { ...resto, tiene_documento: !!documento_url }; })
+    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  res.json(hist);
 });
 
 router.delete("/:id", (req, res) => {

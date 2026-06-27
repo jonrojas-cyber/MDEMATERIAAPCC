@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v46</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v47</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2020,6 +2020,7 @@ async function irA_productosProveedor(provId){
       <div class="card-meta">${esc(p.categoria||"")} · ${p.cantidad_formato||1} ${esc(p.formato||"")} · pactado ${eur4(p.precio_con_iva)} € (IVA ${p.iva||0}%) · unitario ${eur4(p.precio_unitario_real)} €/${esc(p.formato||"ud")}</div>
       ${(p.alergenos&&p.alergenos.length)?`<div class="card-meta" style="color:var(--alert)">Alérgenos: ${p.alergenos.map(esc).join(", ")}</div>`:""}
       <div class="card-actions">
+        <button class="btn-ghost" onclick="irA_precioProducto('${p.id}','${provId}')">Precio / histórico</button>
         <button class="btn-ghost" onclick="formProductoCompra('${provId}','${p.id}')">Editar</button>
         <button class="btn-ghost" onclick="borrarProductoCompra('${p.id}','${provId}')">Eliminar</button>
       </div>
@@ -2139,6 +2140,68 @@ async function borrarProductoCompra(id,provId){
   catch(e){ alert(e.message); }
 }
 
+// ── PRECIO PACTADO + HISTÓRICO ────────────────────────
+async function irA_precioProducto(prodId,provId){
+  openSection("prov-precio","Precio del producto");
+  try{
+    const [p,hist]=await Promise.all([api("/compras-productos/"+prodId),api("/compras-productos/"+prodId+"/historico")]);
+    window._precProd=p; window._precProvId=provId; window._precDoc=null;
+    const histHtml=hist.length?hist.map(h=>{
+      const f=new Date(h.fecha).toLocaleDateString("es-ES");
+      const sube=h.precio_nuevo>h.precio_anterior;
+      return `<div class="card">
+        <div class="card-meta">${f} · <b style="color:${sube?"var(--alert)":"var(--olive)"}">${eur4(h.precio_anterior)} € → ${eur4(h.precio_nuevo)} €</b> ${sube?"↑":"↓"}</div>
+        <div class="card-meta">${esc(h.motivo)} · ${esc(h.responsable)}${h.tiene_documento?" · 📎 con documento":""}</div>
+      </div>`;
+    }).join(""):`<div class="empty">Sin cambios de precio registrados.</div>`;
+    setInner(`
+      <div class="section-label">${esc(p.nombre)}</div>
+      <div class="card">
+        <div class="card-name">Precio pactado actual</div>
+        <div class="card-meta">Sin IVA: <b>${eur4(p.precio_sin_iva)} €</b> · IVA ${p.iva||0}% · Con IVA: <b>${eur4(p.precio_con_iva)} €</b> · Unitario real: <b>${eur4(p.precio_unitario_real)} €/${esc(p.formato||"ud")}</b></div>
+      </div>
+      <div class="card">
+        <div class="card-name">Cambiar precio</div>
+        <div class="field"><label>Nuevo precio sin IVA (€)</label><input id="pr-nuevo" type="number" step="0.0001" value="${p.precio_sin_iva||0}" style="width:140px;"></div>
+        <div class="field"><label>Motivo</label><input id="pr-motivo" placeholder="p. ej. Subida de proveedor" style="width:100%;"></div>
+        <input type="file" accept="image/*" capture="environment" id="pr-file" style="display:none" onchange="elegirDocPrecio(this)">
+        <div class="card-actions">
+          <button class="btn-ghost" onclick="document.getElementById('pr-file').click()">Adjuntar documento/foto</button>
+        </div>
+        <div id="pr-doc-prev"></div>
+        <div class="card-actions">
+          <button class="btn-primary" onclick="guardarCambioPrecio(this)">Guardar cambio de precio</button>
+          <button class="btn-ghost" onclick="irA_productosProveedor('${provId}')">← Productos</button>
+        </div>
+        <div id="pr-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>
+      </div>
+      <div class="section-label">Histórico de precios</div>
+      ${histHtml}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+async function elegirDocPrecio(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  try{ window._precDoc=await reducirImagen(file,1400,0.7);
+    el("pr-doc-prev").innerHTML=`<img src="${window._precDoc}" style="max-width:100%;max-height:180px;border-radius:6px;margin-top:8px;">`;
+  }catch(e){ const m=el("pr-msg"); if(m) m.textContent="No se pudo cargar el documento: "+e.message; }
+  input.value="";
+}
+
+async function guardarCambioPrecio(btn){
+  const msg=el("pr-msg");
+  const nuevo=Number(el("pr-nuevo").value);
+  if(!(nuevo>=0)){ if(msg) msg.textContent="Revísalo antes de continuar: indica un precio válido."; return; }
+  const u=getUser();
+  const body={ precio_sin_iva:nuevo, motivo:el("pr-motivo").value.trim(), responsable:(u&&u.nombre)||"Sin asignar" };
+  if(window._precDoc) body.precio_doc=window._precDoc;
+  if(btn){btn.disabled=true;}
+  try{
+    await api("/compras-productos/"+window._precProd.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_precioProducto(window._precProd.id,window._precProvId);
+  }catch(e){ if(msg) msg.textContent="Esto no cuadra: "+e.message; if(btn){btn.disabled=false;} }
+}
+
 // ── PEDIDOS ───────────────────────────────────────────
 async function irA_pedidos(){
   openSection("pedidos","Pedidos");
@@ -2223,12 +2286,21 @@ async function enviarPedidoWA(id){
 function renderAvisos(cot){
   const cont=el("alb-avisos"); if(!cont) return;
   const av=(cot&&cot.avisos)||[];
-  if(!av.length){
-    cont.innerHTML=`<div style="font-size:11px;color:#5C6145;margin-top:8px;">✓ Cotejo correcto${cot.pedido_codigo?` con ${cot.pedido_codigo}`:""}: sin diferencias.</div>`;
-    return;
+  const precio=window._avisosPrecio||[];
+  let html="";
+  // Avisos de precio pactado (los más importantes para compras): primero.
+  if(precio.length){
+    html+=`<div class="section-label" style="margin-top:8px;color:var(--alert)">Precio vs pactado</div>`+
+      precio.map(a=>`<div style="font-size:11px;color:var(--alert);margin-top:4px;">⚠ ${a.mensaje}</div>`).join("");
   }
-  cont.innerHTML=`<div class="section-label" style="margin-top:8px;">Avisos del cotejo${cot.pedido_codigo?` (${cot.pedido_codigo})`:""}</div>`+
-    av.map(a=>`<div style="font-size:11px;color:${a.nivel==="alto"?"var(--ink)":"var(--ink)"};margin-top:4px;">⚠ ${a.mensaje}</div>`).join("");
+  if(av.length){
+    html+=`<div class="section-label" style="margin-top:8px;">Avisos del cotejo${cot.pedido_codigo?` (${cot.pedido_codigo})`:""}</div>`+
+      av.map(a=>`<div style="font-size:11px;color:var(--ink);margin-top:4px;">⚠ ${a.mensaje}</div>`).join("");
+  }
+  if(!html){
+    html=`<div style="font-size:11px;color:#5C6145;margin-top:8px;">✓ Cotejo correcto${cot&&cot.pedido_codigo?` con ${cot.pedido_codigo}`:""}: sin diferencias.</div>`;
+  }
+  cont.innerHTML=html;
 }
 
 // ── RECEPCIÓN ────────────────────────────────────────
@@ -2377,6 +2449,7 @@ async function procesarFotoAlbaran(dataUrl){
     if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
     if(hint) hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
+    window._avisosPrecio=r.avisos_precio||[];
     renderLineasAlbaran(r.lineas||[]);
     // Cotejo: comparar con el pedido del proveedor y los precios habituales.
     window._pedidoId=null;
@@ -2476,7 +2549,7 @@ function renderLineasAlbaran(lineas){
   const opts=(sel)=>`<option value="">— no cargar —</option>`+(window._mat||[]).map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${m.nombre}</option>`).join("");
   cont.innerHTML=`<div class="section-label" style="margin-top:10px;">Cargar al almacén (revisa materia y cantidad)</div>`+
     lineas.map(l=>`<div class="alb-row" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}</span>
+      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
       <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" style="width:64px;font-size:11px;">
       <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>

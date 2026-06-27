@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v47</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v48</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2319,6 +2319,13 @@ async function irA_recepcion(){
           </select>
         </div>
         <div class="field"><label>Importe total (€)</label><input type="number" step="0.01" id="rcp-imp" style="width:140px;"></div>
+        <div class="field"><label>Lote del proveedor</label><input id="rcp-lote" style="width:100%;" placeholder="opcional"></div>
+        <div class="field"><label>Caducidad</label><input id="rcp-cad" style="width:100%;" placeholder="p. ej. 12/07/2026"></div>
+        <input type="file" accept="image/*" capture="environment" id="rcp-prod-file" style="display:none" onchange="elegirFotoProducto(this)">
+        <div class="card-actions">
+          <button class="btn-ghost" onclick="document.getElementById('rcp-prod-file').click()">Foto del producto</button>
+        </div>
+        <div id="rcp-prod-prev"></div>
         <div class="card-actions"><button class="btn-primary" onclick="nuevaRcp()">Registrar recepción</button></div>
       </div>
       <div class="card">
@@ -2335,11 +2342,18 @@ async function irA_recepcion(){
       </div>`;
     html+=section("Recepciones",recs.slice().reverse(),r=>{
       const prov=provs.find(p=>p.id===r.proveedor_id);
-      const acciones=(r.estado==="Pendiente de confirmar"?`<button class="btn-primary" onclick="confirmarRcp('${r.id}')">Confirmar entrada</button>`:"")
+      const pendiente=(r.estado==="Pendiente de confirmar");
+      const colEst=r.estado==="Rechazado"?"var(--alert)":(r.estado==="Aceptado con incidencia"?"var(--ink)":(r.estado==="Aceptado"||r.estado==="Confirmada")?"var(--olive)":"var(--muted)");
+      const acciones=(pendiente?
+          `<button class="btn-primary" onclick="resolverRcp('${r.id}','Aceptado')">Aceptar</button>`+
+          `<button class="btn-ghost" onclick="resolverRcp('${r.id}','Aceptado con incidencia')">Con incidencia</button>`+
+          `<button class="btn-ghost" onclick="resolverRcp('${r.id}','Rechazado')">Rechazar</button>`
+        :"")
         +(r.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`:"");
+      const extra=[r.lote_proveedor?`lote ${esc(r.lote_proveedor)}`:"", r.caducidad?`cad. ${esc(r.caducidad)}`:""].filter(Boolean).join(" · ");
       return card(
         `${prov?.nombre||r.proveedor_id} — ${r.importe_total.toFixed(2)} €`,
-        `${r.estado} · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}`,
+        `<span style="color:${colEst};font-weight:700">${r.estado}</span> · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}${extra?` · ${extra}`:""}`,
         acciones
       );
     },"Sin recepciones.");
@@ -2395,14 +2409,43 @@ async function descargarTrimestre(year,q,btn){
   finally{ if(btn){btn.disabled=false;btn.textContent=prev;} }
 }
 
+async function elegirFotoProducto(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  try{ window._rcpProdFoto=await reducirImagen(file,1400,0.7);
+    const prev=el("rcp-prod-prev"); if(prev) prev.innerHTML=`<img src="${window._rcpProdFoto}" style="max-width:100%;max-height:180px;border-radius:6px;margin-top:8px;">`;
+  }catch(e){ alert("No se pudo cargar la foto: "+e.message); }
+  input.value="";
+}
+
 async function nuevaRcp(){
   const prov=el("rcp-prov").value,imp=Number(el("rcp-imp").value);
   if(!prov){alert("Selecciona un proveedor.");return;}
   if(!imp||imp<=0){alert("Importe inválido.");return;}
-  const body={proveedor_id:prov,importe_total:imp,foto_albaran:window._albFoto||null,lineas:recogerLineasAlbaran(),pedido_id:window._pedidoId||null};
+  const body={
+    proveedor_id:prov, importe_total:imp,
+    foto_albaran:window._albFoto||null,
+    foto_producto:window._rcpProdFoto||null,
+    lote_proveedor:(el("rcp-lote")&&el("rcp-lote").value.trim())||"",
+    caducidad:(el("rcp-cad")&&el("rcp-cad").value.trim())||"",
+    lineas:recogerLineasAlbaran(), pedido_id:window._pedidoId||null,
+  };
   try{
     await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    window._albFoto=null; window._pedidoId=null;
+    window._albFoto=null; window._pedidoId=null; window._rcpProdFoto=null;
+    irA_recepcion();
+  }catch(e){alert(e.message);}
+}
+
+// Resuelve una recepción con uno de los tres estados.
+async function resolverRcp(id,estado){
+  let nota="";
+  if(estado==="Aceptado con incidencia"||estado==="Rechazado"){
+    nota=prompt(estado==="Rechazado"?"Motivo del rechazo (opcional):":"Describe la incidencia (opcional):")||"";
+  }
+  try{
+    const r=await api(`/recepciones/${id}/estado`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({estado,nota_incidencia:nota})});
+    const det=r.stock_cargado||[];
+    if(det.length) alert("Recepción "+estado.toLowerCase()+". Cargado al almacén:\n"+det.map(d=>`+${d.cantidad} ${d.unidad} de ${d.nombre}`).join("\n"));
     irA_recepcion();
   }catch(e){alert(e.message);}
 }

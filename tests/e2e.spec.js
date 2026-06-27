@@ -169,6 +169,31 @@ test("precio pactado: cambiar precio registra histórico con motivo", async ({ p
   expect(errors).toEqual([]);
 });
 
+test("recepción: campos de lote/caducidad y tres estados", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // Crea una recepción pendiente vía API.
+  const rid = await page.evaluate(async () => {
+    const prov = (await api("/proveedores"))[0];
+    const r = await api("/recepciones", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proveedor_id: prov.id, importe_total: 10, lote_proveedor: "L-TEST", caducidad: "01/01/2027", lineas: [] }),
+    });
+    return r.id;
+  });
+  await page.evaluate(() => irA_recepcion());
+  await expect(page.locator("#rcp-lote")).toBeVisible();
+  await expect(page.locator("#rcp-cad")).toBeVisible();
+  await expect(page.locator("button", { hasText: /Foto del producto/ })).toBeVisible();
+  await expect(page.locator("button", { hasText: /^Aceptar$/ }).first()).toBeVisible();
+  await expect(page.locator("button", { hasText: /Con incidencia/ }).first()).toBeVisible();
+  await expect(page.locator("button", { hasText: /Rechazar/ }).first()).toBeVisible();
+  // Limpieza: resolver la recepción de prueba.
+  await page.evaluate((id) => api("/recepciones/" + id + "/estado", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: "Rechazado" }) }), rid);
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

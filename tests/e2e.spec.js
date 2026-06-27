@@ -108,6 +108,22 @@ test("avisos: la pantalla carga con activación de dispositivo, config y vista p
   expect(errors).toEqual([]);
 });
 
+test("proveedores: abre el formulario de alta con todos los campos", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page); // Moni es admin
+  await page.evaluate(() => irA_proveedores());
+  await expect(page.locator("button", { hasText: /Agregar proveedor/ })).toBeVisible();
+  await page.evaluate(() => formProveedor());
+  for (const id of ["#pv-nombre", "#pv-cat", "#pv-contacto", "#pv-tel", "#pv-email", "#pv-estado", "#pv-notas"]) {
+    await expect(page.locator(id)).toBeVisible();
+  }
+  // Sin nombre: muestra aviso amable (no crea).
+  await page.evaluate(() => guardarProveedor(null));
+  await expect(page.locator("#pv-msg")).toContainText(/Rev[ií]salo/i);
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v44</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v45</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1354,6 +1354,8 @@ async function api(path, opts = {}) {
 }
 
 function el(id) { return document.getElementById(id); }
+// Escapa texto para meterlo con seguridad en HTML (valores de campos, etc.).
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 // Cada pantalla interna lleva su título serif (misma línea que la home).
 function setInner(html) {
   el("inner-content").innerHTML =
@@ -1891,16 +1893,107 @@ async function regAjuste(){
 }
 
 // ── PROVEEDORES ───────────────────────────────────────
+const PROV_EST_COLOR={ "Activo":"var(--olive)", "Pausado":"var(--muted)", "Sustituido":"var(--alert)" };
 async function irA_proveedores(){
   openSection("proveedores","Proveedores");
   try{
-    const provs=await api("/proveedores");
-    setInner(section("Proveedores",provs,p=>card(
-      p.nombre,
-      `${p.contacto} · ${p.dias_reparto.join(", ")} · ${p.productos_nombres.join(", ")}`,
-      `<button class="btn-ghost" onclick="whatsapp('${p.whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola "+p.contacto+", ")}')">Contactar por WhatsApp</button>`
-    )));
+    const [provs,meta]=await Promise.all([api("/proveedores"),api("/proveedores/meta")]);
+    window._provMeta=meta;
+    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="formProveedor()">Agregar proveedor</button></div>`;
+    if(!provs.length){ setInner(cab+`<div class="empty">Aún no hay proveedores. Pulsa “Agregar proveedor” para crear el primero.</div>`); return; }
+    // Orden: activos primero, luego por nombre.
+    provs.sort((a,b)=> (a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1) || a.nombre.localeCompare(b.nombre));
+    const html=cab+provs.map(p=>{
+      const tel=(p.telefono||p.whatsapp||"").replace(/[^0-9+]/g,"");
+      const estado=p.estado||"Activo";
+      const meta2=[p.categoria||"Otros", p.contacto||"", (p.productos_nombres||[]).slice(0,3).join(", ")].filter(Boolean).join(" · ");
+      const acc=`<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
+        (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"");
+      return `<div class="card">
+        <div class="card-name">${p.nombre} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:uppercase;">· ${estado}</span></div>
+        <div class="card-meta">${meta2}</div>
+        <div class="card-actions">${acc}</div>
+      </div>`;
+    }).join("");
+    setInner(html);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// Formulario crear/editar proveedor. Si se pasa id, carga el proveedor para editar.
+async function formProveedor(id){
+  const meta=window._provMeta||{categorias:["Otros"],estados:["Activo","Pausado","Sustituido"]};
+  let p={nombre:"",contacto:"",telefono:"",email:"",direccion:"",categoria:"",estado:"Activo",notas:"",foto_url:null};
+  if(id){ try{ p=await api("/proveedores/"+id); }catch(e){ alert(e.message); return; } }
+  window._provEditId=id||null;
+  window._provFoto=(p.foto_url!==undefined)?p.foto_url:null; // null/"" según exista
+  const cats=meta.categorias.map(c=>`<option value="${c}" ${c===p.categoria?"selected":""}>${c}</option>`).join("");
+  const ests=meta.estados.map(s=>`<option value="${s}" ${s===(p.estado||"Activo")?"selected":""}>${s}</option>`).join("");
+  setInner(`
+    <div class="section-label">${id?"Editar proveedor":"Nuevo proveedor"}</div>
+    <div class="card">
+      <div class="field"><label>Nombre del proveedor</label><input id="pv-nombre" value="${esc(p.nombre)}" style="width:100%;"></div>
+      <div class="field"><label>Categoría</label><select id="pv-cat" style="width:100%;"><option value="">Selecciona…</option>${cats}</select></div>
+      <div class="field"><label>Persona de contacto</label><input id="pv-contacto" value="${esc(p.contacto)}" style="width:100%;"></div>
+      <div class="field"><label>Teléfono</label><input id="pv-tel" value="${esc(p.telefono||p.whatsapp||"")}" style="width:100%;" inputmode="tel"></div>
+      <div class="field"><label>Email</label><input id="pv-email" value="${esc(p.email)}" style="width:100%;" inputmode="email"></div>
+      <div class="field"><label>Dirección</label><input id="pv-dir" value="${esc(p.direccion)}" style="width:100%;"></div>
+      <div class="field"><label>Estado</label><select id="pv-estado" style="width:140px;">${ests}</select></div>
+      <div class="field"><label>Notas internas</label><textarea id="pv-notas" style="width:100%;min-height:60px;">${esc(p.notas)}</textarea></div>
+    </div>
+    <div class="card">
+      <div class="card-name">Foto / logo / tarjeta</div>
+      <input type="file" accept="image/*" capture="environment" id="pv-file-cam" style="display:none" onchange="elegirFotoProv(this)">
+      <input type="file" accept="image/*" id="pv-file-gal" style="display:none" onchange="elegirFotoProv(this)">
+      <div class="card-actions">
+        <button class="btn-ghost" onclick="document.getElementById('pv-file-cam').click()">Hacer foto</button>
+        <button class="btn-ghost" onclick="document.getElementById('pv-file-gal').click()">Galería</button>
+        <button class="btn-ghost" onclick="quitarFotoProv()">Quitar foto</button>
+      </div>
+      <div id="pv-foto-prev">${window._provFoto?`<img src="${window._provFoto}" style="max-width:100%;max-height:220px;border-radius:6px;margin-top:8px;">`:`<div class="card-meta">Sin foto.</div>`}</div>
+    </div>
+    <div class="card-actions">
+      <button class="btn-primary" onclick="guardarProveedor(this)">${id?"Guardar cambios":"Crear proveedor"}</button>
+      <button class="btn-ghost" onclick="irA_proveedores()">Cancelar</button>
+    </div>
+    <div id="pv-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>`);
+}
+
+async function elegirFotoProv(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  try{
+    window._provFoto=await reducirImagen(file,1200,0.75);
+    el("pv-foto-prev").innerHTML=`<img src="${window._provFoto}" style="max-width:100%;max-height:220px;border-radius:6px;margin-top:8px;">`;
+  }catch(e){ const m=el("pv-msg"); if(m) m.textContent="No se pudo cargar la foto: "+e.message; }
+  input.value="";
+}
+function quitarFotoProv(){
+  window._provFoto="";
+  const prev=el("pv-foto-prev"); if(prev) prev.innerHTML=`<div class="card-meta">Sin foto.</div>`;
+}
+
+async function guardarProveedor(btn){
+  const msg=el("pv-msg");
+  const body={
+    nombre:el("pv-nombre").value.trim(),
+    categoria:el("pv-cat").value,
+    contacto:el("pv-contacto").value.trim(),
+    telefono:el("pv-tel").value.trim(),
+    email:el("pv-email").value.trim(),
+    direccion:el("pv-dir").value.trim(),
+    estado:el("pv-estado").value,
+    notas:el("pv-notas").value.trim(),
+  };
+  if(window._provFoto!==undefined && window._provFoto!==null) body.foto_url=window._provFoto; // "" borra, dataURL nueva
+  if(!body.nombre){ if(msg) msg.textContent="Revísalo antes de continuar: indica el nombre del proveedor."; return; }
+  if(btn){btn.disabled=true;}
+  try{
+    if(window._provEditId){
+      await api("/proveedores/"+window._provEditId,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    }else{
+      await api("/proveedores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    }
+    irA_proveedores();
+  }catch(e){ if(msg){ msg.textContent="Esto no cuadra: "+e.message; } if(btn){btn.disabled=false;} }
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

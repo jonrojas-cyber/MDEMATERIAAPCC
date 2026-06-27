@@ -124,6 +124,25 @@ test("proveedores: abre el formulario de alta con todos los campos", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("productos por proveedor: formulario con cálculo de IVA y unitario", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // Entra en los productos del primer proveedor.
+  const provId = await page.evaluate(async () => (await api("/proveedores"))[0].id);
+  await page.evaluate((id) => irA_productosProveedor(id), provId);
+  await expect(page.locator("button", { hasText: /Agregar producto/ })).toBeVisible();
+  await page.evaluate((id) => formProductoCompra(id), provId);
+  await page.fill("#cp-cant", "6");
+  await page.fill("#cp-siniva", "12");
+  await page.fill("#cp-iva", "10");
+  await page.dispatchEvent("#cp-iva", "input");
+  // El cálculo en vivo muestra precio con IVA y unitario.
+  await expect(page.locator("#cp-calc")).toContainText("13.20"); // 12 + 10% IVA
+  await expect(page.locator("#cp-calc")).toContainText("2.2000"); // 13.20 / 6 unidades
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

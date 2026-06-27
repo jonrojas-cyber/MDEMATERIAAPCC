@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v45</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v46</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1907,7 +1907,8 @@ async function irA_proveedores(){
       const tel=(p.telefono||p.whatsapp||"").replace(/[^0-9+]/g,"");
       const estado=p.estado||"Activo";
       const meta2=[p.categoria||"Otros", p.contacto||"", (p.productos_nombres||[]).slice(0,3).join(", ")].filter(Boolean).join(" · ");
-      const acc=`<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
+      const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Productos</button>`+
+        `<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
         (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"");
       return `<div class="card">
         <div class="card-name">${p.nombre} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:uppercase;">· ${estado}</span></div>
@@ -1994,6 +1995,148 @@ async function guardarProveedor(btn){
     }
     irA_proveedores();
   }catch(e){ if(msg){ msg.textContent="Esto no cuadra: "+e.message; } if(btn){btn.disabled=false;} }
+}
+
+// ── PRODUCTOS POR PROVEEDOR ───────────────────────────
+const eur4=(n)=>Number(n||0).toFixed(2);
+async function irA_productosProveedor(provId){
+  openSection("prov-productos","Productos del proveedor");
+  try{
+    const [prov,prods,meta]=await Promise.all([
+      api("/proveedores/"+provId),
+      api("/compras-productos?proveedor_id="+provId),
+      api("/compras-productos/meta"),
+    ]);
+    window._cprMeta=meta; window._cprProv=prov;
+    const cab=`<div class="section-label">${esc(prov.nombre)}</div>
+      <div class="card-actions" style="margin-bottom:14px;">
+        <button class="btn-primary" onclick="formProductoCompra('${provId}')">Agregar producto</button>
+        <button class="btn-ghost" onclick="irA_proveedores()">← Proveedores</button>
+      </div>`;
+    if(!prods.length){ setInner(cab+`<div class="empty">Aún no hay productos de este proveedor. Pulsa “Agregar producto”.</div>`); return; }
+    prods.sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||""));
+    const html=cab+prods.map(p=>`<div class="card">
+      <div class="card-name">${esc(p.nombre)}</div>
+      <div class="card-meta">${esc(p.categoria||"")} · ${p.cantidad_formato||1} ${esc(p.formato||"")} · pactado ${eur4(p.precio_con_iva)} € (IVA ${p.iva||0}%) · unitario ${eur4(p.precio_unitario_real)} €/${esc(p.formato||"ud")}</div>
+      ${(p.alergenos&&p.alergenos.length)?`<div class="card-meta" style="color:var(--alert)">Alérgenos: ${p.alergenos.map(esc).join(", ")}</div>`:""}
+      <div class="card-actions">
+        <button class="btn-ghost" onclick="formProductoCompra('${provId}','${p.id}')">Editar</button>
+        <button class="btn-ghost" onclick="borrarProductoCompra('${p.id}','${provId}')">Eliminar</button>
+      </div>
+    </div>`).join("");
+    setInner(html);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+function calcPrecioProd(){
+  const sin=Number(el("cp-siniva").value)||0;
+  const iva=Number(el("cp-iva").value)||0;
+  const cant=Number(el("cp-cant").value)||0;
+  const con=sin*(1+iva/100);
+  const uni=cant>0?con/cant:con;
+  const out=el("cp-calc");
+  if(out) out.innerHTML=`Precio con IVA: <b>${con.toFixed(2)} €</b> · Precio unitario real: <b>${uni.toFixed(4)} €</b>`;
+}
+
+async function formProductoCompra(provId,prodId){
+  const meta=window._cprMeta||{categorias:["Otros"],formatos:["unidad"],alergenos:[]};
+  let p={proveedor_id:provId,nombre:"",categoria:"",formato:"unidad",cantidad_formato:1,precio_sin_iva:0,iva:10,
+    foto_url:null,codigo_interno:"",referencia_proveedor:"",stock_minimo:0,stock_ideal:0,caducidad_habitual:"",alergenos:[],notas:""};
+  if(prodId){ try{ p=await api("/compras-productos/"+prodId); }catch(e){ alert(e.message); return; } }
+  window._cprEditId=prodId||null; window._cprProvId=provId;
+  window._cprFoto=(p.foto_url!==undefined)?p.foto_url:null;
+  const cats=meta.categorias.map(c=>`<option value="${c}" ${c===p.categoria?"selected":""}>${c}</option>`).join("");
+  const fmts=meta.formatos.map(f=>`<option value="${f}" ${f===p.formato?"selected":""}>${f}</option>`).join("");
+  const alg=(meta.alergenos||[]).map(a=>{
+    const on=(p.alergenos||[]).includes(a);
+    return `<label class="todo-chip" style="display:inline-flex;align-items:center;gap:6px;margin:3px;cursor:pointer;${on?"outline:2px solid var(--olive)":""}">
+      <input type="checkbox" class="cp-alg" value="${a}" ${on?"checked":""} style="margin:0;"> ${a}</label>`;
+  }).join("");
+  setInner(`
+    <div class="section-label">${prodId?"Editar producto":"Nuevo producto"} · ${esc((window._cprProv&&window._cprProv.nombre)||"")}</div>
+    <div class="card">
+      <div class="field"><label>Nombre del producto</label><input id="cp-nombre" value="${esc(p.nombre)}" style="width:100%;"></div>
+      <div class="field"><label>Categoría</label><select id="cp-cat" style="width:100%;"><option value="">Selecciona…</option>${cats}</select></div>
+      <div class="field"><label>Formato de compra</label><select id="cp-formato" style="width:140px;">${fmts}</select></div>
+      <div class="field"><label>Cantidad por formato</label><input id="cp-cant" type="number" step="0.001" value="${p.cantidad_formato||1}" style="width:140px;" oninput="calcPrecioProd()"> <span class="card-meta">(p. ej. 6 unidades por caja, o 1 kg)</span></div>
+      <div class="field"><label>Precio pactado sin IVA (€)</label><input id="cp-siniva" type="number" step="0.0001" value="${p.precio_sin_iva||0}" style="width:140px;" oninput="calcPrecioProd()"></div>
+      <div class="field"><label>IVA (%)</label><input id="cp-iva" type="number" step="1" value="${p.iva!=null?p.iva:10}" style="width:100px;" oninput="calcPrecioProd()"></div>
+      <div class="card-meta" id="cp-calc" style="margin:4px 0 8px;"></div>
+      <div class="field"><label>Código interno</label><input id="cp-cod" value="${esc(p.codigo_interno)}" style="width:100%;"></div>
+      <div class="field"><label>Referencia del proveedor</label><input id="cp-ref" value="${esc(p.referencia_proveedor)}" style="width:100%;"></div>
+      <div class="field"><label>Stock mínimo</label><input id="cp-smin" type="number" step="0.001" value="${p.stock_minimo||0}" style="width:120px;"></div>
+      <div class="field"><label>Stock ideal</label><input id="cp-sideal" type="number" step="0.001" value="${p.stock_ideal||0}" style="width:120px;"></div>
+      <div class="field"><label>Caducidad habitual</label><input id="cp-cad" value="${esc(p.caducidad_habitual)}" placeholder="p. ej. 5 días" style="width:100%;"></div>
+      <div class="field"><label>Notas</label><textarea id="cp-notas" style="width:100%;min-height:50px;">${esc(p.notas)}</textarea></div>
+    </div>
+    <div class="card">
+      <div class="card-name">Alérgenos</div>
+      <div style="display:flex;flex-wrap:wrap;">${alg}</div>
+    </div>
+    <div class="card">
+      <div class="card-name">Foto del producto</div>
+      <input type="file" accept="image/*" capture="environment" id="cp-file-cam" style="display:none" onchange="elegirFotoProd(this)">
+      <input type="file" accept="image/*" id="cp-file-gal" style="display:none" onchange="elegirFotoProd(this)">
+      <div class="card-actions">
+        <button class="btn-ghost" onclick="document.getElementById('cp-file-cam').click()">Hacer foto</button>
+        <button class="btn-ghost" onclick="document.getElementById('cp-file-gal').click()">Galería</button>
+        <button class="btn-ghost" onclick="quitarFotoProd()">Quitar foto</button>
+      </div>
+      <div id="cp-foto-prev">${window._cprFoto?`<img src="${window._cprFoto}" style="max-width:100%;max-height:200px;border-radius:6px;margin-top:8px;">`:`<div class="card-meta">Sin foto.</div>`}</div>
+    </div>
+    <div class="card-actions">
+      <button class="btn-primary" onclick="guardarProductoCompra(this)">${prodId?"Guardar cambios":"Crear producto"}</button>
+      <button class="btn-ghost" onclick="irA_productosProveedor('${provId}')">Cancelar</button>
+    </div>
+    <div id="cp-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>`);
+  calcPrecioProd();
+}
+
+async function elegirFotoProd(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  try{ window._cprFoto=await reducirImagen(file,1200,0.75);
+    el("cp-foto-prev").innerHTML=`<img src="${window._cprFoto}" style="max-width:100%;max-height:200px;border-radius:6px;margin-top:8px;">`;
+  }catch(e){ const m=el("cp-msg"); if(m) m.textContent="No se pudo cargar la foto: "+e.message; }
+  input.value="";
+}
+function quitarFotoProd(){ window._cprFoto=""; const p=el("cp-foto-prev"); if(p) p.innerHTML=`<div class="card-meta">Sin foto.</div>`; }
+
+async function guardarProductoCompra(btn){
+  const msg=el("cp-msg");
+  const alergenos=Array.from(document.querySelectorAll(".cp-alg:checked")).map(c=>c.value);
+  const body={
+    proveedor_id:window._cprProvId,
+    nombre:el("cp-nombre").value.trim(),
+    categoria:el("cp-cat").value,
+    formato:el("cp-formato").value,
+    cantidad_formato:Number(el("cp-cant").value)||0,
+    precio_sin_iva:Number(el("cp-siniva").value)||0,
+    iva:Number(el("cp-iva").value)||0,
+    codigo_interno:el("cp-cod").value.trim(),
+    referencia_proveedor:el("cp-ref").value.trim(),
+    stock_minimo:Number(el("cp-smin").value)||0,
+    stock_ideal:Number(el("cp-sideal").value)||0,
+    caducidad_habitual:el("cp-cad").value.trim(),
+    notas:el("cp-notas").value.trim(),
+    alergenos,
+  };
+  if(window._cprFoto!==undefined && window._cprFoto!==null) body.foto_url=window._cprFoto;
+  if(!body.nombre){ if(msg) msg.textContent="Revísalo antes de continuar: indica el nombre del producto."; return; }
+  if(btn){btn.disabled=true;}
+  try{
+    if(window._cprEditId){
+      await api("/compras-productos/"+window._cprEditId,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    }else{
+      await api("/compras-productos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    }
+    irA_productosProveedor(window._cprProvId);
+  }catch(e){ if(msg) msg.textContent="Esto no cuadra: "+e.message; if(btn){btn.disabled=false;} }
+}
+
+async function borrarProductoCompra(id,provId){
+  if(!confirm("¿Eliminar este producto del proveedor?")) return;
+  try{ await api("/compras-productos/"+id,{method:"DELETE"}); irA_productosProveedor(provId); }
+  catch(e){ alert(e.message); }
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

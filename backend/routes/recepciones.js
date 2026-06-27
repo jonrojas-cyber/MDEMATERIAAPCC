@@ -7,10 +7,10 @@ const router = express.Router();
 // Cuerpo grande para la imagen del albarán (base64).
 const jsonGrande = express.json({ limit: "12mb" });
 
-// Versión ligera (sin la foto en base64) para listados.
+// Versión ligera (sin las fotos en base64) para listados.
 function slim(r) {
-  const { foto_albaran_url, ...resto } = r;
-  return { ...resto, tiene_foto: !!foto_albaran_url };
+  const { foto_albaran_url, foto_producto_url, ...resto } = r;
+  return { ...resto, tiene_foto: !!foto_albaran_url, tiene_foto_producto: !!foto_producto_url };
 }
 
 // Respaldo de emparejado línea↔materia por solapamiento de palabras (cuando la
@@ -229,9 +229,10 @@ router.post("/cotejar", jsonGrande, (req, res) => {
   res.json({ pedido_id: pedido ? pedido.id : null, pedido_codigo: pedido ? pedido.codigo : null, avisos });
 });
 
-// Entrada de recepción (manual o tras escanear). Admite foto, líneas y pedido.
+// Entrada de recepción (manual o tras escanear). Admite fotos, líneas, pedido,
+// lote del proveedor y caducidad.
 router.post("/", jsonGrande, (req, res) => {
-  const { proveedor_id, importe_total, foto_albaran, lineas, pedido_id } = req.body;
+  const { proveedor_id, importe_total, foto_albaran, foto_producto, lineas, pedido_id, lote_proveedor, caducidad } = req.body;
   if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor de la recepción" });
   const recepcion = {
     id: store.nextId("rcp", "recepciones"),
@@ -239,6 +240,9 @@ router.post("/", jsonGrande, (req, res) => {
     pedido_id: pedido_id || null,
     fecha: new Date().toISOString(),
     foto_albaran_url: foto_albaran || null,
+    foto_producto_url: foto_producto || null,
+    lote_proveedor: lote_proveedor ? String(lote_proveedor).trim() : "",
+    caducidad: caducidad ? String(caducidad).trim() : "",
     lineas: Array.isArray(lineas) ? lineas : [],
     estado: "Pendiente de confirmar",
     importe_total: importe_total || 0,
@@ -248,11 +252,8 @@ router.post("/", jsonGrande, (req, res) => {
   res.status(201).json(recepcion);
 });
 
-router.post("/:id/confirmar", (req, res) => {
-  const recepcion = store.findById("recepciones", req.params.id);
-  if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
-
-  // Cargar al almacén las líneas con materia asignada (una sola vez).
+// Carga al almacén las líneas con materia asignada (una sola vez). Devuelve lo aplicado.
+function aplicarStock(recepcion) {
   const aplicado = [];
   if (!recepcion.stock_aplicado && Array.isArray(recepcion.lineas)) {
     const materias = store.readAll("materias");
@@ -268,15 +269,43 @@ router.post("/:id/confirmar", (req, res) => {
     });
     if (aplicado.length) store.writeAll("materias", materias);
   }
+  return aplicado;
+}
 
-  // Si la recepción venía de un pedido, marcarlo como recibido.
+const ESTADOS_RECEPCION = ["Aceptado", "Aceptado con incidencia", "Rechazado"];
+
+// Resolver una recepción con uno de los tres estados. Aceptado / Aceptado con
+// incidencia cargan el stock; Rechazado no toca el almacén.
+router.post("/:id/estado", jsonGrande, (req, res) => {
+  const recepcion = store.findById("recepciones", req.params.id);
+  if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
+  const estado = String((req.body && req.body.estado) || "").trim();
+  if (!ESTADOS_RECEPCION.includes(estado)) {
+    return res.status(400).json({ error: "Estado no válido. Usa Aceptado, Aceptado con incidencia o Rechazado." });
+  }
+  const aceptada = estado === "Aceptado" || estado === "Aceptado con incidencia";
+  const aplicado = aceptada ? aplicarStock(recepcion) : [];
+
+  if (aceptada && recepcion.pedido_id) {
+    store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
+  }
+  const cambios = { estado, resuelta_en: new Date().toISOString() };
+  if (aceptada) cambios.stock_aplicado = true;
+  if (req.body && req.body.nota_incidencia != null) cambios.nota_incidencia = String(req.body.nota_incidencia).trim();
+  const actualizada = store.update("recepciones", req.params.id, cambios);
+  res.json({ ...actualizada, stock_cargado: aplicado });
+});
+
+// Compatibilidad: confirmar = Aceptado.
+router.post("/:id/confirmar", (req, res) => {
+  const recepcion = store.findById("recepciones", req.params.id);
+  if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
+  const aplicado = aplicarStock(recepcion);
   if (recepcion.pedido_id) {
     store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
   }
-
   const actualizada = store.update("recepciones", req.params.id, {
-    estado: "Confirmada",
-    stock_aplicado: true,
+    estado: "Aceptado", resuelta_en: new Date().toISOString(), stock_aplicado: true,
   });
   res.json({ ...actualizada, stock_cargado: aplicado });
 });

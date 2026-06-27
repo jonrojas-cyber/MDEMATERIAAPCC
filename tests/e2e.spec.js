@@ -143,6 +143,32 @@ test("productos por proveedor: formulario con cálculo de IVA y unitario", async
   expect(errors).toEqual([]);
 });
 
+test("precio pactado: cambiar precio registra histórico con motivo", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // Crea un producto vía API y abre su pantalla de precio.
+  const ids = await page.evaluate(async () => {
+    const prov = (await api("/proveedores"))[0];
+    const p = await api("/compras-productos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proveedor_id: prov.id, nombre: "Test precio", formato: "kg", cantidad_formato: 1, precio_sin_iva: 10, iva: 10 }),
+    });
+    return { provId: prov.id, prodId: p.id };
+  });
+  await page.evaluate((x) => irA_precioProducto(x.prodId, x.provId), ids);
+  await expect(page.locator("#pr-nuevo")).toBeVisible();
+  await expect(page.locator(".card-name", { hasText: /Precio pactado actual/i })).toBeVisible();
+  // Cambia el precio con motivo y comprueba que aparece en el histórico.
+  await page.fill("#pr-nuevo", "13");
+  await page.fill("#pr-motivo", "Subida test");
+  await page.evaluate(() => guardarCambioPrecio(null));
+  await expect(page.locator(".card-meta", { hasText: /Subida test/i })).toBeVisible();
+  // Limpieza: borra el producto de prueba.
+  await page.evaluate((x) => api("/compras-productos/" + x.prodId, { method: "DELETE" }), ids);
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

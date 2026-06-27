@@ -37,6 +37,7 @@ const ENTITIES = [
   "config",
   "push_subs",
   "compras_productos",
+  "precios_historico",
 ];
 
 const cache = {};

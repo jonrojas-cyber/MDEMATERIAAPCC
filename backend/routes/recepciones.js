@@ -128,11 +128,18 @@ router.post("/escanear", jsonGrande, async (req, res) => {
     const norm = (s) => String(s || "").toLowerCase().trim();
     const match = proveedores.find((p) => norm(p.nombre) && norm(datos.proveedor).includes(norm(p.nombre)));
 
+    // Productos de compra de ese proveedor (para comparar precio con el pactado).
+    const provId = match ? match.id : null;
+    const comprasProd = provId
+      ? store.readAll("compras_productos").filter((p) => p.proveedor_id === provId)
+      : [];
+
     // Emparejar cada línea con una materia del almacén por solapamiento de
     // palabras (más listo que "contiene"): "Tomate triturado lata" ↔ "Tomate trabajado M".
+    const avisos_precio = [];
     const lineas = (datos.lineas || []).map((l) => {
       const m = mejorMateriaPorPalabras(l.descripcion, materias);
-      return {
+      const linea = {
         descripcion: l.descripcion,
         cantidad: l.cantidad,
         precio_unitario: l.precio_unitario,
@@ -140,9 +147,32 @@ router.post("/escanear", jsonGrande, async (req, res) => {
         materia_id: m ? m.id : null,
         materia_unidad: m ? m.unidad : null,
       };
+      // Comparación con el precio pactado del producto de compra (si lo hay).
+      const cp = mejorMateriaPorPalabras(l.descripcion, comprasProd);
+      const recibido = Number(l.precio_unitario);
+      if (cp && Number.isFinite(recibido) && recibido > 0) {
+        const cant = Number(cp.cantidad_formato) || 1;
+        const pactadoUnit = cant > 0 ? Number(cp.precio_sin_iva) / cant : Number(cp.precio_sin_iva);
+        if (pactadoUnit > 0) {
+          const dif = (recibido - pactadoUnit) / pactadoUnit;
+          if (Math.abs(dif) >= 0.05) {
+            linea.precio_pactado = Math.round(pactadoUnit * 10000) / 10000;
+            linea.precio_alerta = true;
+            linea.precio_dif_pct = Math.round(dif * 100);
+            avisos_precio.push({
+              producto: cp.nombre,
+              recibido: Math.round(recibido * 10000) / 10000,
+              pactado: linea.precio_pactado,
+              dif_pct: linea.precio_dif_pct,
+              mensaje: `${cp.nombre}: recibido ${recibido.toFixed(4)} € vs pactado ${linea.precio_pactado.toFixed(4)} € (${dif > 0 ? "+" : ""}${linea.precio_dif_pct}%). Este precio no coincide con el precio pactado. Revísalo antes de aceptar.`,
+            });
+          }
+        }
+      }
+      return linea;
     });
 
-    res.json({ ...datos, lineas, proveedor_id: match ? match.id : null });
+    res.json({ ...datos, lineas, proveedor_id: provId, avisos_precio });
   } catch (e) {
     if (e.code === "OCR_NO_CONFIG") {
       return res.status(503).json({ error: "OCR no configurado. Adjunta la foto y rellena a mano.", code: "OCR_NO_CONFIG" });

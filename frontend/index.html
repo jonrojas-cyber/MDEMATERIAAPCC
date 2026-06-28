@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v48</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v49</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2953,6 +2953,7 @@ async function irA_carta(){
   openSection("carta","Carta y márgenes");
   try{
     const d=await api("/carta");
+    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="formReceta()">Crear receta</button></div>`;
     const resumen=`<div class="section-label">Resumen de la carta</div>
       <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
         <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
@@ -2961,15 +2962,131 @@ async function irA_carta(){
       const w=Math.max(2,Math.round(p.margen_bruto*100));
       const barra=`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
       const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
+      const sugiere=(p.precio_recomendado>0 && Math.abs(p.precio_recomendado-p.precio_venta)>=0.05)
+        ? `<div style="font-size:10px;color:var(--olive);margin-top:4px;">PVP recomendado para ${Math.round(p.margen_objetivo*100)}% de margen: <b>${p.precio_recomendado.toFixed(2)} €</b></div>`:"";
       return card(
         `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:var(--muted);">(estimado)</span>':""}`,
         `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
-        null,
-        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`
+        `<button class="btn-ghost" onclick="formReceta('${p.id}')">Editar</button><button class="btn-ghost" onclick="borrarReceta('${p.id}')">Quitar</button>`,
+        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+sugiere
       );
     }, "No hay productos en la carta.");
-    setInner(resumen+items);
+    setInner(cab+resumen+items);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── EDITOR DE RECETAS (escandallo + PVP recomendado en vivo) ──
+function redondearPvp(n){ return n>0?Math.ceil(n*20)/20:0; }
+async function formReceta(id){
+  const mats=await api("/materias");
+  window._cartaMats=mats;
+  let p={nombre:"",categoria:"",descripcion:"",precio_venta:0,margen_objetivo:0.7,ingredientes:[]};
+  if(id){ try{ const det=await api("/carta/"+id); p={nombre:det.nombre,categoria:det.categoria||"",descripcion:det.descripcion||"",precio_venta:det.precio_venta||0,margen_objetivo:det.margen_objetivo||0.7,ingredientes:(det.ingredientes||[]).map(i=>({materia_id:i.materia_id,cantidad:i.cantidad}))}; }catch(e){ alert(e.message); return; } }
+  window._recetaEditId=id||null;
+  const filas=(p.ingredientes.length?p.ingredientes:[{materia_id:"",cantidad:0}]).map((i)=>filaIngredienteHTML(i)).join("");
+  setInner(`
+    <div class="section-label">${id?"Editar receta":"Nueva receta"}</div>
+    <div class="card">
+      <div class="field"><label>Nombre</label><input id="rc-nombre" value="${esc(p.nombre)}" style="width:100%;"></div>
+      <div class="field"><label>Categoría</label><input id="rc-cat" value="${esc(p.categoria)}" placeholder="p. ej. sandwich, bebida" style="width:100%;"></div>
+      <div class="field"><label>Descripción</label><input id="rc-desc" value="${esc(p.descripcion)}" style="width:100%;"></div>
+    </div>
+    <div class="card">
+      <div class="card-name">Ingredientes (escandallo)</div>
+      <div id="rc-ings">${filas}</div>
+      <div class="card-actions"><button class="btn-ghost" onclick="addIngrediente()">Añadir ingrediente</button></div>
+    </div>
+    <div class="card">
+      <div class="card-name">Precio y margen</div>
+      <div class="field"><label>Margen objetivo (%)</label><input id="rc-margen" type="number" step="1" value="${Math.round((p.margen_objetivo||0.7)*100)}" style="width:120px;" oninput="recalcReceta()"></div>
+      <div class="field"><label>Precio de venta (€)</label><input id="rc-precio" type="number" step="0.05" value="${p.precio_venta||0}" style="width:120px;" oninput="recalcReceta()"></div>
+      <div id="rc-calc" class="card-meta" style="line-height:1.7;"></div>
+      <div class="card-actions"><button class="btn-ghost" onclick="usarPvp()">Usar PVP recomendado</button></div>
+    </div>
+    <div class="card-actions">
+      <button class="btn-primary" onclick="guardarReceta(this)">${id?"Guardar cambios":"Crear receta"}</button>
+      <button class="btn-ghost" onclick="irA_carta()">Cancelar</button>
+    </div>
+    <div id="rc-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>`);
+  recalcReceta();
+}
+
+function filaIngredienteHTML(i){
+  const opts=`<option value="">— materia —</option>`+(window._cartaMats||[]).map(m=>`<option value="${m.id}" data-uni="${m.unidad}" ${m.id===i.materia_id?"selected":""}>${esc(m.nombre)}</option>`).join("");
+  return `<div class="rc-row" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+    <select class="rc-mat" onchange="recalcReceta()" style="font-size:11px;max-width:150px;flex:1;">${opts}</select>
+    <input class="rc-cant" type="number" step="0.001" value="${i.cantidad||""}" placeholder="cant." style="width:70px;font-size:11px;" oninput="recalcReceta()">
+    <span class="rc-uni" style="font-size:10px;color:#888070;min-width:24px;"></span>
+    <span class="rc-coste" style="font-size:10px;color:#888070;min-width:54px;text-align:right;"></span>
+    <button class="btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="this.closest('.rc-row').remove();recalcReceta()">×</button>
+  </div>`;
+}
+function addIngrediente(){
+  const cont=el("rc-ings"); if(!cont) return;
+  cont.insertAdjacentHTML("beforeend",filaIngredienteHTML({materia_id:"",cantidad:0}));
+}
+function matById(id){ return (window._cartaMats||[]).find(m=>m.id===id); }
+
+function recalcReceta(){
+  let coste=0;
+  document.querySelectorAll(".rc-row").forEach(row=>{
+    const id=row.querySelector(".rc-mat").value;
+    const cant=Number(row.querySelector(".rc-cant").value)||0;
+    const m=matById(id);
+    const c=m?(m.coste_medio*cant):0;
+    coste+=c;
+    row.querySelector(".rc-uni").textContent=m?m.unidad:"";
+    row.querySelector(".rc-coste").textContent=m&&cant>0?c.toFixed(3)+" €":"";
+  });
+  coste=Math.round(coste*100)/100;
+  const margenObj=Math.min(0.99,Math.max(0,(Number(el("rc-margen").value)||0)/100));
+  const recomendado=coste>0?redondearPvp(coste/(1-margenObj)):0;
+  const precio=Number(el("rc-precio").value)||0;
+  const margenReal=precio>0?(precio-coste)/precio:0;
+  const foodCost=precio>0?coste/precio:0;
+  const col=foodCost===0?"var(--muted)":(foodCost>0.35?"var(--alert)":(foodCost>0.28?"#5C6145":"var(--olive)"));
+  window._recetaRecom=recomendado;
+  const out=el("rc-calc");
+  if(out) out.innerHTML=
+    `Coste del escandallo: <b>${coste.toFixed(2)} €</b><br>`+
+    `PVP recomendado (margen ${Math.round(margenObj*100)}%): <b style="color:var(--olive)">${recomendado.toFixed(2)} €</b><br>`+
+    (precio>0?`Con tu precio (${precio.toFixed(2)} €): margen <b style="color:${col}">${Math.round(margenReal*100)}%</b> · food cost ${Math.round(foodCost*100)}%`:`Pon un precio para ver el margen.`);
+}
+function usarPvp(){ if(window._recetaRecom>0){ el("rc-precio").value=window._recetaRecom; recalcReceta(); } }
+
+function recogerIngredientes(){
+  return [...document.querySelectorAll(".rc-row")].map(row=>({
+    materia_id:row.querySelector(".rc-mat").value,
+    cantidad:Number(row.querySelector(".rc-cant").value)||0,
+  })).filter(i=>i.materia_id && i.cantidad>0);
+}
+
+async function guardarReceta(btn){
+  const msg=el("rc-msg");
+  const body={
+    nombre:el("rc-nombre").value.trim(),
+    categoria:el("rc-cat").value.trim(),
+    descripcion:el("rc-desc").value.trim(),
+    precio_venta:Number(el("rc-precio").value)||0,
+    margen_objetivo:Number(el("rc-margen").value)||70,
+    ingredientes:recogerIngredientes(),
+  };
+  if(!body.nombre){ if(msg) msg.textContent="Revísalo antes de continuar: indica el nombre de la receta."; return; }
+  if(btn){btn.disabled=true;}
+  try{
+    if(window._recetaEditId){
+      await api("/carta/"+window._recetaEditId,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    }else{
+      await api("/carta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    }
+    irA_carta();
+  }catch(e){ if(msg) msg.textContent="Esto no cuadra: "+e.message; if(btn){btn.disabled=false;} }
+}
+
+async function borrarReceta(id){
+  if(!confirm("¿Quitar esta receta de la carta?")) return;
+  try{ await api("/carta/"+id,{method:"DELETE"}); irA_carta(); }
+  catch(e){ alert(e.message); }
 }
 
 // ── ANÁLISIS ──────────────────────────────────────────

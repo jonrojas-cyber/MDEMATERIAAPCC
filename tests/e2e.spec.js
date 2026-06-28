@@ -194,6 +194,28 @@ test("recepción: campos de lote/caducidad y tres estados", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
+test("recetas: editor calcula escandallo y PVP recomendado en vivo", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_carta());
+  await expect(page.locator("button", { hasText: /Crear receta/ })).toBeVisible();
+  await page.evaluate(() => formReceta());
+  await expect(page.locator("#rc-nombre")).toBeVisible();
+  // Elige la primera materia y pon cantidad → el panel calcula coste y PVP recomendado.
+  await page.selectOption(".rc-mat", { index: 1 });
+  await page.fill(".rc-cant", "100");
+  await page.fill("#rc-margen", "70");
+  await page.dispatchEvent("#rc-margen", "input");
+  await expect(page.locator("#rc-calc")).toContainText(/Coste del escandallo/i);
+  await expect(page.locator("#rc-calc")).toContainText(/PVP recomendado/i);
+  // "Usar PVP recomendado" copia el precio sugerido.
+  await page.evaluate(() => usarPvp());
+  const precio = await page.inputValue("#rc-precio");
+  expect(Number(precio)).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

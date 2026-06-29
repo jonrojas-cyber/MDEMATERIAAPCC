@@ -887,20 +887,23 @@ input, select { font-family: inherit; font-size: 13px; }
 #screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .home-head { flex: 0 0 auto; padding: 2px 2px 14px; }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
-/* El número se escala al ALTO de su propia tarjeta (cqh), no al viewport, así
-   nunca se sale aunque el centro de alertas reduzca el alto disponible. */
-.cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; container-type: size; }
-.cat-big { font-size: min(40px, 34cqh); line-height: 1; }
-.cat-name { font-size: min(22px, 17cqh); }
+/* Número con tamaño fijo y contenido (sin unidades cqh, que algunos móviles
+   no soportan y hacían que se saliera del botón). Quitamos los puntos
+   decorativos para que el contenido quepa centrado aunque la tarjeta sea baja. */
+.cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; }
+.cat-big { font-size: 32px; line-height: 1; }
+.cat-name { font-size: clamp(16px, 2.4dvh, 22px); }
 .cat-numcol { padding-top: 0; padding-bottom: 0; }
 .cat-main { padding-top: 0; padding-bottom: 0; }
+.cat-state { margin-top: 8px; }
+.cat-dots { display: none; }
 .cat-l1 { margin-top: clamp(6px, 1.7dvh, 16px); padding-bottom: clamp(6px, 1.3dvh, 12px); }
 .cat-l2 { margin-top: clamp(6px, 1.3dvh, 12px); }
 /* Pantallas muy bajas (móvil apaisado): simplifica para que quepa sin recortes. */
 @media (max-height: 600px) {
   .cat-l2, .cat-dots { display: none; }
   .cat-l1 { border-bottom: none; padding-bottom: 0; margin-top: clamp(4px, 1dvh, 10px); }
-  .cat-big { font-size: min(28px, 34cqh); }
+  .cat-big { font-size: 26px; }
   .cat-state { margin-top: 5px; }
   .home-head { padding-bottom: 8px; }
   .home-efimera { display: none; }
@@ -917,8 +920,8 @@ input, select { font-family: inherit; font-size: 13px; }
   .home-alert { font-size: 10.5px; }
   .home-efimera { font-size: 8.5px; padding: 3px 8px; margin-top: 8px; }
   /* Menús: solo número + nombre + una línea de módulos. Nada se corta. */
-  .cat-numcol { flex-basis: 78px; padding: 14px 12px; }
-  .cat-big { font-size: min(32px, 38cqh); }
+  .cat-numcol { flex-basis: 72px; padding: 12px; }
+  .cat-big { font-size: 28px; }
   .cat-state { font-size: 7.5px; letter-spacing: .08em; margin-top: 6px; }
   .cat-dots { font-size: 12px; margin-top: 5px; }
   .cat-main { padding: 10px 12px; min-width: 0; }
@@ -1225,7 +1228,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v63</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v64</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1534,7 +1537,7 @@ function alertCenterHTML(d, esAdmin) {
   if (a.sin_fecha && a.sin_fecha.length) rows.push(fila("#7a5a1e", "#f6ecd5", a.sin_fecha.length === 1 ? "lote sin fecha de caducidad" : "lotes sin fecha de caducidad", a.sin_fecha.length, "irA_lotes()"));
   if (esAdmin && a.stock_bajo) rows.push(fila("#7a5a1e", "#f6ecd5", a.stock_bajo === 1 ? "materia con stock bajo" : "materias con stock bajo", a.stock_bajo, "irA_materias()"));
   if (!rows.length) return "";
-  return `<div style="margin:0 0 16px;flex:0 0 auto;max-height:34vh;overflow-y:auto;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
+  return `<div style="margin:0 0 14px;flex:0 0 auto;max-height:28vh;overflow-y:auto;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
 }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".

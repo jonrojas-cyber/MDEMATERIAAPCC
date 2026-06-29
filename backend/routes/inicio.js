@@ -197,9 +197,48 @@ router.get("/", (req, res) => {
       };
     });
 
+  // ── CENTRO DE ALERTAS ─────────────────────────────────────────────────────
+  // Cuatro grupos claros de caducidad/seguridad + el stock bajo. Es lo que el
+  // dashboard pone delante del usuario, con color según riesgo.
+  const BLOQUEADOS_ESTADOS = ["Fuera de servicio", "Bloqueado", "No apto", "Rechazado"];
+  const fechaValida = (iso) => iso && !isNaN(new Date(iso).getTime());
+  const conStock = (l) => l.cantidad_restante == null || l.cantidad_restante > 0;
+  const nombreReceta = (l) => {
+    const r = recetas.find((x) => x.id === l.receta_id);
+    return r ? r.nombre : l.receta_id;
+  };
+  const mapAlerta = (l) => ({
+    id: l.id,
+    codigo: l.codigo,
+    nombre: nombreReceta(l),
+    ubicacion: l.ubicacion || "",
+    estado: l.estado,
+    horas_restantes: fechaValida(l.caduca_en) ? Math.round(horasRestantes(l) * 10) / 10 : null,
+  });
+
+  const activosSinBloqueo = lotes.filter((l) => conStock(l) && !BLOQUEADOS_ESTADOS.includes(l.estado));
+  const caducados = activosSinBloqueo.filter((l) => fechaValida(l.caduca_en) && horasRestantes(l) <= 0).map(mapAlerta);
+  const proximos = activosSinBloqueo
+    .filter((l) => fechaValida(l.caduca_en) && horasRestantes(l) > 0 && horasRestantes(l) <= 12)
+    .map(mapAlerta)
+    .sort((a, b) => a.horas_restantes - b.horas_restantes);
+  const sinFecha = activosSinBloqueo.filter((l) => !fechaValida(l.caduca_en)).map(mapAlerta);
+  const bloqueados = lotes.filter((l) => BLOQUEADOS_ESTADOS.includes(l.estado) && conStock(l)).map(mapAlerta);
+
+  const alertas = {
+    caducados,
+    proximos,
+    sin_fecha: sinFecha,
+    bloqueados,
+    stock_bajo: pedir.length,
+    total: caducados.length + proximos.length + sinFecha.length + bloqueados.length,
+  };
+
   let estadoServicio = "Servicio en orden";
   if (revisar.length > 0 || lotesAtencion.length > 0) estadoServicio = "Requiere atención antes del próximo servicio";
   if (pedir.length >= 3) estadoServicio = "Disponibilidad baja en varias materias";
+  if (proximos.length > 0) estadoServicio = "Hay lotes próximos a caducar";
+  if (caducados.length > 0 || bloqueados.length > 0) estadoServicio = "Hay lotes caducados o bloqueados · revisar ya";
 
   // Estado de sincronización con Ágora (TPV)
   const sync = agora.ultimaSync();
@@ -214,6 +253,7 @@ router.get("/", (req, res) => {
     estado_servicio: estadoServicio,
     kpis,
     agora: agoraEstado,
+    alertas,
     preparar,
     stock_en_horas: stockEnHoras,
     pedir,

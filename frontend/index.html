@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v56</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v57</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1714,8 +1714,11 @@ async function verLote(id){
       { k:"Caduca", v:l.caducado?"Fuera de plazo":fmtFecha(l.caduca_en), alerta:l.caducado },
       { k:"Restante", v:l.caducado?"—":`${l.horas_restantes} h` },
     ];
-    const acc=(l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',()=>{cerrarFicha();irA_lotes();})">Dar de baja</button>`:"")
-      +(!l.caducado?`<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`:"");
+    const acc=
+      `<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`
+      +`<button class="btn-ghost" onclick="verQRLote('${l.id}')">Ver QR · vida útil</button>`
+      +`<button class="btn-ghost" onclick="copiarEnlaceLote('${l.id}')">Copiar enlace</button>`
+      +(l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',()=>{cerrarFicha();irA_lotes();})">Dar de baja</button>`:"");
     fichaTecnica({ eyebrow:"Ficha técnica · Lote", nombre:l.codigo, sub:l.nombre||"lote de producción",
       code:"LOTE<br>SERIE 01", filas,
       nota:"Lote de producción · conservar siempre en frío. Elaborado en pequeñas cantidades.", acciones:acc });
@@ -1745,8 +1748,18 @@ async function darDeBaja(id,cb){
 function imprimirEtiqueta(loteId){
   const u=getUser();
   const resp=encodeURIComponent(u?u.nombre:"");
-  // Abre la etiqueta 62x40mm y lanza el diálogo de impresión (Phomemo D520BT).
+  // Abre la etiqueta 62x30mm y lanza el diálogo de impresión (Phomemo D520BT).
   window.open(`/etiqueta/lote/${loteId}?print=1&usuario=${resp}&responsable=${resp}`,"_blank");
+}
+
+// Abre la vista pública de vida útil en vivo (la misma que abre el QR).
+function verQRLote(loteId){ window.open(`/lote/${loteId}`,"_blank"); }
+
+// Copia al portapapeles el enlace que lleva el QR (ficha de vida útil del lote).
+async function copiarEnlaceLote(loteId){
+  const url=`${location.origin}/lote/${loteId}`;
+  try{ await navigator.clipboard.writeText(url); alert("Enlace copiado:\n"+url); }
+  catch(_){ prompt("Copia el enlace del lote:", url); }
 }
 
 // ── MATERIAS ──────────────────────────────────────────

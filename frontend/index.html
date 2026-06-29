@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v54</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v55</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2741,7 +2741,7 @@ function renderLineasAlbaran(lineas){
       const precioTxt=(pu!=null||imp!=null)
         ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/ud`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
         : `<span class="alb-precio" style="font-size:10px;color:#b8b3a3;min-width:96px;text-align:right;flex:0 0 auto;">sin precio</span>`;
-      return `<div class="alb-row" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+      return `<div class="alb-row" data-pu="${pu!=null?pu:""}" data-imp="${imp!=null?imp:""}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
       <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
       <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" style="width:64px;font-size:11px;">
@@ -2754,7 +2754,15 @@ function recogerLineasAlbaran(){
   return [...document.querySelectorAll(".alb-row")].map(row=>{
     const mat=row.querySelector(".alb-mat").value;
     const cant=Number(row.querySelector(".alb-cant").value);
-    return {descripcion:row.querySelector(".alb-desc").textContent, materia_id:mat||null, cantidad:Number.isFinite(cant)?cant:0};
+    const cantOk=Number.isFinite(cant)?cant:0;
+    // Conservamos el precio leído por el lector (estaba en data-pu / data-imp);
+    // así el albarán digital guarda precio unitario e importe, no solo el total.
+    const puRaw=row.dataset.pu, impRaw=row.dataset.imp;
+    const pu=(puRaw!=null&&puRaw!=="")?Number(puRaw):null;
+    let imp=(impRaw!=null&&impRaw!=="")?Number(impRaw):null;
+    // Si cambian la cantidad y tenemos precio unitario, recalculamos el importe.
+    if(pu!=null) imp=Math.round(pu*cantOk*100)/100;
+    return {descripcion:row.querySelector(".alb-desc").textContent.trim(), materia_id:mat||null, cantidad:cantOk, precio_unitario:pu, importe:imp};
   });
 }
 

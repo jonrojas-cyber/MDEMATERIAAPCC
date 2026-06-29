@@ -79,8 +79,8 @@ function construir() {
     acciones.push({
       id: nid("retirar"), tipo: "retirar_lote", severidad: "critico", prioridad: 1, estado: "pendiente",
       titulo: caducados.length === 1 ? "Retirar lote caducado" : `Retirar ${caducados.length} lotes caducados`,
-      motivo: `${det}${caducados.length > 3 ? "…" : ""} · no deben usarse`,
-      tiempo_min: 3, accion: { label: "Ver lotes", handler: "irA_lotes" },
+      motivo: `${det}${caducados.length > 3 ? "…" : ""} · no usar · riesgo APPCC, acción obligatoria`,
+      tiempo_min: 3, accion: { label: "Resolver", handler: "irA_lotes" },
     });
     riesgos.push({ id: nid("r"), severidad: "critico", titulo: `${caducados.length} lote(s) caducado(s) con producto`, motivo: "Riesgo sanitario si se usan. Retirar y dar de baja." });
   }
@@ -89,7 +89,7 @@ function construir() {
       id: nid("bloq"), tipo: "retirar_lote", severidad: "critico", prioridad: 1, estado: "bloqueado",
       titulo: bloqueados.length === 1 ? "Lote bloqueado / no apto" : `${bloqueados.length} lotes bloqueados`,
       motivo: "Marcados no aptos. Retirar del servicio.", tiempo_min: 3,
-      accion: { label: "Ver lotes", handler: "irA_lotes" },
+      accion: { label: "Resolver", handler: "irA_lotes" },
     });
   }
 
@@ -100,7 +100,7 @@ function construir() {
       id: nid("recep"), tipo: "recepcion", severidad: "importante", prioridad: 2, estado: "pendiente",
       titulo: recepPend.length === 1 ? "Resolver albarán recibido" : `Resolver ${recepPend.length} albaranes`,
       motivo: "Recepción pendiente de aceptar y cargar al stock.", tiempo_min: 5,
-      accion: { label: "Ir a recepción", handler: "irA_recepcion" },
+      accion: { label: "Hacer", handler: "irA_recepcion" },
     });
   }
 
@@ -147,7 +147,7 @@ function construir() {
         id: nid("salida"), tipo: "priorizar_uso", severidad: "importante", prioridad: 4, estado: "pendiente",
         titulo: `Dar salida a ${nombre}`,
         motivo: `Quedan ${l.cantidad_restante != null ? l.cantidad_restante : "?"}${recById[l.receta_id] ? " " + recById[l.receta_id].unidad : ""}, caduca en ${humanoHoras(h)}`,
-        tiempo_min: null, accion: { label: "Ver lote", handler: "irA_lotes" },
+        tiempo_min: null, accion: { label: "Hacer", handler: "irA_lotes" },
       });
       oportunidades.push({ id: nid("o"), titulo: `Aprovecha ${nombre}`, motivo: `Sobran existencias y caduca en ${humanoHoras(h)}: promoción o uso prioritario para evitar merma.`, accion: { label: "Ver lote", handler: "irA_lotes" } });
     });
@@ -175,7 +175,7 @@ function construir() {
       id: nid("pedido"), tipo: "pedido", severidad: critico ? "critico" : "importante", prioridad: critico ? 2 : 5, estado: "pendiente",
       titulo: prov ? `Pedir a ${prov.nombre}` : "Pedir (sin proveedor asignado)",
       motivo: `${items.length} producto(s) bajo punto de pedido${autoMin != null ? ` · autonomía ${autoMin} día${autoMin === 1 ? "" : "s"}` : ""}: ${nombres}${items.length > 3 ? "…" : ""}`,
-      tiempo_min: 4, accion: { label: "Generar pedido", handler: "irA_pedidos" },
+      tiempo_min: 4, accion: { label: "Pedir", handler: "irA_pedidos" },
     });
   });
   // Riesgo: se quedará sin X, con autonomía en días si se conoce el ritmo.
@@ -202,7 +202,7 @@ function construir() {
       id: nid("merma"), tipo: "revisar_merma", severidad: "info", prioridad: 6, estado: "pendiente",
       titulo: "Revisar merma de ayer",
       motivo: `${mermaAyer.length} ajuste(s) · ${costeMermaAyer.toFixed(2)} € perdidos`,
-      tiempo_min: 3, accion: { label: "Ver ajustes", handler: "irA_ajustes" },
+      tiempo_min: 3, accion: { label: "Revisar", handler: "irA_ajustes" },
     });
   }
   const costeMermaHoy = Math.round(ajustes.filter((a) => new Date(a.fecha).toDateString() === hoy).reduce((s, a) => s + (a.coste_estimado || 0), 0) * 100) / 100;
@@ -212,7 +212,7 @@ function construir() {
   materias.forEach((m) => {
     const opt = m.stock_optimo != null ? Number(m.stock_optimo) : m.stock_ideal != null ? Number(m.stock_ideal) : null;
     if (opt && Number(m.disponibilidad_actual) > opt * 1.5) {
-      oportunidades.push({ id: nid("o"), titulo: `Tienes de sobra ${m.nombre}`, motivo: `${m.disponibilidad_actual} ${m.unidad || ""} (óptimo ${opt}). Priorízalo para no generar merma.`, accion: { label: "Ver almacén", handler: "irA_materias" } });
+      oportunidades.push({ id: nid("o"), titulo: `Tienes de sobra ${m.nombre}`, motivo: `${m.disponibilidad_actual} ${m.unidad || ""} (óptimo ${opt}). Priorízalo para no generar merma.`, accion: { label: "Revisar", handler: "irA_materias" } });
     }
   });
 

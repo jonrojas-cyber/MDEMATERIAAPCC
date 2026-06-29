@@ -444,15 +444,15 @@ input, select { font-family: inherit; font-size: 13px; }
 .pf-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pf-2 .pf-row { margin-bottom: 12px; }
 
-/* ── CENTRO DE DECISIONES · mando (compacto) ── */
-.kpi-strip { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin: 0 0 14px; }
-.kpi { background: var(--paper); border: 1px solid var(--line); border-radius: 9px; padding: 9px 6px; text-align: center; }
-.kpi-v { font-size: 15px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-.kpi-l { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
-.qha { margin: 0 0 14px; }
-.qha-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.qha-head > span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.qha-link { background: none; border: 0; font-family: var(--sans); font-size: 11px; color: var(--ink); cursor: pointer; text-decoration: underline; }
+/* ── TAREAS · bandeja de mando (compacto) ── */
+.home-question { font-family: var(--serif, 'Newsreader', serif); font-size: 22px; font-weight: 600; line-height: 1.15; margin-top: 4px; }
+.kpi-line { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 16px; padding: 10px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 9px; }
+.kpi-i { font-size: 11.5px; color: var(--muted); }
+.kpi-i b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.tareas-cuenta { font-size: 12px; font-weight: 700; margin-bottom: 12px; }
+.qha { margin: 0 0 16px; }
+.qha-allbtn { width: 100%; background: none; border: 1px solid var(--line); border-radius: 9px; font-family: var(--sans);
+  font-size: 12.5px; color: var(--ink); padding: 11px; cursor: pointer; margin-top: 4px; }
 .dec-group { margin-bottom: 14px; }
 .dec-gh { font-size: 11px; font-weight: 700; letter-spacing: .04em; margin: 0 0 6px; }
 /* Tarjeta de acción compacta: 2 líneas, mínima altura. */
@@ -480,6 +480,16 @@ input, select { font-family: inherit; font-size: 13px; }
 .navchip-pend { font-size: 11px; font-weight: 700; color: #b5462a; background: #f3ddd2; border-radius: 20px; padding: 2px 9px; margin-left: auto; }
 .navchip-go { color: var(--muted); font-size: 15px; margin-left: auto; }
 .navchip-pend + .navchip-go { margin-left: 8px; }
+.home-nav-label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 6px 0 8px; }
+/* APPCC hub */
+.appcc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.appcc-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; position: relative;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 14px; cursor: pointer; min-height: 80px; }
+.appcc-tile:hover { border-color: var(--ink); }
+.appcc-tile-name { font-size: 14.5px; font-weight: 700; line-height: 1.15; }
+.appcc-tile-sub { font-size: 11px; color: var(--muted); }
+.appcc-badge { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 700; color: #b5462a; background: #f3ddd2; border-radius: 20px; padding: 2px 8px; }
+.appcc-nota { font-size: 11.5px; color: var(--muted); margin-top: 14px; line-height: 1.5; }
 
 .wiz-bar {
   height: 3px;
@@ -1302,7 +1312,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v68</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v69</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1573,8 +1583,8 @@ function modulosMeta(d) {
         pendPedir = (d.pedir||[]).length, pendRevisar = (d.revisar||[]).length,
         pendLotes = (d.lotes_a_vigilar||[]).length;
   return {
-    preparaciones:{ num:"01", name:"Preparaciones", badge: enCurso?`${enCurso} en curso`:(pendPrep?`${pendPrep} recomendadas`:"Al día"), urgent: !!(enCurso||pendPrep) },
-    lotes:        { num:"02", name:"Lotes activos", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
+    preparaciones:{ num:"01", name:"Producir ahora", badge: enCurso?`${enCurso} en curso`:(pendPrep?`${pendPrep} recomendadas`:"Al día"), urgent: !!(enCurso||pendPrep) },
+    lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
     materias:     { num:"03", name:"Materias", badge: pendPedir?`${pendPedir} con disponibilidad baja`:"Stock correcto", urgent: !!pendPedir },
     revisiones:   { num:"04", name:"Revisiones", badge: pendRevisar?`${pendRevisar} pendientes`:"Completadas", urgent: !!pendRevisar },
     ajustes:      { num:"05", name:"Ajustes", badge:`${k.ajustes_hoy||0} registrados hoy`, urgent:false },
@@ -1593,13 +1603,15 @@ function modulosMeta(d) {
   };
 }
 
-// Estructura principal de 5 áreas (Control · Producción · Almacén · Compras · Negocio).
+// Estructura principal de 7 áreas operativas. Tareas y APPCC abren pantallas
+// propias (irA_tareas / irA_appcc); el resto son submenús de módulos.
 const CATS = {
-  control:    { name:"Control", desc:"Decisiones · Resumen · Avisos", ids:["decisiones","resumen","avisos"] },
-  produccion: { name:"Producción", desc:"Preparaciones · Lotes · Revisiones", ids:["preparaciones","lotes","revisiones"] },
-  almacen:    { name:"Almacén", desc:"Materias · Ubicaciones · Mermas", ids:["materias","ajustes"] },
-  compras:    { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
-  negocio:    { name:"Negocio", desc:"Ventas · Carta · Análisis · Manual", ids:["ventas","carta","analisis","manual"], admin:true },
+  produccion:    { name:"Producción", desc:"Producir ahora · Recetas · Histórico", ids:["preparaciones","revisiones"] },
+  almacen:       { name:"Almacén", desc:"Materias · Ubicaciones · Mermas", ids:["materias","ajustes"] },
+  compras:       { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
+  appcc:         { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
+  negocio:       { name:"Negocio", desc:"Ventas · Carta · Análisis · Resumen", ids:["ventas","carta","analisis","resumen"], admin:true },
+  configuracion: { name:"Configuración", desc:"Avisos · Manual", ids:["avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -1619,33 +1631,34 @@ function alertCenterHTML(d, esAdmin) {
   return `<div style="margin:0 0 14px;flex:0 0 auto;max-height:28vh;overflow-y:auto;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
 }
 
-// ── CENTRO DE DECISIONES · el cerebro operativo ───────────────────────────
-// Cuatro niveles de prioridad con icono y color: Crítico (🔥 rojo),
-// Importante (⚠ amarillo), Oportunidad (📈 verde), Informativo (· gris).
+// ── TAREAS · bandeja única operativa ──────────────────────────────────────
+// Toda alerta del sistema es una TAREA. Tres niveles, una sola pregunta:
+// ¿qué tengo que hacer ahora? 🔴 Crítico · 🟡 Importante · 🔵 Informativo.
 const DEC_GRUPOS=[
-  { key:"critico",    label:"Crítico",     ico:"🔥", color:"#b5462a" },
-  { key:"importante", label:"Importante",  ico:"⚠",  color:"#c79a3a" },
-  { key:"oportunidad",label:"Oportunidad", ico:"📈", color:"#5b7a4a" },
-  { key:"informativo",label:"Informativo", ico:"·",  color:"#82857A" },
+  { key:"critico",     label:"Crítico",     ico:"🔴", color:"#b5462a" },
+  { key:"importante",  label:"Importante",  ico:"🟡", color:"#c79a3a" },
+  { key:"informativo", label:"Informativo", ico:"🔵", color:"#3f6079" },
 ];
 
-// Indexa cada ítem por id para que el botón ejecute su acción directa.
+// Indexa cada tarea por id para que el botón ejecute su acción directa.
 function decIndexar(dec){
   window._decData=dec; window._decIndex={};
   [...(dec.acciones||[]),...(dec.oportunidades||[]),...(dec.riesgos||[])].forEach(x=>{ if(x.id) window._decIndex[x.id]=x; });
 }
-// Reparte acciones/oportunidades/riesgos en los 4 grupos.
+// Reparte todo en 3 niveles: oportunidades y avisos menores → informativo.
 function decBuckets(dec){
-  const b={critico:[],importante:[],oportunidad:[],informativo:[]};
+  const b={critico:[],importante:[],informativo:[]};
   (dec.acciones||[]).forEach(a=>{ (b[a.severidad]||b.informativo).push(a); });
-  (dec.oportunidades||[]).forEach(o=> b.oportunidad.push(o));
+  (dec.oportunidades||[]).forEach(o=> b.informativo.push(o));
   (dec.riesgos||[]).filter(r=>r.severidad==="info").forEach(r=> b.informativo.push(r));
   return b;
 }
-// Tarjeta de acción COMPACTA: título + botón arriba, una línea de detalle.
+function decCuenta(dec){ const b=decBuckets(dec); return { critico:b.critico.length, importante:b.importante.length, informativo:b.informativo.length }; }
+
+// Tarjeta de tarea COMPACTA: título + botón arriba, una línea de detalle.
 function accionRow(a, color){
   const sub=[a.tiempo_min?`${a.tiempo_min} min`:null, decEstadoTxt(a.estado), a.motivo].filter(Boolean).join(" · ");
-  const btn=a.accion?`<button class="dec-act-btn" onclick="decAccion('${a.id}')">${esc(a.accion.label)}</button>`:"";
+  const btn=a.accion?`<button class="dec-act-btn" onclick="decAccion('${a.id}')">${esc((a.accion.label||"Hacer").toUpperCase())}</button>`:"";
   return `<div class="dec-act" style="border-left:3px solid ${color};">
     <div class="dec-act-top"><span class="dec-act-title">${esc(a.titulo)}</span>${btn}</div>
     <div class="dec-act-sub">${esc(sub)}</div>
@@ -1653,7 +1666,7 @@ function accionRow(a, color){
 }
 function decEstadoTxt(e){ return e==="en_curso"?"en curso":e==="bloqueado"?"bloqueado":e==="hecho"?"hecho":""; }
 
-// Render de los grupos. opts.max limita ítems por grupo (home).
+// Render de los grupos. opts.max limita tareas por grupo (home).
 function decGruposHTML(dec, opts){
   const b=decBuckets(dec); let html="";
   DEC_GRUPOS.forEach(g=>{
@@ -1661,12 +1674,12 @@ function decGruposHTML(dec, opts){
     const items=(opts&&opts.max)?all.slice(0,opts.max):all;
     html+=`<div class="dec-group"><div class="dec-gh" style="color:${g.color}">${g.ico} ${g.label} · ${all.length}</div>`;
     html+=items.map(x=>accionRow(x,g.color)).join("");
-    if(opts&&opts.max&&all.length>opts.max) html+=`<button class="dec-more" onclick="irA_decisiones()">+${all.length-opts.max} más →</button>`;
+    if(opts&&opts.max&&all.length>opts.max) html+=`<button class="dec-more" onclick="irA_tareas()">+${all.length-opts.max} más →</button>`;
     html+=`</div>`;
   });
-  return html || `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`;
+  return html || `<div class="todo-clear">✓ Todo hecho. No hay tareas pendientes.</div>`;
 }
-// Ejecuta el handler de un ítem → acción directa (≤ 1 clic).
+// Ejecuta el handler de una tarea → acción directa (≤ 1 clic).
 function decAccion(id){
   const a=(window._decIndex||{})[id]; if(!a||!a.accion)return;
   const h=a.accion.handler, args=a.accion.args||{};
@@ -1674,16 +1687,15 @@ function decAccion(id){
   if(typeof window[h]==="function") return window[h]();
 }
 
-// Fila compacta de KPIs (cabecera del mando).
+// Línea fina de KPIs (datos secundarios, sin protagonismo).
 function kpiStripHTML(k){
   if(!k) return "";
-  const cell=(l,v)=>`<div class="kpi"><div class="kpi-v">${v}</div><div class="kpi-l">${l}</div></div>`;
-  return `<div class="kpi-strip">
-    ${cell("Ventas hoy", k.ventas_hoy!=null?Math.round(k.ventas_hoy)+" €":"—")}
-    ${cell("Food cost", k.food_cost!=null?k.food_cost+" %":"—")}
-    ${cell("Merma", Math.round(k.merma_hoy||0)+" €")}
-    ${cell("Valor stock", k.valor_stock!=null?Math.round(k.valor_stock)+" €":"—")}
-    ${cell("Alertas", k.alertas||0)}
+  const cell=(l,v)=>`<span class="kpi-i"><b>${v}</b> ${l}</span>`;
+  return `<div class="kpi-line">
+    ${cell("ventas", k.ventas_hoy!=null?Math.round(k.ventas_hoy)+" €":"—")}
+    ${cell("food cost", k.food_cost!=null?k.food_cost+" %":"—")}
+    ${cell("stock", k.valor_stock!=null?Math.round(k.valor_stock)+" €":"—")}
+    ${cell("mermas", Math.round(k.merma_hoy||0)+" €")}
   </div>`;
 }
 // Bloque HOY (estado operativo del día).
@@ -1692,29 +1704,72 @@ function hoyHTML(hoy){
   return `<div class="hoy"><span class="hoy-h">Hoy</span>${hoy.map(h=>`<span class="hoy-item"><b>${h.hecho}/${h.total}</b> ${esc(h.etiqueta)}</span>`).join("")}</div>`;
 }
 
-// Bloque "Qué hacer ahora" para la home (mando): grupos compactos, top por grupo.
+// Bloque de tareas para la home: top por nivel, una sola pregunta.
 function qhaHomeHTML(dec){
   if(!dec) return "";
   decIndexar(dec);
-  if(!dec.acciones.length && !dec.oportunidades.length) return "";
+  const c=decCuenta(dec);
+  const total=c.critico+c.importante+c.informativo;
+  const cuenta = total
+    ? `<div class="tareas-cuenta"><span style="color:#b5462a">${c.critico} críticas</span> · <span style="color:#c79a3a">${c.importante} importantes</span> · <span style="color:#3f6079">${c.informativo} info</span></div>`
+    : "";
   return `<div class="qha">
-    <div class="qha-head"><span>Qué hacer ahora</span><button class="qha-link" onclick="irA_decisiones()">Ver todo →</button></div>
-    ${decGruposHTML(dec,{max:2})}
+    ${cuenta}
+    ${decGruposHTML(dec,{max:3})}
+    ${total>0?`<button class="qha-allbtn" onclick="irA_tareas()">Ver todas las tareas →</button>`:""}
   </div>`;
 }
 
-// Pantalla completa: KPIs + Hoy + los 4 grupos de prioridad.
-async function irA_decisiones(){
-  openSection("decisiones","Centro de decisiones");
-  setInner(`<div class="empty">Analizando el negocio…</div>`);
+// Pantalla TAREAS: la bandeja única completa.
+async function irA_tareas(){
+  openSection("tareas","Tareas");
+  setInner(`<div class="empty">Revisando el negocio…</div>`);
   try{
     const dec=await api("/decisiones");
     decIndexar(dec);
-    let html=kpiStripHTML(dec.kpis)+hoyHTML(dec.hoy);
-    html+=`<div class="section-label">Qué hacer ahora</div>`+decGruposHTML(dec);
+    const c=decCuenta(dec);
+    let html=`<div class="tareas-cuenta"><span style="color:#b5462a">${c.critico} críticas</span> · <span style="color:#c79a3a">${c.importante} importantes</span> · <span style="color:#3f6079">${c.informativo} info</span></div>`;
+    html+=decGruposHTML(dec);
+    html+=kpiStripHTML(dec.kpis)+hoyHTML(dec.hoy);
     setInner(html);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
+// Compatibilidad con llamadas antiguas.
+function irA_decisiones(){ return irA_tareas(); }
+
+// ── APPCC · seguridad alimentaria (hub) ───────────────────────────────────
+async function irA_appcc(){
+  openSection("appcc","APPCC");
+  try{
+    const [lotes, dec] = await Promise.all([
+      api("/lotes").catch(()=>[]),
+      api("/decisiones").catch(()=>null),
+    ]);
+    const activos=lotes.filter(l=>l.estado!=="Fuera de servicio");
+    const caducados=activos.filter(l=>l.caducado).length;
+    const proximos=activos.filter(l=>!l.caducado&&l.horas_restantes!=null&&l.horas_restantes<=12).length;
+    const recepPend=(dec&&dec.acciones||[]).filter(a=>a.tipo==="recepcion").length;
+    const tile=(nombre, sub, onclick, badge)=>`
+      <button class="appcc-tile" onclick="${onclick}">
+        <span class="appcc-tile-name">${nombre}</span>
+        <span class="appcc-tile-sub">${sub}</span>
+        ${badge?`<span class="appcc-badge">${badge}</span>`:""}
+      </button>`;
+    const proximamente='<span style="font-size:10px;color:var(--muted);">Próximamente</span>';
+    setInner(`
+      <div class="section-label">Control de seguridad alimentaria</div>
+      <div class="appcc-grid">
+        ${tile("Lotes y caducidades","Trazabilidad y vida útil","irA_lotes()", caducados?`${caducados} caducados`:(proximos?`${proximos} por caducar`:""))}
+        ${tile("Recepciones","Entrada y cotejo de albaranes","irA_recepcion()", recepPend?`${recepPend} pendientes`:"")}
+        ${tile("Temperaturas","Neveras y congelador",`almaccPronto()`, "")}
+        ${tile("Limpieza","Registro de limpieza",`almaccPronto()`, "")}
+        ${tile("Incidencias","Producto no apto y bloqueos",`almaccPronto()`, "")}
+        ${tile("Auditorías","Historial exportable",`almaccPronto()`, "")}
+      </div>
+      <div class="appcc-nota">Las neveras, limpieza, incidencias y auditorías llegan en la siguiente fase. Hoy ya tienes lotes, caducidades, trazabilidad por QR y recepciones.</div>`);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+function almaccPronto(){ alert("Disponible en la siguiente fase de APPCC."); }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
 function dashboardHTML(d, esAdmin) {
@@ -1756,30 +1811,30 @@ async function loadHome() {
     const alerta = d.estado_servicio !== "Servicio en orden";
     const meta = modulosMeta(d);
     const pendCat = ids => ids.reduce((n, id) => n + (meta[id] && meta[id].urgent ? 1 : 0), 0);
+    const caducados = d.alertas ? d.alertas.caducados.length : 0;
     const criticas = dec && dec.resumen ? dec.resumen.criticas : 0;
-
     const navs = [
-      { k:"control",    name:"Control" },
-      { k:"produccion", name:"Producción" },
-      { k:"almacen",    name:"Almacén" },
-      { k:"compras",    name:"Compras", admin:true },
-      { k:"negocio",    name:"Negocio", admin:true },
+      { k:"tareas",        name:"Tareas",        go:"irA_tareas()",            pend: criticas },
+      { k:"produccion",    name:"Producción",    go:"irA_categoria('produccion')", pend: pendCat(CATS.produccion.ids) },
+      { k:"almacen",       name:"Almacén",       go:"irA_categoria('almacen')",    pend: pendCat(CATS.almacen.ids) },
+      { k:"compras",       name:"Compras",       go:"irA_categoria('compras')",    pend: pendCat(CATS.compras.ids), admin:true },
+      { k:"appcc",         name:"APPCC",         go:"irA_appcc()",             pend: caducados },
+      { k:"negocio",       name:"Negocio",       go:"irA_categoria('negocio')",    pend: 0, admin:true },
+      { k:"configuracion", name:"Configuración", go:"irA_categoria('configuracion')", pend: 0, admin:true },
     ].filter(c => !c.admin || esAdmin)
-     .map((c,i) => ({ ...c, num:String(i+1).padStart(2,"0"), pend: CATS[c.k]?pendCat(CATS[c.k].ids):0 }));
-
-    const estadoSrv = alerta ? d.estado_servicio : "Servicio en orden";
+     .map((c,i) => ({ ...c, num:String(i+1).padStart(2,"0") }));
 
     el("home-content").innerHTML = `
       <div class="home-head">
-        <div class="home-sys">Hoy en m de materia · Sistema RTD 01</div>
-        <div class="home-alert">${estadoSrv}</div>
+        <div class="home-sys">Hoy en m de materia</div>
+        <div class="home-question">¿Qué tengo que hacer ahora?</div>
         ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
       </div>
-      ${kpiStripHTML(dec && dec.kpis)}
       ${qhaHomeHTML(dec)}
-      ${hoyHTML(dec && dec.hoy)}
+      ${kpiStripHTML(dec && dec.kpis)}
+      <div class="home-nav-label">Áreas</div>
       <div class="home-nav">
-        ${navs.map(c=>`<button class="navchip" onclick="irA_categoria('${c.k}')">
+        ${navs.map(c=>`<button class="navchip" onclick="${c.go}">
           <span class="navchip-num">${c.num}</span>
           <span class="navchip-name">${c.name}</span>
           ${c.pend?`<span class="navchip-pend">${c.pend}</span>`:""}
@@ -1803,6 +1858,8 @@ async function irA_resumen() {
 
 // Pantalla de categoría: lista de sus módulos.
 async function irA_categoria(cat) {
+  if (cat === "appcc") return irA_appcc();        // APPCC tiene su propio hub
+  if (cat === "control") return irA_tareas();      // compat: "control" → Tareas
   const c = CATS[cat];
   if (!c) return;
   openSection("cat-"+cat, c.name);
@@ -1825,12 +1882,13 @@ async function irA_categoria(cat) {
 
 // ── PREPARACIONES ─────────────────────────────────────
 async function irA_preparaciones() {
-  openSection("preparaciones","Preparaciones");
+  openSection("preparaciones","Producción");
   try {
-    const [recetas, enCurso, recientes] = await Promise.all([
+    const [recetas, enCurso, recientes, dec] = await Promise.all([
       api("/recetas"),
       api("/preparaciones?estado=En curso"),
       api("/preparaciones?estado=Finalizada"),
+      api("/decisiones").catch(()=>null),
     ]);
     let html = "";
     if (enCurso.length) {
@@ -1841,7 +1899,17 @@ async function irA_preparaciones() {
         `<button class="btn-primary" onclick="abrirWizard('${p.id}')">Continuar</button>`
       )).join("");
     }
-    html += `<div class="section-label">Elegir preparación</div>`;
+    // PRODUCIR AHORA: solo las elaboraciones necesarias (recomendadas por el motor).
+    const reco=(dec&&dec.produccion)||[];
+    html += `<div class="section-label">Producir ahora</div>`;
+    html += reco.length ? reco.map(p=>`
+      <div class="dec-act" style="border-left:3px solid #c79a3a;">
+        <div class="dec-act-top"><span class="dec-act-title">${esc(p.receta.nombre)}</span>
+          <button class="dec-act-btn" onclick="iniciarYAbrir('${p.receta.id}',${p.cantidad},this)">EMPEZAR</button></div>
+        <div class="dec-act-sub">${p.cantidad} ${esc(p.receta.unidad)} · ≈${p.tiempo_min} min · ${esc(p.motivo)}</div>
+      </div>`).join("")
+      : `<div class="todo-clear">✓ Nada urgente que producir ahora.</div>`;
+    html += `<div class="section-label">Todas las elaboraciones</div>`;
     html += recetas.map(r => `
       <div class="card">
         <div class="card-name">${r.nombre}</div>

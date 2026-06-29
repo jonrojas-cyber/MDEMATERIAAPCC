@@ -44,32 +44,44 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("login + inicio: centro de mando con 5 áreas y cero errores de JS", async ({ page }) => {
+test("login + inicio: home de tareas con 7 áreas y cero errores de JS", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // Las 5 áreas (Control · Producción · Almacén · Compras · Negocio) para admin.
-  await expect(page.locator(".navchip")).toHaveCount(5);
-  // Son botones nativos (operables por teclado).
+  // La home pregunta una sola cosa.
+  await expect(page.locator(".home-question")).toContainText(/qué tengo que hacer/i);
+  // Las 7 áreas (Tareas · Producción · Almacén · Compras · APPCC · Negocio · Configuración).
+  await expect(page.locator(".navchip")).toHaveCount(7);
   await expect(page.locator(".navchip").first()).toHaveJSProperty("tagName", "BUTTON");
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 
-test("centro de decisiones: acciones priorizadas con acción directa", async ({ page }) => {
+test("tareas: bandeja única con prioridad y acción directa", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // La home es un centro de mando: muestra "Qué hacer ahora".
+  // La home muestra la bandeja de tareas con su recuento.
   await expect(page.locator(".qha")).toBeVisible();
-  await page.evaluate(() => irA_decisiones());
-  await expect(page.locator(".screen-head")).toContainText(/decisiones/i);
-  // Hay acciones con botón de acción directa.
+  await expect(page.locator(".tareas-cuenta")).toContainText(/cr[ií]ticas/i);
+  await page.evaluate(() => irA_tareas());
+  await expect(page.locator(".screen-head")).toContainText(/tareas/i);
+  // Hay tareas con botón de acción directa (verbo imperativo).
   await expect(page.locator(".dec-act").first()).toBeVisible();
   await expect(page.locator(".dec-act-btn").first()).toBeVisible();
-  // La API de decisiones devuelve estructura de mando.
   const dec = await page.evaluate(() => api("/decisiones"));
   expect(Array.isArray(dec.acciones)).toBeTruthy();
-  expect(dec.resumen).toBeTruthy();
+  expect(dec.kpis).toBeTruthy();
+  expect(errors).toEqual([]);
+});
+
+test("APPCC: hub de seguridad alimentaria con lotes y recepciones", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_appcc());
+  await expect(page.locator(".screen-head")).toContainText(/appcc/i);
+  await expect(page.locator(".appcc-tile", { hasText: /Lotes/ })).toBeVisible();
+  await expect(page.locator(".appcc-tile", { hasText: /Recepciones/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -307,6 +319,6 @@ test("acceso por teclado: Enter abre un área", async ({ page }) => {
   await login(page);
   await page.locator(".navchip").first().focus();
   await page.keyboard.press("Enter");
-  // La primera área es "Control" → abre su submenú.
-  await expect(page.locator(".screen-head")).toContainText(/control/i);
+  // La primera área es "Tareas" → abre la bandeja.
+  await expect(page.locator(".screen-head")).toContainText(/tareas/i);
 });

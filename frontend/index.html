@@ -882,25 +882,25 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 22px; color: var(--ink); }
 .cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
 
-/* ── INICIO: cabecera + centro de alertas + menús, con scroll si hace falta ── */
-#screen-home { overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+/* ── INICIO A PANTALLA FIJA: los menús se reparten el alto, sin scroll ── */
+#screen-home { overflow: hidden; display: flex; flex-direction: column; }
 #screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .home-head { flex: 0 0 auto; padding: 2px 2px 14px; }
-.cats { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; max-width: 1080px; width: 100%; }
-/* Tarjetas de alto natural: el número nunca se sale del botón. */
-.cat { flex: 0 0 auto; min-height: 96px; margin-bottom: 0; overflow: hidden; }
-.cat-big { font-size: 38px; }
-.cat-name { font-size: clamp(15px, 2.5dvh, 22px); }
-.cat-numcol { padding-top: 18px; padding-bottom: 18px; }
-.cat-main { padding-top: 18px; padding-bottom: 18px; }
+.cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
+/* El número se escala al ALTO de su propia tarjeta (cqh), no al viewport, así
+   nunca se sale aunque el centro de alertas reduzca el alto disponible. */
+.cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; container-type: size; }
+.cat-big { font-size: min(40px, 34cqh); line-height: 1; }
+.cat-name { font-size: min(22px, 17cqh); }
+.cat-numcol { padding-top: 0; padding-bottom: 0; }
+.cat-main { padding-top: 0; padding-bottom: 0; }
 .cat-l1 { margin-top: clamp(6px, 1.7dvh, 16px); padding-bottom: clamp(6px, 1.3dvh, 12px); }
 .cat-l2 { margin-top: clamp(6px, 1.3dvh, 12px); }
 /* Pantallas muy bajas (móvil apaisado): simplifica para que quepa sin recortes. */
 @media (max-height: 600px) {
   .cat-l2, .cat-dots { display: none; }
   .cat-l1 { border-bottom: none; padding-bottom: 0; margin-top: clamp(4px, 1dvh, 10px); }
-  .cat { min-height: 72px; }
-  .cat-big { font-size: 28px; }
+  .cat-big { font-size: min(28px, 34cqh); }
   .cat-state { margin-top: 5px; }
   .home-head { padding-bottom: 8px; }
   .home-efimera { display: none; }
@@ -918,7 +918,7 @@ input, select { font-family: inherit; font-size: 13px; }
   .home-efimera { font-size: 8.5px; padding: 3px 8px; margin-top: 8px; }
   /* Menús: solo número + nombre + una línea de módulos. Nada se corta. */
   .cat-numcol { flex-basis: 78px; padding: 14px 12px; }
-  .cat-big { font-size: 30px; }
+  .cat-big { font-size: min(32px, 38cqh); }
   .cat-state { font-size: 7.5px; letter-spacing: .08em; margin-top: 6px; }
   .cat-dots { font-size: 12px; margin-top: 5px; }
   .cat-main { padding: 10px 12px; min-width: 0; }
@@ -1073,6 +1073,20 @@ input, select { font-family: inherit; font-size: 13px; }
   box-shadow: inset 0 2px 5px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04) !important;
 }
 
+/* Teclado numérico del PIN (login): teclas oscuras en relieve, tipo TPV. */
+.pin-pad { display: grid; grid-template-columns: repeat(3, 70px); gap: 12px; justify-content: center; }
+.pin-key {
+  font-family: 'Courier Prime', monospace; font-size: 24px; color: #E7E4D7;
+  width: 70px; height: 62px; border-radius: 7px; border: 1px solid #2A2820; cursor: pointer;
+  background: linear-gradient(180deg, #24221A 0%, #1A1812 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), inset 0 -1px 0 rgba(0,0,0,.4), 0 3px 7px rgba(0,0,0,.45);
+  transition: transform .08s ease, box-shadow .12s ease;
+}
+.pin-key:active { transform: translateY(1px); box-shadow: inset 0 2px 5px rgba(0,0,0,.55); }
+.pin-key-ghost { background: none; box-shadow: none; border-color: #2A2820; font-size: 20px; color: #888070; }
+.pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #555040; transition: background .12s, border-color .12s; }
+.pin-dot.on { background: #E7E4D7; border-color: #E7E4D7; }
+
 /* "Salir" en la barra: chip en relieve sobre el oliva. */
 .topbar .user-chip {
   border-radius: 4px !important;
@@ -1211,7 +1225,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v62</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v63</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1279,15 +1293,32 @@ function mostrarLogin() {
             </button>`).join("")}
         </div>
         <div id="pin-wrap" style="display:none;">
-          <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:12px;">PIN</div>
-          <input type="password" inputmode="numeric" maxlength="4" id="pin-inp" autocomplete="off"
-            style="font-family:inherit;font-size:28px;letter-spacing:0.4em;text-align:center;width:130px;background:none;border:none;border-bottom:1px solid #2A2820;color:var(--cream);padding:8px;outline:none;"
-            oninput="if(this.value.length===4)checkPin();">
-          <div id="pin-err" style="font-size:11px;color:#E7E4D7;margin-top:14px;min-height:16px;"></div>
+          <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:16px;">PIN de <span id="pin-quien"></span></div>
+          <div id="pin-dots" style="display:flex;gap:16px;justify-content:center;margin-bottom:24px;">
+            <span class="pin-dot" data-i="0"></span><span class="pin-dot" data-i="1"></span><span class="pin-dot" data-i="2"></span><span class="pin-dot" data-i="3"></span>
+          </div>
+          <div class="pin-pad">
+            <button type="button" class="pin-key" onclick="pinPush('1')">1</button>
+            <button type="button" class="pin-key" onclick="pinPush('2')">2</button>
+            <button type="button" class="pin-key" onclick="pinPush('3')">3</button>
+            <button type="button" class="pin-key" onclick="pinPush('4')">4</button>
+            <button type="button" class="pin-key" onclick="pinPush('5')">5</button>
+            <button type="button" class="pin-key" onclick="pinPush('6')">6</button>
+            <button type="button" class="pin-key" onclick="pinPush('7')">7</button>
+            <button type="button" class="pin-key" onclick="pinPush('8')">8</button>
+            <button type="button" class="pin-key" onclick="pinPush('9')">9</button>
+            <span></span>
+            <button type="button" class="pin-key" onclick="pinPush('0')">0</button>
+            <button type="button" class="pin-key pin-key-ghost" onclick="pinDel()" aria-label="Borrar">⌫</button>
+          </div>
+          <div id="pin-err" style="font-size:11px;color:#E7E4D7;margin-top:18px;min-height:16px;"></div>
         </div>
       </div>
     </div>`;
+  document.addEventListener("keydown", _pinKeydown);
 }
+
+let _pinVal = "";
 
 function seleccionarUsuario(key) {
   _loginKey = key;
@@ -1298,14 +1329,45 @@ function seleccionarUsuario(key) {
   });
   const w = document.getElementById("pin-wrap");
   w.style.display = "block";
-  document.getElementById("pin-inp").value = "";
+  const quien = document.getElementById("pin-quien");
+  if (quien) quien.textContent = (USUARIOS[key] && USUARIOS[key].nombre) || "";
+  _pinVal = "";
+  pintarPinDots();
   document.getElementById("pin-err").textContent = "";
-  document.getElementById("pin-inp").focus();
+}
+
+function pintarPinDots() {
+  document.querySelectorAll("#pin-dots .pin-dot").forEach((d, i) => {
+    d.classList.toggle("on", i < _pinVal.length);
+  });
+}
+
+// Teclado numérico en pantalla: añade un dígito y valida al llegar a 4.
+function pinPush(d) {
+  if (!_loginKey) return;
+  if (_pinVal.length >= 4) return;
+  _pinVal += d;
+  document.getElementById("pin-err").textContent = "";
+  pintarPinDots();
+  if (_pinVal.length === 4) checkPin();
+}
+
+function pinDel() {
+  _pinVal = _pinVal.slice(0, -1);
+  document.getElementById("pin-err").textContent = "";
+  pintarPinDots();
+}
+
+// Soporte de teclado físico (opcional): dígitos, borrar y entrar.
+function _pinKeydown(e) {
+  if (!document.getElementById("pin-wrap") || document.getElementById("pin-wrap").style.display === "none") return;
+  if (e.key >= "0" && e.key <= "9") { pinPush(e.key); e.preventDefault(); }
+  else if (e.key === "Backspace") { pinDel(); e.preventDefault(); }
 }
 
 async function checkPin() {
-  const pin = document.getElementById("pin-inp").value;
-  if (pin.length !== 4) return;
+  if (_pinVal.length !== 4) return;
+  const pin = _pinVal;
   document.getElementById("pin-err").textContent = "";
   try {
     const r = await fetch(API + "/auth/login", {
@@ -1318,9 +1380,9 @@ async function checkPin() {
     setSession({ key: data.usuario.key, nombre: data.usuario.nombre, rol: data.usuario.rol, token: data.token });
     entrarApp();
   } catch (e) {
-    document.getElementById("pin-err").textContent = "PIN incorrecto";
-    document.getElementById("pin-inp").value = "";
-    document.getElementById("pin-inp").focus();
+    document.getElementById("pin-err").textContent = "PIN incorrecto · vuelve a intentarlo";
+    _pinVal = "";
+    pintarPinDots();
   }
 }
 
@@ -1472,7 +1534,7 @@ function alertCenterHTML(d, esAdmin) {
   if (a.sin_fecha && a.sin_fecha.length) rows.push(fila("#7a5a1e", "#f6ecd5", a.sin_fecha.length === 1 ? "lote sin fecha de caducidad" : "lotes sin fecha de caducidad", a.sin_fecha.length, "irA_lotes()"));
   if (esAdmin && a.stock_bajo) rows.push(fila("#7a5a1e", "#f6ecd5", a.stock_bajo === 1 ? "materia con stock bajo" : "materias con stock bajo", a.stock_bajo, "irA_materias()"));
   if (!rows.length) return "";
-  return `<div style="margin:0 0 18px;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
+  return `<div style="margin:0 0 16px;flex:0 0 auto;max-height:34vh;overflow-y:auto;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
 }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".

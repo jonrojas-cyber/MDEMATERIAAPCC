@@ -9,8 +9,11 @@ async function login(page) {
   await page.goto("/");
   await page.waitForSelector("#ubtn-Moni", { timeout: 30_000 });
   await page.click("#ubtn-Moni");
-  await page.waitForSelector("#pin-inp", { state: "visible" });
-  await page.fill("#pin-inp", "3333");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  // Teclado numérico en pantalla: pulsa los dígitos del PIN (3333).
+  for (const d of "3333") {
+    await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  }
   await page.waitForSelector(".cats", { timeout: 15_000 });
 }
 
@@ -20,6 +23,25 @@ test("la API de salud responde y reporta el modo de persistencia", async ({ requ
   const j = await r.json();
   expect(j.estado).toContain("Producción");
   expect(["persistente", "efimera"]).toContain(j.persistencia);
+});
+
+test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Moni");
+  await page.click("#ubtn-Moni");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  // Pulsar dos dígitos enciende dos puntos.
+  await page.locator(".pin-key", { hasText: /^1$/ }).click();
+  await page.locator(".pin-key", { hasText: /^2$/ }).click();
+  await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(2);
+  // Borrar deja uno.
+  await page.locator(".pin-key-ghost").click();
+  await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(1);
+  // PIN incorrecto (9999) muestra mensaje y resetea.
+  await page.locator(".pin-key-ghost").click();
+  for (const d of "9999") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await expect(page.locator("#pin-err")).toContainText(/incorrecto/i);
+  await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
 test("login + inicio: 4 categorías (admin) y cero errores de JS", async ({ page }) => {

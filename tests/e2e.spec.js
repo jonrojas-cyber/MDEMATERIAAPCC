@@ -68,9 +68,10 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
   await page.evaluate(() => goHome());
   await page.waitForSelector(".cats");
   await page.evaluate(() => irA_materias());
-  // El almacén ahora es por categorías: abre una categoría y luego una materia.
-  await page.locator(".catcard").first().click();
-  await page.locator(".card.clickable").first().click();
+  // Almacén de 3 niveles: macro → subcategoría → producto → ficha.
+  await page.locator(".alm-macro").first().click();
+  await page.locator(".alm-sub:not(.alm-sub-empty)").first().click();
+  await page.locator(".alm-row").first().click();
   await expect(page.locator(".ficha-overlay")).toBeVisible();
   await expect(page.locator(".ficha-name")).toBeVisible();
 
@@ -86,7 +87,7 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   await page.evaluate(() => irA_categoria("operacion"));
   await expect(page.locator(".modrow").first()).toBeVisible();
   await page.evaluate(() => irA_materias());
-  await expect(page.locator(".screen-head")).toContainText(/materia/i);
+  await expect(page.locator(".screen-head")).toContainText(/almac/i);
 
   // "Volver" debe llevar al submenú de Operación (no al inicio).
   await page.click("#topbar-back");
@@ -107,7 +108,7 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   // Entra profundo: submenú Operación → sección Materias.
   await page.evaluate(() => irA_categoria("operacion"));
   await page.evaluate(() => irA_materias());
-  await expect(page.locator(".screen-head")).toContainText(/materia/i);
+  await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el logotipo de texto → inicio.
   await page.click(".topbar .brandword");
   await expect(page.locator(".cat").first()).toBeVisible();
@@ -193,21 +194,27 @@ test("precio pactado: cambiar precio registra histórico con motivo", async ({ p
   expect(errors).toEqual([]);
 });
 
-test("materia: almacén por categorías con buscador y filtros", async ({ page }) => {
+test("almacén: jerarquía de 3 niveles, búsqueda global y semáforo de stock", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_materias());
-  // Tarjetas de categoría visibles.
-  await expect(page.locator(".catcard").first()).toBeVisible();
-  // Abrir una categoría → buscador, chips de filtro y lista.
-  await page.locator(".catcard").first().click();
-  await expect(page.locator("#mat-q")).toBeVisible();
-  await expect(page.locator(".chip", { hasText: /Stock bajo/ })).toBeVisible();
-  await expect(page.locator("#mat-list .card").first()).toBeVisible();
-  // Buscar algo improbable deja la lista vacía sin romper.
-  await page.fill("#mat-q", "zzzzzzzz");
-  await expect(page.locator("#mat-list .empty")).toBeVisible();
+  // Nivel 1: macrocategorías + búsqueda global.
+  await expect(page.locator(".alm-macro").first()).toBeVisible();
+  await expect(page.locator("#alm-q")).toBeVisible();
+  // Búsqueda global instantánea encuentra resultados con semáforo.
+  await page.fill("#alm-q", "matcha");
+  await expect(page.locator("#alm-search .alm-row").first()).toBeVisible();
+  await expect(page.locator("#alm-search .alm-dot").first()).toBeVisible();
+  // Limpiar la búsqueda restaura las macrocategorías.
+  await page.fill("#alm-q", "");
+  await expect(page.locator(".alm-macro").first()).toBeVisible();
+  // Nivel 2 → 3: macro → subcategoría con productos → lista con filtros.
+  await page.locator(".alm-macro").first().click();
+  await page.locator(".alm-sub:not(.alm-sub-empty)").first().click();
+  await expect(page.locator("#alm-subq")).toBeVisible();
+  await expect(page.locator(".chip", { hasText: /Crítico/ })).toBeVisible();
+  await expect(page.locator("#alm-sublist .alm-row").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

@@ -9,7 +9,11 @@ const app = express();
 const PORT = process.env.PORT || 4001;
 
 app.use(cors());
-app.use(express.json());
+// Límite amplio: las peticiones con fotos (albaranes, productos, proveedores)
+// llevan imágenes en base64. Con el límite por defecto (100 KB) cualquier foto
+// algo grande daba error 413. Este parser global corre antes que los de cada
+// ruta, así que aquí es donde hay que subir el tope.
+app.use(express.json({ limit: "25mb" }));
 
 // ── Rutas públicas (sin token) ────────────────────────────────────────────────
 app.use("/api/auth", require("./routes/auth"));

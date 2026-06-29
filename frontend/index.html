@@ -882,24 +882,25 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 22px; color: var(--ink); }
 .cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
 
-/* ── INICIO A PANTALLA FIJA: los 4 menús se reparten el alto, sin scroll ── */
-#screen-home { overflow: hidden; display: flex; flex-direction: column; }
+/* ── INICIO: cabecera + centro de alertas + menús, con scroll si hace falta ── */
+#screen-home { overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
 #screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .home-head { flex: 0 0 auto; padding: 2px 2px 14px; }
-.cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
-.cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; }
-/* Tamaños que escalan con el alto de la ventana para no desbordar nunca. */
-.cat-big { font-size: clamp(26px, 6dvh, 52px); }
+.cats { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; max-width: 1080px; width: 100%; }
+/* Tarjetas de alto natural: el número nunca se sale del botón. */
+.cat { flex: 0 0 auto; min-height: 96px; margin-bottom: 0; overflow: hidden; }
+.cat-big { font-size: 38px; }
 .cat-name { font-size: clamp(15px, 2.5dvh, 22px); }
-.cat-numcol { padding-top: 0; padding-bottom: 0; }
-.cat-main { padding-top: 0; padding-bottom: 0; }
+.cat-numcol { padding-top: 18px; padding-bottom: 18px; }
+.cat-main { padding-top: 18px; padding-bottom: 18px; }
 .cat-l1 { margin-top: clamp(6px, 1.7dvh, 16px); padding-bottom: clamp(6px, 1.3dvh, 12px); }
 .cat-l2 { margin-top: clamp(6px, 1.3dvh, 12px); }
 /* Pantallas muy bajas (móvil apaisado): simplifica para que quepa sin recortes. */
 @media (max-height: 600px) {
   .cat-l2, .cat-dots { display: none; }
   .cat-l1 { border-bottom: none; padding-bottom: 0; margin-top: clamp(4px, 1dvh, 10px); }
-  .cat-big { font-size: clamp(22px, 7dvh, 34px); }
+  .cat { min-height: 72px; }
+  .cat-big { font-size: 28px; }
   .cat-state { margin-top: 5px; }
   .home-head { padding-bottom: 8px; }
   .home-efimera { display: none; }
@@ -916,8 +917,8 @@ input, select { font-family: inherit; font-size: 13px; }
   .home-alert { font-size: 10.5px; }
   .home-efimera { font-size: 8.5px; padding: 3px 8px; margin-top: 8px; }
   /* Menús: solo número + nombre + una línea de módulos. Nada se corta. */
-  .cat-numcol { flex-basis: 72px; padding: 10px 12px; }
-  .cat-big { font-size: clamp(24px, 6dvh, 34px); }
+  .cat-numcol { flex-basis: 78px; padding: 14px 12px; }
+  .cat-big { font-size: 30px; }
   .cat-state { font-size: 7.5px; letter-spacing: .08em; margin-top: 6px; }
   .cat-dots { font-size: 12px; margin-top: 5px; }
   .cat-main { padding: 10px 12px; min-width: 0; }
@@ -1210,7 +1211,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v61</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v62</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>

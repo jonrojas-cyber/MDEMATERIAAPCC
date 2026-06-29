@@ -46,6 +46,8 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
   await page.evaluate(() => goHome());
   await page.waitForSelector(".cats");
   await page.evaluate(() => irA_materias());
+  // El almacén ahora es por categorías: abre una categoría y luego una materia.
+  await page.locator(".catcard").first().click();
   await page.locator(".card.clickable").first().click();
   await expect(page.locator(".ficha-overlay")).toBeVisible();
   await expect(page.locator(".ficha-name")).toBeVisible();
@@ -62,7 +64,7 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   await page.evaluate(() => irA_categoria("operacion"));
   await expect(page.locator(".modrow").first()).toBeVisible();
   await page.evaluate(() => irA_materias());
-  await expect(page.locator(".screen-head")).toContainText(/materias/i);
+  await expect(page.locator(".screen-head")).toContainText(/materia/i);
 
   // "Volver" debe llevar al submenú de Operación (no al inicio).
   await page.click("#topbar-back");
@@ -83,7 +85,7 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   // Entra profundo: submenú Operación → sección Materias.
   await page.evaluate(() => irA_categoria("operacion"));
   await page.evaluate(() => irA_materias());
-  await expect(page.locator(".screen-head")).toContainText(/materias/i);
+  await expect(page.locator(".screen-head")).toContainText(/materia/i);
   // Clic en el logotipo de texto → inicio.
   await page.click(".topbar .brandword");
   await expect(page.locator(".cat").first()).toBeVisible();
@@ -166,6 +168,24 @@ test("precio pactado: cambiar precio registra histórico con motivo", async ({ p
   await expect(page.locator(".card-meta", { hasText: /Subida test/i })).toBeVisible();
   // Limpieza: borra el producto de prueba.
   await page.evaluate((x) => api("/compras-productos/" + x.prodId, { method: "DELETE" }), ids);
+  expect(errors).toEqual([]);
+});
+
+test("materia: almacén por categorías con buscador y filtros", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_materias());
+  // Tarjetas de categoría visibles.
+  await expect(page.locator(".catcard").first()).toBeVisible();
+  // Abrir una categoría → buscador, chips de filtro y lista.
+  await page.locator(".catcard").first().click();
+  await expect(page.locator("#mat-q")).toBeVisible();
+  await expect(page.locator(".chip", { hasText: /Stock bajo/ })).toBeVisible();
+  await expect(page.locator("#mat-list .card").first()).toBeVisible();
+  // Buscar algo improbable deja la lista vacía sin romper.
+  await page.fill("#mat-q", "zzzzzzzz");
+  await expect(page.locator("#mat-list .empty")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

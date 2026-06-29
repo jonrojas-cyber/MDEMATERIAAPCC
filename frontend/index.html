@@ -389,6 +389,26 @@ input, select { font-family: inherit; font-size: 13px; }
 .prep-footer { flex-shrink: 0; padding: 14px 22px max(16px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .prep-footer .wiz-ok { width: 100%; }
 
+/* Materia · almacén por categorías */
+.catgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.catcard { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; text-align: left;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 14px; cursor: pointer; position: relative; min-height: 78px; }
+.catcard:hover { border-color: var(--ink); }
+.catcard-name { font-size: 15px; font-weight: 700; line-height: 1.1; }
+.catcard-meta { font-size: 11px; color: var(--muted); }
+.catcard-meta .cc-low { color: #9C5A2E; }
+.catcard-go { position: absolute; top: 13px; right: 14px; color: var(--muted); font-size: 13px; }
+.mat-q { width: 100%; padding: 11px 13px; font-family: var(--sans); font-size: 14px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--paper); color: var(--ink); margin: 8px 0; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip { font-family: var(--sans); font-size: 12px; padding: 7px 13px; border-radius: 20px; border: 1px solid var(--line);
+  background: transparent; color: var(--ink); cursor: pointer; }
+.chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+.ficha-recat { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.ficha-recat label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.ficha-recat select { font-family: var(--sans); font-size: 13.5px; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--cream); color: var(--ink); }
+
 .wiz-bar {
   height: 3px;
   background: var(--line);
@@ -1190,7 +1210,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v59</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v60</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1773,6 +1793,7 @@ async function verMateria(id){
     const baja=m.disponibilidad_estado==="Disponibilidad baja";
     const filas=[
       { k:"Referencia", v:(m.id||"").toUpperCase() },
+      { k:"Categoría", v:esc(m.categoria||"Sin categoría") },
       { k:"Disponible", v:`${m.disponibilidad_actual} ${m.unidad}`, alerta:baja },
       { k:"Stock mín · ideal", v:`${m.stock_minimo} · ${m.stock_ideal} ${m.unidad}` },
       { k:"Coste medio", v:`${m.coste_medio.toFixed(4)} €/${m.unidad}` },
@@ -1782,8 +1803,11 @@ async function verMateria(id){
       { k:"Proveedor", v:m.proveedor_nombre },
       { k:"Estado", v:baja?"Disponibilidad baja":"Correcto", alerta:baja },
     ];
-    const acc=baja&&m.proveedor_whatsapp
-      ?`<button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para m de materia.")}')">Pedir por WhatsApp</button>`:"";
+    const cats=window._catMatList||MAT_CATEGORIAS;
+    const selCat=`<div class="ficha-recat"><label>Categoría</label>
+      <select onchange="cambiarCategoriaMateria('${m.id}',this.value)">${cats.map(c=>`<option ${c===m.categoria?"selected":""}>${esc(c)}</option>`).join("")}</select></div>`;
+    const acc=(baja&&m.proveedor_whatsapp
+      ?`<button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para m de materia.")}')">Pedir por WhatsApp</button>`:"")+selCat;
     fichaTecnica({ eyebrow:"Ficha técnica · Materia", nombre:m.nombre, sub:`materia prima · ${m.unidad}`,
       code:`${(m.id||"").toUpperCase()}<br>SERIE 01`, filas,
       nota:"Materia prima · control de stock m de materia. Sin colorantes, sin conservantes.", acciones:acc });
@@ -1853,23 +1877,78 @@ async function copiarEnlaceLote(loteId){
   catch(_){ prompt("Copia el enlace del lote:", url); }
 }
 
-// ── MATERIAS ──────────────────────────────────────────
+// ── MATERIA · ALMACÉN POR CATEGORÍAS ──────────────────
+const MAT_CATEGORIAS=["Repostería","Sandwich","Tostas","Cócteles","Refrescos","Café","Matcha","Lácteos y bebidas vegetales","Salsas y cremas","Proteínas","Seco","Frío","Congelado","Material no alimentario","Limpieza","Packaging","APPCC","Sin categoría"];
+
+// Entrada visual: tarjetas por categoría, con conteo y stock bajo a la vista.
 async function irA_materias(){
-  openSection("materias","Materias");
+  openSection("materias","Materia · almacén");
   try{
-    const mat=await api("/materias");
-    const sorted=mat.slice().sort((a,b)=>a.disponibilidad_estado==="Disponibilidad baja"?-1:1);
-    setInner(section("Materias",sorted,m=>{
-      const baja=m.disponibilidad_estado==="Disponibilidad baja";
-      const acc=baja&&m.proveedor_whatsapp
-        ?`<div class="card-acts" onclick="event.stopPropagation()"><button class="btn-primary" onclick="whatsapp('${m.proveedor_whatsapp.replace(/[^0-9+]/g,"")}','${encodeURIComponent("Hola, necesitamos reponer "+m.nombre+" para m de materia.")}')">Pedir por WhatsApp</button></div>`:"";
-      return `<div class="card clickable" role="button" tabindex="0" onclick="verMateria('${m.id}')">
-        <div class="card-name">${m.nombre}${baja?`<span class="badge-low">Baja</span>`:""}</div>
-        <div class="card-meta">${m.disponibilidad_actual} ${m.unidad} · ${m.valor_stock_actual.toFixed(2)} € · ${m.ubicacion} · ${m.proveedor_nombre}</div>
-        ${acc}
-      </div>`;
-    }));
+    const data=await api("/materias/categorias");
+    window._catMatList=data.categorias||MAT_CATEGORIAS;
+    const resumen=(data.resumen||[]).filter(c=>c.total>0);
+    const cards=resumen.map(c=>`
+      <button class="catcard" onclick="irA_materiaCategoria('${encodeURIComponent(c.categoria)}')">
+        <span class="catcard-name">${esc(c.categoria)}</span>
+        <span class="catcard-meta">${c.total} ${c.total===1?"producto":"productos"}${c.stock_bajo?` · <b class="cc-low">${c.stock_bajo} bajo</b>`:""}</span>
+        <span class="catcard-go">→</span>
+      </button>`).join("");
+    setInner(`<div class="section-label">Almacén por categorías</div>
+      <div class="catgrid">${cards||'<div class="empty">Aún no hay materias registradas.</div>'}</div>`);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// Detalle de una categoría: buscador + filtros + lista.
+async function irA_materiaCategoria(catEnc){
+  const cat=decodeURIComponent(catEnc);
+  openSection("materia-cat","Materia · "+cat);
+  try{
+    const mat=await api("/materias?categoria="+encodeURIComponent(cat));
+    window._matCat={cat, items:mat, filtro:"todas", q:""};
+    renderMateriaCat();
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+function renderMateriaCat(){
+  const s=window._matCat; if(!s) return;
+  setInner(`
+    <button class="btn-ghost" onclick="irA_materias()">← Categorías</button>
+    <div class="section-label">${esc(s.cat)}</div>
+    <input id="mat-q" class="mat-q" placeholder="Buscar producto o proveedor…" oninput="window._matCat.q=this.value;renderMatList()">
+    <div id="mat-chips"></div>
+    <div id="mat-list"></div>`);
+  const q=el("mat-q"); if(q) q.value=s.q||"";
+  renderMatChips(); renderMatList();
+}
+function renderMatChips(){
+  const s=window._matCat; if(!s) return;
+  const bajoN=s.items.filter(m=>m.stock_bajo).length;
+  el("mat-chips").innerHTML=`<div class="chips">
+    <button class="chip ${s.filtro==='todas'?'on':''}" onclick="window._matCat.filtro='todas';renderMatChips();renderMatList()">Todas · ${s.items.length}</button>
+    <button class="chip ${s.filtro==='bajo'?'on':''}" onclick="window._matCat.filtro='bajo';renderMatChips();renderMatList()">Stock bajo · ${bajoN}</button>
+  </div>`;
+}
+function renderMatList(){
+  const s=window._matCat; if(!s) return;
+  let items=s.items.slice();
+  if(s.filtro==="bajo") items=items.filter(m=>m.stock_bajo);
+  if(s.q){ const q=s.q.toLowerCase(); items=items.filter(m=>(m.nombre||"").toLowerCase().includes(q)||(m.proveedor_nombre||"").toLowerCase().includes(q)); }
+  items.sort((a,b)=>(b.stock_bajo?1:0)-(a.stock_bajo?1:0)||(a.nombre||"").localeCompare(b.nombre||""));
+  el("mat-list").innerHTML=items.map(m=>`
+    <div class="card clickable" role="button" tabindex="0" onclick="verMateria('${m.id}')">
+      <div class="card-name">${esc(m.nombre)}${m.stock_bajo?'<span class="badge-low">Baja</span>':''}</div>
+      <div class="card-meta">${m.disponibilidad_actual} ${esc(m.unidad||"")} · mín ${m.stock_minimo} · ${esc(m.ubicacion||"sin ubicación")} · ${esc(m.proveedor_nombre||"")}</div>
+    </div>`).join("")||'<div class="empty">Nada por aquí con ese filtro.</div>';
+}
+
+// Reasigna la categoría de una materia desde su ficha.
+async function cambiarCategoriaMateria(id, cat){
+  try{
+    await api("/materias/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({categoria:cat})});
+    cerrarFicha();
+    if(window._matCat){ irA_materiaCategoria(encodeURIComponent(window._matCat.cat)); }
+    else irA_materias();
+  }catch(e){alert(e.message);}
 }
 
 // ── REVISIONES ────────────────────────────────────────

@@ -56,6 +56,36 @@ app.get("/etiqueta/lote/:loteId", async (req, res) => {
   }
 });
 
+// Ficha pública de un lote: es la página que abre el QR de la pegatina.
+// Pública (el móvil que escanea no lleva sesión) y con toda la trazabilidad.
+app.get("/lote/:id", async (req, res) => {
+  const labelService = require("./label-service");
+  const lote = store.findById("lotes", req.params.id);
+  if (!lote) {
+    return res
+      .status(404)
+      .set("Content-Type", "text/html; charset=utf-8")
+      .send(
+        `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+          `<body style="font-family:sans-serif;background:#F0EBE0;color:#9C5A2E;padding:30px;text-align:center;">` +
+          `<h2>Lote no encontrado</h2><p>Este código no corresponde a ningún lote registrado. ` +
+          `Puede que se haya borrado o que la pegatina sea de otro sistema.</p></body>`
+      );
+  }
+  const receta = store.findById("recetas", lote.receta_id);
+  try {
+    const html = labelService.renderFichaLoteHTML({
+      lote,
+      receta,
+      materias: store.readAll("materias"),
+      responsable: req.query.responsable || lote.responsable || null,
+    });
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(500).send("No se pudo abrir la ficha del lote: " + e.message);
+  }
+});
+
 // Descarga del PDF del justificante (pública por id, para enlazar en email/WhatsApp).
 app.get("/justificante/:id/pdf", async (req, res) => {
   const j = store.readAll("justificantes").find((x) => x.id === req.params.id);

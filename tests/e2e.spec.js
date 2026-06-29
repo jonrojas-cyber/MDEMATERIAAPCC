@@ -14,7 +14,7 @@ async function login(page) {
   for (const d of "3333") {
     await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   }
-  await page.waitForSelector(".cats", { timeout: 15_000 });
+  await page.waitForSelector(".home-nav", { timeout: 15_000 });
 }
 
 test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
@@ -44,14 +44,14 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("login + inicio: 4 categorías (admin) y cero errores de JS", async ({ page }) => {
+test("login + inicio: centro de mando con 5 áreas y cero errores de JS", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  await expect(page.locator(".cat")).toHaveCount(4);
-  // Accesibilidad: las tarjetas son operables por teclado (role=button).
-  await expect(page.locator(".cat").first()).toHaveAttribute("role", "button");
-  await expect(page.locator(".cat").first()).toHaveAttribute("tabindex", "0");
+  // Las 5 áreas (Control · Producción · Almacén · Compras · Negocio) para admin.
+  await expect(page.locator(".navchip")).toHaveCount(5);
+  // Son botones nativos (operables por teclado).
+  await expect(page.locator(".navchip").first()).toHaveJSProperty("tagName", "BUTTON");
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 
@@ -78,13 +78,13 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
 
-  // Entra en la categoría Operación y comprueba que lista sus módulos.
-  await page.evaluate(() => irA_categoria("operacion"));
+  // Entra en el área Producción y comprueba que lista sus módulos.
+  await page.evaluate(() => irA_categoria("produccion"));
   await expect(page.locator(".modrow").first()).toBeVisible();
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
-  await page.waitForSelector(".cats");
+  await page.waitForSelector(".home-nav");
   await page.evaluate(() => irA_materias());
   // Almacén de 3 niveles: macro → subcategoría → producto → ficha.
   await page.locator(".alm-macro").first().click();
@@ -101,21 +101,21 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
 
-  // Inicio → submenú Operación → sección Materias.
-  await page.evaluate(() => irA_categoria("operacion"));
+  // Inicio → submenú Almacén → sección Materias (su padre es Almacén).
+  await page.evaluate(() => irA_categoria("almacen"));
   await expect(page.locator(".modrow").first()).toBeVisible();
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
 
-  // "Volver" debe llevar al submenú de Operación (no al inicio).
+  // "Volver" debe llevar al submenú de Almacén (no al inicio).
   await page.click("#topbar-back");
   await expect(page.locator(".modrow").first()).toBeVisible();
-  await expect(page.locator("#topbar-section")).toHaveText(/operación/i);
+  await expect(page.locator("#topbar-section")).toHaveText(/almac/i);
   await expect(page.locator("#topbar-back")).toBeVisible();
 
-  // "Volver" otra vez debe llevar al inicio (categorías visibles, sin botón volver).
+  // "Volver" otra vez debe llevar al inicio (áreas visibles, sin botón volver).
   await page.click("#topbar-back");
-  await expect(page.locator(".cat").first()).toBeVisible();
+  await expect(page.locator(".navchip").first()).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
   expect(errors).toEqual([]);
@@ -123,13 +123,13 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 
 test("el logo del encabezado vuelve al inicio desde cualquier sección", async ({ page }) => {
   await login(page);
-  // Entra profundo: submenú Operación → sección Materias.
-  await page.evaluate(() => irA_categoria("operacion"));
+  // Entra profundo: submenú Almacén → sección Materias.
+  await page.evaluate(() => irA_categoria("almacen"));
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el logotipo de texto → inicio.
   await page.click(".topbar .brandword");
-  await expect(page.locator(".cat").first()).toBeVisible();
+  await expect(page.locator(".navchip").first()).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
@@ -303,10 +303,10 @@ test("escáner de documento: endereza y devuelve una imagen procesada", async ({
   expect(errors).toEqual([]);
 });
 
-test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
+test("acceso por teclado: Enter abre un área", async ({ page }) => {
   await login(page);
-  await page.locator(".cat").first().focus();
+  await page.locator(".navchip").first().focus();
   await page.keyboard.press("Enter");
-  // La primera tarjeta es "Centro de decisiones" → abre esa pantalla.
-  await expect(page.locator(".screen-head, .cat-title")).toContainText(/decisiones/i);
+  // La primera área es "Control" → abre su submenú.
+  await expect(page.locator(".screen-head")).toContainText(/control/i);
 });

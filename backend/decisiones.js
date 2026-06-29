@@ -12,6 +12,7 @@
 const store = require("./data-store");
 const { costePorUnidad, tamanosLote } = require("./costing");
 const { velocidadConsumo, horasDeStock } = require("./consumo");
+const { consumoDiarioPorMateria, autonomiaDe } = require("./autonomia");
 
 const BLOQUEADOS = ["Fuera de servicio", "Bloqueado", "No apto", "Rechazado"];
 
@@ -96,7 +97,7 @@ function construir() {
   const recepPend = recepciones.filter((r) => r.estado === "Pendiente de confirmar");
   if (recepPend.length) {
     acciones.push({
-      id: nid("recep"), tipo: "recepcion", severidad: "aviso", prioridad: 2, estado: "pendiente",
+      id: nid("recep"), tipo: "recepcion", severidad: "importante", prioridad: 2, estado: "pendiente",
       titulo: recepPend.length === 1 ? "Resolver albarán recibido" : `Resolver ${recepPend.length} albaranes`,
       motivo: "Recepción pendiente de aceptar y cargar al stock.", tiempo_min: 5,
       accion: { label: "Ir a recepción", handler: "irA_recepcion" },
@@ -125,7 +126,7 @@ function construir() {
     const tmin = tiempoReceta(r);
     produccion.push({ receta: r, cantidad, motivo, tiempo_min: tmin, coste: Math.round(costePorUnidad(r) * cantidad * 100) / 100 });
     acciones.push({
-      id: nid("prod"), tipo: "produccion", severidad: "aviso", prioridad: 3,
+      id: nid("prod"), tipo: "produccion", severidad: "importante", prioridad: 3,
       estado: enCursoRecetas.has(r.id) ? "en_curso" : "pendiente",
       titulo: `Preparar ${r.nombre}`,
       motivo: `${motivo} · ${cantidad} ${r.unidad}`,
@@ -143,15 +144,18 @@ function construir() {
       const nombre = recById[l.receta_id] ? recById[l.receta_id].nombre : l.receta_id;
       const h = horasRestantes(l);
       acciones.push({
-        id: nid("salida"), tipo: "priorizar_uso", severidad: "aviso", prioridad: 4, estado: "pendiente",
+        id: nid("salida"), tipo: "priorizar_uso", severidad: "importante", prioridad: 4, estado: "pendiente",
         titulo: `Dar salida a ${nombre}`,
         motivo: `Quedan ${l.cantidad_restante != null ? l.cantidad_restante : "?"}${recById[l.receta_id] ? " " + recById[l.receta_id].unidad : ""}, caduca en ${humanoHoras(h)}`,
         tiempo_min: null, accion: { label: "Ver lote", handler: "irA_lotes" },
       });
-      oportunidades.push({ id: nid("o"), titulo: `Aprovecha ${nombre}`, motivo: `Sobran existencias y caduca en ${humanoHoras(h)}: promoción o uso prioritario para evitar merma.` });
+      oportunidades.push({ id: nid("o"), titulo: `Aprovecha ${nombre}`, motivo: `Sobran existencias y caduca en ${humanoHoras(h)}: promoción o uso prioritario para evitar merma.`, accion: { label: "Ver lote", handler: "irA_lotes" } });
     });
 
   // ── 5) Compras sugeridas (stock ≤ punto de pedido), agrupadas por proveedor ─
+  // Con AUTONOMÍA: priorizamos por días de stock restante, no por stock absoluto.
+  const mapaConsumo = consumoDiarioPorMateria(store, ahora);
+  const autoDe = (m) => autonomiaDe(m, mapaConsumo).autonomia_dias;
   const porPedir = materias.filter((m) => estadoStock(m) !== "correcto");
   const porProv = {};
   porPedir.forEach((m) => {
@@ -161,18 +165,32 @@ function construir() {
   Object.entries(porProv).forEach(([provId, items]) => {
     const prov = provById[provId];
     const criticos = items.filter((m) => estadoStock(m) === "critico").length;
+    // Autonomía mínima del grupo (el producto que antes se agota).
+    const autos = items.map(autoDe).filter((x) => x != null);
+    const autoMin = autos.length ? Math.min(...autos) : null;
+    const urgentePorAutonomia = autoMin != null && autoMin <= 2;
     const nombres = items.slice(0, 3).map((m) => m.nombre).join(", ");
+    const critico = criticos > 0 || urgentePorAutonomia;
     acciones.push({
-      id: nid("pedido"), tipo: "pedido", severidad: criticos ? "critico" : "aviso", prioridad: criticos ? 2 : 5, estado: "pendiente",
+      id: nid("pedido"), tipo: "pedido", severidad: critico ? "critico" : "importante", prioridad: critico ? 2 : 5, estado: "pendiente",
       titulo: prov ? `Pedir a ${prov.nombre}` : "Pedir (sin proveedor asignado)",
-      motivo: `${items.length} producto(s) bajo punto de pedido: ${nombres}${items.length > 3 ? "…" : ""}`,
+      motivo: `${items.length} producto(s) bajo punto de pedido${autoMin != null ? ` · autonomía ${autoMin} día${autoMin === 1 ? "" : "s"}` : ""}: ${nombres}${items.length > 3 ? "…" : ""}`,
       tiempo_min: 4, accion: { label: "Generar pedido", handler: "irA_pedidos" },
     });
   });
-  // Riesgo: se quedará sin X (los críticos), con horizonte si se conoce el ritmo.
-  porPedir.filter((m) => estadoStock(m) === "critico").slice(0, 6).forEach((m) => {
-    riesgos.push({ id: nid("r"), severidad: "aviso", titulo: `Te quedarás sin ${m.nombre}`, motivo: `Stock ${m.disponibilidad_actual} ${m.unidad || ""} (mínimo ${m.stock_minimo}). Pide al proveedor.` });
-  });
+  // Riesgo: se quedará sin X, con autonomía en días si se conoce el ritmo.
+  porPedir
+    .filter((m) => estadoStock(m) === "critico")
+    .sort((a, b) => (autoDe(a) ?? 1e9) - (autoDe(b) ?? 1e9))
+    .slice(0, 6)
+    .forEach((m) => {
+      const a = autoDe(m);
+      riesgos.push({
+        id: nid("r"), severidad: a != null && a <= 1 ? "critico" : "importante",
+        titulo: `Te quedarás sin ${m.nombre}`,
+        motivo: a != null ? `Autonomía ${a} día${a === 1 ? "" : "s"} · stock ${m.disponibilidad_actual} ${m.unidad || ""}. Pide al proveedor.` : `Stock ${m.disponibilidad_actual} ${m.unidad || ""} (mínimo ${m.stock_minimo}). Pide al proveedor.`,
+      });
+    });
 
   // ── 6) Merma del día anterior / de hoy ──────────────────────────────────────
   const hoy = new Date().toDateString();
@@ -194,11 +212,47 @@ function construir() {
   materias.forEach((m) => {
     const opt = m.stock_optimo != null ? Number(m.stock_optimo) : m.stock_ideal != null ? Number(m.stock_ideal) : null;
     if (opt && Number(m.disponibilidad_actual) > opt * 1.5) {
-      oportunidades.push({ id: nid("o"), titulo: `Tienes de sobra ${m.nombre}`, motivo: `${m.disponibilidad_actual} ${m.unidad || ""} (óptimo ${opt}). Priorízalo para no generar merma.` });
+      oportunidades.push({ id: nid("o"), titulo: `Tienes de sobra ${m.nombre}`, motivo: `${m.disponibilidad_actual} ${m.unidad || ""} (óptimo ${opt}). Priorízalo para no generar merma.`, accion: { label: "Ver almacén", handler: "irA_materias" } });
     }
   });
 
   acciones.sort((a, b) => a.prioridad - b.prioridad);
+
+  // ── KPIs inmediatos (cabecera del mando) ────────────────────────────────────
+  const ventas = store.readAll("ventas");
+  const productos = store.readAll("productos").filter((p) => p.activo !== false && p.precio_venta > 0);
+  const idxMat = {};
+  materias.forEach((m) => (idxMat[m.id] = m));
+  const ventasHoy = ventas
+    .filter((v) => v.fecha && new Date(v.fecha).toDateString() === hoy)
+    .reduce((s, v) => s + (Number(v.importe) || Number(v.total) || 0), 0);
+  // Food cost medio de la carta (coste receta / PVP).
+  const foodCosts = productos.map((p) => {
+    const coste = (p.ingredientes || []).reduce((s, ing) => s + ((idxMat[ing.materia_id] || {}).coste_medio || 0) * ing.cantidad, 0);
+    return p.precio_venta > 0 ? coste / p.precio_venta : null;
+  }).filter((x) => x != null);
+  const foodCostMedio = foodCosts.length ? Math.round((foodCosts.reduce((s, x) => s + x, 0) / foodCosts.length) * 1000) / 10 : null;
+  const valorStock = Math.round(materias.reduce((s, m) => s + (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0), 0) * 100) / 100;
+  const kpis = {
+    ventas_hoy: Math.round(ventasHoy * 100) / 100,
+    food_cost: foodCostMedio, // %
+    merma_hoy: costeMermaHoy,
+    valor_stock: valorStock,
+    alertas: acciones.filter((a) => a.severidad === "critico" || a.severidad === "importante").length + riesgos.length,
+  };
+
+  // ── HOY · estado operativo del día ──────────────────────────────────────────
+  const prodHoy = preparaciones.filter((p) => p.estado === "Finalizada" && p.finalizada_en && new Date(p.finalizada_en).toDateString() === hoy).length;
+  const prodPlan = prodHoy + produccion.length; // realizadas + recomendadas pendientes
+  const pedidosHoy = store.readAll("pedidos").filter((p) => p.fecha && new Date(p.fecha).toDateString() === hoy);
+  const pedidosEnviados = pedidosHoy.filter((p) => p.estado === "enviado" || p.estado === "recibido").length;
+  const recepHoy = recepciones.filter((r) => r.fecha && new Date(r.fecha).toDateString() === hoy);
+  const recepRecibidas = recepHoy.filter((r) => r.estado && r.estado !== "Pendiente de confirmar").length;
+  const hoyOperativo = [
+    { etiqueta: "Producciones", hecho: prodHoy, total: prodPlan },
+    { etiqueta: "Pedidos", hecho: pedidosEnviados, total: pedidosHoy.length + Object.keys(porProv).length },
+    { etiqueta: "Recepciones", hecho: recepRecibidas, total: recepHoy.length },
+  ];
 
   return {
     generado_en: new Date().toISOString(),
@@ -211,6 +265,8 @@ function construir() {
       tiempo_total_min: produccion.reduce((s, p) => s + (p.tiempo_min || 0), 0),
       coste_produccion: Math.round(produccion.reduce((s, p) => s + p.coste, 0) * 100) / 100,
     },
+    kpis,
+    hoy: hoyOperativo,
     acciones,
     riesgos,
     oportunidades,

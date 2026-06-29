@@ -444,22 +444,42 @@ input, select { font-family: inherit; font-size: 13px; }
 .pf-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pf-2 .pf-row { margin-bottom: 12px; }
 
-/* ── CENTRO DE DECISIONES · mando ── */
-.qha { flex: 0 0 auto; max-height: 36vh; overflow-y: auto; margin: 0 0 14px; }
+/* ── CENTRO DE DECISIONES · mando (compacto) ── */
+.kpi-strip { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin: 0 0 14px; }
+.kpi { background: var(--paper); border: 1px solid var(--line); border-radius: 9px; padding: 9px 6px; text-align: center; }
+.kpi-v { font-size: 15px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi-l { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.qha { margin: 0 0 14px; }
 .qha-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .qha-head > span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .qha-link { background: none; border: 0; font-family: var(--sans); font-size: 11px; color: var(--ink); cursor: pointer; text-decoration: underline; }
-.dec-act { display: flex; align-items: stretch; gap: 12px; background: var(--paper); border: 1px solid var(--line);
-  border-radius: 11px; padding: 13px 14px; margin-bottom: 8px; }
-.dec-act-body { flex: 1; min-width: 0; }
-.dec-act-title { font-size: 14.5px; font-weight: 700; line-height: 1.15; }
-.dec-act-motivo { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.dec-act-meta { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
-.dec-act-btn { flex: 0 0 auto; align-self: center; font-family: var(--sans); font-size: 13px; font-weight: 700;
-  padding: 10px 14px; border-radius: 8px; border: 0; background: var(--ink); color: var(--cream); cursor: pointer; white-space: nowrap; }
+.dec-group { margin-bottom: 14px; }
+.dec-gh { font-size: 11px; font-weight: 700; letter-spacing: .04em; margin: 0 0 6px; }
+/* Tarjeta de acción compacta: 2 líneas, mínima altura. */
+.dec-act { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 7px; }
+.dec-act-top { display: flex; align-items: center; gap: 10px; }
+.dec-act-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.15; }
+.dec-act-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.dec-act-btn { flex: 0 0 auto; font-family: var(--sans); font-size: 12.5px; font-weight: 700; padding: 8px 13px;
+  border-radius: 7px; border: 0; background: var(--ink); color: var(--cream); cursor: pointer; white-space: nowrap; }
 .dec-act-btn:active { transform: translateY(1px); }
-.dec-info { background: var(--paper); border: 1px solid var(--line); border-radius: 11px; padding: 13px 14px; margin-bottom: 8px; }
-.dec-resumen { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.dec-more { background: none; border: 0; font-family: var(--sans); font-size: 11.5px; color: var(--muted); cursor: pointer; padding: 4px 0; text-decoration: underline; }
+/* Bloque HOY operativo */
+.hoy { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 14px; margin: 0 0 14px; }
+.hoy-h { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.hoy-item { font-size: 12.5px; color: var(--ink); }
+.hoy-item b { font-variant-numeric: tabular-nums; }
+/* Navegación compacta a las 5 áreas */
+.home-nav { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.navchip { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--paper);
+  border: 1px solid var(--line); border-radius: 11px; padding: 15px 16px; cursor: pointer; }
+.navchip:hover { border-color: var(--ink); }
+.navchip-num { font-family: 'Courier Prime', monospace; font-size: 16px; font-weight: 700; color: var(--muted); }
+.navchip-name { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+.navchip-pend { font-size: 11px; font-weight: 700; color: #b5462a; background: #f3ddd2; border-radius: 20px; padding: 2px 9px; margin-left: auto; }
+.navchip-go { color: var(--muted); font-size: 15px; margin-left: auto; }
+.navchip-pend + .navchip-go { margin-left: 8px; }
 
 .wiz-bar {
   height: 3px;
@@ -934,10 +954,10 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 22px; color: var(--ink); }
 .cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
 
-/* ── INICIO A PANTALLA FIJA: los menús se reparten el alto, sin scroll ── */
-#screen-home { overflow: hidden; display: flex; flex-direction: column; }
+/* ── INICIO = CENTRO DE MANDO: KPIs + qué hacer ahora + Hoy + navegación ── */
+#screen-home { overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
 #screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.home-head { flex: 0 0 auto; padding: 2px 2px 14px; }
+.home-head { flex: 0 0 auto; padding: 2px 2px 12px; }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
 /* Número con tamaño fijo y contenido (sin unidades cqh, que algunos móviles
    no soportan y hacían que se saliera del botón). Quitamos los puntos
@@ -1282,7 +1302,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v67</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v68</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1568,14 +1588,18 @@ function modulosMeta(d) {
     ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
     manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
     avisos:       { num:"05", name:"Avisos", badge:"Notificación · pedidos y caducidades", urgent:false },
-    resumen:      { num:"06", name:"Resumen del día", badge:"KPIs · estado · qué hacer ahora", urgent:false },
+    resumen:      { num:"02", name:"Resumen del día", badge:"KPIs · estado · qué hacer ahora", urgent:false },
+    decisiones:   { num:"01", name:"Centro de decisiones", badge:"Qué hacer ahora · riesgos", urgent: !!(d.alertas&&(d.alertas.caducados.length||d.alertas.bloqueados.length)) },
   };
 }
 
+// Estructura principal de 5 áreas (Control · Producción · Almacén · Compras · Negocio).
 const CATS = {
-  operacion: { name:"Operación", desc:"Preparaciones · Lotes · Almacén · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
-  compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
-  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Avisos · Resumen", ids:["carta","analisis","ventas","manual","avisos","resumen"], admin:true },
+  control:    { name:"Control", desc:"Decisiones · Resumen · Avisos", ids:["decisiones","resumen","avisos"] },
+  produccion: { name:"Producción", desc:"Preparaciones · Lotes · Revisiones", ids:["preparaciones","lotes","revisiones"] },
+  almacen:    { name:"Almacén", desc:"Materias · Ubicaciones · Mermas", ids:["materias","ajustes"] },
+  compras:    { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
+  negocio:    { name:"Negocio", desc:"Ventas · Carta · Análisis · Manual", ids:["ventas","carta","analisis","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -1596,56 +1620,98 @@ function alertCenterHTML(d, esAdmin) {
 }
 
 // ── CENTRO DE DECISIONES · el cerebro operativo ───────────────────────────
-function decSevColor(s){ return s==="critico"?"#b5462a":s==="aviso"?"#c79a3a":"#5C6145"; }
-function decEstadoTxt(e){ return e==="en_curso"?"en curso":e==="bloqueado"?"bloqueado":e==="hecho"?"hecho":"pendiente"; }
+// Cuatro niveles de prioridad con icono y color: Crítico (🔥 rojo),
+// Importante (⚠ amarillo), Oportunidad (📈 verde), Informativo (· gris).
+const DEC_GRUPOS=[
+  { key:"critico",    label:"Crítico",     ico:"🔥", color:"#b5462a" },
+  { key:"importante", label:"Importante",  ico:"⚠",  color:"#c79a3a" },
+  { key:"oportunidad",label:"Oportunidad", ico:"📈", color:"#5b7a4a" },
+  { key:"informativo",label:"Informativo", ico:"·",  color:"#82857A" },
+];
 
-// Una acción = una tarea con motivo, tiempo y botón de acción directa.
-function accionRow(a){
-  const col=decSevColor(a.severidad);
-  const meta=[a.tiempo_min?`≈${a.tiempo_min} min`:null, decEstadoTxt(a.estado)].filter(Boolean).join(" · ");
-  return `<div class="dec-act" style="border-left:4px solid ${col};">
-    <div class="dec-act-body">
-      <div class="dec-act-title">${esc(a.titulo)}</div>
-      <div class="dec-act-motivo">${esc(a.motivo)}</div>
-      <div class="dec-act-meta">${esc(meta)}</div>
-    </div>
-    <button class="dec-act-btn" onclick="decAccion('${a.id}')">${esc(a.accion.label)}</button>
+// Indexa cada ítem por id para que el botón ejecute su acción directa.
+function decIndexar(dec){
+  window._decData=dec; window._decIndex={};
+  [...(dec.acciones||[]),...(dec.oportunidades||[]),...(dec.riesgos||[])].forEach(x=>{ if(x.id) window._decIndex[x.id]=x; });
+}
+// Reparte acciones/oportunidades/riesgos en los 4 grupos.
+function decBuckets(dec){
+  const b={critico:[],importante:[],oportunidad:[],informativo:[]};
+  (dec.acciones||[]).forEach(a=>{ (b[a.severidad]||b.informativo).push(a); });
+  (dec.oportunidades||[]).forEach(o=> b.oportunidad.push(o));
+  (dec.riesgos||[]).filter(r=>r.severidad==="info").forEach(r=> b.informativo.push(r));
+  return b;
+}
+// Tarjeta de acción COMPACTA: título + botón arriba, una línea de detalle.
+function accionRow(a, color){
+  const sub=[a.tiempo_min?`${a.tiempo_min} min`:null, decEstadoTxt(a.estado), a.motivo].filter(Boolean).join(" · ");
+  const btn=a.accion?`<button class="dec-act-btn" onclick="decAccion('${a.id}')">${esc(a.accion.label)}</button>`:"";
+  return `<div class="dec-act" style="border-left:3px solid ${color};">
+    <div class="dec-act-top"><span class="dec-act-title">${esc(a.titulo)}</span>${btn}</div>
+    <div class="dec-act-sub">${esc(sub)}</div>
   </div>`;
 }
-// Ejecuta el "handler" de una acción → acción directa (≤ 1 clic).
+function decEstadoTxt(e){ return e==="en_curso"?"en curso":e==="bloqueado"?"bloqueado":e==="hecho"?"hecho":""; }
+
+// Render de los grupos. opts.max limita ítems por grupo (home).
+function decGruposHTML(dec, opts){
+  const b=decBuckets(dec); let html="";
+  DEC_GRUPOS.forEach(g=>{
+    const all=b[g.key]; if(!all.length) return;
+    const items=(opts&&opts.max)?all.slice(0,opts.max):all;
+    html+=`<div class="dec-group"><div class="dec-gh" style="color:${g.color}">${g.ico} ${g.label} · ${all.length}</div>`;
+    html+=items.map(x=>accionRow(x,g.color)).join("");
+    if(opts&&opts.max&&all.length>opts.max) html+=`<button class="dec-more" onclick="irA_decisiones()">+${all.length-opts.max} más →</button>`;
+    html+=`</div>`;
+  });
+  return html || `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`;
+}
+// Ejecuta el handler de un ítem → acción directa (≤ 1 clic).
 function decAccion(id){
-  const a=((window._decData&&window._decData.acciones)||[]).find(x=>x.id===id); if(!a)return;
+  const a=(window._decIndex||{})[id]; if(!a||!a.accion)return;
   const h=a.accion.handler, args=a.accion.args||{};
   if(h==="decisionProducir") return iniciarYAbrir(args.receta_id, args.cantidad);
   if(typeof window[h]==="function") return window[h]();
 }
-// Bloque compacto para la home (mando): top acciones + enlace al centro.
-function qhaHomeHTML(dec){
-  if(!dec || !dec.acciones || !dec.acciones.length) return "";
-  window._decData=dec;
-  const top=dec.acciones.slice(0,3);
-  return `<div class="qha">
-    <div class="qha-head"><span>Qué hacer ahora</span><button class="qha-link" onclick="irA_decisiones()">Centro de decisiones · ${dec.acciones.length} →</button></div>
-    ${top.map(accionRow).join("")}
+
+// Fila compacta de KPIs (cabecera del mando).
+function kpiStripHTML(k){
+  if(!k) return "";
+  const cell=(l,v)=>`<div class="kpi"><div class="kpi-v">${v}</div><div class="kpi-l">${l}</div></div>`;
+  return `<div class="kpi-strip">
+    ${cell("Ventas hoy", k.ventas_hoy!=null?Math.round(k.ventas_hoy)+" €":"—")}
+    ${cell("Food cost", k.food_cost!=null?k.food_cost+" %":"—")}
+    ${cell("Merma", Math.round(k.merma_hoy||0)+" €")}
+    ${cell("Valor stock", k.valor_stock!=null?Math.round(k.valor_stock)+" €":"—")}
+    ${cell("Alertas", k.alertas||0)}
   </div>`;
 }
-// Pantalla completa: acciones + riesgos + oportunidades.
+// Bloque HOY (estado operativo del día).
+function hoyHTML(hoy){
+  if(!hoy||!hoy.length) return "";
+  return `<div class="hoy"><span class="hoy-h">Hoy</span>${hoy.map(h=>`<span class="hoy-item"><b>${h.hecho}/${h.total}</b> ${esc(h.etiqueta)}</span>`).join("")}</div>`;
+}
+
+// Bloque "Qué hacer ahora" para la home (mando): grupos compactos, top por grupo.
+function qhaHomeHTML(dec){
+  if(!dec) return "";
+  decIndexar(dec);
+  if(!dec.acciones.length && !dec.oportunidades.length) return "";
+  return `<div class="qha">
+    <div class="qha-head"><span>Qué hacer ahora</span><button class="qha-link" onclick="irA_decisiones()">Ver todo →</button></div>
+    ${decGruposHTML(dec,{max:2})}
+  </div>`;
+}
+
+// Pantalla completa: KPIs + Hoy + los 4 grupos de prioridad.
 async function irA_decisiones(){
   openSection("decisiones","Centro de decisiones");
   setInner(`<div class="empty">Analizando el negocio…</div>`);
   try{
     const dec=await api("/decisiones");
-    window._decData=dec;
-    const r=dec.resumen||{};
-    let html=`<div class="dec-resumen">${dec.acciones.length} acciones · ${r.criticas||0} críticas · ${dec.riesgos.length} riesgos · ${dec.oportunidades.length} oportunidades</div>`;
-    html+=`<div class="section-label">Qué hacer ahora</div>`;
-    html+= dec.acciones.length ? dec.acciones.map(accionRow).join("") : `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`;
-    if(dec.riesgos.length){
-      html+=`<div class="section-label">Riesgos</div>`+dec.riesgos.map(x=>`<div class="dec-info" style="border-left:4px solid ${decSevColor(x.severidad)};"><div class="dec-act-title">${esc(x.titulo)}</div><div class="dec-act-motivo">${esc(x.motivo)}</div></div>`).join("");
-    }
-    if(dec.oportunidades.length){
-      html+=`<div class="section-label">Oportunidades</div>`+dec.oportunidades.map(x=>`<div class="dec-info" style="border-left:4px solid #5b7a4a;"><div class="dec-act-title">${esc(x.titulo)}</div><div class="dec-act-motivo">${esc(x.motivo)}</div></div>`).join("");
-    }
+    decIndexar(dec);
+    let html=kpiStripHTML(dec.kpis)+hoyHTML(dec.hoy);
+    html+=`<div class="section-label">Qué hacer ahora</div>`+decGruposHTML(dec);
     setInner(html);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
@@ -1692,16 +1758,16 @@ async function loadHome() {
     const pendCat = ids => ids.reduce((n, id) => n + (meta[id] && meta[id].urgent ? 1 : 0), 0);
     const criticas = dec && dec.resumen ? dec.resumen.criticas : 0;
 
-    const cats = [
-      { name:"Centro de decisiones", l1:"Qué hacer ahora · Riesgos", l2:"Oportunidades · Acción directa", onclick:"irA_decisiones()", pend: criticas },
-      { name:CATS.operacion.name, l1:"Preparaciones · Lotes · Almacén", l2:"Recetas · Batch · Revisiones · Ajustes", onclick:"irA_categoria('operacion')", pend: pendCat(CATS.operacion.ids) },
-      { name:CATS.compras.name, l1:"Proveedores · Pedidos · Recepción", l2:"Pagos · Incidencias · Stock mínimo", onclick:"irA_categoria('compras')", pend: pendCat(CATS.compras.ids), admin:true },
-      { name:CATS.gestion.name, l1:"Carta · Ventas · Manual", l2:"Análisis · Costes · Resumen del día", onclick:"irA_categoria('gestion')", pend:0, admin:true },
-    ].filter(c => !c.admin || esAdmin);
+    const navs = [
+      { k:"control",    name:"Control" },
+      { k:"produccion", name:"Producción" },
+      { k:"almacen",    name:"Almacén" },
+      { k:"compras",    name:"Compras", admin:true },
+      { k:"negocio",    name:"Negocio", admin:true },
+    ].filter(c => !c.admin || esAdmin)
+     .map((c,i) => ({ ...c, num:String(i+1).padStart(2,"0"), pend: CATS[c.k]?pendCat(CATS[c.k].ids):0 }));
 
     const estadoSrv = alerta ? d.estado_servicio : "Servicio en orden";
-    const dots = n => n>0 ? "·".repeat(Math.min(n,5)) : "—";
-    const estLabel = n => n>0 ? `${n} pend.` : "al día";
 
     el("home-content").innerHTML = `
       <div class="home-head">
@@ -1709,21 +1775,16 @@ async function loadHome() {
         <div class="home-alert">${estadoSrv}</div>
         ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
       </div>
+      ${kpiStripHTML(dec && dec.kpis)}
       ${qhaHomeHTML(dec)}
-      <div class="cats">
-        ${cats.map((c,i)=>`<div class="cat" role="button" tabindex="0" onclick="${c.onclick}">
-          <div class="cat-numcol">
-            <div class="cat-big">${String(i+1).padStart(2,"0")}</div>
-            <div class="cat-state">${estLabel(c.pend)}</div>
-            <div class="cat-dots">${dots(c.pend)}</div>
-          </div>
-          <div class="cat-main">
-            <div class="cat-name">${c.name}</div>
-            <div class="cat-l1">${c.l1}</div>
-            <div class="cat-l2">${c.l2}</div>
-          </div>
-          <div class="cat-go">→</div>
-        </div>`).join("")}
+      ${hoyHTML(dec && dec.hoy)}
+      <div class="home-nav">
+        ${navs.map(c=>`<button class="navchip" onclick="irA_categoria('${c.k}')">
+          <span class="navchip-num">${c.num}</span>
+          <span class="navchip-name">${c.name}</span>
+          ${c.pend?`<span class="navchip-pend">${c.pend}</span>`:""}
+          <span class="navchip-go">→</span>
+        </button>`).join("")}
       </div>`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
@@ -1974,6 +2035,7 @@ async function verMateria(id){
       { k:"Código", v:m.codigo_interno||(m.id||"").toUpperCase() },
       { k:"Categoría", v:`${esc(m.macro)} › ${esc(m.subcategoria)}` },
       { k:"Disponible", v:`${m.disponibilidad_actual} ${esc(m.unidad||"")}`, alerta:baja },
+      m.autonomia_dias!=null?{ k:"Autonomía", v:`${m.autonomia_dias} día${m.autonomia_dias===1?"":"s"} · ${m.consumo_diario} ${esc(m.unidad||"")}/día${m.autonomia_fuente==="estimado"?" (est.)":""}`, alerta:m.autonomia_dias<=2 }:null,
       { k:"Mín · pedido · óptimo", v:`${m.stock_minimo} · ${m.punto_pedido}${m.stock_optimo!=null?` · ${m.stock_optimo}`:""} ${esc(m.unidad||"")}` },
       num(m.precio_compra)!=null?{ k:"Precio compra", v:`${Number(m.precio_compra).toFixed(4)} €` }:null,
       num(m.precio_pactado)!=null?{ k:"Precio pactado", v:`${Number(m.precio_pactado).toFixed(4)} €` }:null,
@@ -2250,6 +2312,7 @@ async function formProducto(id, macroEnc, subEnc){
           ${f("Punto de pedido", inp("prod-pp", m.punto_pedido, "0", "number"))}
           ${f("Stock óptimo", inp("prod-opt", m.stock_optimo, "0", "number"))}
         </div>
+        ${f("Consumo medio diario (para autonomía)", inp("prod-consdia", m.consumo_diario_estimado, "Ej. 290 · vacío = automático con histórico", "number"))}
         ${f("Ubicación física", inp("prod-ubic", m.ubicacion, "Ej. Nevera 1 > Estante Superior > Caja A"))}
         <div class="pf-2">
           ${f("Vida útil (horas)", inp("prod-vida", m.vida_util_horas, "Ej. 48", "number"))}
@@ -2286,7 +2349,7 @@ async function guardarProducto(id){
     proveedor_id:v("prod-prov")||null, proveedores_alt:v("prod-provalt").trim(),
     unidad_compra:v("prod-ucompra").trim(), unidad_consumo:v("prod-uconsumo").trim(),
     conversion:v("prod-conv"), precio_compra:v("prod-pcompra"), precio_pactado:v("prod-ppactado"), iva:v("prod-iva"),
-    disponibilidad_actual:v("prod-stock"), stock_minimo:v("prod-min"), punto_pedido:v("prod-pp"), stock_optimo:v("prod-opt"),
+    disponibilidad_actual:v("prod-stock"), stock_minimo:v("prod-min"), punto_pedido:v("prod-pp"), stock_optimo:v("prod-opt"), consumo_diario_estimado:v("prod-consdia"),
     ubicacion:v("prod-ubic").trim(), vida_util_horas:v("prod-vida"), lote:v("prod-lote").trim(),
     observaciones:v("prod-obs").trim(),
     foto_url:window._prodFoto||null, foto_etiqueta_url:window._prodFotoEtq||null,

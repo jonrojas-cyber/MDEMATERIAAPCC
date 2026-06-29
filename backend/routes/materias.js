@@ -1,5 +1,6 @@
 const express = require("express");
 const store = require("../data-store");
+const { consumoDiarioPorMateria, autonomiaDe } = require("../autonomia");
 
 const router = express.Router();
 
@@ -89,10 +90,11 @@ function estadoStock(m) {
   return { estado: "correcto", color: "#5b7a4a", etiqueta: "Correcto" };
 }
 
-function decorate(m, proveedores) {
+function decorate(m, proveedores, mapaConsumo) {
   const proveedor = proveedores.find((p) => p.id === m.proveedor_id);
   const cat = categoriaDe(m);
   const est = estadoStock(m);
+  const aut = autonomiaDe(m, mapaConsumo || {});
   return {
     ...m,
     macro: cat.macro,
@@ -103,6 +105,9 @@ function decorate(m, proveedores) {
     stock_bajo: est.estado !== "correcto",
     punto_pedido: puntoPedidoDe(m),
     stock_optimo: optimoDe(m),
+    consumo_diario: aut.consumo_diario,
+    autonomia_dias: aut.autonomia_dias,
+    autonomia_fuente: aut.fuente,
     valor_stock_actual: Math.round((Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0) * 100) / 100,
     proveedor_nombre: proveedor ? proveedor.nombre : "Sin proveedor asignado",
     proveedor_whatsapp: proveedor ? proveedor.whatsapp : null,
@@ -112,7 +117,8 @@ function decorate(m, proveedores) {
 // Árbol del almacén con conteos por macro y subcategoría (para la navegación).
 router.get("/arbol", (req, res) => {
   const proveedores = store.readAll("proveedores");
-  const materias = store.readAll("materias").map((m) => decorate(m, proveedores));
+  const mapa = consumoDiarioPorMateria(store);
+  const materias = store.readAll("materias").map((m) => decorate(m, proveedores, mapa));
   const macros = MACROS.map((macro) => {
     const items = materias.filter((m) => m.macro === macro);
     const subs = TAXONOMIA[macro].map((sub) => {
@@ -138,7 +144,8 @@ router.get("/arbol", (req, res) => {
 // Lista filtrable: ?macro= &sub= &q= (nombre/código/ubicación) &ubicacion= &estado=
 router.get("/", (req, res) => {
   const proveedores = store.readAll("proveedores");
-  let materias = store.readAll("materias").map((m) => decorate(m, proveedores));
+  const mapa = consumoDiarioPorMateria(store);
+  let materias = store.readAll("materias").map((m) => decorate(m, proveedores, mapa));
   const { macro, sub, q, ubicacion, estado } = req.query;
   if (macro) materias = materias.filter((m) => m.macro === macro);
   if (sub) materias = materias.filter((m) => m.subcategoria === sub);
@@ -164,7 +171,7 @@ router.get("/", (req, res) => {
 router.get("/:id", (req, res) => {
   const materia = store.findById("materias", req.params.id);
   if (!materia) return res.status(404).json({ error: "Materia no encontrada" });
-  res.json(decorate(materia, store.readAll("proveedores")));
+  res.json(decorate(materia, store.readAll("proveedores"), consumoDiarioPorMateria(store)));
 });
 
 // Campos editables del producto (nivel 3). Schema-less: lo que no se use hoy
@@ -187,6 +194,7 @@ const CAMPOS = [
   "stock_minimo",
   "stock_optimo",
   "punto_pedido",
+  "consumo_diario_estimado",
   "fecha_ultima_compra",
   "vida_util_horas",
   "lote",
@@ -205,6 +213,7 @@ const NUMERICOS = [
   "stock_minimo",
   "stock_optimo",
   "punto_pedido",
+  "consumo_diario_estimado",
   "vida_util_horas",
 ];
 
@@ -263,7 +272,7 @@ router.post("/", (req, res) => {
     ...out,
   };
   store.insert("materias", nuevo);
-  res.status(201).json(decorate(nuevo, store.readAll("proveedores")));
+  res.status(201).json(decorate(nuevo, store.readAll("proveedores"), consumoDiarioPorMateria(store)));
 });
 
 // Editar producto (whitelist de campos + validación de categoría).
@@ -273,7 +282,7 @@ router.patch("/:id", (req, res) => {
   const out = recogerCampos(req.body || {});
   if (!validarCategoria(out, res)) return;
   const updated = store.update("materias", req.params.id, out);
-  res.json(decorate(updated, store.readAll("proveedores")));
+  res.json(decorate(updated, store.readAll("proveedores"), consumoDiarioPorMateria(store)));
 });
 
 module.exports = router;

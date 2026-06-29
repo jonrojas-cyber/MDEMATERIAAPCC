@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v51</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v52</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2330,11 +2330,12 @@ async function irA_recepcion(){
       </div>
       <div class="card">
         <div class="card-name">Escanear albarán</div>
-        <div class="card-meta" id="ocr-hint">Encuadra el albarán dentro del marco y se rellenan proveedor, importe y líneas solos.</div>
-        <input type="file" accept="image/*" capture="environment" id="alb-file" style="display:none" onchange="escanearAlbaran(this)">
+        <div class="card-meta" id="ocr-hint">Haz la foto del albarán: ajustas las esquinas, se endereza y se lee solo.</div>
+        <input type="file" accept="image/*" capture="environment" id="alb-file-cam" style="display:none" onchange="escanearAlbaran(this)">
+        <input type="file" accept="image/*" id="alb-file-gal" style="display:none" onchange="escanearAlbaran(this)">
         <div class="card-actions">
-          <button class="btn-primary" onclick="abrirCamara()">Escanear con cámara</button>
-          <button class="btn-ghost" onclick="document.getElementById('alb-file').click()">Elegir de la galería</button>
+          <button class="btn-primary" onclick="document.getElementById('alb-file-cam').click()">Hacer foto</button>
+          <button class="btn-ghost" onclick="document.getElementById('alb-file-gal').click()">Galería</button>
         </div>
         <div id="alb-preview"></div>
         <div id="alb-avisos"></div>
@@ -2472,9 +2473,9 @@ async function escanearAlbaran(input){
   const file=input.files&&input.files[0]; if(!file)return;
   const hint=el("ocr-hint"); if(hint) hint.textContent="Procesando imagen…";
   try{
-    // Tamaño moderado: nítido para leer texto, pero lo bastante ligero para que
-    // el lector responda sin agotar tiempo/memoria del servidor.
-    const dataUrl=await reducirImagen(file,1600,0.72);
+    // Foto de la cámara nativa (nítida): resolución alta para que el texto se
+    // lea bien. El editor recorta/endereza y deja la imagen final ligera.
+    const dataUrl=await reducirImagen(file,2400,0.85);
     const doc=await abrirEditorDoc(dataUrl);
     if(doc) await procesarFotoAlbaran(doc);
   }catch(e){ if(hint) hint.textContent="No se pudo leer: "+e.message; }
@@ -2673,7 +2674,7 @@ function enderezarDoc(img, src, realce){
   const dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
   let outW=Math.round((dist(src[0],src[1])+dist(src[3],src[2]))/2);
   let outH=Math.round((dist(src[0],src[3])+dist(src[1],src[2]))/2);
-  const cap=1500, s=Math.min(1,cap/Math.max(outW,outH,1));
+  const cap=1800, s=Math.min(1,cap/Math.max(outW,outH,1));
   outW=Math.max(8,Math.round(outW*s)); outH=Math.max(8,Math.round(outH*s));
   const dst=[[0,0],[outW,0],[outW,outH],[0,outH]];
   const A=[],bb=[];

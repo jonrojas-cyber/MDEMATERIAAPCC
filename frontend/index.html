@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v53</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v54</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2733,12 +2733,22 @@ function renderLineasAlbaran(lineas){
   if(!lineas.length){cont.innerHTML="";return;}
   const opts=(sel)=>`<option value="">— no cargar —</option>`+(window._mat||[]).map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${m.nombre}</option>`).join("");
   cont.innerHTML=`<div class="section-label" style="margin-top:10px;">Cargar al almacén (revisa materia y cantidad)</div>`+
-    lineas.map(l=>`<div class="alb-row" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+    lineas.map(l=>{
+      // Desglose de precio por producto: precio unitario e importe de la línea,
+      // tal y como los lee el albarán (cuando vienen). Así no se ve solo el total.
+      const pu=(l.precio_unitario!=null&&l.precio_unitario!=="")?Number(l.precio_unitario):null;
+      const imp=(l.importe!=null&&l.importe!=="")?Number(l.importe):(pu!=null&&l.cantidad!=null?pu*Number(l.cantidad):null);
+      const precioTxt=(pu!=null||imp!=null)
+        ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/ud`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
+        : `<span class="alb-precio" style="font-size:10px;color:#b8b3a3;min-width:96px;text-align:right;flex:0 0 auto;">sin precio</span>`;
+      return `<div class="alb-row" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
       <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
       <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" style="width:64px;font-size:11px;">
       <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>
-    </div>`).join("");
+      ${precioTxt}
+    </div>`;
+    }).join("");
 }
 function recogerLineasAlbaran(){
   return [...document.querySelectorAll(".alb-row")].map(row=>{

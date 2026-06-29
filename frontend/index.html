@@ -366,6 +366,29 @@ input, select { font-family: inherit; font-size: 13px; }
   flex-direction: column;
 }
 
+/* Pantalla de preparación (previa al paso a paso) — estilo Aesop, mucho aire. */
+.prep-overlay { position: fixed; inset: 0; background: var(--cream); z-index: 999; display: flex; flex-direction: column; }
+.prep-top { padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.prep-eyebrow { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.prep-wrap { flex: 1; overflow-y: auto; padding: 4px 22px 24px; max-width: 560px; width: 100%; margin: 0 auto; -webkit-overflow-scrolling: touch; }
+.prep-title { font-size: 26px; font-weight: 700; line-height: 1.1; }
+.prep-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.prep-lead { font-size: 13.5px; line-height: 1.5; margin: 18px 0 4px; color: var(--ink); }
+.prep-h { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 26px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.prep-list { display: flex; flex-direction: column; }
+.prep-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.prep-name { font-size: 15px; }
+.prep-cat { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-left: 8px; }
+.prep-obs { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.prep-qty { font-size: 15px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.prep-qty.falta { text-decoration: line-through dotted; }
+.prep-warn { font-size: 11.5px; color: #9C5A2E; padding: 4px 0 8px; }
+.prep-mat { font-size: 14.5px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.prep-tick { color: var(--muted); margin-right: 8px; }
+.prep-empty { font-size: 13px; color: var(--muted); padding: 10px 0; }
+.prep-footer { flex-shrink: 0; padding: 14px 22px max(16px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.prep-footer .wiz-ok { width: 100%; }
+
 .wiz-bar {
   height: 3px;
   background: var(--line);
@@ -1167,7 +1190,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v58</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v59</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1582,13 +1605,61 @@ async function irA_preparaciones() {
 }
 
 // ── WIZARD ────────────────────────────────────────────
+// Paso 1: pantalla de preparación (ingredientes + material) ANTES del paso a paso.
 async function iniciarYAbrir(rid, cantidad, btn) {
   if(btn) btn.disabled=true;
   try {
+    const c = await api("/preparaciones/calcular",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({receta_id:rid,cantidad_objetivo:cantidad})});
+    pantallaPreparacion(rid, cantidad, c);
+  } catch(e){alert(e.message);}
+  finally{ if(btn) btn.disabled=false; }
+}
+
+// Pantalla previa estilo Aesop: prepara todo antes de empezar. No se puede
+// arrancar el paso a paso sin pasar por aquí y pulsar "Todo preparado".
+function pantallaPreparacion(rid, cantidad, c){
+  const ing=(c.ingredientes||[]).map(i=>{
+    const falta = i.suficiente===false;
+    return `<div class="prep-row">
+      <span class="prep-name">${esc(i.nombre)}${i.categoria?`<span class="prep-cat">${esc(i.categoria)}</span>`:""}${i.observaciones?`<span class="prep-obs">${esc(i.observaciones)}</span>`:""}</span>
+      <span class="prep-qty${falta?" falta":""}">${i.cantidad_necesaria} ${esc(i.unidad||"")}</span>
+    </div>${falta?`<div class="prep-warn">Stock corto · disponible ${i.disponibilidad_actual} ${esc(i.unidad||"")}. Revísalo antes de continuar.</div>`:""}`;
+  }).join("");
+  const mat=(c.materiales||[]).map(m=>`<div class="prep-mat"><span class="prep-tick">○</span> ${esc(m)}</div>`).join("");
+  el("wizard-root").innerHTML=`
+    <div class="prep-overlay">
+      <div class="prep-top">
+        <span class="prep-eyebrow">Preparación · paso previo</span>
+        <button class="wiz-close" onclick="cerrarWizard()">Cerrar ✕</button>
+      </div>
+      <div class="prep-wrap">
+        <div class="prep-title">${esc(c.nombre_receta)}</div>
+        <div class="prep-sub">${cantidad} ${esc(c.unidad||"")} · vida útil ${c.vida_util_horas} h · ${(c.coste_estimado||0).toFixed(2)} €</div>
+        <div class="prep-lead">Prepara todo antes de empezar. Revisa los ingredientes y el material; cuando lo tengas a mano, comienza.</div>
+
+        <div class="prep-h">Ingredientes necesarios</div>
+        <div class="prep-list">${ing||'<div class="prep-empty">Sin ingredientes definidos.</div>'}</div>
+
+        <div class="prep-h">Material necesario</div>
+        <div class="prep-list">${mat}</div>
+      </div>
+      <div class="prep-footer">
+        <button class="wiz-ok" onclick="comenzarProduccion('${rid}',${cantidad},this)">Todo preparado · comenzar</button>
+      </div>
+    </div>`;
+  document.body.style.overflow="hidden";
+}
+
+// "Todo preparado": crea la preparación y arranca el paso a paso.
+async function comenzarProduccion(rid, cantidad, btn){
+  if(btn){ btn.disabled=true; btn.textContent="Comenzando…"; }
+  try {
     const p = await api("/preparaciones",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({receta_id:rid,cantidad_objetivo:cantidad,responsable:getUser()||"Sin asignar"})});
+    document.body.style.overflow="";
     pintarWizard(p);
-  } catch(e){alert(e.message);if(btn)btn.disabled=false;}
+  } catch(e){ alert(e.message); if(btn){ btn.disabled=false; btn.textContent="Todo preparado · comenzar"; } }
 }
 
 async function abrirWizard(id) {
@@ -1602,6 +1673,7 @@ async function abrirWizard(id) {
 
 function cerrarWizard() {
   el("wizard-root").innerHTML="";
+  document.body.style.overflow="";
   if(currentSection==="preparaciones") irA_preparaciones();
   else loadHome();
 }

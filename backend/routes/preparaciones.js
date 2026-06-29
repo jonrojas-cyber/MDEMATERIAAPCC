@@ -35,6 +35,22 @@ function generarCodigoLote(nombreReceta) {
   return `${prefijo}-${fecha}-${letra}`;
 }
 
+// Material de trabajo que debe estar listo ANTES de empezar. Si la receta define
+// el suyo (receta.materiales), se usa ese; si no, una base estándar de RTD para
+// que la pantalla de preparación nunca salga vacía.
+const MATERIALES_BASE = [
+  "Boles / recipientes limpios",
+  "Espátula",
+  "GN limpio y rotulado",
+  "Film",
+  "Etiquetas + impresora",
+  "Termómetro",
+];
+function materialesDe(receta) {
+  const propios = Array.isArray(receta.materiales) ? receta.materiales.filter((x) => x && String(x).trim()) : [];
+  return propios.length ? propios.map((x) => String(x).trim()) : MATERIALES_BASE;
+}
+
 function escalarIngredientes(receta, cantidadObjetivo) {
   const factor = cantidadObjetivo / receta.resultado_base;
   const materias = store.readAll("materias");
@@ -109,6 +125,7 @@ router.post("/calcular", (req, res) => {
     unidad: receta.unidad,
     vida_util_horas: receta.vida_util_horas,
     ingredientes,
+    materiales: materialesDe(receta),
     coste_estimado: coste,
     viable: ingredientes.every((i) => i.suficiente !== false),
   });

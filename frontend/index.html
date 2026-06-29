@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v57</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v58</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1414,6 +1414,23 @@ const CATS = {
   gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Avisos · Manual", ids:["carta","analisis","ventas","manual","avisos"], admin:true },
 };
 
+// Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
+// Rojo = caducado (urgente), negro = bloqueado/no apto, ámbar = revisar pronto.
+function alertCenterHTML(d, esAdmin) {
+  const a = d.alertas || {};
+  const fila = (color, bg, txt, n, go) =>
+    `<button onclick="${go}" style="display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;border-radius:11px;padding:13px 15px;margin-top:8px;background:${bg};color:${color};font-family:var(--sans);font-size:13.5px;font-weight:600;cursor:pointer;">
+      <span style="font-size:19px;font-weight:800;min-width:22px;line-height:1;">${n}</span><span>${txt}</span><span style="margin-left:auto;opacity:.65;">→</span></button>`;
+  const rows = [];
+  if (a.caducados && a.caducados.length) rows.push(fila("#fff", "#b5462a", a.caducados.length === 1 ? "lote caducado · no debe usarse" : "lotes caducados · no deben usarse", a.caducados.length, "irA_lotes()"));
+  if (a.bloqueados && a.bloqueados.length) rows.push(fila("#f0ebe0", "#23211c", a.bloqueados.length === 1 ? "lote bloqueado / no apto" : "lotes bloqueados / no aptos", a.bloqueados.length, "irA_lotes()"));
+  if (a.proximos && a.proximos.length) rows.push(fila("#7a5a1e", "#f6ecd5", a.proximos.length === 1 ? "lote próximo a caducar" : "lotes próximos a caducar", a.proximos.length, "irA_lotes()"));
+  if (a.sin_fecha && a.sin_fecha.length) rows.push(fila("#7a5a1e", "#f6ecd5", a.sin_fecha.length === 1 ? "lote sin fecha de caducidad" : "lotes sin fecha de caducidad", a.sin_fecha.length, "irA_lotes()"));
+  if (esAdmin && a.stock_bajo) rows.push(fila("#7a5a1e", "#f6ecd5", a.stock_bajo === 1 ? "materia con stock bajo" : "materias con stock bajo", a.stock_bajo, "irA_materias()"));
+  if (!rows.length) return "";
+  return `<div style="margin:0 0 18px;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
+}
+
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
 function dashboardHTML(d, esAdmin) {
   const k = d.kpis || {};
@@ -1439,6 +1456,7 @@ function dashboardHTML(d, esAdmin) {
         : `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`}</div>`;
   return `
       <div class="banner ${alerta?"warn":""}"><span class="dot"></span><span>${d.estado_servicio}</span></div>
+      ${alertCenterHTML(d, esAdmin)}
       ${esAdmin && d.agora ? `<div class="agora-line">${d.agora.mensaje}</div>` : ""}
       ${todoHTML}
       ${kpisHTML}`;
@@ -1471,6 +1489,7 @@ async function loadHome() {
         <div class="home-alert">${estadoSrv}</div>
         ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
       </div>
+      ${alertCenterHTML(d, esAdmin)}
       <div class="cats">
         ${cats.map((c,i)=>`<div class="cat" role="button" tabindex="0" onclick="${c.onclick}">
           <div class="cat-numcol">

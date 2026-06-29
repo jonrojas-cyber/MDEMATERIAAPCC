@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v50</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v51</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2475,7 +2475,8 @@ async function escanearAlbaran(input){
     // Tamaño moderado: nítido para leer texto, pero lo bastante ligero para que
     // el lector responda sin agotar tiempo/memoria del servidor.
     const dataUrl=await reducirImagen(file,1600,0.72);
-    await procesarFotoAlbaran(dataUrl);
+    const doc=await abrirEditorDoc(dataUrl);
+    if(doc) await procesarFotoAlbaran(doc);
   }catch(e){ if(hint) hint.textContent="No se pudo leer: "+e.message; }
   input.value=""; // permite re-elegir la misma foto
 }
@@ -2573,7 +2574,7 @@ async function capturarFoto(){
       }
     }
     cerrarCamara();
-    if(dataUrl) procesarFotoAlbaran(dataUrl);
+    if(dataUrl){ const doc=await abrirEditorDoc(dataUrl); if(doc) procesarFotoAlbaran(doc); }
     else alert("No se pudo capturar la foto. Prueba con “Elegir de la galería”.");
   }catch(e){ cerrarCamara(); alert("No se pudo capturar: "+e.message); }
 }
@@ -2581,6 +2582,134 @@ function cerrarCamara(){
   if(_camStream){ _camStream.getTracks().forEach(t=>t.stop()); _camStream=null; }
   _camTrack=null; _imageCapture=null;
   const root=el("wizard-root"); if(root){ root.classList.remove("show"); root.innerHTML=""; }
+}
+
+// ── MODO ESCÁNER DE DOCUMENTO ─────────────────────────────────────────────
+// Ajustas las 4 esquinas del albarán y la app lo endereza (perspectiva) y
+// realza el texto, como un escáner plano. Sin librerías externas.
+// Devuelve una Promise con la imagen procesada (dataURL), la original si se
+// elige "Sin recorte", o null si se cancela.
+function abrirEditorDoc(dataUrl){
+  return new Promise((resolve)=>{
+    const root=el("wizard-root"); if(!root){ resolve(dataUrl); return; }
+    const img=new Image();
+    img.onload=()=>{
+      const availW=Math.max(120,window.innerWidth-24), availH=Math.max(160,window.innerHeight-140);
+      const ratio=img.naturalWidth/img.naturalHeight;
+      let dw=availW, dh=dw/ratio; if(dh>availH){ dh=availH; dw=dh*ratio; }
+      dw=Math.round(dw); dh=Math.round(dh);
+      // Esquinas como fracción (0..1) del documento. Orden TL,TR,BR,BL.
+      let pts=[[0.06,0.07],[0.94,0.07],[0.94,0.93],[0.06,0.93]];
+      let realce=true;
+      root.innerHTML=`
+        <div class="doc-overlay" style="position:fixed;inset:0;z-index:9000;background:#0c0d0b;display:flex;flex-direction:column;align-items:center;">
+          <div style="color:#E7E4D7;font-family:var(--sans);font-size:12.5px;padding:10px 16px;text-align:center;">Arrastra las esquinas para encuadrar el albarán</div>
+          <div id="doc-box" style="position:relative;width:${dw}px;height:${dh}px;flex:0 0 auto;touch-action:none;">
+            <img src="${dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;">
+            <svg id="doc-svg" width="${dw}" height="${dh}" style="position:absolute;inset:0;pointer-events:none;"><polygon id="doc-poly" points="" fill="rgba(62,69,52,.18)" stroke="#E7E4D7" stroke-width="2"/></svg>
+            ${pts.map((p,i)=>`<div class="doc-h" data-i="${i}" style="position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:2px solid #E7E4D7;background:rgba(62,69,52,.5);"></div>`).join("")}
+          </div>
+          <div style="margin-top:auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 16px max(16px,env(safe-area-inset-bottom));">
+            <label style="color:#E7E4D7;font-family:var(--sans);font-size:13px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="doc-realce" checked> Realzar texto (blanco y negro)</label>
+            <div style="display:flex;gap:10px;width:100%;justify-content:center;">
+              <button id="doc-cancel" style="background:none;border:0;color:#E7E4D7;font-family:var(--sans);font-size:14px;padding:10px 14px;">Cancelar</button>
+              <button id="doc-skip" style="background:none;border:1px solid rgba(231,228,215,.5);border-radius:6px;color:#E7E4D7;font-family:var(--sans);font-size:14px;padding:10px 14px;">Sin recorte</button>
+              <button id="doc-ok" style="background:#E7E4D7;border:0;border-radius:6px;color:#2A332B;font-weight:700;font-family:var(--sans);font-size:14px;padding:10px 20px;">Aplicar</button>
+            </div>
+          </div>
+        </div>`;
+      root.classList.add("show");
+      const box=el("doc-box"), poly=el("doc-poly"), handles=[...root.querySelectorAll(".doc-h")];
+      function pintar(){
+        poly.setAttribute("points",pts.map(p=>`${p[0]*dw},${p[1]*dh}`).join(" "));
+        handles.forEach((h,i)=>{ h.style.left=(pts[i][0]*dw)+"px"; h.style.top=(pts[i][1]*dh)+"px"; });
+      }
+      pintar();
+      let drag=-1;
+      const xy=(ev)=>{ const r=box.getBoundingClientRect(); const t=ev.touches?ev.touches[0]:ev; return [(t.clientX-r.left)/dw, (t.clientY-r.top)/dh]; };
+      handles.forEach(h=>{
+        h.addEventListener("pointerdown",(e)=>{ drag=Number(h.dataset.i); h.setPointerCapture&&h.setPointerCapture(e.pointerId); e.preventDefault(); });
+      });
+      box.addEventListener("pointermove",(e)=>{
+        if(drag<0)return;
+        let [fx,fy]=xy(e); fx=Math.max(0,Math.min(1,fx)); fy=Math.max(0,Math.min(1,fy));
+        pts[drag]=[fx,fy]; pintar();
+      });
+      const endDrag=()=>{ drag=-1; };
+      box.addEventListener("pointerup",endDrag); box.addEventListener("pointercancel",endDrag);
+      const cerrar=(val)=>{ root.classList.remove("show"); root.innerHTML=""; resolve(val); };
+      el("doc-cancel").onclick=()=>cerrar(null);
+      el("doc-skip").onclick=()=>cerrar(dataUrl);
+      el("doc-ok").onclick=()=>{
+        const ok=el("doc-ok"); ok.textContent="Procesando…"; ok.disabled=true;
+        realce=el("doc-realce").checked;
+        setTimeout(()=>{ // deja repintar el botón antes del bucle pesado
+          try{
+            const src=pts.map(p=>[p[0]*img.naturalWidth, p[1]*img.naturalHeight]);
+            const out=enderezarDoc(img, src, realce);
+            cerrar(out);
+          }catch(e){ cerrar(dataUrl); }
+        },30);
+      };
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
+
+// Resuelve la matriz de homografía (dest->src) a partir de 4 correspondencias.
+function _gauss(A,b){
+  const n=b.length, M=A.map((r,i)=>r.concat([b[i]]));
+  for(let col=0;col<n;col++){
+    let piv=col; for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+    const tmp=M[col]; M[col]=M[piv]; M[piv]=tmp;
+    const d=M[col][col]||1e-9; for(let c=col;c<=n;c++) M[col][c]/=d;
+    for(let r=0;r<n;r++){ if(r!==col){ const f=M[r][col]; for(let c=col;c<=n;c++) M[r][c]-=f*M[col][c]; } }
+  }
+  return M.map(r=>r[n]);
+}
+// Endereza el cuadrilátero src (4 puntos TL,TR,BR,BL) a un rectángulo y realza.
+function enderezarDoc(img, src, realce){
+  const dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+  let outW=Math.round((dist(src[0],src[1])+dist(src[3],src[2]))/2);
+  let outH=Math.round((dist(src[0],src[3])+dist(src[1],src[2]))/2);
+  const cap=1500, s=Math.min(1,cap/Math.max(outW,outH,1));
+  outW=Math.max(8,Math.round(outW*s)); outH=Math.max(8,Math.round(outH*s));
+  const dst=[[0,0],[outW,0],[outW,outH],[0,outH]];
+  const A=[],bb=[];
+  for(let i=0;i<4;i++){ const [x,y]=dst[i], [u,v]=src[i];
+    A.push([x,y,1,0,0,0,-x*u,-y*u]); bb.push(u);
+    A.push([0,0,0,x,y,1,-x*v,-y*v]); bb.push(v); }
+  const H=_gauss(A,bb); const [a,b,c,d,e,f,g,h]=H;
+  const sc=document.createElement("canvas"); sc.width=img.naturalWidth; sc.height=img.naturalHeight;
+  sc.getContext("2d").drawImage(img,0,0);
+  const sw=sc.width, sh=sc.height, sp=sc.getContext("2d").getImageData(0,0,sw,sh).data;
+  const oc=document.createElement("canvas"); oc.width=outW; oc.height=outH;
+  const octx=oc.getContext("2d"), od=octx.createImageData(outW,outH), op=od.data;
+  for(let y=0;y<outH;y++){
+    for(let x=0;x<outW;x++){
+      const den=g*x+h*y+1, u=(a*x+b*y+c)/den, v=(d*x+e*y+f)/den;
+      let r=255,gg=255,bl=255;
+      if(u>=0&&u<sw-1&&v>=0&&v<sh-1){
+        const x0=u|0,y0=v|0,fx=u-x0,fy=v-y0, base=(y0*sw+x0)<<2, base2=((y0+1)*sw+x0)<<2;
+        for(let ch=0;ch<3;ch++){
+          const top=sp[base+ch]*(1-fx)+sp[base+4+ch]*fx;
+          const bot=sp[base2+ch]*(1-fx)+sp[base2+4+ch]*fx;
+          const val=top*(1-fy)+bot*fy;
+          if(ch===0)r=val; else if(ch===1)gg=val; else bl=val;
+        }
+      }
+      const o=(y*outW+x)<<2;
+      if(realce){
+        let gray=0.299*r+0.587*gg+0.114*bl;
+        gray=(gray-128)*1.45+128+22; // contraste + aclarar fondo
+        gray=gray<0?0:gray>255?255:gray;
+        op[o]=op[o+1]=op[o+2]=gray; op[o+3]=255;
+      }else{ op[o]=r; op[o+1]=gg; op[o+2]=bl; op[o+3]=255; }
+    }
+  }
+  octx.putImageData(od,0,0);
+  return oc.toDataURL("image/jpeg",0.82);
 }
 
 // Filas editables: cada línea del albarán -> materia del almacén + cantidad.

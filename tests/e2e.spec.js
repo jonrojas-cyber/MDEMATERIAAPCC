@@ -216,6 +216,26 @@ test("recetas: editor calcula escandallo y PVP recomendado en vivo", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("escáner de documento: endereza y devuelve una imagen procesada", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  const result = await page.evaluate(async () => {
+    const c = document.createElement("canvas"); c.width = 320; c.height = 220;
+    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 320, 220);
+    ctx.fillStyle = "#000"; ctx.font = "20px sans-serif"; ctx.fillText("ALBARAN", 40, 110);
+    const url = c.toDataURL("image/jpeg", 0.9);
+    const p = abrirEditorDoc(url);           // abre el editor (overlay) y devuelve promesa
+    await new Promise((r) => setTimeout(r, 60));
+    document.getElementById("doc-ok").click(); // aplica recorte + enderezado
+    const out = await p;
+    return { ok: typeof out === "string" && out.startsWith("data:image/jpeg"), cambia: out !== url };
+  });
+  expect(result.ok).toBeTruthy();
+  expect(result.cambia).toBeTruthy();
+  expect(errors).toEqual([]);
+});
+
 test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();

@@ -891,11 +891,13 @@ input, select { font-family: inherit; font-size: 13px; }
    no soportan y hacían que se saliera del botón). Quitamos los puntos
    decorativos para que el contenido quepa centrado aunque la tarjeta sea baja. */
 .cat { flex: 1 1 0; min-height: 0; margin-bottom: 0; overflow: hidden; }
-.cat-big { font-size: 32px; line-height: 1; }
+.cat-big { font-size: 30px; line-height: 1; }
 .cat-name { font-size: clamp(16px, 2.4dvh, 22px); }
-.cat-numcol { padding-top: 0; padding-bottom: 0; }
-.cat-main { padding-top: 0; padding-bottom: 0; }
-.cat-state { margin-top: 8px; }
+/* Contenido pegado arriba: el número y el título empiezan en el borde superior,
+   así nada se sale por abajo aunque la tarjeta sea baja. */
+.cat-numcol { justify-content: flex-start; padding-top: 16px; padding-bottom: 8px; }
+.cat-main { justify-content: flex-start; padding-top: 18px; padding-bottom: 8px; }
+.cat-state { margin-top: 6px; white-space: nowrap; }
 .cat-dots { display: none; }
 .cat-l1 { margin-top: clamp(6px, 1.7dvh, 16px); padding-bottom: clamp(6px, 1.3dvh, 12px); }
 .cat-l2 { margin-top: clamp(6px, 1.3dvh, 12px); }
@@ -1228,7 +1230,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v64</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v65</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1590,7 +1592,7 @@ async function loadHome() {
 
     const estadoSrv = alerta ? d.estado_servicio : "Servicio en orden";
     const dots = n => n>0 ? "·".repeat(Math.min(n,5)) : "—";
-    const estLabel = n => n>0 ? `${n} pendiente${n>1?"s":""}` : "al día";
+    const estLabel = n => n>0 ? `${n} pend.` : "al día";
 
     el("home-content").innerHTML = `
       <div class="home-head">

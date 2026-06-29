@@ -444,6 +444,23 @@ input, select { font-family: inherit; font-size: 13px; }
 .pf-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pf-2 .pf-row { margin-bottom: 12px; }
 
+/* ── CENTRO DE DECISIONES · mando ── */
+.qha { flex: 0 0 auto; max-height: 36vh; overflow-y: auto; margin: 0 0 14px; }
+.qha-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.qha-head > span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.qha-link { background: none; border: 0; font-family: var(--sans); font-size: 11px; color: var(--ink); cursor: pointer; text-decoration: underline; }
+.dec-act { display: flex; align-items: stretch; gap: 12px; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 11px; padding: 13px 14px; margin-bottom: 8px; }
+.dec-act-body { flex: 1; min-width: 0; }
+.dec-act-title { font-size: 14.5px; font-weight: 700; line-height: 1.15; }
+.dec-act-motivo { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.dec-act-meta { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 5px; }
+.dec-act-btn { flex: 0 0 auto; align-self: center; font-family: var(--sans); font-size: 13px; font-weight: 700;
+  padding: 10px 14px; border-radius: 8px; border: 0; background: var(--ink); color: var(--cream); cursor: pointer; white-space: nowrap; }
+.dec-act-btn:active { transform: translateY(1px); }
+.dec-info { background: var(--paper); border: 1px solid var(--line); border-radius: 11px; padding: 13px 14px; margin-bottom: 8px; }
+.dec-resumen { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
 .wiz-bar {
   height: 3px;
   background: var(--line);
@@ -1265,7 +1282,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v66</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v67</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1551,13 +1568,14 @@ function modulosMeta(d) {
     ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
     manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
     avisos:       { num:"05", name:"Avisos", badge:"Notificación · pedidos y caducidades", urgent:false },
+    resumen:      { num:"06", name:"Resumen del día", badge:"KPIs · estado · qué hacer ahora", urgent:false },
   };
 }
 
 const CATS = {
-  operacion: { name:"Operación", desc:"Preparaciones · Lotes · Materias · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
+  operacion: { name:"Operación", desc:"Preparaciones · Lotes · Almacén · Revisiones · Ajustes", ids:["preparaciones","lotes","materias","revisiones","ajustes"] },
   compras:   { name:"Compras", desc:"Proveedores · Pedidos · Recepción · Pagos · Archivo", ids:["proveedores","pedidos","recepcion","pagos","archivo"], admin:true },
-  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Avisos · Manual", ids:["carta","analisis","ventas","manual","avisos"], admin:true },
+  gestion:   { name:"Gestión", desc:"Carta · Análisis · Ventas · Avisos · Resumen", ids:["carta","analisis","ventas","manual","avisos","resumen"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -1575,6 +1593,61 @@ function alertCenterHTML(d, esAdmin) {
   if (esAdmin && a.stock_bajo) rows.push(fila("#7a5a1e", "#f6ecd5", a.stock_bajo === 1 ? "materia con stock bajo" : "materias con stock bajo", a.stock_bajo, "irA_materias()"));
   if (!rows.length) return "";
   return `<div style="margin:0 0 14px;flex:0 0 auto;max-height:28vh;overflow-y:auto;"><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#b5462a;font-weight:700;margin-bottom:2px;">Centro de alertas</div>${rows.join("")}</div>`;
+}
+
+// ── CENTRO DE DECISIONES · el cerebro operativo ───────────────────────────
+function decSevColor(s){ return s==="critico"?"#b5462a":s==="aviso"?"#c79a3a":"#5C6145"; }
+function decEstadoTxt(e){ return e==="en_curso"?"en curso":e==="bloqueado"?"bloqueado":e==="hecho"?"hecho":"pendiente"; }
+
+// Una acción = una tarea con motivo, tiempo y botón de acción directa.
+function accionRow(a){
+  const col=decSevColor(a.severidad);
+  const meta=[a.tiempo_min?`≈${a.tiempo_min} min`:null, decEstadoTxt(a.estado)].filter(Boolean).join(" · ");
+  return `<div class="dec-act" style="border-left:4px solid ${col};">
+    <div class="dec-act-body">
+      <div class="dec-act-title">${esc(a.titulo)}</div>
+      <div class="dec-act-motivo">${esc(a.motivo)}</div>
+      <div class="dec-act-meta">${esc(meta)}</div>
+    </div>
+    <button class="dec-act-btn" onclick="decAccion('${a.id}')">${esc(a.accion.label)}</button>
+  </div>`;
+}
+// Ejecuta el "handler" de una acción → acción directa (≤ 1 clic).
+function decAccion(id){
+  const a=((window._decData&&window._decData.acciones)||[]).find(x=>x.id===id); if(!a)return;
+  const h=a.accion.handler, args=a.accion.args||{};
+  if(h==="decisionProducir") return iniciarYAbrir(args.receta_id, args.cantidad);
+  if(typeof window[h]==="function") return window[h]();
+}
+// Bloque compacto para la home (mando): top acciones + enlace al centro.
+function qhaHomeHTML(dec){
+  if(!dec || !dec.acciones || !dec.acciones.length) return "";
+  window._decData=dec;
+  const top=dec.acciones.slice(0,3);
+  return `<div class="qha">
+    <div class="qha-head"><span>Qué hacer ahora</span><button class="qha-link" onclick="irA_decisiones()">Centro de decisiones · ${dec.acciones.length} →</button></div>
+    ${top.map(accionRow).join("")}
+  </div>`;
+}
+// Pantalla completa: acciones + riesgos + oportunidades.
+async function irA_decisiones(){
+  openSection("decisiones","Centro de decisiones");
+  setInner(`<div class="empty">Analizando el negocio…</div>`);
+  try{
+    const dec=await api("/decisiones");
+    window._decData=dec;
+    const r=dec.resumen||{};
+    let html=`<div class="dec-resumen">${dec.acciones.length} acciones · ${r.criticas||0} críticas · ${dec.riesgos.length} riesgos · ${dec.oportunidades.length} oportunidades</div>`;
+    html+=`<div class="section-label">Qué hacer ahora</div>`;
+    html+= dec.acciones.length ? dec.acciones.map(accionRow).join("") : `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`;
+    if(dec.riesgos.length){
+      html+=`<div class="section-label">Riesgos</div>`+dec.riesgos.map(x=>`<div class="dec-info" style="border-left:4px solid ${decSevColor(x.severidad)};"><div class="dec-act-title">${esc(x.titulo)}</div><div class="dec-act-motivo">${esc(x.motivo)}</div></div>`).join("");
+    }
+    if(dec.oportunidades.length){
+      html+=`<div class="section-label">Oportunidades</div>`+dec.oportunidades.map(x=>`<div class="dec-info" style="border-left:4px solid #5b7a4a;"><div class="dec-act-title">${esc(x.titulo)}</div><div class="dec-act-motivo">${esc(x.motivo)}</div></div>`).join("");
+    }
+    setInner(html);
+  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
@@ -1611,18 +1684,19 @@ function dashboardHTML(d, esAdmin) {
 // INICIO MINIMAL — solo marca + categorías.
 async function loadHome() {
   try {
-    const d = await api("/inicio");
+    const [d, dec] = await Promise.all([api("/inicio"), api("/decisiones").catch(() => null)]);
     const u = getUser();
     const esAdmin = u && u.rol === "admin";
     const alerta = d.estado_servicio !== "Servicio en orden";
     const meta = modulosMeta(d);
     const pendCat = ids => ids.reduce((n, id) => n + (meta[id] && meta[id].urgent ? 1 : 0), 0);
+    const criticas = dec && dec.resumen ? dec.resumen.criticas : 0;
 
     const cats = [
-      { name:"Resumen del día", l1:"Estado · KPIs · Qué hacer ahora", l2:"Producción · Apertura · Incidencias · Checklist", onclick:"irA_resumen()", pend: alerta?1:0 },
-      { name:CATS.operacion.name, l1:"Preparaciones · Lotes · Materias", l2:"Recetas · Batch · Revisiones · Ajustes", onclick:"irA_categoria('operacion')", pend: pendCat(CATS.operacion.ids) },
+      { name:"Centro de decisiones", l1:"Qué hacer ahora · Riesgos", l2:"Oportunidades · Acción directa", onclick:"irA_decisiones()", pend: criticas },
+      { name:CATS.operacion.name, l1:"Preparaciones · Lotes · Almacén", l2:"Recetas · Batch · Revisiones · Ajustes", onclick:"irA_categoria('operacion')", pend: pendCat(CATS.operacion.ids) },
       { name:CATS.compras.name, l1:"Proveedores · Pedidos · Recepción", l2:"Pagos · Incidencias · Stock mínimo", onclick:"irA_categoria('compras')", pend: pendCat(CATS.compras.ids), admin:true },
-      { name:CATS.gestion.name, l1:"Carta · Ventas · Manual", l2:"Análisis · Costes · Configuración", onclick:"irA_categoria('gestion')", pend:0, admin:true },
+      { name:CATS.gestion.name, l1:"Carta · Ventas · Manual", l2:"Análisis · Costes · Resumen del día", onclick:"irA_categoria('gestion')", pend:0, admin:true },
     ].filter(c => !c.admin || esAdmin);
 
     const estadoSrv = alerta ? d.estado_servicio : "Servicio en orden";
@@ -1631,11 +1705,11 @@ async function loadHome() {
 
     el("home-content").innerHTML = `
       <div class="home-head">
-        <div class="home-sys">Sistema RTD 01 · Control de producción</div>
+        <div class="home-sys">Hoy en m de materia · Sistema RTD 01</div>
         <div class="home-alert">${estadoSrv}</div>
         ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
       </div>
-      ${alertCenterHTML(d, esAdmin)}
+      ${qhaHomeHTML(dec)}
       <div class="cats">
         ${cats.map((c,i)=>`<div class="cat" role="button" tabindex="0" onclick="${c.onclick}">
           <div class="cat-numcol">

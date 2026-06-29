@@ -1210,7 +1210,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v60</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v61</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1845,11 +1845,22 @@ async function irA_lotes(){
   openSection("lotes","Lotes activos");
   try{
     const lotes=await api("/lotes");
+    const activos=lotes.filter(l=>l.estado!=="Fuera de servicio");
+    const caducados=activos.filter(l=>l.caducado).length;
+    const proximos=activos.filter(l=>!l.caducado&&l.horas_restantes!=null&&l.horas_restantes<=12).length;
+    // Aviso de caducidad dentro del propio módulo (no solo en la home).
+    let strip="";
+    if(caducados) strip+=`<div style="background:#b5462a;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;border-radius:10px;padding:11px 14px;margin-bottom:10px;">${caducados} ${caducados===1?"lote caducado · no debe usarse":"lotes caducados · no deben usarse"}</div>`;
+    if(proximos) strip+=`<div style="background:#f6ecd5;color:#7a5a1e;font-family:var(--sans);font-size:13px;font-weight:600;border-radius:10px;padding:11px 14px;margin-bottom:10px;">${proximos} ${proximos===1?"lote próximo a caducar":"lotes próximos a caducar"}</div>`;
     const orden={"Requiere atención":0,"Priorizar uso":1,"Correcto":2,"Fuera de servicio":3};
-    const sorted=lotes.slice().sort((a,b)=>(orden[a.estado]??9)-(orden[b.estado]??9));
-    setInner(section("Todos los lotes", sorted, l=>`
+    // Caducados primero, luego por estado, luego por tiempo restante.
+    const sorted=lotes.slice().sort((a,b)=>
+      (b.caducado?1:0)-(a.caducado?1:0)
+      || (orden[a.estado]??9)-(orden[b.estado]??9)
+      || ((a.horas_restantes??1e9)-(b.horas_restantes??1e9)));
+    setInner(strip+section("Todos los lotes", sorted, l=>`
       <div class="card clickable" role="button" tabindex="0" onclick="verLote('${l.id}')">
-        <div class="card-name">${l.codigo} — ${l.nombre||""}</div>
+        <div class="card-name">${l.codigo} — ${l.nombre||""}${l.caducado?'<span class="badge-low">Caducado</span>':''}</div>
         <div class="card-meta">${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}</div>
       </div>`,"No hay lotes registrados."));
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}

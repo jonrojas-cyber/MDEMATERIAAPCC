@@ -55,6 +55,24 @@ test("login + inicio: 4 categorías (admin) y cero errores de JS", async ({ page
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 
+test("centro de decisiones: acciones priorizadas con acción directa", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // La home es un centro de mando: muestra "Qué hacer ahora".
+  await expect(page.locator(".qha")).toBeVisible();
+  await page.evaluate(() => irA_decisiones());
+  await expect(page.locator(".screen-head")).toContainText(/decisiones/i);
+  // Hay acciones con botón de acción directa.
+  await expect(page.locator(".dec-act").first()).toBeVisible();
+  await expect(page.locator(".dec-act-btn").first()).toBeVisible();
+  // La API de decisiones devuelve estructura de mando.
+  const dec = await page.evaluate(() => api("/decisiones"));
+  expect(Array.isArray(dec.acciones)).toBeTruthy();
+  expect(dec.resumen).toBeTruthy();
+  expect(errors).toEqual([]);
+});
+
 test("navegación: categoría → módulos y ficha técnica de materia", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -289,6 +307,6 @@ test("acceso por teclado: Enter abre una categoría", async ({ page }) => {
   await login(page);
   await page.locator(".cat").first().focus();
   await page.keyboard.press("Enter");
-  // La primera tarjeta es "Resumen del día" → abre la pantalla de resumen.
-  await expect(page.locator(".screen-head, .cat-title")).toContainText(/resumen/i);
+  // La primera tarjeta es "Centro de decisiones" → abre esa pantalla.
+  await expect(page.locator(".screen-head, .cat-title")).toContainText(/decisiones/i);
 });

@@ -1167,7 +1167,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v52</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v53</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2227,7 +2227,7 @@ async function irA_pedidos(){
         `${p.codigo} — ${p.proveedor_nombre}`,
         `${p.estado} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
         wa,
-        `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>`${l.nombre} ${l.cantidad}${l.unidad}`).join(" · ")}</div>`
+        `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `${esc(l.nombre)}: ${l.cantidad} ${esc(l.unidad||"")} × ${pu.toFixed(4)} €/${esc(l.unidad||"ud")} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("<br>")}</div>`
       );
     },"Aún no hay pedidos.");
     setInner(html);
@@ -2274,8 +2274,9 @@ async function enviarPedidoWA(id){
     if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`);
     const tel=(prov.whatsapp||"").replace(/[^0-9+]/g,"").replace(/^\+/,"");
     if(!tel){alert("Este proveedor no tiene WhatsApp.");return;}
-    const lineas=p.lineas.map(l=>`• ${l.nombre}: ${l.cantidad} ${l.unidad}`).join("\n");
-    const texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}\n\nGracias.`;
+    const lineas=p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `• ${l.nombre}: ${l.cantidad} ${l.unidad} × ${pu.toFixed(2)} €/${l.unidad||"ud"} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("\n");
+    const total=(Number(p.total_estimado)||p.lineas.reduce((s,l)=>s+l.cantidad*(Number(l.precio_esperado)||0),0)).toFixed(2);
+    const texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}\n\nTotal estimado: ${total} €\n\nGracias.`;
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
     await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
     irA_pedidos();
@@ -2599,19 +2600,28 @@ function abrirEditorDoc(dataUrl){
       const ratio=img.naturalWidth/img.naturalHeight;
       let dw=availW, dh=dw/ratio; if(dh>availH){ dh=availH; dw=dh*ratio; }
       dw=Math.round(dw); dh=Math.round(dh);
+      // Pasamos la foto a blanco y negro AUTOMÁTICAMENTE: el documento se ve y se
+      // procesa ya en B/N, sin ningún paso ni interruptor extra.
+      const bwCanvas=document.createElement("canvas"); bwCanvas.width=img.naturalWidth; bwCanvas.height=img.naturalHeight;
+      const bctx=bwCanvas.getContext("2d"); bctx.drawImage(img,0,0);
+      try{
+        const id=bctx.getImageData(0,0,bwCanvas.width,bwCanvas.height), p=id.data;
+        for(let i=0;i<p.length;i+=4){ let gr=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2]; gr=(gr-128)*1.45+128+22; gr=gr<0?0:gr>255?255:gr; p[i]=p[i+1]=p[i+2]=gr; }
+        bctx.putImageData(id,0,0);
+      }catch(_){ }
+      const bwUrl=bwCanvas.toDataURL("image/jpeg",0.85);
       // Esquinas como fracción (0..1) del documento. Orden TL,TR,BR,BL.
       let pts=[[0.06,0.07],[0.94,0.07],[0.94,0.93],[0.06,0.93]];
-      let realce=true;
       root.innerHTML=`
         <div class="doc-overlay" style="position:fixed;inset:0;z-index:9000;background:#0c0d0b;display:flex;flex-direction:column;align-items:center;">
           <div style="color:#E7E4D7;font-family:var(--sans);font-size:12.5px;padding:10px 16px;text-align:center;">Arrastra las esquinas para encuadrar el albarán</div>
           <div id="doc-box" style="position:relative;width:${dw}px;height:${dh}px;flex:0 0 auto;touch-action:none;">
-            <img src="${dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;">
+            <img src="${bwUrl}" style="position:absolute;inset:0;width:100%;height:100%;">
             <svg id="doc-svg" width="${dw}" height="${dh}" style="position:absolute;inset:0;pointer-events:none;"><polygon id="doc-poly" points="" fill="rgba(62,69,52,.18)" stroke="#E7E4D7" stroke-width="2"/></svg>
             ${pts.map((p,i)=>`<div class="doc-h" data-i="${i}" style="position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:2px solid #E7E4D7;background:rgba(62,69,52,.5);"></div>`).join("")}
           </div>
           <div style="margin-top:auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 16px max(16px,env(safe-area-inset-bottom));">
-            <label style="color:#E7E4D7;font-family:var(--sans);font-size:13px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="doc-realce" checked> Realzar texto (blanco y negro)</label>
+            <div style="color:#82857A;font-family:var(--sans);font-size:11px;">La foto ya está en blanco y negro para que se lea mejor.</div>
             <div style="display:flex;gap:10px;width:100%;justify-content:center;">
               <button id="doc-cancel" style="background:none;border:0;color:#E7E4D7;font-family:var(--sans);font-size:14px;padding:10px 14px;">Cancelar</button>
               <button id="doc-skip" style="background:none;border:1px solid rgba(231,228,215,.5);border-radius:6px;color:#E7E4D7;font-family:var(--sans);font-size:14px;padding:10px 14px;">Sin recorte</button>
@@ -2640,16 +2650,16 @@ function abrirEditorDoc(dataUrl){
       box.addEventListener("pointerup",endDrag); box.addEventListener("pointercancel",endDrag);
       const cerrar=(val)=>{ root.classList.remove("show"); root.innerHTML=""; resolve(val); };
       el("doc-cancel").onclick=()=>cerrar(null);
-      el("doc-skip").onclick=()=>cerrar(dataUrl);
+      el("doc-skip").onclick=()=>cerrar(bwUrl); // "sin recorte" pero ya en B/N
       el("doc-ok").onclick=()=>{
         const ok=el("doc-ok"); ok.textContent="Procesando…"; ok.disabled=true;
-        realce=el("doc-realce").checked;
         setTimeout(()=>{ // deja repintar el botón antes del bucle pesado
           try{
             const src=pts.map(p=>[p[0]*img.naturalWidth, p[1]*img.naturalHeight]);
-            const out=enderezarDoc(img, src, realce);
+            // La fuente ya está en B/N (bwCanvas): enderezamos sin volver a realzar.
+            const out=enderezarDoc(bwCanvas, src, false);
             cerrar(out);
-          }catch(e){ cerrar(dataUrl); }
+          }catch(e){ cerrar(bwUrl); }
         },30);
       };
     };
@@ -2682,7 +2692,9 @@ function enderezarDoc(img, src, realce){
     A.push([x,y,1,0,0,0,-x*u,-y*u]); bb.push(u);
     A.push([0,0,0,x,y,1,-x*v,-y*v]); bb.push(v); }
   const H=_gauss(A,bb); const [a,b,c,d,e,f,g,h]=H;
-  const sc=document.createElement("canvas"); sc.width=img.naturalWidth; sc.height=img.naturalHeight;
+  // La fuente puede ser un <img> (naturalWidth/Height) o un <canvas> (width/height).
+  const NW=img.naturalWidth||img.width, NH=img.naturalHeight||img.height;
+  const sc=document.createElement("canvas"); sc.width=NW; sc.height=NH;
   sc.getContext("2d").drawImage(img,0,0);
   const sw=sc.width, sh=sc.height, sp=sc.getContext("2d").getImageData(0,0,sw,sh).data;
   const oc=document.createElement("canvas"); oc.width=outW; oc.height=outH;

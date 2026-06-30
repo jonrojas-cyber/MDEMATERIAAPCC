@@ -38,6 +38,8 @@ const ENTITIES = [
   "push_subs",
   "compras_productos",
   "precios_historico",
+  "usuarios", // cuentas con PIN hasheado (seguridad)
+  "auditoria", // registro de acciones críticas (trazabilidad)
 ];
 
 const cache = {};

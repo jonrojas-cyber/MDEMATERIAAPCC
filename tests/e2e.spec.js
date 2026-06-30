@@ -25,6 +25,30 @@ test("la API de salud responde y reporta el modo de persistencia", async ({ requ
   expect(["persistente", "efimera"]).toContain(j.persistencia);
 });
 
+test("seguridad: PIN hasheado, intentos restantes y bloqueo por fallos", async ({ request }) => {
+  // PIN incorrecto -> 401 con intentos restantes (no revela si el usuario existe).
+  let r = await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "0000" } });
+  expect(r.status()).toBe(401);
+  const j = await r.json();
+  expect(j.intentos_restantes).toBeGreaterThanOrEqual(0);
+  expect(j.intentos_restantes).toBeLessThan(5);
+  // Tras 5 fallos, la cuenta (Jon) se bloquea -> 429.
+  for (let i = 0; i < 5; i++) await request.post("/api/auth/login", { data: { usuario: "Jon", pin: "0000" } });
+  r = await request.post("/api/auth/login", { data: { usuario: "Jon", pin: "1111" } });
+  expect(r.status()).toBe(429);
+  expect((await r.json()).bloqueado).toBeTruthy();
+});
+
+test("seguridad: cambio de PIN requiere el PIN actual", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  // PIN actual incorrecto -> 400.
+  const malo = await request.post("/api/auth/cambiar-pin", { headers: { Authorization: `Bearer ${sesion.token}` }, data: { pin_actual: "0000", pin_nuevo: "1234" } });
+  expect(malo.status()).toBe(400);
+  // PIN actual correcto (cambio no destructivo 3333->3333) -> ok.
+  const ok = await request.post("/api/auth/cambiar-pin", { headers: { Authorization: `Bearer ${sesion.token}` }, data: { pin_actual: "3333", pin_nuevo: "3333" } });
+  expect(ok.ok()).toBeTruthy();
+});
+
 test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", async ({ page }) => {
   await page.goto("/");
   await page.waitForSelector("#ubtn-Moni");

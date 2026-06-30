@@ -20,14 +20,28 @@ const EXPIRA = "12h";
 const MAX_INTENTOS = 5;
 const BLOQUEO_MS = 15 * 60 * 1000;
 
-// ── Secreto JWT: obligatorio en producción ──────────────────────────────────
-const SECRET = process.env.JWT_SECRET || (EN_PRODUCCION ? null : "control-m-secret-dev-solo-local");
+// ── Secreto JWT ─────────────────────────────────────────────────────────────
+// Regla: NUNCA usar la clave de desarrollo en producción. Pero tampoco tumbar el
+// servicio: si falta JWT_SECRET en producción, se genera un secreto ALEATORIO
+// fuerte al arrancar (las sesiones no sobreviven a reinicios hasta que se define
+// JWT_SECRET). Con REQUIRE_JWT_SECRET=1 sí se exige y el arranque se aborta.
+let SECRET = process.env.JWT_SECRET || "";
 if (!SECRET) {
-  console.error("FATAL: JWT_SECRET es obligatorio en producción. Define la variable de entorno JWT_SECRET.");
-  process.exit(1);
-}
-if (!process.env.JWT_SECRET) {
-  console.warn("⚠️  JWT_SECRET no definido: usando clave de desarrollo (solo local).");
+  if (EN_PRODUCCION) {
+    if (process.env.REQUIRE_JWT_SECRET === "1") {
+      console.error("FATAL: JWT_SECRET es obligatorio (REQUIRE_JWT_SECRET=1) y no está definido.");
+      process.exit(1);
+    }
+    SECRET = crypto.randomBytes(48).toString("hex");
+    console.error(
+      "⚠️  CRÍTICO: JWT_SECRET no definido en producción. Uso un secreto ALEATORIO temporal:\n" +
+      "   las sesiones se cerrarán en cada reinicio. Define JWT_SECRET en las variables de\n" +
+      "   entorno de Render para sesiones estables y seguras."
+    );
+  } else {
+    SECRET = "control-m-secret-dev-solo-local";
+    console.warn("⚠️  JWT_SECRET no definido: usando clave de desarrollo (solo local).");
+  }
 }
 
 // Permisos del rol "equipo" (primer segmento de /api/<x>). Admin ve todo.
@@ -69,7 +83,8 @@ function usuariosSeedDefault() {
       console.error("SEED_USERS no es JSON válido, se ignora.");
     }
   }
-  if (EN_PRODUCCION) return []; // en producción no inventamos PIN: hay que sembrar explícitamente
+  // Bootstrap del equipo (PIN hasheado al sembrar, cambiable y marcado como
+  // temporal). En un despliegue real define SEED_USERS para fijar vuestros PIN.
   return [
     { key: "Jon", nombre: "Jon", rol: "admin", pin: "1111" },
     { key: "Lara", nombre: "Lara", rol: "equipo", pin: "2222" },

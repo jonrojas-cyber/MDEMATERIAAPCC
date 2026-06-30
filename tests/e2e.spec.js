@@ -14,7 +14,7 @@ async function login(page) {
   for (const d of "3333") {
     await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   }
-  await page.waitForSelector(".home-nav", { timeout: 15_000 });
+  await page.waitForSelector(".dash", { timeout: 15_000 });
 }
 
 test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
@@ -44,15 +44,19 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("login + inicio: home de tareas con 7 áreas y cero errores de JS", async ({ page }) => {
+test("login + inicio: dashboard de 6 tarjetas sin scroll y cero errores de JS", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // La home pregunta una sola cosa.
-  await expect(page.locator(".home-question")).toContainText(/qué tengo que hacer/i);
-  // Las 7 áreas (Tareas · Producción · Almacén · Compras · APPCC · Negocio · Configuración).
-  await expect(page.locator(".navchip")).toHaveCount(7);
-  await expect(page.locator(".navchip").first()).toHaveJSProperty("tagName", "BUTTON");
+  // 6 bloques grandes para admin; el primero es ALERTAS.
+  await expect(page.locator(".dashcard")).toHaveCount(6);
+  await expect(page.locator(".dashcard").first()).toContainText(/ALERTAS/);
+  // El dashboard cabe sin scroll (no hay desbordamiento vertical).
+  const noScroll = await page.evaluate(() => {
+    const s = document.getElementById("screen-home");
+    return s.scrollHeight <= s.clientHeight + 2;
+  });
+  expect(noScroll).toBeTruthy();
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 
@@ -60,11 +64,10 @@ test("tareas: bandeja única con prioridad y acción directa", async ({ page }) 
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // La home muestra la bandeja de tareas con su recuento.
-  await expect(page.locator(".qha")).toBeVisible();
-  await expect(page.locator(".tareas-cuenta")).toContainText(/cr[ií]ticas/i);
-  await page.evaluate(() => irA_tareas());
+  // Abrir Tareas desde la tarjeta ALERTAS.
+  await page.locator(".dashcard").first().click();
   await expect(page.locator(".screen-head")).toContainText(/tareas/i);
+  await expect(page.locator(".tareas-cuenta")).toContainText(/cr[ií]ticas/i);
   // Hay tareas con botón de acción directa (verbo imperativo).
   await expect(page.locator(".dec-act").first()).toBeVisible();
   await expect(page.locator(".dec-act-btn").first()).toBeVisible();
@@ -96,7 +99,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
-  await page.waitForSelector(".home-nav");
+  await page.waitForSelector(".dash");
   await page.evaluate(() => irA_materias());
   // Almacén de 3 niveles: macro → subcategoría → producto → ficha.
   await page.locator(".alm-macro").first().click();
@@ -114,20 +117,20 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   await login(page);
 
   // Inicio → submenú Almacén → sección Materias (su padre es Almacén).
-  await page.evaluate(() => irA_categoria("almacen"));
+  await page.evaluate(() => irA_categoria("materia"));
   await expect(page.locator(".modrow").first()).toBeVisible();
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
 
-  // "Volver" debe llevar al submenú de Almacén (no al inicio).
+  // "Volver" debe llevar al submenú de Materia (su padre), no al inicio.
   await page.click("#topbar-back");
   await expect(page.locator(".modrow").first()).toBeVisible();
-  await expect(page.locator("#topbar-section")).toHaveText(/almac/i);
+  await expect(page.locator("#topbar-section")).toHaveText(/materia/i);
   await expect(page.locator("#topbar-back")).toBeVisible();
 
   // "Volver" otra vez debe llevar al inicio (áreas visibles, sin botón volver).
   await page.click("#topbar-back");
-  await expect(page.locator(".navchip").first()).toBeVisible();
+  await expect(page.locator(".dashcard").first()).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
   expect(errors).toEqual([]);
@@ -136,12 +139,12 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 test("el logo del encabezado vuelve al inicio desde cualquier sección", async ({ page }) => {
   await login(page);
   // Entra profundo: submenú Almacén → sección Materias.
-  await page.evaluate(() => irA_categoria("almacen"));
+  await page.evaluate(() => irA_categoria("materia"));
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el logotipo de texto → inicio.
   await page.click(".topbar .brandword");
-  await expect(page.locator(".navchip").first()).toBeVisible();
+  await expect(page.locator(".dashcard").first()).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
@@ -315,10 +318,10 @@ test("escáner de documento: endereza y devuelve una imagen procesada", async ({
   expect(errors).toEqual([]);
 });
 
-test("acceso por teclado: Enter abre un área", async ({ page }) => {
+test("acceso por teclado: Enter abre una tarjeta", async ({ page }) => {
   await login(page);
-  await page.locator(".navchip").first().focus();
+  await page.locator(".dashcard").first().focus();
   await page.keyboard.press("Enter");
-  // La primera área es "Tareas" → abre la bandeja.
+  // La primera tarjeta es "ALERTAS" → abre la bandeja de tareas.
   await expect(page.locator(".screen-head")).toContainText(/tareas/i);
 });

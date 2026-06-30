@@ -25,6 +25,7 @@ const USUARIOS = {
 // Qué puede tocar el rol "equipo" (primer segmento de /api/<x>). Admin ve todo.
 const EQUIPO_ALLOWED = new Set([
   "inicio",
+  "decisiones", // bandeja de tareas: el equipo necesita ver qué hacer ahora
   "preparaciones",
   "lotes",
   "revisiones",
@@ -32,6 +33,7 @@ const EQUIPO_ALLOWED = new Set([
   "materias", // lectura necesaria para preparaciones/ajustes
   "recetas", // lectura necesaria para preparaciones
   "carta",
+  "etiquetas", // imprimir / reimprimir etiquetas de lote
 ]);
 
 function login(usuario, pin) {

@@ -66,7 +66,49 @@ async function loadAll(name) {
   return r.rows.map((row) => row.data);
 }
 
-// Reemplaza el contenido completo de la entidad respetando el orden del array.
+// ── CRUD por fila (real, sin reescribir la tabla entera) ────────────────────
+const SQL_UPSERT = (t) =>
+  `INSERT INTO ${t} (id, data) VALUES ($1, $2)
+   ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
+
+// Inserta o actualiza UNA fila. La promesa resuelve cuando la fila está
+// confirmada (autocommit de pg). Es la operación normal de escritura.
+async function upsert(name, row) {
+  const t = ident(name);
+  if (!row || row.id == null) throw new Error(`Fila sin id para '${t}'`);
+  await pool.query(SQL_UPSERT(t), [String(row.id), row]);
+}
+
+// Borra UNA fila por id. Resuelve tras confirmar.
+async function del(name, id) {
+  const t = ident(name);
+  await pool.query(`DELETE FROM ${t} WHERE id = $1`, [String(id)]);
+}
+
+// Transacción atómica: ejecuta fn con helpers ligados al cliente; COMMIT si va
+// bien, ROLLBACK si lanza. Sirve para operaciones multi-entidad (p. ej. cerrar
+// una producción: descontar materias + crear lote en un solo commit).
+async function tx(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const api = {
+      upsert: (name, row) => client.query(SQL_UPSERT(ident(name)), [String(row.id), row]),
+      del: (name, id) => client.query(`DELETE FROM ${ident(name)} WHERE id = $1`, [String(id)]),
+      query: (text, params) => client.query(text, params),
+    };
+    const r = await fn(api);
+    await client.query("COMMIT");
+    return r;
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+// Reemplazo masivo: SOLO para siembra/migración inicial, no en el flujo normal.
 async function replaceAll(name, items) {
   const t = ident(name);
   const client = await pool.connect();
@@ -75,11 +117,7 @@ async function replaceAll(name, items) {
     await client.query(`DELETE FROM ${t}`);
     for (const item of items) {
       if (!item || item.id == null) continue;
-      await client.query(
-        `INSERT INTO ${t} (id, data) VALUES ($1, $2)
-         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
-        [String(item.id), item]
-      );
+      await client.query(SQL_UPSERT(t), [String(item.id), item]);
     }
     await client.query("COMMIT");
   } catch (e) {
@@ -94,4 +132,9 @@ function isActive() {
   return pool != null;
 }
 
-module.exports = { connect, ensureTable, count, loadAll, replaceAll, isActive };
+// Hook de test: inyecta un pool falso para validar el SQL sin un Postgres real.
+function __setPoolForTests(fake) {
+  pool = fake;
+}
+
+module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, replaceAll, isActive, __setPoolForTests };

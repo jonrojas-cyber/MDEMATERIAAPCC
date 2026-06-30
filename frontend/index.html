@@ -978,6 +978,9 @@ input, select { font-family: inherit; font-size: 13px; }
 .dashcard-badge { position: absolute; top: 12px; right: 12px; min-width: 22px; text-align: center; font-size: 12px; font-weight: 700;
   color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .dashcard-badge.rojo { color: #fff; background: #b5462a; border-color: #b5462a; }
+.dash-informes { flex: 0 0 auto; margin-top: 10px; width: 100%; background: none; border: 1px solid var(--line);
+  border-radius: 10px; font-family: var(--sans); font-size: 12px; color: var(--muted); padding: 11px; cursor: pointer; }
+.dash-informes:hover { color: var(--ink); border-color: var(--ink); }
 @media (max-height: 560px) { .dashcard-name { font-size: 16px; } .dashcard-sub { font-size: 9.5px; } }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
 /* Número con tamaño fijo y contenido (sin unidades cqh, que algunos móviles
@@ -1323,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v71</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v72</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1791,6 +1794,7 @@ async function irA_appcc(){
       <div class="section-label">Control de seguridad alimentaria</div>
       <div class="appcc-grid">
         ${tile("Lotes y caducidades","Trazabilidad y vida útil","irA_lotes()", caducados?`${caducados} caducados`:(proximos?`${proximos} por caducar`:""))}
+        ${tile("Etiquetas","Imprimir · Reimprimir · Historial","irA_etiquetas()", "")}
         ${tile("Recepciones","Entrada y cotejo de albaranes","irA_recepcion()", recepPend?`${recepPend} pendientes`:"")}
         ${tile("Temperaturas","Neveras y congelador",`almaccPronto()`, "")}
         ${tile("Limpieza","Registro de limpieza",`almaccPronto()`, "")}
@@ -1874,15 +1878,13 @@ async function loadHome() {
     const importantes = dec ? (decCuenta(dec).importante) : 0;
     const pendPrep = (d.preparar||[]).length, pendPedir = (d.pedir||[]).length;
 
-    // 6 bloques grandes. ALERTAS primero: lo crítico siempre a la vista.
+    // 4 bloques grandes (2×2), sin scroll. ALERTAS primero: lo crítico a la vista.
     const cards = [
-      { name:"ALERTAS",    sub:"Qué hacer ahora",            go:"irA_tareas()",                 badge: criticas||importantes, badgeRojo: criticas>0 },
-      { name:"PRODUCCIÓN", sub:"Producir · Recetas · Histórico", go:"irA_preparaciones()",      badge: pendPrep },
-      { name:"MATERIA",    sub:"Stock · Compras · Proveedores", go:"irA_categoria('materia')",  badge: pendPedir },
-      { name:"APPCC",      sub:"Lotes · Caducidades · Trazab.", go:"irA_appcc()",               badge: caducados, badgeRojo: caducados>0 },
-      { name:"ETIQUETAS",  sub:"Imprimir · Reimprimir · Histórico", go:"irA_etiquetas()",       badge: 0 },
-      { name:"INFORMES",   sub:"Costes · Mermas · Márgenes",  go:"irA_categoria('informes')",   badge: 0, admin:true },
-    ].filter(c => !c.admin || esAdmin);
+      { name:"ALERTAS",    sub:"Qué hacer ahora",                 go:"irA_tareas()",             badge: criticas||importantes, badgeRojo: criticas>0 },
+      { name:"PRODUCCIÓN", sub:"Producir · Recetas · Etiquetas",  go:"irA_preparaciones()",      badge: pendPrep },
+      { name:"MATERIA",    sub:"Stock · Compras · Proveedores",   go:"irA_categoria('materia')", badge: pendPedir },
+      { name:"APPCC",      sub:"Lotes · Caducidades · Etiquetas", go:"irA_appcc()",              badge: caducados, badgeRojo: caducados>0 },
+    ];
 
     el("home-content").innerHTML = `
       <div class="home-head">
@@ -1895,7 +1897,8 @@ async function loadHome() {
           <span class="dashcard-name">${c.name}</span>
           <span class="dashcard-sub">${c.sub}</span>
         </button>`).join("")}
-      </div>`;
+      </div>
+      ${esAdmin ? `<button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }

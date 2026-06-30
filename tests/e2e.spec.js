@@ -68,12 +68,12 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("login + inicio: dashboard de 6 tarjetas sin scroll y cero errores de JS", async ({ page }) => {
+test("login + inicio: dashboard de 4 tarjetas sin scroll y cero errores de JS", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // 6 bloques grandes para admin; el primero es ALERTAS.
-  await expect(page.locator(".dashcard")).toHaveCount(6);
+  // 4 bloques grandes (2×2); el primero es ALERTAS.
+  await expect(page.locator(".dashcard")).toHaveCount(4);
   await expect(page.locator(".dashcard").first()).toContainText(/ALERTAS/);
   // El dashboard cabe sin scroll (no hay desbordamiento vertical).
   const noScroll = await page.evaluate(() => {

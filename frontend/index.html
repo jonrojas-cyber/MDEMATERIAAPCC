@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v72</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v73</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1799,12 +1799,40 @@ async function irA_appcc(){
         ${tile("Temperaturas","Neveras y congelador",`almaccPronto()`, "")}
         ${tile("Limpieza","Registro de limpieza",`almaccPronto()`, "")}
         ${tile("Incidencias","Producto no apto y bloqueos",`almaccPronto()`, "")}
-        ${tile("Auditorías","Historial exportable",`almaccPronto()`, "")}
+        ${tile("Auditoría","Quién hizo qué y cuándo","irA_auditoria()", "")}
       </div>
-      <div class="appcc-nota">Las neveras, limpieza, incidencias y auditorías llegan en la siguiente fase. Hoy ya tienes lotes, caducidades, trazabilidad por QR y recepciones.</div>`);
+      <div class="appcc-nota">Las neveras, limpieza e incidencias llegan en la siguiente fase. Hoy ya tienes lotes, caducidades, trazabilidad por QR, recepciones y auditoría de acciones críticas.</div>`);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 function almaccPronto(){ alert("Disponible en la siguiente fase de APPCC."); }
+
+// ── AUDITORÍA · registro de acciones críticas (admin) ─────────────────────
+const AUD_LABEL = { lote_baja:"Baja de lote", lote_creado:"Lote creado", recepcion_aceptada:"Recepción aceptada", recepcion_rechazada:"Recepción rechazada", ajuste_stock:"Ajuste / merma", etiqueta_impresa:"Etiqueta impresa" };
+function audLabel(a){ return AUD_LABEL[a] || a; }
+async function irA_auditoria(){
+  openSection("auditoria","Auditoría");
+  setInner(`<div class="empty">Cargando registro…</div>`);
+  try{
+    const d = await api("/auditoria?limit=200");
+    window._aud = { eventos: d.eventos || [], acciones: d.acciones || [], filtro: "" };
+    renderAuditoria();
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function renderAuditoria(){
+  const s = window._aud; if(!s) return;
+  let ev = s.eventos;
+  if(s.filtro) ev = ev.filter(e=>e.accion===s.filtro);
+  const chips = `<div class="chips">
+    <button class="chip ${!s.filtro?'on':''}" onclick="window._aud.filtro='';renderAuditoria()">Todo · ${s.eventos.length}</button>
+    ${s.acciones.map(a=>`<button class="chip ${s.filtro===a?'on':''}" onclick="window._aud.filtro='${a}';renderAuditoria()">${esc(audLabel(a))}</button>`).join("")}
+  </div>`;
+  const list = ev.length ? ev.map(e=>`
+    <div class="card">
+      <div class="card-name">${esc(audLabel(e.accion))} — ${esc(e.resumen||"")}</div>
+      <div class="card-meta">${esc(e.usuario_nombre||"")} · ${fmt(e.fecha)}${e.local_id&&e.local_id!=="principal"?` · ${esc(e.local_id)}`:""}</div>
+    </div>`).join("") : `<div class="empty">Sin eventos registrados todavía.</div>`;
+  setInner(`<div class="section-label">Registro de acciones críticas</div>${chips}${list}`);
+}
 
 // ── ETIQUETAS · imprimir / reimprimir / historial ─────────────────────────
 async function irA_etiquetas(){

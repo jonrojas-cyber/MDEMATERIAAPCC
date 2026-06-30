@@ -237,6 +237,15 @@ router.post("/:id/finalizar", async (req, res) => {
     responsable: preparacion.responsable,
   });
 
+  require("../auditoria").registrar(req, {
+    accion: "lote_creado",
+    entidad: "lotes",
+    entidad_id: lote.id,
+    resumen: `Producción de ${receta.nombre}: lote ${lote.codigo} (${lote.cantidad_inicial} ${receta.unidad})`,
+    meta: { codigo: lote.codigo, receta: receta.nombre, cantidad: lote.cantidad_inicial, responsable: preparacion.responsable },
+  });
+  await store.flush(); // confirmar stock + lote + preparación antes de responder
+
   res.json({
     preparacion: preparacionActualizada,
     lote,

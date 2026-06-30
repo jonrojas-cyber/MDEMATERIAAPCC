@@ -24,6 +24,13 @@ router.post("/:id/reimprimir", (req, res) => {
     impresora: req.body.impresora || "Navegador",
   });
   if (!etiqueta) return res.status(404).json({ error: "Etiqueta no encontrada" });
+  require("../auditoria").registrar(req, {
+    accion: "etiqueta_impresa",
+    entidad: "etiquetas",
+    entidad_id: etiqueta.id,
+    resumen: `Reimpresión de etiqueta ${etiqueta.codigo_lote || etiqueta.id}`,
+    meta: { lote_id: etiqueta.lote_id },
+  });
   res.json(etiqueta);
 });
 

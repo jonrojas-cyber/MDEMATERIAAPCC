@@ -92,14 +92,38 @@ async function init() {
   );
 }
 
-function persist(name) {
-  if (usingDb) {
-    db.replaceAll(name, cache[name]).catch((e) =>
-      console.error(`Error guardando '${name}' en PostgreSQL:`, e.message)
-    );
-  } else {
-    writeFile(name, cache[name]);
-  }
+// ── Cola de escritura por entidad ───────────────────────────────────────────
+// Serializa las escrituras de cada entidad (orden garantizado) y permite
+// esperar la confirmación con flush(). En modo JSON la escritura es síncrona y
+// durable (fs.writeFileSync), así que la promesa resuelve ya confirmada.
+const colas = {};
+function encolar(name, op) {
+  const prev = colas[name] || Promise.resolve();
+  const next = prev.then(op).catch((e) => console.error(`Error guardando '${name}':`, e.message));
+  colas[name] = next;
+  return next;
+}
+// Espera a que TODAS las escrituras pendientes estén confirmadas en disco/BD.
+function flush() {
+  return Promise.allSettled(Object.values(colas));
+}
+
+// Persistencia por fila (no reescribe la tabla entera).
+function persistUpsert(name, row) {
+  if (usingDb) return encolar(name, () => db.upsert(name, row));
+  writeFile(name, cache[name]); // JSON: durable y síncrono
+  return Promise.resolve();
+}
+function persistDelete(name, id) {
+  if (usingDb) return encolar(name, () => db.del(name, id));
+  writeFile(name, cache[name]);
+  return Promise.resolve();
+}
+// Reemplazo masivo (writeAll): solo cuando de verdad cambia toda la colección.
+function persistAll(name) {
+  if (usingDb) return encolar(name, () => db.replaceAll(name, cache[name]));
+  writeFile(name, cache[name]);
+  return Promise.resolve();
 }
 
 function readAll(name) {
@@ -109,7 +133,7 @@ function readAll(name) {
 
 function writeAll(name, data) {
   cache[name] = data;
-  persist(name);
+  persistAll(name);
   return data;
 }
 
@@ -122,15 +146,59 @@ function update(name, id, patch) {
   const idx = items.findIndex((item) => item.id === id);
   if (idx === -1) return null;
   items[idx] = { ...items[idx], ...patch };
-  writeAll(name, items);
+  persistUpsert(name, items[idx]); // CRUD real: una sola fila
   return items[idx];
 }
 
 function insert(name, item) {
   const items = readAll(name);
   items.push(item);
-  writeAll(name, items);
+  persistUpsert(name, item); // CRUD real: una sola fila
   return item;
+}
+
+// Borra una fila por id (CRUD completo). Devuelve la fila borrada o null.
+function remove(name, id) {
+  const items = readAll(name);
+  const idx = items.findIndex((item) => item.id === id);
+  if (idx === -1) return null;
+  const [borrado] = items.splice(idx, 1);
+  persistDelete(name, id);
+  return borrado;
+}
+
+// Operación atómica multi-entidad (todo o nada). `fn` registra operaciones con
+// upsert(name,row) / del(name,id); NADA se aplica hasta que fn termina sin
+// lanzar. En BD se confirma en una transacción real; en JSON se reescriben los
+// ficheros afectados solo al final. Lectura: readAll ve el estado ya confirmado
+// (no las operaciones en curso de la propia transacción).
+async function transaction(fn) {
+  const ops = [];
+  const api = {
+    upsert: (name, row) => { if (!row || row.id == null) throw new Error(`upsert sin id en '${name}'`); ops.push({ tipo: "upsert", name, row }); },
+    del: (name, id) => ops.push({ tipo: "del", name, id }),
+    readAll,
+  };
+  await fn(api); // si lanza, no se aplica nada
+
+  if (usingDb) {
+    await db.tx(async (txdb) => {
+      for (const o of ops) {
+        if (o.tipo === "upsert") await txdb.upsert(o.name, o.row);
+        else await txdb.del(o.name, o.id);
+      }
+    });
+  }
+  // Aplica a la caché (y a los ficheros en modo JSON) una vez confirmado.
+  const tocadas = new Set();
+  for (const o of ops) {
+    const arr = readAll(o.name);
+    const i = arr.findIndex((x) => x.id === (o.tipo === "upsert" ? o.row.id : o.id));
+    if (o.tipo === "upsert") { if (i === -1) arr.push(o.row); else arr[i] = o.row; }
+    else if (i !== -1) arr.splice(i, 1);
+    tocadas.add(o.name);
+  }
+  if (!usingDb) tocadas.forEach((name) => writeFile(name, cache[name]));
 }
 
 function nextId(prefix, name) {
@@ -139,4 +207,4 @@ function nextId(prefix, name) {
   return `${prefix}-${String(n).padStart(3, "0")}-${Date.now().toString().slice(-5)}`;
 }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, nextId, DATA_DIR, ENTITIES };
+module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, DATA_DIR, ENTITIES };

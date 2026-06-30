@@ -39,6 +39,24 @@ test("seguridad: PIN hasheado, intentos restantes y bloqueo por fallos", async (
   expect((await r.json()).bloqueado).toBeTruthy();
 });
 
+test("auditoría: las acciones críticas quedan registradas y son admin-only", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const headers = { Authorization: `Bearer ${sesion.token}` };
+  // Dar de baja un lote debe dejar rastro en la auditoría (con usuario y local).
+  const lotes = await (await request.get("/api/lotes", { headers })).json();
+  const lid = lotes[0].id;
+  await request.post(`/api/lotes/${lid}/dar-de-baja`, { headers, data: { responsable: "Moni" } });
+  const aud = await (await request.get("/api/auditoria", { headers })).json();
+  const ev = aud.eventos.find((e) => e.accion === "lote_baja" && e.entidad_id === lid);
+  expect(ev).toBeTruthy();
+  expect(ev.usuario_nombre).toBeTruthy();
+  expect(ev.local_id).toBeTruthy();
+  // El rol equipo (Lara) no puede leer la auditoría.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const r = await request.get("/api/auditoria", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(r.status()).toBe(403);
+});
+
 test("seguridad: cambio de PIN requiere el PIN actual", async ({ request }) => {
   const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   // PIN actual incorrecto -> 400.

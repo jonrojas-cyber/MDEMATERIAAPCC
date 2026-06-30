@@ -293,6 +293,13 @@ router.post("/:id/estado", jsonGrande, (req, res) => {
   if (aceptada) cambios.stock_aplicado = true;
   if (req.body && req.body.nota_incidencia != null) cambios.nota_incidencia = String(req.body.nota_incidencia).trim();
   const actualizada = store.update("recepciones", req.params.id, cambios);
+  require("../auditoria").registrar(req, {
+    accion: estado === "Rechazado" ? "recepcion_rechazada" : "recepcion_aceptada",
+    entidad: "recepciones",
+    entidad_id: recepcion.id,
+    resumen: `Recepción ${recepcion.proveedor_nombre || recepcion.proveedor_id || ""} ${estado.toLowerCase()}${aceptada ? ` · ${aplicado.length} línea(s) al stock` : ""}`,
+    meta: { estado, importe_total: recepcion.importe_total, lineas_cargadas: aplicado.length },
+  });
   res.json({ ...actualizada, stock_cargado: aplicado });
 });
 

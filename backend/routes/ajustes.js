@@ -69,6 +69,13 @@ router.post("/", (req, res) => {
     fecha: new Date().toISOString(),
   };
   store.insert("ajustes", ajuste);
+  require("../auditoria").registrar(req, {
+    accion: "ajuste_stock",
+    entidad: tipo_objetivo === "lote" ? "lotes" : "materias",
+    entidad_id: objetivo_id,
+    resumen: `Ajuste de ${nombreObjetivo || objetivo_id}: ${cantidad} (${motivo})${costeEstimado ? ` · ${costeEstimado.toFixed(2)} €` : ""}`,
+    meta: { cantidad, motivo, coste_estimado: costeEstimado },
+  });
   res.status(201).json(ajuste);
 });
 

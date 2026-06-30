@@ -91,6 +91,13 @@ router.post("/:id/dar-de-baja", (req, res) => {
     estado: "Fuera de servicio",
     cantidad_restante: 0,
   });
+  require("../auditoria").registrar(req, {
+    accion: "lote_baja",
+    entidad: "lotes",
+    entidad_id: lote.id,
+    resumen: `Baja del lote ${lote.codigo}${lote.cantidad_restante > 0 ? ` (${lote.cantidad_restante} de merma, ${coste.toFixed(2)} €)` : ""}`,
+    meta: { codigo: lote.codigo, cantidad_baja: lote.cantidad_restante, coste },
+  });
   res.json(decorate(actualizado));
 });
 

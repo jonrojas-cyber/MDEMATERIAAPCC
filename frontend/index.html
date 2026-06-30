@@ -1323,7 +1323,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v70</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v71</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1473,12 +1473,21 @@ async function checkPin() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ usuario: _loginKey, pin }),
     });
-    if (!r.ok) throw new Error();
-    const data = await r.json();
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      // Mensaje real del servidor: bloqueo por intentos o intentos restantes.
+      let msg = data.error || "PIN incorrecto · vuelve a intentarlo";
+      if (data.bloqueado && data.segundos) msg = `Cuenta bloqueada · espera ${Math.ceil(data.segundos / 60)} min`;
+      else if (data.intentos_restantes != null) msg = `PIN incorrecto · ${data.intentos_restantes} intento(s) restante(s)`;
+      document.getElementById("pin-err").textContent = msg;
+      _pinVal = "";
+      pintarPinDots();
+      return;
+    }
     setSession({ key: data.usuario.key, nombre: data.usuario.nombre, rol: data.usuario.rol, token: data.token });
     entrarApp();
   } catch (e) {
-    document.getElementById("pin-err").textContent = "PIN incorrecto · vuelve a intentarlo";
+    document.getElementById("pin-err").textContent = "No se pudo conectar. Inténtalo de nuevo.";
     _pinVal = "";
     pintarPinDots();
   }
@@ -1489,8 +1498,21 @@ function renderUserChips() {
   const el = document.getElementById("topbar-user");
   if (!el || !u) return;
   el.innerHTML = `
-    <span style="font-size:11px;color:#AAA490;margin-right:10px;">${u.nombre}</span>
+    <button class="user-chip" onclick="cambiarMiPin()" title="Cambiar PIN" style="margin-right:8px;">${u.nombre}</button>
     <button class="user-chip" onclick="logout()">Salir</button>`;
+}
+
+// Cambio de PIN del usuario en sesión (4 dígitos).
+async function cambiarMiPin() {
+  const actual = prompt("PIN actual (4 dígitos):");
+  if (actual == null) return;
+  const nuevo = prompt("PIN nuevo (4 dígitos):");
+  if (nuevo == null) return;
+  if (!/^\d{4}$/.test(nuevo)) { alert("El PIN nuevo debe tener 4 dígitos."); return; }
+  try {
+    await api("/auth/cambiar-pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin_actual: actual, pin_nuevo: nuevo }) });
+    alert("PIN actualizado. Úsalo la próxima vez que entres.");
+  } catch (e) { alert(e.message); }
 }
 
 // ── NAVEGACIÓN ────────────────────────────────────────

@@ -122,11 +122,15 @@ function contarDocs(body) {
   return n;
 }
 
+// Modo diagnóstico: `node conector.js --todo` pide TAMBIÉN los ya procesados y
+// guarda la respuesta cruda de Ágora en respuesta-agora.json (para soporte).
+const DIAG = process.argv.includes("--todo") || process.argv.includes("--diag");
+
 // ── 1) Leer el export de Ágora ──────────────────────────────────────────────
 async function leerDeAgora(c) {
   const p = new URLSearchParams();
   p.set("filter", c.filtro);
-  p.set("include-processed", "false"); // solo lo que aún no hemos confirmado
+  p.set("include-processed", DIAG ? "true" : "false"); // --todo trae también los ya confirmados
   // Día de negocio: por defecto HOY. Se puede fijar otro en config (business_day)
   // o desactivar poniendo business_day: false.
   if (c.business_day !== false) {
@@ -139,6 +143,12 @@ async function leerDeAgora(c) {
   const r = await pedir(url, { headers: { "Api-Token": c.agora_token } });
   if (r.status === 401 || r.status === 403) salir("Ágora rechazó el Api-Token (401/403). Revisa 'agora_token'.");
   if (r.status >= 400) throw new Error(`Ágora respondió ${r.status}: ${r.texto.slice(0, 200)}`);
+
+  // Guarda la respuesta cruda para poder inspeccionar la estructura real.
+  try {
+    fs.writeFileSync(path.join(__dirname, "respuesta-agora.json"), r.texto || "");
+    log("  (guardada la respuesta en respuesta-agora.json)");
+  } catch (_) { /* si no se puede escribir, seguimos */ }
 
   // Diagnóstico: qué contestó Ágora exactamente.
   const claves = r.body && typeof r.body === "object" && !Array.isArray(r.body) ? Object.keys(r.body) : [];

@@ -1025,6 +1025,17 @@ input, select { font-family: inherit; font-size: 13px; }
   color: var(--muted); }
 .subtile-badge.on { color: #fff; background: #b5462a; border-radius: 20px; padding: 1px 6px; }
 @media (max-height: 620px) { .subtile-name { font-size: 15px; } .subtile-sub { font-size: 9px; } .subtile { padding: 12px; } }
+/* Gráficos del panel del propietario (monocromo tinta/papel) */
+.panel-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 6px; }
+.chart { margin: 2px 0 6px; }
+.chart-row { margin-bottom: 9px; }
+.chart-row-top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--sans); }
+.chart-lbl { font-size: 11px; color: var(--ink); font-weight: 600; }
+.chart-val { font-size: 11px; color: var(--muted); font-weight: 700; }
+.chart-track { height: 9px; background: var(--olive-light); border-radius: 5px; overflow: hidden; margin-top: 3px; }
+.chart-bar { height: 100%; background: var(--ink); border-radius: 5px; }
+.chart-xlabels { display: flex; justify-content: space-between; font-family: var(--sans); font-size: 8px; color: var(--muted); margin-top: 2px; }
+.chart-xlabels span { flex: 1; text-align: center; }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
 /* Número con tamaño fijo y contenido (sin unidades cqh, que algunos móviles
    no soportan y hacían que se saliera del botón). Quitamos los puntos
@@ -1369,7 +1380,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v89</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v90</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2115,7 +2126,8 @@ async function loadHome() {
           <span class="dashcard-sub">${c.sub}</span>
         </button>`).join("")}
       </div>
-      ${esAdmin ? `<button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
+      ${esAdmin ? `<button class="dash-informes" onclick="irA_panel()" style="border-color:var(--ink);color:var(--ink);font-weight:700;">Panel del propietario · dónde está mi dinero →</button>
+      <button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }
@@ -2360,6 +2372,74 @@ async function irA_preparaciones() {
       <button class="btn-ghost" onclick="irA_calendario()">Calendario anual →</button></div>`;
     setInner(html);
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// ── PANEL DEL PROPIETARIO · dónde está mi dinero ───────────────────────────
+function eur0(n){ return Math.round(Number(n)||0).toLocaleString("es-ES"); }
+function fmtEur(n,u){ return (Math.round((Number(n)||0)*100)/100).toLocaleString("es-ES")+(u?` ${u}`:""); }
+// Barras horizontales monocromas a partir de [{label,value}].
+function svgBarsH(data, opts){
+  data=(data||[]).filter(d=>d&&isFinite(d.value));
+  if(!data.length) return `<div class="empty" style="padding:10px 0;">Sin datos todavía.</div>`;
+  const max=Math.max(1,...data.map(d=>Math.abs(d.value)));
+  const u=(opts&&opts.unit)||"";
+  return `<div class="chart">`+data.map(d=>{
+    const w=Math.max(2,Math.round(Math.abs(d.value)/max*100));
+    return `<div class="chart-row">
+      <div class="chart-row-top"><span class="chart-lbl">${esc(d.label)}</span><span class="chart-val">${fmtEur(d.value,u)}</span></div>
+      <div class="chart-track"><div class="chart-bar" style="width:${w}%"></div></div>
+    </div>`;
+  }).join("")+`</div>`;
+}
+// Línea (serie temporal) en SVG monocromo.
+function svgLine(data){
+  data=(data||[]);
+  if(!data.length) return `<div class="empty" style="padding:10px 0;">Sin datos.</div>`;
+  const W=320,H=88,pad=7, n=data.length, max=Math.max(0.01,...data.map(d=>d.value));
+  const x=i=> pad + i*(W-2*pad)/Math.max(1,n-1);
+  const y=v=> H-pad - (v/max)*(H-2*pad);
+  const pts=data.map((d,i)=>`${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join(" ");
+  const area=`${pad},${(H-pad)} ${pts} ${(W-pad)},${(H-pad)}`;
+  const step=Math.max(1,Math.ceil(n/6));
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;overflow:visible;">
+    <polygon points="${area}" fill="var(--olive-light)" opacity="0.55"></polygon>
+    <polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"></polyline>
+    ${data.map((d,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(d.value).toFixed(1)}" r="1.7" fill="var(--ink)"></circle>`).join("")}
+  </svg>
+  <div class="chart-xlabels">${data.map((d,i)=>`<span>${i%step===0?esc(d.label):""}</span>`).join("")}</div>`;
+}
+async function irA_panel(){
+  openSection("panel","Panel del propietario");
+  setInner(`<div class="empty">Cargando el dinero…</div>`);
+  try{
+    const p=await api("/analitica?dias=30");
+    const k=p.kpis;
+    const kbox=(l,v,s,warn)=>`<div class="kpi-box ${warn?'warn':''}"><div class="kpi-label">${l}</div><div class="kpi-val">${v}</div><div class="kpi-sub">${s||''}</div></div>`;
+    let html=`<div class="section-label">Hoy</div>
+      <div class="home-kpis panel-kpis">
+        ${kbox("Facturación", eur0(k.facturacion_hoy)+" €","")}
+        ${kbox("Coste vendido", eur0(k.coste_vendido)+" €","")}
+        ${kbox("Margen bruto", k.margen_bruto_pct!=null?k.margen_bruto_pct+" %":"—", eur0(k.margen_bruto_eur)+" €")}
+        ${kbox("Merma hoy", eur0(k.merma_hoy)+" €","", k.merma_hoy>0)}
+        ${kbox("Valor almacén", eur0(k.valor_almacen)+" €","materia prima")}
+        ${kbox("Producción lista", eur0(k.valor_produccion)+" €","en cámara")}
+        ${kbox("Stock crítico", k.stock_critico,"materias", k.stock_critico>0)}
+        ${kbox("Caducan 48h", k.caducidades_48h,"lotes", k.caducidades_48h>0)}
+      </div>`;
+    const b=p.balance;
+    html+=`<div class="section-label">Producido · Vendido · Tirado (30 días)</div>`+
+      svgBarsH([{label:"Producido",value:b.producido_eur},{label:"Vendido",value:b.vendido_eur},{label:"Tirado",value:b.tirado_eur}],{unit:"€"});
+    html+=`<div class="section-label">Valor de almacén por categoría</div>`+svgBarsH(p.valor_almacen_categoria,{unit:"€"});
+    html+=`<div class="section-label">Mermas € · últimos 14 días</div><div class="card">`+svgLine(p.mermas_por_dia)+`</div>`;
+    html+=`<div class="section-label">Top productos por venta (30 días)</div>`+
+      (p.top.por_venta.length? svgBarsH(p.top.por_venta.map(x=>({label:x.producto,value:x.importe})),{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Aún sin ventas registradas (llegan de Ágora).</div>`);
+    if(p.top.por_beneficio.length) html+=`<div class="section-label">Top por beneficio</div>`+svgBarsH(p.top.por_beneficio.map(x=>({label:x.producto,value:x.beneficio})),{unit:"€"});
+    if(p.top.menor_margen.length) html+=`<div class="section-label">Productos problema (menor margen)</div>`+
+      p.top.menor_margen.map(x=>`<div class="card"><div class="card-name">${esc(x.producto)} <span class="tag-ink">${x.margen}% margen</span></div><div class="card-meta">${x.unidades} uds · ${eur0(x.importe)} €</div></div>`).join("");
+    html+=`<div class="section-label">Compras por proveedor (30 días)</div>`+
+      (p.compras_proveedor.length? svgBarsH(p.compras_proveedor,{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Sin recepciones registradas.</div>`);
+    setInner(html);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
 
 // ── PREVISIÓN DE DEMANDA · por día de la semana ────────────────────────────

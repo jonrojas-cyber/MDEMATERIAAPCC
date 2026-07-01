@@ -92,6 +92,26 @@ function log(...a) {
 }
 function salir(msg) { console.error("ERROR: " + msg); process.exit(1); }
 
+// Extrae un mensaje ÚTIL de cualquier error (incluye AggregateError, que suele
+// venir con mensaje vacío y el detalle real dentro de .errors — típico al no
+// poder conectar con localhost o con un dominio con IPv4+IPv6).
+function descErr(e) {
+  if (!e) return "error desconocido";
+  const partes = [];
+  if (e.code) partes.push(e.code);
+  if (e.message) partes.push(e.message);
+  if (Array.isArray(e.errors)) {
+    for (const sub of e.errors) {
+      const m = [sub && sub.code, sub && sub.message].filter(Boolean).join(" ");
+      if (m) partes.push(m);
+    }
+  }
+  let txt = partes.filter(Boolean).join(" · ") || String(e);
+  if (/ECONNREFUSED/.test(txt)) txt += "  → Ágora o Control M no aceptó la conexión (¿Ágora abierto? ¿puerto 8984 correcto?)";
+  if (/ENOTFOUND|EAI_AGAIN/.test(txt)) txt += "  → no se pudo resolver la dirección (revisa 'controlm_base' o la conexión a internet)";
+  return txt;
+}
+
 // ── 1) Leer el export de Ágora ──────────────────────────────────────────────
 async function leerDeAgora(c) {
   const p = new URLSearchParams();
@@ -140,8 +160,18 @@ async function confirmarAAgora(c, refs) {
 
 // ── Una vuelta completa ─────────────────────────────────────────────────────
 async function sincronizar(c) {
-  const datos = await leerDeAgora(c);
-  const r = await empujarAControlM(c, { documents: datos });
+  let datos;
+  try {
+    datos = await leerDeAgora(c);
+  } catch (e) {
+    throw new Error("[1/3 leyendo de Ágora en " + c.agora_base + "] " + descErr(e));
+  }
+  let r;
+  try {
+    r = await empujarAControlM(c, { documents: datos });
+  } catch (e) {
+    throw new Error("[2/3 enviando a Control M en " + c.controlm_base + "] " + descErr(e));
+  }
   const conf = c.confirmar_agora ? await confirmarAAgora(c, r.procesados_ref) : 0;
   const partes = [
     `${r.procesados ?? 0} procesado(s)`,
@@ -164,7 +194,7 @@ async function main() {
   log(`  Control M: ${c.controlm_base}`);
   const vuelta = async () => {
     try { await sincronizar(c); }
-    catch (e) { log("Fallo en la sincronización (se reintenta):", e.message); }
+    catch (e) { log("Fallo en la sincronización (se reintenta): " + (e.message || descErr(e))); }
   };
   await vuelta(); // primera pasada al arrancar
   setInterval(vuelta, Math.max(1, c.cada_min) * 60 * 1000);

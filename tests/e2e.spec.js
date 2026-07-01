@@ -169,7 +169,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Entra en el área Producción y comprueba que lista sus módulos.
   await page.evaluate(() => irA_categoria("produccion"));
-  await expect(page.locator(".modrow").first()).toBeVisible();
+  await expect(page.locator(".subtile").first()).toBeVisible();
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
@@ -192,13 +192,13 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 
   // Inicio → submenú Almacén → sección Materias (su padre es Almacén).
   await page.evaluate(() => irA_categoria("materia"));
-  await expect(page.locator(".modrow").first()).toBeVisible();
+  await expect(page.locator(".subtile").first()).toBeVisible();
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
 
   // "Volver" debe llevar al submenú de Materia (su padre), no al inicio.
   await page.click("#topbar-back");
-  await expect(page.locator(".modrow").first()).toBeVisible();
+  await expect(page.locator(".subtile").first()).toBeVisible();
   await expect(page.locator("#topbar-section")).toHaveText(/materia/i);
   await expect(page.locator("#topbar-back")).toBeVisible();
 
@@ -207,6 +207,19 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   await expect(page.locator(".dashcard").first()).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
+  expect(errors).toEqual([]);
+});
+
+test("apertura: al volver desde una tarea se regresa a la lista de apertura", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_apertura());
+  await expect(page.locator("#topbar-section")).toHaveText(/apertura/i);
+  await page.evaluate(() => aperAbrir("irA_temperaturas"));
+  await expect(page.locator("#topbar-section")).toHaveText(/temperatura/i);
+  await page.click("#topbar-back");
+  await expect(page.locator("#topbar-section")).toHaveText(/apertura/i);
   expect(errors).toEqual([]);
 });
 

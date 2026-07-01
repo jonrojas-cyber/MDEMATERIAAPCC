@@ -103,40 +103,71 @@ function importarVentas(texto, fuente = "csv") {
   return resumen;
 }
 
-// ── Importación estructurada desde el export de Ágora (JSON) ────────────────
-// Puente iframe + agora:pos:invoke-api: Ágora exporta Invoices/DeliveryNotes del
-// business-day; aquí mapeamos cada producto vendido a su escandallo y
-// descontamos stock. IDEMPOTENTE: cada documento se procesa una sola vez (se
-// recuerda su id en 'docs_agora'); el frontend confirma a Ágora con
-// POST /api/doc/processed para que deje de reexportarlo.
-// El schema exacto vive en la guía v8.9.3; el extractor es tolerante a variantes.
+// ── Importación estructurada desde el export de Ágora (guía v8.9.3) ──────────
+// Mapea cada línea vendida a su escandallo y descuenta stock, con las reglas
+// críticas de la guía:
+//   · Idempotencia por GlobalId, o por type+Serie+Number si no hay GlobalId.
+//   · Si UN producto de la línea no está vinculado → el documento se BLOQUEA
+//     (no se descuenta nada, no se marca procesado) hasta poder vincularlo.
+//   · Todo cambio de stock deja un movimiento en 'stock_movements' (libro).
+// El extractor es tolerante a variantes de nombre de campo.
 function campoDoc(d, nombres) {
   for (const n of nombres) if (d && d[n] != null && d[n] !== "") return d[n];
   return null;
 }
 function lineasDe(doc) {
-  const l = doc.lines || doc.lineas || doc.items || doc.details || doc.detalle || [];
+  const l = doc.Lines || doc.lines || doc.lineas || doc.items || doc.details || doc.detalle || [];
   return Array.isArray(l) ? l : [];
 }
-function docId(doc) {
-  return String(campoDoc(doc, ["id", "docId", "documentId", "number", "numero", "code", "codigo"]) || "");
+function tipoDoc(doc) {
+  return String(campoDoc(doc, ["type", "Type", "documentType", "docType"]) || doc.__type || "Doc");
 }
-// Número robusto para el puente JSON (no el parser de CSV español): admite
-// number nativo, "8.5", "1.234,56" (europeo) y "1,234.56" (anglosajón).
+function serieNumero(doc) {
+  const serie = campoDoc(doc, ["Serie", "serie", "series"]);
+  const number = campoDoc(doc, ["Number", "number", "numero", "num"]);
+  return { serie: serie != null ? String(serie) : null, number: number != null ? String(number) : null };
+}
+// Clave idempotente: GlobalId manda; si no, type:Serie:Number; si no, id/code.
+function claveIdem(doc) {
+  const gid = campoDoc(doc, ["GlobalId", "globalId", "global_id", "uuid"]);
+  if (gid) return "gid:" + String(gid);
+  const { serie, number } = serieNumero(doc);
+  if (serie != null && number != null) return `${tipoDoc(doc)}:${serie}:${number}`;
+  const id = campoDoc(doc, ["id", "docId", "documentId", "code", "codigo"]);
+  return id ? "id:" + String(id) : "";
+}
+// Número robusto (no el parser CSV español): number nativo, "8.5", "1.234,56", "1,234.56".
 function numJSON(v) {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   if (v == null) return 0;
   const s = String(v).trim();
-  if (/,\d{1,2}$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0; // 1.234,56
-  return parseFloat(s.replace(/,/g, "")) || 0; // 8.5 · 17 · 1,234.56
+  if (/,\d{1,2}$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
+  return parseFloat(s.replace(/,/g, "")) || 0;
 }
 
-function importarDocs(docs, { registrar } = {}) {
-  const lista = Array.isArray(docs) ? docs : Array.isArray(docs && docs.documents) ? docs.documents : [];
+// Normaliza el payload de Ágora a un array plano de docs con su tipo.
+// Admite: array de docs, {documents:[...]}, o {Invoices:[...],DeliveryNotes:[...]}.
+function normalizarDocs(docs) {
+  if (Array.isArray(docs)) return docs;
+  if (!docs || typeof docs !== "object") return [];
+  if (Array.isArray(docs.documents)) return docs.documents;
+  if (Array.isArray(docs.docs)) return docs.docs;
+  const out = [];
+  ["Invoices", "DeliveryNotes", "SalesOrders", "PurchaseOrders", "IncomingDeliveryNotes", "PurchaseInvoices"].forEach((tipo) => {
+    if (Array.isArray(docs[tipo])) docs[tipo].forEach((d) => out.push({ ...d, __type: tipo.replace(/s$/, "") }));
+  });
+  return out;
+}
+
+function importarDocs(docs, { registrar, usuario } = {}) {
+  const lista = normalizarDocs(docs);
   const productos = store.readAll("productos");
   const materias = store.readAll("materias");
   const ventas = store.readAll("ventas");
-  const procesadosPrev = new Set(store.readAll("docs_agora").map((d) => d.id));
+  const docsAgora = store.readAll("docs_agora");
+  const procesadosPrev = new Set(docsAgora.filter((d) => d.status === "processed").map((d) => d.id));
+  const porClave = {};
+  docsAgora.forEach((d) => (porClave[d.id] = d));
 
   const idxProd = {};
   productos.forEach((p) => {
@@ -145,44 +176,74 @@ function importarDocs(docs, { registrar } = {}) {
   const idxMat = {};
   materias.forEach((m) => (idxMat[m.id] = m));
 
-  const procesados = [];
+  const procesados = [];     // {clave, serie, number, type}
+  const bloqueados = [];     // {clave, no_vinculados:[...]}
   const omitidos = [];
-  const noReconocidos = [];
+  const noVinculados = new Set();
+  const movimientos = [];
   let unidades = 0, importeTotal = 0;
+  const nowISO = new Date().toISOString();
 
   lista.forEach((doc) => {
-    const id = docId(doc);
-    if (!id) return; // sin id no hay idempotencia posible
-    if (procesadosPrev.has(id)) { omitidos.push(id); return; }
+    const clave = claveIdem(doc);
+    if (!clave) return; // sin identificador no hay idempotencia
+    if (procesadosPrev.has(clave)) { omitidos.push(clave); return; }
 
-    const fecha = campoDoc(doc, ["businessDay", "business_day", "date", "fecha", "fechaHora"]) || new Date().toISOString();
-    let lineasProc = 0;
+    const fecha = campoDoc(doc, ["BusinessDay", "businessDay", "business_day", "Date", "date", "fecha"]) || nowISO;
+    const { serie, number } = serieNumero(doc);
+    const type = tipoDoc(doc);
+
+    // 1) Resolver TODAS las líneas primero (no descontamos nada aún).
+    const resueltas = [];
+    const faltan = [];
     lineasDe(doc).forEach((ln) => {
-      const nombre = campoDoc(ln, ["product", "productName", "name", "reference", "referencia", "articulo", "artículo", "descripcion", "descripción", "nombre"]);
-      const cantidad = numJSON(campoDoc(ln, ["quantity", "units", "cantidad", "uds", "unidades", "qty"])) || 1;
-      const importe = numJSON(campoDoc(ln, ["amount", "total", "importe", "price", "precio", "pvp"]));
+      if (campoDoc(ln, ["Cancelled", "cancelled", "anulada", "voided"])) return; // línea anulada
+      const nombre = campoDoc(ln, ["ProductName", "product", "productName", "Name", "name", "Reference", "reference", "referencia", "descripcion", "descripción", "nombre"]);
+      const cantidad = numJSON(campoDoc(ln, ["Quantity", "quantity", "Units", "units", "cantidad", "uds", "qty"])) || 1;
+      const importe = numJSON(campoDoc(ln, ["Amount", "amount", "Total", "total", "importe", "price", "precio", "pvp"]));
       if (!nombre) return;
       const producto = idxProd[String(nombre).toLowerCase()];
-      if (!producto) { noReconocidos.push(nombre); return; }
+      if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
+      resueltas.push({ producto, cantidad, importe, nombre });
+    });
 
+    // 2) Si falta algún producto por vincular → BLOQUEAR (no descontar, no marcar).
+    if (faltan.length) {
+      const rec = { id: clave, status: "blocked", type, serie, number, fecha, no_vinculados: [...new Set(faltan)], visto_en: nowISO };
+      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+      bloqueados.push({ clave, no_vinculados: rec.no_vinculados });
+      return;
+    }
+
+    // 3) Descontar stock + libro de movimientos + registrar venta.
+    resueltas.forEach(({ producto, cantidad, importe }) => {
       (producto.ingredientes || []).forEach((ing) => {
         const m = idxMat[ing.materia_id];
-        if (m) m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual - ing.cantidad * cantidad) * 100) / 100);
+        if (!m) return;
+        const delta = -Math.round(ing.cantidad * cantidad * 100) / 100;
+        m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual + delta) * 100) / 100);
+        movimientos.push({
+          id: store.nextId("mov", "stock_movements"),
+          source: "agora", source_ref: `${type}:${serie}:${number}`,
+          materia_id: m.id, delta, unidad: m.unidad || "", reason: "venta",
+          producto: producto.nombre, created_at: nowISO, created_by: (usuario && usuario.nombre) || "Ágora",
+        });
       });
       ventas.push({
         id: store.nextId("ven", "ventas"),
         producto_id: producto.id, producto: producto.nombre,
         cantidad, importe, fecha, fuente: "agora",
-        doc_id: id, importado_en: new Date().toISOString(),
+        doc_clave: clave, doc_serie: serie, doc_number: number, importado_en: nowISO,
       });
-      unidades += cantidad; importeTotal += importe; lineasProc += 1;
+      unidades += cantidad; importeTotal += importe;
     });
 
-    // Marca el documento como procesado (idempotencia), aunque no reconozca todo.
-    store.insert("docs_agora", { id, procesado_en: new Date().toISOString(), lineas: lineasProc, fecha });
-    procesados.push(id);
+    const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO };
+    if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+    procesados.push({ clave, serie, number, type });
   });
 
+  movimientos.forEach((mv) => store.insert("stock_movements", mv));
   store.writeAll("materias", materias);
   store.writeAll("ventas", ventas);
 
@@ -190,15 +251,17 @@ function importarDocs(docs, { registrar } = {}) {
     fuente: "agora",
     documentos: lista.length,
     procesados: procesados.length,
+    bloqueados: bloqueados.length,
     omitidos_ya_procesados: omitidos.length,
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
-    productos_no_reconocidos: [...new Set(noReconocidos)],
-    cuando: new Date().toISOString(),
+    productos_no_vinculados: [...noVinculados],
+    cuando: nowISO,
   };
   registrarSync(resumen);
   if (typeof registrar === "function") registrar(resumen);
-  return { ...resumen, procesados_ids: procesados, omitidos_ids: omitidos };
+  // procesados_ref: lo que hay que confirmar a Ágora (POST /api/doc/processed).
+  return { ...resumen, procesados_ref: procesados.map((p) => ({ Serie: p.serie, Number: p.number })), bloqueados_detalle: bloqueados };
 }
 
 function registrarSync(resumen) {

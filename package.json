@@ -5,9 +5,9 @@
   "description": "Control M · Producción — m de materia. Scripts de arranque y tests E2E.",
   "scripts": {
     "start": "node backend/server.js",
-    "test:unit": "node tests/persistence.unit.js",
+    "test:unit": "node tests/persistence.unit.js && node tests/agora.unit.js",
     "test:e2e": "playwright test",
-    "test": "node tests/persistence.unit.js && playwright test"
+    "test": "node tests/persistence.unit.js && node tests/agora.unit.js && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1"

@@ -21,11 +21,15 @@ router.get("/", (req, res) => {
   res.json(store.readAll("ajustes").slice().reverse());
 });
 
-router.post("/", (req, res) => {
-  const { tipo_objetivo, objetivo_id, cantidad, motivo, observacion, responsable } = req.body;
+router.post("/", async (req, res) => {
+  const { tipo_objetivo, objetivo_id, motivo, observacion, responsable } = req.body;
+  // Cantidad robusta: admite coma decimal y exige un número positivo.
+  const cantidad = typeof req.body.cantidad === "string"
+    ? Number(req.body.cantidad.replace(",", "."))
+    : Number(req.body.cantidad);
 
-  if (!tipo_objetivo || !objetivo_id || !cantidad || !motivo) {
-    return res.status(400).json({ error: "Indica materia o lote, cantidad y motivo del ajuste" });
+  if (!tipo_objetivo || !objetivo_id || !Number.isFinite(cantidad) || cantidad <= 0 || !motivo) {
+    return res.status(400).json({ error: "Indica materia o lote, una cantidad válida y el motivo del ajuste" });
   }
   if (!MOTIVOS.includes(motivo)) {
     return res.status(400).json({ error: "Motivo no reconocido", motivos_disponibles: MOTIVOS });
@@ -76,6 +80,7 @@ router.post("/", (req, res) => {
     resumen: `Ajuste de ${nombreObjetivo || objetivo_id}: ${cantidad} (${motivo})${costeEstimado ? ` · ${costeEstimado.toFixed(2)} €` : ""}`,
     meta: { cantidad, motivo, coste_estimado: costeEstimado },
   });
+  await store.flush();
   res.status(201).json(ajuste);
 });
 

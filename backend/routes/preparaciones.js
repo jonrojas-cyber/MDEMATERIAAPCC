@@ -30,9 +30,12 @@ function generarCodigoLote(nombreReceta) {
   const yy = String(ahora.getFullYear()).slice(-2);
   const fecha = `${dd}${mm}${yy}`;
   const prefijo = prefijoPara(nombreReceta);
-  const lotesHoy = store.readAll("lotes").filter((l) => l.codigo.startsWith(`${prefijo}-${fecha}`));
-  const letra = String.fromCharCode(65 + lotesHoy.length);
-  return `${prefijo}-${fecha}-${letra}`;
+  const lotesHoy = store.readAll("lotes").filter((l) => l.codigo && l.codigo.startsWith(`${prefijo}-${fecha}`));
+  // Sufijo A–Z para los primeros 26 lotes del día; a partir de ahí sigue con
+  // un número (AA27, AA28…) en vez de generar caracteres raros ([ \ ] tras Z).
+  const n = lotesHoy.length;
+  const sufijo = n < 26 ? String.fromCharCode(65 + n) : `Z${n + 1}`;
+  return `${prefijo}-${fecha}-${sufijo}`;
 }
 
 // Material de trabajo que debe estar listo ANTES de empezar. Si la receta define

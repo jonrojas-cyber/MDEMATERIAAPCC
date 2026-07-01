@@ -215,9 +215,12 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     lineasDe(doc).forEach((ln) => {
       if (campoDoc(ln, ["Cancelled", "cancelled", "anulada", "voided"])) return; // línea anulada
       const nombre = campoDoc(ln, ["ProductName", "product", "productName", "Name", "name", "Reference", "reference", "referencia", "descripcion", "descripción", "nombre"]);
-      const cantidad = numJSON(campoDoc(ln, ["Quantity", "quantity", "Units", "units", "cantidad", "uds", "qty"])) || 1;
+      const cantidad = numJSON(campoDoc(ln, ["Quantity", "quantity", "Units", "units", "cantidad", "uds", "qty"]));
       const importe = numJSON(campoDoc(ln, ["TotalAmount", "Amount", "amount", "Total", "total", "importe", "GrossAmount", "UnitPrice", "ProductPrice", "price", "precio", "pvp"]));
       if (!nombre) return;
+      // Cantidad no válida (0, vacía o negativa/devolución): no vendemos ni
+      // descontamos "1 por defecto" (evita ventas fantasma y descuentos erróneos).
+      if (!(cantidad > 0)) return;
       const producto = idxProd[String(nombre).toLowerCase()];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
       resueltas.push({ producto, cantidad, importe, nombre });

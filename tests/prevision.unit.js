@@ -14,7 +14,7 @@ store.writeAll("productos", [
   { id: "p1", nombre: "Cold brew nitro", activo: true, ingredientes: [{ materia_id: "m1", cantidad: 200 }] },
 ]);
 store.writeAll("recetas", [
-  { id: "r1", nombre: "Cold brew", unidad: "g", resultado_base: 1000, ingredientes: [] },
+  { id: "r1", nombre: "Cold brew", unidad: "g", resultado_base: 1000, ingredientes: [], produce_materia_id: "m1" },
 ]);
 // Dos sábados (2026-01-03 y 2026-01-10), a mediodía para que el día local sea estable.
 store.writeAll("ventas", [

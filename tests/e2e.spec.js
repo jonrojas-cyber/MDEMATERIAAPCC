@@ -151,14 +151,16 @@ test("tareas: bandeja única con prioridad y acción directa", async ({ page }) 
   expect(errors).toEqual([]);
 });
 
-test("APPCC: hub de seguridad alimentaria con lotes y recepciones", async ({ page }) => {
+test("APPCC: hub de seguridad alimentaria (sin compras: recepción vive en Materia)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_appcc());
   await expect(page.locator(".screen-head")).toContainText(/appcc/i);
   await expect(page.locator(".appcc-tile", { hasText: /Lotes/ })).toBeVisible();
-  await expect(page.locator(".appcc-tile", { hasText: /Recepciones/ })).toBeVisible();
+  await expect(page.locator(".appcc-tile", { hasText: /Temperaturas/ })).toBeVisible();
+  // Recepción es COMPRAS: no debe aparecer en APPCC.
+  await expect(page.locator(".appcc-tile", { hasText: /Recepcion/i })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

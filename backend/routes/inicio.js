@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../data-store");
-const { costePorUnidad, tamanosLote } = require("../costing");
+const costing = require("../costing");
+const { costePorUnidad, tamanosLote } = costing;
 const { velocidadConsumo, horasDeStock } = require("../consumo");
 const { estadoStock, cantidadSugerida } = require("../umbral");
 const agora = require("../agora");
@@ -33,27 +34,13 @@ router.get("/", (req, res) => {
     return sum + (receta ? Math.round(costePorUnidad(receta) * p.cantidad_objetivo * 100) / 100 : 0);
   }, 0);
 
-  // Coste de mermas del día
+  // Dinero: todo desde el motor único (costing.js).
+  const idxMat = costing.indiceMaterias(materias);
   const ajustesHoy = ajustes.filter((a) => new Date(a.fecha).toDateString() === hoy);
-  const costeAjustesHoy = Math.round(ajustesHoy.reduce((sum, a) => sum + (a.coste_estimado || 0), 0) * 100) / 100;
-
-  // Valor total del stock actual
-  const valorStockTotal = Math.round(materias.reduce((sum, m) => sum + m.disponibilidad_actual * m.coste_medio, 0) * 100) / 100;
-
-  // Margen bruto medio de la carta (food cost objetivo de hostelería < 30%)
+  const costeAjustesHoy = costing.costeMermas(ajustesHoy);
+  const valorStockTotal = costing.valorStock(materias);
   const productos = store.readAll("productos").filter((p) => p.activo !== false && p.precio_venta > 0);
-  const idxMat = {};
-  materias.forEach((m) => (idxMat[m.id] = m));
-  const margenes = productos.map((p) => {
-    const coste = (p.ingredientes || []).reduce((s, ing) => {
-      const m = idxMat[ing.materia_id];
-      return s + (m ? m.coste_medio * ing.cantidad : 0);
-    }, 0);
-    return p.precio_venta > 0 ? (p.precio_venta - coste) / p.precio_venta : 0;
-  });
-  const margenMedioCarta = margenes.length
-    ? Math.round((margenes.reduce((s, m) => s + m, 0) / margenes.length) * 1000) / 1000
-    : 0;
+  const margenMedioCarta = costing.margenMedioCarta(productos, idxMat);
 
   // Materias con días de stock restante (basado en consumo promedio de la receta que las usa)
   const diasStock = materias

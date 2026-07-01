@@ -1,5 +1,6 @@
 const express = require("express");
 const store = require("../data-store");
+const costing = require("../costing");
 
 const router = express.Router();
 
@@ -32,12 +33,11 @@ function escandallar(producto, materias) {
     };
   });
 
-  const coste = Math.round(desglose.reduce((s, d) => s + d.coste, 0) * 100) / 100;
-  const precio = producto.precio_venta || 0;
-  const margenBruto = precio > 0 ? (precio - coste) / precio : 0;
-
-  // Semáforo de rentabilidad pensado para hostelería (food cost objetivo < 30%).
-  const foodCost = precio > 0 ? coste / precio : 1;
+  // Coste, margen y food cost desde el motor único (costing.js).
+  const mm = costing.margenProducto(producto, indice);
+  const coste = Math.round(mm.coste * 100) / 100;
+  const precio = mm.precio;
+  const foodCost = precio > 0 ? mm.food_cost : 1;
   let rentabilidad = "alta";
   if (foodCost > 0.35) rentabilidad = "baja";
   else if (foodCost > 0.28) rentabilidad = "media";
@@ -55,9 +55,9 @@ function escandallar(producto, materias) {
     activo: producto.activo !== false,
     precio_venta: precio,
     coste,
-    margen_bruto: Math.round(margenBruto * 1000) / 1000,
-    margen_euros: Math.round((precio - coste) * 100) / 100,
-    food_cost: Math.round(foodCost * 1000) / 1000,
+    margen_bruto: mm.margen_bruto,
+    margen_euros: mm.margen_euros,
+    food_cost: mm.food_cost,
     rentabilidad,
     margen_objetivo: Math.round(margenObjetivo * 1000) / 1000,
     precio_recomendado: precioRecomendado,

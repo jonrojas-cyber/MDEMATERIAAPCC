@@ -31,7 +31,8 @@
     "pasos_proceso": [
       "Mezclar hasta textura homogénea",
       "Pasar a GN limpio"
-    ]
+    ],
+    "produce_materia_id": ""
   },
   {
     "id": "rec-002",
@@ -60,7 +61,8 @@
     "pasos_proceso": [
       "Mezclar bien",
       "Pasar a GN limpio"
-    ]
+    ],
+    "produce_materia_id": ""
   },
   {
     "id": "rec-003",
@@ -85,7 +87,8 @@
     "pasos_proceso": [
       "Disolver el matcha en el agua filtrada",
       "Pasar a depósito limpio"
-    ]
+    ],
+    "produce_materia_id": ""
   },
   {
     "id": "rec-004",
@@ -111,6 +114,7 @@
       "Mezclar café molido con agua filtrada",
       "Dejar en infusión según protocolo",
       "Filtrar y pasar a depósito limpio"
-    ]
+    ],
+    "produce_materia_id": "mat-008"
   }
 ]

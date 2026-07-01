@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v74</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v75</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -3517,21 +3517,91 @@ function recogerLineasAlbaran(){
 
 // ── IMPORTAR VENTAS (Ágora) ───────────────────────────
 async function irA_ventas(){
-  openSection("ventas","Importar ventas");
+  openSection("ventas","Ventas · Ágora");
   try{
     const sync=await api("/ventas/sincronizacion").catch(()=>({cuando:null}));
     const cuando=sync&&sync.cuando?new Date(sync.cuando).toLocaleString("es-ES"):"nunca";
+    const embebido=enAgora();
     setInner(`
-      <div class="section-label">Importar ventas de Ágora</div>
+      <div class="section-label">Sincronizar con Ágora (TPV)</div>
+      <div class="card">
+        <div class="card-name">Importar ventas del día</div>
+        <div class="card-meta">${embebido
+          ? "Control M está dentro del TPV. Se pedirán a Ágora las facturas y albaranes del día y se descontará el stock según el escandallo."
+          : "Abre Control M <b>dentro del TPV Ágora</b> para sincronizar en directo. Fuera del TPV usa el CSV de abajo."}</div>
+        <div class="card-meta">Última sincronización: ${cuando}</div>
+        <div class="card-actions"><button class="btn-primary" ${embebido?"":"disabled"} onclick="sincronizarAgora(this)">Importar de Ágora</button></div>
+        <div id="ag-res" style="font-size:11px;color:#888070;margin-top:10px;"></div>
+      </div>
+      <div class="section-label">Alternativa: CSV</div>
       <div class="card">
         <div class="card-name">Subir CSV de ventas</div>
-        <div class="card-meta">Última sincronización: ${cuando}. Al importar, se descuenta el stock de materias según el escandallo de cada producto.</div>
+        <div class="card-meta">Si no estás dentro del TPV, sube el export CSV de Ágora.</div>
         <input type="file" accept=".csv,text/csv" id="csv-file" style="display:none" onchange="importarVentasCSV(this)">
-        <div class="card-actions"><button class="btn-primary" onclick="document.getElementById('csv-file').click()">Elegir archivo CSV</button></div>
+        <div class="card-actions"><button class="btn-ghost" onclick="document.getElementById('csv-file').click()">Elegir archivo CSV</button></div>
         <div id="csv-res" style="font-size:11px;color:#888070;margin-top:10px;"></div>
-      </div>
-      <div class="card" style="font-size:10px;color:#888070;">Formato esperado: una columna de producto (por nombre) y una de cantidad. También admite importe y fecha.</div>`);
+      </div>`);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── PUENTE ÁGORA (TPV) · iframe + postMessage 'agora:pos:invoke-api' ─────────
+// Ágora hace las llamadas a su API local por nosotros desde la LAN; Control M
+// (en Render) nunca toca el servidor local. Cero puertos, cero IP fija.
+//
+// ⚠️ A VERIFICAR CONTRA EL TPV REAL (la guía v8.9.3 es inconsistente):
+//   · targetOrigin del postMessage: '*' | origen exacto | {sourceTarget}.
+//   · nombres exactos de los campos del mensaje de respuesta.
+// Se dejan como constantes configurables para no fijar un valor que falle.
+const AGORA = {
+  targetOrigin: "*",                 // ← PROBAR: '*' o el origen exacto del TPV
+  msgType: "agora:pos:invoke-api",
+  responseType: "agora:pos:invoke-api:response",
+  timeoutMs: 20000,
+};
+function enAgora(){ try{ return !!(window.parent && window.parent !== window); }catch(_){ return false; } }
+
+const _agoraPend = {};
+let _agoraSeq = 0;
+window.addEventListener("message", (ev)=>{
+  const d = ev.data;
+  if(!d || d.type !== AGORA.responseType) return;
+  const p = _agoraPend[d.requestId]; if(!p) return;
+  delete _agoraPend[d.requestId]; clearTimeout(p.t);
+  if(d.error) p.reject(new Error(String(d.error)));
+  else p.resolve(d.result != null ? d.result : d.data);
+});
+// Pide a Ágora que invoque su API local. Devuelve una promesa con el resultado.
+function agoraInvoke(method, path, body){
+  return new Promise((resolve, reject)=>{
+    if(!enAgora()) return reject(new Error("La app no está embebida en el TPV Ágora."));
+    const requestId = "req-"+(++_agoraSeq)+"-"+new Date().getTime();
+    const t = setTimeout(()=>{ delete _agoraPend[requestId]; reject(new Error("Ágora no respondió a tiempo.")); }, AGORA.timeoutMs);
+    _agoraPend[requestId] = { resolve, reject, t };
+    window.parent.postMessage({ type: AGORA.msgType, requestId, method, path, body: body||null }, AGORA.targetOrigin);
+  });
+}
+
+// Flujo completo: exportar del día → mapear/descontar (backend) → confirmar a Ágora.
+async function sincronizarAgora(btn){
+  const res=el("ag-res");
+  if(btn){ btn.disabled=true; btn.textContent="Sincronizando…"; }
+  try{
+    if(!enAgora()) throw new Error("Abre Control M dentro del TPV Ágora para sincronizar en directo.");
+    const bday=new Date().toISOString().slice(0,10);
+    if(res) res.textContent="Pidiendo facturas y albaranes a Ágora…";
+    const exportData=await agoraInvoke("GET", `/api/export/?business-day=${bday}&filter=Invoices,DeliveryNotes`);
+    const docs=(exportData&&(exportData.documents||exportData.docs))||exportData||[];
+    if(res) res.textContent="Descontando stock según escandallo…";
+    const r=await api("/ventas/agora-import",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({docs})});
+    // Confirmar a Ágora los documentos procesados (idempotencia: deja de reexportarlos).
+    let confirmados=0;
+    for(const id of (r.procesados_ids||[])){
+      try{ await agoraInvoke("POST","/api/doc/processed",{ documentId:id }); confirmados++; }catch(_){ /* no bloquea; se reintentará la próxima vez */ }
+    }
+    const aviso=(r.productos_no_reconocidos&&r.productos_no_reconocidos.length)?`\nSin reconocer: ${r.productos_no_reconocidos.join(", ")}`:"";
+    if(res) res.innerHTML=`<b>Listo.</b> ${r.procesados} documento(s), ${r.unidades_vendidas} uds, ${r.importe_total} €. Confirmados a Ágora: ${confirmados}.${aviso}`;
+  }catch(e){ if(res) res.textContent="Esto no cuadra: "+e.message; }
+  finally{ if(btn){ btn.disabled=false; btn.textContent="Importar de Ágora"; } }
 }
 
 async function importarVentasCSV(input){

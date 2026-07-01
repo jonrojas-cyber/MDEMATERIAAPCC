@@ -42,6 +42,8 @@ const ENTITIES = [
   "auditoria", // registro de acciones críticas (trazabilidad)
   "docs_agora", // documentos de Ágora (estado: procesado/bloqueado) — idempotencia
   "stock_movements", // libro de movimientos de stock (el stock no cambia sin movimiento)
+  "recetario_cafe", // recetas de calibración por tipo de café (dosis, molienda, tiempo)
+  "apertura", // checklist de apertura del local, por día (rutina de arranque)
 ];
 
 const cache = {};

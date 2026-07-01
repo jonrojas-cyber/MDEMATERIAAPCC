@@ -1,0 +1,28 @@
+[
+  {
+    "id": "cafe-colombia",
+    "nombre": "Colombia",
+    "origen": "Colombia",
+    "lado": "Derecha",
+    "tiempo_extraccion_seg": 32,
+    "dosis_g": 18,
+    "salida_g": 40,
+    "molienda": "",
+    "temperatura": "",
+    "notas": "Molino de la derecha.",
+    "activo": true
+  },
+  {
+    "id": "cafe-brasil",
+    "nombre": "Brasil",
+    "origen": "Brasil",
+    "lado": "Izquierda",
+    "tiempo_extraccion_seg": 28,
+    "dosis_g": 18,
+    "salida_g": 40,
+    "molienda": "",
+    "temperatura": "",
+    "notas": "Molino de la izquierda.",
+    "activo": true
+  }
+]

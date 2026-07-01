@@ -7,17 +7,21 @@ const router = express.Router();
 // sistema decide si está dentro de rango. Los de tipo "limpieza" solo
 // necesitan confirmación de que se ha hecho.
 const TIPOS_REVISION = [
-  { tipo: "Temperatura nevera barra", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
-  { tipo: "Temperatura nevera producción", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
-  { tipo: "Temperatura leche", clase: "temperatura", min: 0, max: 4, unidad: "°C" },
-  { tipo: "Limpieza barra", clase: "limpieza" },
-  { tipo: "Limpieza mesa fría", clase: "limpieza" },
-  { tipo: "Limpieza grifos", clase: "limpieza" },
+  // Neveras y congeladores del local (APPCC · rango en °C).
+  { tipo: "Nevera sistema on tap", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
+  { tipo: "Nevera cocina", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
+  { tipo: "Congelador cocina", clase: "temperatura", min: -25, max: -15, unidad: "°C" },
+  { tipo: "Nevera almacén", clase: "temperatura", min: 0, max: 5, unidad: "°C" },
+  { tipo: "Congelador almacén", clase: "temperatura", min: -25, max: -15, unidad: "°C" },
+  // Limpieza de apertura.
+  { tipo: "Suelo limpio", clase: "limpieza" },
+  { tipo: "Mesas", clase: "limpieza" },
+  { tipo: "Herramienta", clase: "limpieza" },
 ];
 
 function accionCorrectivaPara(tipo) {
-  if (tipo.includes("nevera")) return "Revisar cierre de puerta y repetir medición en 30 min";
-  if (tipo.includes("leche")) return "Retirar y sustituir por leche de nueva apertura";
+  if (tipo.toLowerCase().includes("congelador")) return "Revisar cierre y repetir medición en 30 min; vigilar producto congelado";
+  if (tipo.toLowerCase().includes("nevera")) return "Revisar cierre de puerta y repetir medición en 30 min";
   return "Completar antes del próximo servicio";
 }
 

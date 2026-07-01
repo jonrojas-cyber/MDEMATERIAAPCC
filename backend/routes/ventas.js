@@ -28,14 +28,14 @@ router.post("/importar", textParser, (req, res) => {
 router.post("/agora-import", express.json({ limit: "8mb" }), async (req, res) => {
   const docs = (req.body && (req.body.docs || req.body.documents || req.body)) || [];
   try {
-    const r = agora.importarDocs(docs);
+    const r = agora.importarDocs(docs, { usuario: req.user });
     require("../auditoria").registrar(req, {
       accion: "ventas_agora",
       entidad: "ventas",
-      resumen: `Ágora: ${r.procesados} doc(s), ${r.unidades_vendidas} uds, ${r.importe_total} €${r.omitidos_ya_procesados ? ` · ${r.omitidos_ya_procesados} ya procesados` : ""}`,
-      meta: { procesados: r.procesados, omitidos: r.omitidos_ya_procesados, no_reconocidos: r.productos_no_reconocidos },
+      resumen: `Ágora: ${r.procesados} procesado(s), ${r.bloqueados} bloqueado(s), ${r.unidades_vendidas} uds, ${r.importe_total} €`,
+      meta: { procesados: r.procesados, bloqueados: r.bloqueados, omitidos: r.omitidos_ya_procesados, no_vinculados: r.productos_no_vinculados },
     });
-    await store.flush(); // stock + ventas + docs procesados confirmados antes de responder
+    await store.flush(); // stock + ventas + docs confirmados antes de responder
     res.json(r);
   } catch (e) {
     res.status(500).json({ error: "No se pudo importar de Ágora: " + e.message });
@@ -50,6 +50,20 @@ router.get("/", (req, res) => {
 // GET /api/ventas/sincronizacion — estado de la última sync con Ágora
 router.get("/sincronizacion", (req, res) => {
   res.json(agora.ultimaSync() || { cuando: null });
+});
+
+// GET /api/ventas/agora-estado — estado del conector + documentos bloqueados.
+router.get("/agora-estado", (req, res) => {
+  const docs = store.readAll("docs_agora");
+  const bloqueados = docs.filter((d) => d.status === "blocked");
+  const no_vinculados = [...new Set(bloqueados.flatMap((d) => d.no_vinculados || []))];
+  res.json({
+    conector_configurado: !!process.env.AGORA_CONNECTOR_TOKEN,
+    ultima_sync: agora.ultimaSync() || null,
+    procesados: docs.filter((d) => d.status === "processed").length,
+    bloqueados,
+    no_vinculados,
+  });
 });
 
 module.exports = router;

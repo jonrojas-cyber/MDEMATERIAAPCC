@@ -1,0 +1,14 @@
+{
+  "_ayuda": "Copia este archivo como 'config.json' y rellena los valores. No compartas config.json: lleva las contraseñas.",
+
+  "agora_base": "http://localhost:8984",
+  "agora_token": "PEGA-AQUI-EL-API-TOKEN-DE-AGORA",
+  "workplaces": "",
+
+  "controlm_base": "https://TU-APP.onrender.com",
+  "conector_token": "PEGA-AQUI-EL-MISMO-TOKEN-QUE-EN-CONTROL-M",
+
+  "cada_min": 15,
+  "filtro": "Invoices,DeliveryNotes,SalesOrders",
+  "confirmar_agora": true
+}

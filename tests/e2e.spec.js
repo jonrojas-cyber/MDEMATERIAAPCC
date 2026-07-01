@@ -75,13 +75,18 @@ test("Ágora: importa del export, descuenta stock por escandallo y es idempotent
   expect(despues).toBe(medio);
 });
 
-test("Ágora: el puente rechaza con seguridad fuera del TPV", async ({ page }) => {
-  await login(page);
-  expect(await page.evaluate(() => enAgora())).toBeFalsy();
-  const msg = await page.evaluate(async () => { try { await agoraInvoke("GET", "/x"); return "resolved"; } catch (e) { return e.message; } });
-  expect(msg).toMatch(/no está embebida/i);
-  await page.evaluate(() => irA_ventas());
-  await expect(page.locator("button", { hasText: /Importar de Ágora/ })).toBeVisible();
+test("Ágora: la ingesta del conector exige token y el estado es consultable", async ({ request }) => {
+  // El endpoint público del conector NO acepta peticiones sin el token compartido.
+  const sinToken = await request.post("/agora/ingest", { data: { docs: [] } });
+  expect([401, 503]).toContain(sinToken.status()); // 401 si hay token config., 503 si no
+  const malToken = await request.post("/agora/ingest", { headers: { "x-connector-token": "no-vale" }, data: { docs: [] } });
+  expect([401, 503]).toContain(malToken.status());
+  // El estado del conector es consultable por el equipo (sin exponer el token).
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const estado = await (await request.get("/api/ventas/agora-estado", { headers: { Authorization: `Bearer ${sesion.token}` } })).json();
+  expect(estado).toHaveProperty("conector_configurado");
+  expect(estado).toHaveProperty("bloqueados");
+  expect(estado).not.toHaveProperty("token");
 });
 
 test("seguridad: cambio de PIN requiere el PIN actual", async ({ request }) => {

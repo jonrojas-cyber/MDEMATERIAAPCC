@@ -119,6 +119,25 @@ app.all("/avisos/cron", async (req, res) => {
   }
 });
 
+// Ingesta del CONECTOR local de Ágora (público con token compartido). Un pequeño
+// programa en el local lee las ventas de Ágora y las EMPUJA aquí por HTTPS
+// saliente (cero puertos entrantes, cero IP fija). Autentica con un token en
+// cabecera, no con sesión de usuario (el token vive solo en variables de entorno).
+app.post("/agora/ingest", express.json({ limit: "12mb" }), async (req, res) => {
+  const token = process.env.AGORA_CONNECTOR_TOKEN;
+  if (!token) return res.status(503).json({ error: "AGORA_CONNECTOR_TOKEN no configurado en el servidor" });
+  const got = req.headers["x-connector-token"] || (req.query && req.query.token);
+  if (got !== token) return res.status(401).json({ error: "Token del conector inválido" });
+  try {
+    const docs = (req.body && (req.body.docs || req.body.documents || req.body)) || [];
+    const r = require("./agora").importarDocs(docs, { usuario: { nombre: "Conector Ágora" } });
+    await store.flush();
+    res.json(r); // incluye procesados_ref → el conector confirma a Ágora
+  } catch (e) {
+    res.status(500).json({ error: "No se pudo ingerir de Ágora: " + e.message });
+  }
+});
+
 // ── A partir de aquí, todo /api/* exige sesión válida (y respeta el rol) ───────
 app.use("/api", auth.requerido);
 

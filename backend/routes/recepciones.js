@@ -320,7 +320,8 @@ router.post("/:id/estado", jsonGrande, async (req, res) => {
   res.json({ ...actualizada, stock_cargado: aplicado });
 });
 
-// Compatibilidad: confirmar = Aceptado.
+// Compatibilidad: confirmar = Aceptado. Una sola vía de aceptación: reusa el
+// mismo camino que /estado (carga stock + audita) para no dejar hueco de registro.
 router.post("/:id/confirmar", async (req, res) => {
   const recepcion = store.findById("recepciones", req.params.id);
   if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
@@ -330,6 +331,11 @@ router.post("/:id/confirmar", async (req, res) => {
   }
   const actualizada = store.update("recepciones", req.params.id, {
     estado: "Aceptado", resuelta_en: new Date().toISOString(), stock_aplicado: true,
+  });
+  require("../auditoria").registrar(req, {
+    accion: "recepcion_aceptada", entidad: "recepciones", entidad_id: recepcion.id,
+    resumen: `Recepción ${recepcion.proveedor_nombre || recepcion.proveedor_id || ""} aceptada · ${aplicado.length} línea(s) al stock`,
+    meta: { estado: "Aceptado", importe_total: recepcion.importe_total, lineas_cargadas: aplicado.length },
   });
   await store.flush();
   res.json({ ...actualizada, stock_cargado: aplicado });

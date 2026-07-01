@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v79</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v80</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1624,34 +1624,41 @@ function modulosMeta(d) {
   const enCurso = (d.en_curso||[]).length, pendPrep = (d.preparar||[]).length,
         pendPedir = (d.pedir||[]).length, pendRevisar = (d.revisar||[]).length,
         pendLotes = (d.lotes_a_vigilar||[]).length;
+  // Número secuencial DENTRO de cada submenú (Producción, Materia, APPCC,
+  // Informes) — así no se repiten "01" entre módulos de un mismo menú, y el
+  // nombre coincide con el título real de la pantalla a la que llevan.
   return {
-    preparaciones:{ num:"01", name:"Producir ahora", badge: enCurso?`${enCurso} en curso`:(pendPrep?`${pendPrep} recomendadas`:"Al día"), urgent: !!(enCurso||pendPrep) },
-    lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
-    materias:     { num:"03", name:"Materias", badge: pendPedir?`${pendPedir} con disponibilidad baja`:"Stock correcto", urgent: !!pendPedir },
-    revisiones:   { num:"04", name:"Revisiones", badge: pendRevisar?`${pendRevisar} pendientes`:"Completadas", urgent: !!pendRevisar },
-    ajustes:      { num:"05", name:"Ajustes", badge:`${k.ajustes_hoy||0} registrados hoy`, urgent:false },
-    proveedores:  { num:"01", name:"Proveedores", badge: pendPedir?`${pendPedir} a contactar`:"Sin pedidos urgentes", urgent:false },
+    // Producción
+    preparaciones:{ num:"01", name:"Producción", badge: enCurso?`${enCurso} en curso`:(pendPrep?`${pendPrep} recomendadas`:"Al día"), urgent: !!(enCurso||pendPrep) },
+    revisiones:   { num:"02", name:"Revisiones", badge: pendRevisar?`${pendRevisar} pendientes`:"Completadas", urgent: !!pendRevisar },
+    ajustes:      { num:"03", name:"Ajustes y mermas", badge:`${k.ajustes_hoy||0} registrados hoy`, urgent:false },
+    // Materia
+    materias:     { num:"01", name:"Almacén", badge: pendPedir?`${pendPedir} con disponibilidad baja`:"Stock correcto", urgent: !!pendPedir },
     pedidos:      { num:"02", name:"Pedidos", badge:"Crear y enviar a proveedores", urgent:false },
-    recepcion:    { num:"03", name:"Recepción", badge:"Escanear albarán y entrada", urgent:false },
-    pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
-    archivo:      { num:"05", name:"Archivo albaranes", badge:"Por trimestre · gestoría", urgent:false },
+    proveedores:  { num:"03", name:"Proveedores", badge: pendPedir?`${pendPedir} a contactar`:"Sin pedidos urgentes", urgent:false },
+    recepcion:    { num:"04", name:"Recepción", badge:"Escanear albarán y entrada", urgent:false },
+    // APPCC
+    lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
+    // Informes y configuración
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
-    ventas:       { num:"03", name:"Importar ventas", badge:"CSV de Ágora", urgent:false },
-    manual:       { num:"04", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
-    avisos:       { num:"05", name:"Avisos", badge:"Notificación · pedidos y caducidades", urgent:false },
-    resumen:      { num:"02", name:"Resumen del día", badge:"KPIs · estado · qué hacer ahora", urgent:false },
-    decisiones:   { num:"01", name:"Centro de decisiones", badge:"Qué hacer ahora · riesgos", urgent: !!(d.alertas&&(d.alertas.caducados.length||d.alertas.bloqueados.length)) },
+    ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
+    pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
+    archivo:      { num:"05", name:"Archivo albaranes", badge:"Por trimestre · gestoría", urgent:false },
+    avisos:       { num:"06", name:"Avisos", badge:"Notificación · pedidos y caducidades", urgent:false },
+    manual:       { num:"07", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
+    resumen:      { num:"08", name:"Resumen del día", badge:"KPIs · estado del negocio", urgent:false },
+    decisiones:   { num:"01", name:"Tareas", badge:"Qué hacer ahora · riesgos", urgent: !!(d.alertas&&(d.alertas.caducados.length||d.alertas.bloqueados.length)) },
   };
 }
 
 // Dashboard de 6 bloques. Tareas, Producción, APPCC y Etiquetas abren pantalla
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
-  produccion: { name:"Producción", desc:"Producir ahora · Recetas · Histórico", ids:["preparaciones","revisiones"] },
-  materia:    { name:"Materia", desc:"Stock · Compras · Proveedores · Recepción", ids:["materias","pedidos","proveedores","recepcion"] },
+  produccion: { name:"Producción", desc:"Producir ahora · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
+  materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción", ids:["materias","pedidos","proveedores","recepcion"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Costes · Márgenes · Ventas · Config", ids:["carta","analisis","ventas","resumen","avisos","manual","pagos","archivo"], admin:true },
+  informes:   { name:"Informes", desc:"Costes · Márgenes · Ventas · Config", ids:["carta","analisis","ventas","pagos","archivo","avisos","manual","resumen"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -2981,10 +2988,11 @@ async function irA_pedidos(){
     html+=section("Pedidos realizados",peds,p=>{
       const prov=provs.find(x=>x.id===p.proveedor_id);
       const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="enviarPedidoWA('${p.id}')">Enviar por WhatsApp</button>`:"";
+      const recibir=(p.estado!=="recibido")?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
       return card(
-        `${p.codigo} — ${p.proveedor_nombre}`,
-        `${p.estado} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
-        wa,
+        `${esc(p.codigo)} — ${esc(p.proveedor_nombre)}`,
+        `${esc(p.estado)} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
+        recibir+wa,
         `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `${esc(l.nombre)}: ${l.cantidad} ${esc(l.unidad||"")} × ${pu.toFixed(4)} €/${esc(l.unidad||"ud")} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("<br>")}</div>`
       );
     },"Aún no hay pedidos.");
@@ -3065,12 +3073,13 @@ function renderAvisos(cot){
 }
 
 // ── RECEPCIÓN ────────────────────────────────────────
-async function irA_recepcion(){
+async function irA_recepcion(pre){
   openSection("recepcion","Recepción");
   try{
     const [provs,recs,mats]=await Promise.all([api("/proveedores"),api("/recepciones"),api("/materias")]);
     window._mat=mats;
     let html=`
+      <div id="rcp-banner"></div>
       <div class="section-label">Entrada manual</div>
       <div class="card">
         <div class="field"><label>Proveedor</label>
@@ -3120,9 +3129,21 @@ async function irA_recepcion(){
       );
     },"Sin recepciones.");
     setInner(html);
+    // Si venimos de "Recibir este pedido": preseleccionamos proveedor, guardamos
+    // el pedido (para cotejar cantidades) y lo indicamos claramente.
+    window._pedidoId=(pre&&pre.pedido_id)||null;
+    if(pre&&pre.proveedor_id){
+      const sel=el("rcp-prov"); if(sel) sel.value=pre.proveedor_id;
+      const ban=el("rcp-banner");
+      if(ban) ban.innerHTML=`<div class="card" style="border-color:var(--olive);"><div class="card-meta">Recibiendo el pedido <b>${esc(pre.pedido_codigo||"")}</b>. Escanea el albarán o rellena el importe; se cotejará con lo pedido.</div></div>`;
+    }
     // Indicador claro de si el lector automático (OCR) está activado en el servidor.
     mostrarEstadoLector();
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+// Abre la recepción ya enfocada en un pedido concreto (proveedor preseleccionado).
+function recibirPedido(pedidoId, proveedorId, codigo){
+  irA_recepcion({ pedido_id:pedidoId, proveedor_id:proveedorId, pedido_codigo:codigo });
 }
 
 // Comprueba si el lector automático está activado y lo muestra de forma evidente.

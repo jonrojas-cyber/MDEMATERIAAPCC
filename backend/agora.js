@@ -116,8 +116,24 @@ function campoDoc(d, nombres) {
   return null;
 }
 function lineasDe(doc) {
-  const l = doc.Lines || doc.lines || doc.lineas || doc.items || doc.details || doc.detalle || [];
-  return Array.isArray(l) ? l : [];
+  // Líneas directas (albaranes/pedidos simples).
+  const directas = doc.Lines || doc.lines || doc.lineas || doc.items || doc.details || doc.detalle;
+  if (Array.isArray(directas) && directas.length) return directas;
+  // Estructura anidada real de Ágora: el documento agrupa "items" (cada consumo
+  // o ticket) y cada uno lleva sus propias Lines.
+  // Ej.: Invoice → InvoiceItems[] → Lines[].
+  const grupos =
+    doc.InvoiceItems || doc.DeliveryNoteItems || doc.OrderItems ||
+    doc.Items || doc.Tickets || doc.Documents || doc.Content;
+  if (Array.isArray(grupos)) {
+    const out = [];
+    grupos.forEach((g) => {
+      const sub = (g && (g.Lines || g.lines || g.lineas || g.items)) || [];
+      if (Array.isArray(sub)) out.push(...sub);
+    });
+    if (out.length) return out;
+  }
+  return Array.isArray(directas) ? directas : [];
 }
 function tipoDoc(doc) {
   return String(campoDoc(doc, ["type", "Type", "documentType", "docType"]) || doc.__type || "Doc");
@@ -200,7 +216,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       if (campoDoc(ln, ["Cancelled", "cancelled", "anulada", "voided"])) return; // línea anulada
       const nombre = campoDoc(ln, ["ProductName", "product", "productName", "Name", "name", "Reference", "reference", "referencia", "descripcion", "descripción", "nombre"]);
       const cantidad = numJSON(campoDoc(ln, ["Quantity", "quantity", "Units", "units", "cantidad", "uds", "qty"])) || 1;
-      const importe = numJSON(campoDoc(ln, ["Amount", "amount", "Total", "total", "importe", "price", "precio", "pvp"]));
+      const importe = numJSON(campoDoc(ln, ["TotalAmount", "Amount", "amount", "Total", "total", "importe", "GrossAmount", "UnitPrice", "ProductPrice", "price", "precio", "pvp"]));
       if (!nombre) return;
       const producto = idxProd[String(nombre).toLowerCase()];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }

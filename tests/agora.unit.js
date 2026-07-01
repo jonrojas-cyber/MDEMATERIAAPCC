@@ -68,5 +68,25 @@ test("idempotencia por Serie+Number cuando no hay GlobalId", () => {
   assert.strictEqual(dos.omitidos_ya_procesados, 1);
 });
 
+test("estructura real de Ágora (Invoice → InvoiceItems → Lines) descuenta stock", () => {
+  const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+  // Payload tal cual lo devuelve Ágora: {Invoices:[{Serie,Number,InvoiceItems:[{Lines:[...]}]}]}
+  const r = agora.importarDocs({
+    Invoices: [{
+      Serie: "T", Number: 99, BusinessDay: "2026-07-01", DocumentType: "BasicInvoice",
+      InvoiceItems: [{
+        GlobalId: "item-uuid-99",
+        Lines: [{ ProductName: prod.nombre, Quantity: 2, TotalAmount: 5, UnitPrice: 2.5 }],
+      }],
+    }],
+  });
+  assert.strictEqual(r.procesados, 1, "procesa la factura anidada");
+  assert.strictEqual(r.bloqueados, 0, "no la bloquea");
+  assert.strictEqual(r.unidades_vendidas, 2, "lee la cantidad de la línea anidada");
+  assert.strictEqual(r.importe_total, 5, "lee TotalAmount de la línea");
+  const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+  assert.ok(despues < antes, "descontó stock desde la estructura anidada");
+});
+
 console.log(fallos ? `\n${fallos} prueba(s) FALLIDA(s)` : "\nTodas las pruebas de Ágora OK");
 process.exit(fallos ? 1 : 0);

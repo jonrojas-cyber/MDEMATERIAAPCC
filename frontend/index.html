@@ -1369,7 +1369,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v88</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v89</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1910,7 +1910,6 @@ async function irA_appcc(){
         ${tile("Lotes y caducidades","Trazabilidad y vida útil","irA_lotes()", caducados?`${caducados} caducados`:(proximos?`${proximos} por caducar`:""))}
         ${tile("Calendario anual","Histórico · producción y APPCC","irA_calendario()", "")}
         ${tile("Etiquetas","Imprimir · Reimprimir · Historial","irA_etiquetas()", "")}
-        ${tile("Recepciones","Entrada y cotejo de albaranes","irA_recepcion()", recepPend?`${recepPend} pendientes`:"")}
         ${tile("Temperaturas","Neveras y congeladores","irA_temperaturas()", "")}
         ${tile("Limpieza","Registro de limpieza",`almaccPronto()`, "")}
         ${tile("Incidencias","Producto no apto y bloqueos",`almaccPronto()`, "")}

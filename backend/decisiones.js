@@ -10,7 +10,8 @@
 // frontend convierte en un botón de acción directa (≤ 1 clic).
 
 const store = require("./data-store");
-const { costePorUnidad, tamanosLote } = require("./costing");
+const costing = require("./costing");
+const { costePorUnidad, tamanosLote } = costing;
 const { velocidadConsumo, horasDeStock } = require("./consumo");
 const { consumoDiarioPorMateria, autonomiaDe } = require("./autonomia");
 const { puntoPedido, estadoStock, cantidadSugerida } = require("./umbral");
@@ -192,26 +193,18 @@ function construir() {
 
   acciones.sort((a, b) => a.prioridad - b.prioridad);
 
-  // ── KPIs inmediatos (cabecera del mando) ────────────────────────────────────
+  // ── KPIs inmediatos (cabecera del mando) · dinero desde costing.js ──────────
   const ventas = store.readAll("ventas");
-  const productos = store.readAll("productos").filter((p) => p.activo !== false && p.precio_venta > 0);
-  const idxMat = {};
-  materias.forEach((m) => (idxMat[m.id] = m));
+  const idxMat = costing.indiceMaterias(materias);
   const ventasHoy = ventas
     .filter((v) => v.fecha && new Date(v.fecha).toDateString() === hoy)
     .reduce((s, v) => s + (Number(v.importe) || Number(v.total) || 0), 0);
-  // Food cost medio de la carta (coste receta / PVP).
-  const foodCosts = productos.map((p) => {
-    const coste = (p.ingredientes || []).reduce((s, ing) => s + ((idxMat[ing.materia_id] || {}).coste_medio || 0) * ing.cantidad, 0);
-    return p.precio_venta > 0 ? coste / p.precio_venta : null;
-  }).filter((x) => x != null);
-  const foodCostMedio = foodCosts.length ? Math.round((foodCosts.reduce((s, x) => s + x, 0) / foodCosts.length) * 1000) / 10 : null;
-  const valorStock = Math.round(materias.reduce((s, m) => s + (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0), 0) * 100) / 100;
   const kpis = {
     ventas_hoy: Math.round(ventasHoy * 100) / 100,
-    food_cost: foodCostMedio, // %
+    food_cost: costing.foodCostMedioCarta(null, idxMat), // %
     merma_hoy: costeMermaHoy,
-    valor_stock: valorStock,
+    valor_stock: costing.valorStock(materias),
+    valor_produccion: costing.valorProduccion(lotes, recetas, idxMat),
     alertas: acciones.filter((a) => a.severidad === "critico" || a.severidad === "importante").length + riesgos.length,
   };
 

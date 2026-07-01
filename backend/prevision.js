@@ -47,9 +47,14 @@ function estimacionPara(weekday) {
     .sort((a, b) => b.unidades_estimadas - a.unidades_estimadas);
 }
 
-// Qué materia produce cada receta (por campo explícito o por coincidencia de nombre).
+// Qué materia repone cada receta. Fuente de verdad: el campo explícito
+// produce_materia_id. Si el campo NO existe (recetas antiguas), se cae a
+// coincidencia por nombre como respaldo. Un campo presente pero vacío = "no
+// produce ninguna materia" (evita falsos positivos como Matcha base).
 function materiaDeReceta(receta, materias) {
-  if (receta.produce_materia_id) return receta.produce_materia_id;
+  if (Object.prototype.hasOwnProperty.call(receta, "produce_materia_id")) {
+    return receta.produce_materia_id || null;
+  }
   const m = materias.find((x) => x.nombre && receta.nombre && x.nombre.toLowerCase() === receta.nombre.toLowerCase());
   return m ? m.id : null;
 }

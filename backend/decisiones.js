@@ -104,6 +104,22 @@ function construir() {
     });
   }
 
+  // ── 2b) Ventas de Ágora bloqueadas (producto sin vincular a la carta) ───────
+  // Sin esto, un día de ventas puede NO descontar stock y nadie se entera.
+  const docsBloqueados = store.readAll("docs_agora").filter((d) => d.status === "blocked");
+  if (docsBloqueados.length) {
+    const prods = [...new Set(docsBloqueados.flatMap((d) => d.no_vinculados || []))];
+    acciones.push({
+      id: nid("agora"), tipo: "ventas_bloqueadas", severidad: "importante", prioridad: 2, estado: "pendiente",
+      titulo: docsBloqueados.length === 1 ? "1 venta sin descontar stock" : `${docsBloqueados.length} ventas sin descontar stock`,
+      motivo: prods.length
+        ? `Producto(s) de Ágora sin vincular: ${prods.slice(0, 3).join(", ")}${prods.length > 3 ? "…" : ""}. Créalos en la Carta con el mismo nombre.`
+        : "Hay ventas con productos sin vincular a la carta.",
+      tiempo_min: 4, accion: { label: "Vincular", handler: "irA_ventas" },
+    });
+    riesgos.push({ id: nid("r"), severidad: "importante", titulo: `${docsBloqueados.length} venta(s) sin descontar stock`, motivo: "El stock no baja hasta vincular esos productos en la Carta." });
+  }
+
   // ── 3) Producción recomendada (ritmo real con fallback a umbral) ────────────
   const lotesVigentes = lotes.filter((l) => fechaValida(l.caduca_en) && horasRestantes(l) > 0);
   const produccion = [];

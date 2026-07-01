@@ -9,6 +9,7 @@
 
 const store = require("./data-store");
 const push = require("./push");
+const compras = require("./compras");
 
 const TZ = process.env.AVISOS_TZ || "Europe/Madrid";
 
@@ -55,20 +56,12 @@ function construirResumen(config) {
   const recById = {};
   recetas.forEach((r) => (recById[r.id] = r));
 
-  const pedir = materias
-    .filter((m) => m.disponibilidad_actual <= m.stock_minimo)
-    .map((m) => {
-      const p = provById[m.proveedor_id];
-      const ideal = m.stock_ideal != null ? m.stock_ideal : m.stock_minimo;
-      return {
-        nombre: m.nombre,
-        disponibilidad_actual: m.disponibilidad_actual,
-        unidad: m.unidad,
-        cantidad_sugerida: Math.round((ideal - m.disponibilidad_actual) * 100) / 100,
-        proveedor: p ? p.nombre : "Sin proveedor asignado",
-      };
-    })
-    .sort((a, b) => a.proveedor.localeCompare(b.proveedor) || a.nombre.localeCompare(b.nombre));
+  // Compras AGRUPADAS POR PROVEEDOR (mismo cálculo que la pantalla de Pedidos).
+  const por_proveedor = compras.sugerencias();
+  // Lista plana (compat) por si algún consumidor la usa.
+  const pedir = por_proveedor.flatMap((g) =>
+    g.items.map((it) => ({ ...it, proveedor: g.proveedor }))
+  );
 
   const limite = cfg.caducidad_horas;
   const caducando = lotes
@@ -89,20 +82,24 @@ function construirResumen(config) {
     }))
     .sort((a, b) => a.horas_restantes - b.horas_restantes);
 
-  return { pedir, caducando, generado_en: new Date().toISOString() };
+  return { pedir, por_proveedor, caducando, generado_en: new Date().toISOString() };
 }
 
-// Cuerpo de la notificación a partir del resumen.
+// Cuerpo de la notificación: qué comprar, POR PROVEEDOR, + caducidades.
 function notiPayload(resumen) {
-  const n = resumen.pedir.length;
+  const provs = resumen.por_proveedor || [];
   const c = resumen.caducando.length;
   const partes = [];
-  if (n) partes.push(`${n} ${n === 1 ? "materia que pedir" : "materias que pedir"}`);
+  if (provs.length) {
+    // "Frutas SL (3), Café XYZ (1)…" — hasta 3 proveedores para que quepa.
+    const lista = provs.slice(0, 3).map((g) => `${g.proveedor} (${g.total_items})`).join(", ");
+    partes.push(`Compras: ${lista}${provs.length > 3 ? "…" : ""}`);
+  }
   if (c) partes.push(`${c} ${c === 1 ? "lote por caducar" : "lotes por caducar"}`);
   const body = partes.length
     ? partes.join(" · ")
-    : "Todo en orden: nada urgente que pedir ni caducidades próximas.";
-  return { title: "m de materia · Avisos del día", body, url: "/", tag: "avisos-dia" };
+    : "Todo en orden: nada que pedir ni caducidades próximas.";
+  return { title: "m de materia · Compras y avisos (16:00)", body, url: "/", tag: "avisos-dia" };
 }
 
 // Envía el aviso push a los dispositivos. Lanza error con .code si no hay ninguno.

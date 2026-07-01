@@ -14,6 +14,7 @@ const { costePorUnidad, tamanosLote } = require("./costing");
 const { velocidadConsumo, horasDeStock } = require("./consumo");
 const { consumoDiarioPorMateria, autonomiaDe } = require("./autonomia");
 const { puntoPedido, estadoStock, cantidadSugerida } = require("./umbral");
+const compras = require("./compras");
 
 const BLOQUEADOS = ["Fuera de servicio", "Bloqueado", "No apto", "Rechazado"];
 
@@ -159,50 +160,11 @@ function construir() {
       oportunidades.push({ id: nid("o"), titulo: `Aprovecha ${nombre}`, motivo: `Sobran existencias y caduca en ${humanoHoras(h)}: promoción o uso prioritario para evitar merma.`, accion: { label: "Ver lote", handler: "irA_lotes" } });
     });
 
-  // ── 5) Compras sugeridas (stock ≤ punto de pedido), agrupadas por proveedor ─
-  // Con AUTONOMÍA: priorizamos por días de stock restante, no por stock absoluto.
-  const mapaConsumo = consumoDiarioPorMateria(store, ahora);
-  const autoDe = (m) => autonomiaDe(m, mapaConsumo).autonomia_dias;
-  const porPedir = materias.filter((m) => estadoStock(m) !== "correcto");
-  const porProv = {};
-  porPedir.forEach((m) => {
-    const key = m.proveedor_id || "sin";
-    (porProv[key] = porProv[key] || []).push(m);
-  });
-  Object.entries(porProv).forEach(([provId, items]) => {
-    const prov = provById[provId];
-    const criticos = items.filter((m) => estadoStock(m) === "critico").length;
-    // Autonomía mínima del grupo (el producto que antes se agota).
-    const autos = items.map(autoDe).filter((x) => x != null);
-    const autoMin = autos.length ? Math.min(...autos) : null;
-    const urgentePorAutonomia = autoMin != null && autoMin <= 2;
-    const nombres = items.slice(0, 3).map((m) => m.nombre).join(", ");
-    const critico = criticos > 0 || urgentePorAutonomia;
-    // Cantidades sugeridas para dejar el pedido casi hecho de un toque.
-    const sugeridos = items
-      .map((m) => ({ materia_id: m.id, cantidad: cantidadSugerida(m) }))
-      .filter((x) => x.cantidad > 0);
-    acciones.push({
-      id: nid("pedido"), tipo: "pedido", severidad: critico ? "critico" : "importante", prioridad: critico ? 2 : 5, estado: "pendiente",
-      titulo: prov ? `Pedir a ${prov.nombre}` : "Pedir (sin proveedor asignado)",
-      motivo: `${items.length} producto(s) bajo punto de pedido${autoMin != null ? ` · autonomía ${autoMin} día${autoMin === 1 ? "" : "s"}` : ""}: ${nombres}${items.length > 3 ? "…" : ""}`,
-      tiempo_min: 4,
-      accion: { label: "Pedir", handler: "irA_pedidos", args: { proveedor_id: provId !== "sin" ? provId : null, sugeridos } },
-    });
-  });
-  // Riesgo: se quedará sin X, con autonomía en días si se conoce el ritmo.
-  porPedir
-    .filter((m) => estadoStock(m) === "critico")
-    .sort((a, b) => (autoDe(a) ?? 1e9) - (autoDe(b) ?? 1e9))
-    .slice(0, 6)
-    .forEach((m) => {
-      const a = autoDe(m);
-      riesgos.push({
-        id: nid("r"), severidad: a != null && a <= 1 ? "critico" : "importante",
-        titulo: `Te quedarás sin ${m.nombre}`,
-        motivo: a != null ? `Autonomía ${a} día${a === 1 ? "" : "s"} · stock ${m.disponibilidad_actual} ${m.unidad || ""}. Pide al proveedor.` : `Stock ${m.disponibilidad_actual} ${m.unidad || ""} (mínimo ${m.stock_minimo}). Pide al proveedor.`,
-      });
-    });
+  // ── 5) Compras ─────────────────────────────────────────────────────────────
+  // A PROPÓSITO: las compras NO son tareas del momento. No se meten en la bandeja.
+  // Se resuelven con el aviso diario de las 16:00 (agrupado por proveedor) y en
+  // la pantalla de Pedidos. Aquí solo contamos proveedores a pedir para el "Hoy".
+  const comprasSug = compras.sugerencias();
 
   // ── 6) Merma del día anterior / de hoy ──────────────────────────────────────
   const hoy = new Date().toDateString();
@@ -262,7 +224,7 @@ function construir() {
   const recepRecibidas = recepHoy.filter((r) => r.estado && r.estado !== "Pendiente de confirmar").length;
   const hoyOperativo = [
     { etiqueta: "Producciones", hecho: prodHoy, total: prodPlan },
-    { etiqueta: "Pedidos", hecho: pedidosEnviados, total: pedidosHoy.length + Object.keys(porProv).length },
+    { etiqueta: "Pedidos", hecho: pedidosEnviados, total: pedidosHoy.length + comprasSug.length },
     { etiqueta: "Recepciones", hecho: recepRecibidas, total: recepHoy.length },
   ];
 

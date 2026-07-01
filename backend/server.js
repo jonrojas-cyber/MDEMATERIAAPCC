@@ -147,6 +147,7 @@ app.use("/api/auditoria", require("./routes/auditoria"));
 app.use("/api/materias", require("./routes/materias"));
 app.use("/api/recetas", require("./routes/recetas"));
 app.use("/api/lotes", require("./routes/lotes"));
+app.use("/api/calendario", require("./routes/calendario"));
 app.use("/api/preparaciones", require("./routes/preparaciones"));
 app.use("/api/revisiones", require("./routes/revisiones"));
 app.use("/api/ajustes", require("./routes/ajustes"));

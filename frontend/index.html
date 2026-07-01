@@ -1350,7 +1350,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v85</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v86</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2318,9 +2318,65 @@ async function irA_preparaciones() {
         card(`${p.nombre_receta} — ${p.cantidad_objetivo} g`, `${p.responsable} · ${fmt(p.finalizada_en)}`)
       );
     }
-    html += `<div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="irA_calendario()">Ver calendario anual · histórico completo →</button></div>`;
+    html += `<div class="card-actions" style="margin-top:10px;">
+      <button class="btn-ghost" onclick="irA_prevision()">Previsión · qué producir por día →</button>
+      <button class="btn-ghost" onclick="irA_calendario()">Calendario anual →</button></div>`;
     setInner(html);
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// ── PREVISIÓN DE DEMANDA · por día de la semana ────────────────────────────
+const PREV_DIAS=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+async function irA_prevision(wd){
+  openSection("prevision","Previsión del día");
+  if(wd==null) wd=new Date().getDay();
+  window._prevWd=wd;
+  setInner(`<div class="empty">Calculando previsión…</div>`);
+  try{
+    const p=await api("/prevision?weekday="+wd);
+    window._prev=p;
+    renderPrevision();
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function prevDia(wd){ irA_prevision(wd); }
+function renderPrevision(){
+  const p=window._prev; if(!p) return;
+  const hoy=new Date().getDay();
+  // Selector de día de la semana (L M X J V S D, empezando en lunes).
+  const orden=[1,2,3,4,5,6,0];
+  const chips=orden.map(d=>{
+    const activo=d===p.weekday, esHoy=d===hoy;
+    const lbl=["D","L","M","X","J","V","S"][d];
+    return `<button onclick="prevDia(${d})" style="border:${esHoy?'1.5px solid var(--ink)':'0'};border-radius:8px;padding:7px 11px;margin:2px;font-family:var(--sans);font-size:12px;font-weight:${activo?800:600};background:${activo?'var(--ink)':'#e7e1d2'};color:${activo?'#f0ebe0':'var(--ink)'};cursor:pointer;">${lbl}</button>`;
+  }).join("");
+  const conf = p.semanas_datos>=3?"buena":(p.semanas_datos>=1?"aprendiendo":"sin datos");
+  const confCol = p.semanas_datos>=3?"var(--olive,#5C6145)":(p.semanas_datos>=1?"#c79a3a":"var(--muted)");
+  let html=`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:8px;">${chips}</div>
+    <div class="section-label">${esc(p.dia)} · ventas estimadas</div>
+    <div class="card-meta" style="margin-bottom:8px;">Basado en <b>${p.semanas_datos}</b> semana(s) de ventas reales · fiabilidad <span style="color:${confCol};font-weight:700;">${conf}</span>. Cuantas más semanas, más precisa.</div>`;
+  // Estimación por producto
+  if(p.estimacion.length){
+    html+=`<div class="card">${p.estimacion.map(e=>`<div class="card-meta">· <b>${esc(e.producto)}</b> — ${e.unidades_estimadas} uds ${e.semanas<2?`<span style="color:#c79a3a;">(pocos datos)</span>`:""}</div>`).join("")}</div>`;
+  }else{
+    html+=`<div class="empty" style="padding:14px;">Aún no hay ventas de este día para estimar. En cuanto Ágora acumule semanas, aparecerá aquí.</div>`;
+  }
+  // Qué producir
+  html+=`<div class="section-label">Qué producir para cubrir el día</div>`;
+  html+= p.produccion.length ? p.produccion.map(pr=>`
+    <div class="dec-act" style="border-left:3px solid #c79a3a;">
+      <div class="dec-act-top"><span class="dec-act-title">${esc(pr.nombre)}</span>
+        <button class="dec-act-btn" onclick="iniciarYAbrir('${pr.receta_id}',${Math.ceil(pr.producir)},this)">EMPEZAR</button></div>
+      <div class="dec-act-sub">Producir ≈${pr.producir} ${esc(pr.unidad)} para cubrir la venta estimada de ${esc(pr.para_materia)}</div>
+    </div>`).join("") : `<div class="todo-clear">✓ Con el stock actual cubres la estimación del día.</div>`;
+  // Qué faltaría (materias)
+  const faltan=(p.materias||[]).filter(m=>m.falta>0);
+  html+=`<div class="section-label">Qué te faltaría para llegar a la estimación</div>`;
+  html+= faltan.length ? faltan.map(m=>`
+    <div class="card">
+      <div class="card-name">${esc(m.nombre)} <span style="color:var(--alert);font-weight:700;">faltan ${m.falta} ${esc(m.unidad)}</span></div>
+      <div class="card-meta">Necesario ${m.demanda} ${esc(m.unidad)} · tienes ${m.disponible} ${esc(m.unidad)}</div>
+    </div>`).join("") : `<div class="todo-clear">✓ Tienes stock para todo lo estimado.</div>`;
+  setInner(html);
 }
 
 // ── WIZARD ────────────────────────────────────────────

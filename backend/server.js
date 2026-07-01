@@ -152,6 +152,7 @@ app.use("/api/preparaciones", require("./routes/preparaciones"));
 app.use("/api/revisiones", require("./routes/revisiones"));
 app.use("/api/recetario-cafe", require("./routes/recetario-cafe"));
 app.use("/api/apertura", require("./routes/apertura"));
+app.use("/api/prevision", require("./routes/prevision"));
 app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/compras-productos", require("./routes/compras-productos"));

@@ -982,30 +982,35 @@ input, select { font-family: inherit; font-size: 13px; }
   border-radius: 10px; font-family: var(--sans); font-size: 12px; color: var(--muted); padding: 11px; cursor: pointer; }
 .dash-informes:hover { color: var(--ink); border-color: var(--ink); }
 @media (max-height: 560px) { .dashcard-name { font-size: 16px; } .dashcard-sub { font-size: 9.5px; } }
-/* Saludo + frase del día */
-.saludo { margin-bottom: 12px; }
-.saludo-hola { font-family: var(--serif, Georgia, serif); font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.1; }
-.saludo-bien { font-family: var(--sans); font-size: 13px; color: var(--muted); margin-top: 2px; }
-.saludo-frase { font-family: var(--sans); font-size: 12.5px; color: var(--ink); margin-top: 8px; line-height: 1.5; }
+/* Saludo + frase del día (Courier, como todo el sistema) */
+.saludo { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.saludo-hola { font-family: var(--sans); font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); line-height: 1.15; }
+.saludo-bien { font-family: var(--sans); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.saludo-frase { font-family: var(--sans); font-size: 12px; color: var(--ink); margin-top: 9px; line-height: 1.55; }
 /* Tarjeta de apertura */
-.apertura-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 1.5px solid var(--ink);
-  border-radius: 14px; padding: 13px 15px; margin-bottom: 14px; background: var(--ink); color: var(--cream, #f0ebe0); cursor: pointer; }
-.apertura-card.ok { background: none; color: var(--ink); border-color: var(--olive, #5C6145); }
-.apertura-ico { font-size: 22px; line-height: 1; }
-.apertura-txt { display: flex; flex-direction: column; gap: 2px; flex: 1; font-family: var(--sans); }
-.apertura-txt b { font-size: 14px; } .apertura-txt span { font-size: 11px; opacity: .85; }
-.apertura-arrow { font-size: 20px; opacity: .7; }
+.apertura-card { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; border: 1px solid var(--ink);
+  border-radius: 12px; padding: 13px 15px; margin-bottom: 14px; background: var(--ink); color: var(--oliveink); cursor: pointer; }
+.apertura-card.ok { background: var(--paper); color: var(--ink); border-color: var(--line); }
+.apertura-ico { font-size: 20px; line-height: 1; }
+.apertura-txt { display: flex; flex-direction: column; gap: 3px; flex: 1; font-family: var(--sans); }
+.apertura-txt b { font-size: 13px; font-weight: 700; letter-spacing: .01em; }
+.apertura-txt span { font-size: 10.5px; letter-spacing: .04em; opacity: .8; }
+.apertura-arrow { font-size: 18px; opacity: .6; }
 /* Pasos de apertura */
-.apstep { display: flex; align-items: flex-start; gap: 11px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
-  padding: 13px 4px; background: none; cursor: pointer; font-family: var(--sans); color: var(--ink); }
-.apstep-check { flex: 0 0 auto; width: 22px; height: 22px; border: 2px solid var(--muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: 1px; }
-.apstep.done .apstep-check { background: var(--olive, #5C6145); border-color: var(--olive, #5C6145); color: #fff; }
+.apstep { display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
+  padding: 14px 2px; background: none; cursor: pointer; font-family: var(--sans); color: var(--ink); }
+.apstep-check { flex: 0 0 auto; width: 21px; height: 21px; border: 1.5px solid var(--line); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-top: 1px; color: transparent; }
+.apstep.done .apstep-check { background: var(--ink); border-color: var(--ink); color: var(--cream); }
 .apstep.done .apstep-t { text-decoration: line-through; color: var(--muted); }
-.apstep-ico { font-size: 18px; flex: 0 0 auto; }
+.apstep-ico { font-size: 17px; flex: 0 0 auto; filter: grayscale(1); opacity: .9; }
 .apstep-body { flex: 1; min-width: 0; }
-.apstep-t { font-size: 13.5px; font-weight: 600; }
-.apstep-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.apstep-go { flex: 0 0 auto; font-size: 11px; color: var(--olive, #5C6145); font-weight: 700; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; align-self: center; }
+.apstep-t { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; }
+.apstep-sub { display: block; font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.apstep-go { flex: 0 0 auto; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); font-weight: 700; padding: 5px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); cursor: pointer; align-self: center; }
+.apstep-go:hover { border-color: var(--ink); }
+/* Pastilla de "atención" monocroma (sin rojo/ámbar): tinta sobre papel */
+.tag-ink { display: inline-block; background: var(--ink); color: var(--cream); font-size: 9.5px; font-weight: 700;
+  letter-spacing: .04em; padding: 1px 7px; border-radius: 20px; vertical-align: middle; }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
 /* Número con tamaño fijo y contenido (sin unidades cqh, que algunos móviles
    no soportan y hacían que se saliera del botón). Quitamos los puntos
@@ -1350,7 +1355,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v86</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v87</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1922,18 +1927,20 @@ function renderCalendario(){
   const tot=meses.reduce((s,m)=>({p:s.p+m.produccion,a:s.a+m.appcc}),{p:0,a:0});
   const chips=CAL_MESES.map((nm,m)=>{
     const activo=m===mes, hay=(meses[m]&&meses[m].total)||0;
-    return `<button onclick="calMes(${m})" style="border:0;border-radius:8px;padding:6px 9px;margin:2px;font-family:var(--sans);font-size:11px;font-weight:${activo?800:600};background:${activo?'var(--ink)':'#e7e1d2'};color:${activo?'#f0ebe0':'var(--ink)'};cursor:pointer;position:relative;">${nm}${hay?`<span style="position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:${activo?'#f0ebe0':'var(--ink)'};"></span>`:""}</button>`;
+    return `<button onclick="calMes(${m})" style="border:1px solid ${activo?'var(--ink)':'var(--line)'};border-radius:7px;padding:6px 9px;margin:2px;font-family:var(--sans);font-size:11px;font-weight:${activo?700:600};letter-spacing:.02em;background:${activo?'var(--ink)':'var(--paper)'};color:${activo?'var(--cream)':'var(--ink)'};cursor:pointer;position:relative;">${nm}${hay?`<span style="position:absolute;top:3px;right:4px;width:4px;height:4px;border-radius:50%;background:${activo?'var(--cream)':'var(--ink)'};"></span>`:""}</button>`;
   }).join("");
   const primero=(new Date(year,mes,1).getDay()+6)%7;
   const nDias=new Date(year,mes+1,0).getDate();
-  const cab=["L","M","X","J","V","S","D"].map(x=>`<div style="text-align:center;font-size:9px;color:var(--muted);font-weight:700;">${x}</div>`).join("");
+  const cab=["L","M","X","J","V","S","D"].map(x=>`<div style="text-align:center;font-size:9px;letter-spacing:.1em;color:var(--muted);font-weight:700;">${x}</div>`).join("");
   let celdas="";
   for(let i=0;i<primero;i++) celdas+=`<div></div>`;
   for(let dia=1;dia<=nDias;dia++){
     const f=`${year}-${String(mes+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
     const n=(dias[f]||[]).length, esHoy=(f===d.hoy), sel=(f===window._calDia);
-    const bg=sel?'var(--ink)':(n?'#dcd4c2':'transparent'), col=sel?'#f0ebe0':'var(--ink)';
-    celdas+=`<button onclick="calDia('${f}')" style="aspect-ratio:1;border:${esHoy?'1.5px solid var(--ink)':'0'};border-radius:8px;background:${bg};color:${col};font-family:var(--sans);font-size:12px;font-weight:${n?700:500};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">${dia}${n?`<span style="font-size:8px;opacity:.8;">${n}</span>`:""}</button>`;
+    const bg=sel?'var(--ink)':(n?'var(--olive-light)':'var(--paper)');
+    const col=sel?'var(--cream)':'var(--ink)';
+    const bord=sel?'var(--ink)':(esHoy?'var(--ink)':'var(--line)');
+    celdas+=`<button onclick="calDia('${f}')" style="aspect-ratio:1;border:${esHoy&&!sel?'1.5px':'1px'} solid ${bord};border-radius:8px;background:${bg};color:${col};font-family:var(--sans);font-size:12px;font-weight:${n?700:400};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1;">${dia}${n?`<span style="font-size:7.5px;font-weight:700;margin-top:1px;opacity:${sel?1:.7};">·${n}·</span>`:""}</button>`;
   }
   let detalle="";
   if(window._calDia){
@@ -1946,16 +1953,16 @@ function renderCalendario(){
     detalle=`<div class="card-meta" style="margin-top:12px;color:var(--muted);text-align:center;font-size:11px;">Toca un día con actividad para ver todo lo que pasó.</div>`;
   }
   setInner(`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <button onclick="calYear(-1)" style="border:0;background:#e7e1d2;border-radius:8px;padding:6px 13px;font-size:16px;cursor:pointer;">‹</button>
-      <div style="text-align:center;"><div style="font-family:var(--sans);font-size:20px;font-weight:800;">${year}</div>
-        <div style="font-size:10px;color:var(--muted);">${tot.p} producciones · ${tot.a} registros APPCC</div></div>
-      <button onclick="calYear(1)" style="border:0;background:#e7e1d2;border-radius:8px;padding:6px 13px;font-size:16px;cursor:pointer;">›</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <button onclick="calYear(-1)" style="border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:6px 14px;font-size:15px;cursor:pointer;">‹</button>
+      <div style="text-align:center;"><div style="font-family:var(--sans);font-size:19px;font-weight:700;letter-spacing:.02em;">${year}</div>
+        <div style="font-size:9.5px;letter-spacing:.06em;color:var(--muted);margin-top:1px;">${tot.p} producciones · ${tot.a} registros APPCC</div></div>
+      <button onclick="calYear(1)" style="border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;padding:6px 14px;font-size:15px;cursor:pointer;">›</button>
     </div>
-    <div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">${chips}</div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:12px;">${chips}</div>
     <div class="section-label">${CAL_MESES_L[mes]}</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;">${cab}</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">${celdas}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:5px;">${cab}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">${celdas}</div>
     ${detalle}`);
 }
 
@@ -2114,7 +2121,7 @@ function renderApertura(){
   const pct=Math.round(hechos/total*100);
   let html=`${saludoHTML(u)}
     <div class="section-label">Rutina de apertura · ${hechos}/${total}</div>
-    <div style="height:8px;background:#E2DBCB;border-radius:4px;overflow:hidden;margin-bottom:12px;"><div style="height:100%;width:${pct}%;background:var(--olive,#5C6145);transition:width .3s;"></div></div>`;
+    <div style="height:6px;background:var(--olive-light);border-radius:3px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:var(--ink);transition:width .3s;"></div></div>`;
   html+=APERTURA_PASOS.map(p=>{
     const done=!!pasos[p.k];
     const quien=(done&&pasos[p.k].responsable)?` · ${esc(pasos[p.k].responsable)}`:"";
@@ -2221,7 +2228,11 @@ async function irA_temperaturas(){
       <div class="card-meta" style="margin-bottom:8px;">Anota la temperatura de cada nevera y congelador. El sistema avisa si está fuera de rango.</div>`;
     html+=window._tempTipos.map((t,i)=>{
       const ult=ultimaHoy(t.tipo);
-      const estadoTxt=ult?`<span style="color:${ult.estado==='Correcto'?'var(--olive)':'var(--alert)'};font-weight:700;">${esc(ult.valor)} · ${esc(ult.estado)}</span>`:`<span style="color:var(--muted);">sin registrar hoy</span>`;
+      const estadoTxt=ult
+        ? (ult.estado==='Correcto'
+            ? `<b style="color:var(--ink);">${esc(ult.valor)}</b> · correcto`
+            : `<b style="color:var(--ink);">${esc(ult.valor)}</b> <span class="tag-ink">fuera de rango</span>`)
+        : `<span style="color:var(--muted);">sin registrar hoy</span>`;
       return `<div class="card">
         <div class="card-name">${esc(t.tipo)}</div>
         <div class="card-meta">Rango ${t.min}–${t.max} ${esc(t.unidad)} · ${estadoTxt}</div>
@@ -2347,23 +2358,22 @@ function renderPrevision(){
   const chips=orden.map(d=>{
     const activo=d===p.weekday, esHoy=d===hoy;
     const lbl=["D","L","M","X","J","V","S"][d];
-    return `<button onclick="prevDia(${d})" style="border:${esHoy?'1.5px solid var(--ink)':'0'};border-radius:8px;padding:7px 11px;margin:2px;font-family:var(--sans);font-size:12px;font-weight:${activo?800:600};background:${activo?'var(--ink)':'#e7e1d2'};color:${activo?'#f0ebe0':'var(--ink)'};cursor:pointer;">${lbl}</button>`;
+    return `<button onclick="prevDia(${d})" style="border:1px solid ${activo||esHoy?'var(--ink)':'var(--line)'};border-radius:7px;padding:7px 11px;margin:2px;font-family:var(--sans);font-size:12px;font-weight:${activo?700:600};background:${activo?'var(--ink)':'var(--paper)'};color:${activo?'var(--cream)':'var(--ink)'};cursor:pointer;">${lbl}</button>`;
   }).join("");
   const conf = p.semanas_datos>=3?"buena":(p.semanas_datos>=1?"aprendiendo":"sin datos");
-  const confCol = p.semanas_datos>=3?"var(--olive,#5C6145)":(p.semanas_datos>=1?"#c79a3a":"var(--muted)");
-  let html=`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:8px;">${chips}</div>
+  let html=`<div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">${chips}</div>
     <div class="section-label">${esc(p.dia)} · ventas estimadas</div>
-    <div class="card-meta" style="margin-bottom:8px;">Basado en <b>${p.semanas_datos}</b> semana(s) de ventas reales · fiabilidad <span style="color:${confCol};font-weight:700;">${conf}</span>. Cuantas más semanas, más precisa.</div>`;
+    <div class="card-meta" style="margin-bottom:8px;">Basado en <b style="color:var(--ink);">${p.semanas_datos}</b> semana(s) de ventas reales · fiabilidad <b style="color:var(--ink);">${conf}</b>. Cuantas más semanas, más precisa.</div>`;
   // Estimación por producto
   if(p.estimacion.length){
-    html+=`<div class="card">${p.estimacion.map(e=>`<div class="card-meta">· <b>${esc(e.producto)}</b> — ${e.unidades_estimadas} uds ${e.semanas<2?`<span style="color:#c79a3a;">(pocos datos)</span>`:""}</div>`).join("")}</div>`;
+    html+=`<div class="card">${p.estimacion.map(e=>`<div class="card-meta">· <b style="color:var(--ink);">${esc(e.producto)}</b> — ${e.unidades_estimadas} uds ${e.semanas<2?`<span class="tag-ink">pocos datos</span>`:""}</div>`).join("")}</div>`;
   }else{
     html+=`<div class="empty" style="padding:14px;">Aún no hay ventas de este día para estimar. En cuanto Ágora acumule semanas, aparecerá aquí.</div>`;
   }
   // Qué producir
   html+=`<div class="section-label">Qué producir para cubrir el día</div>`;
   html+= p.produccion.length ? p.produccion.map(pr=>`
-    <div class="dec-act" style="border-left:3px solid #c79a3a;">
+    <div class="dec-act">
       <div class="dec-act-top"><span class="dec-act-title">${esc(pr.nombre)}</span>
         <button class="dec-act-btn" onclick="iniciarYAbrir('${pr.receta_id}',${Math.ceil(pr.producir)},this)">EMPEZAR</button></div>
       <div class="dec-act-sub">Producir ≈${pr.producir} ${esc(pr.unidad)} para cubrir la venta estimada de ${esc(pr.para_materia)}</div>
@@ -2373,7 +2383,7 @@ function renderPrevision(){
   html+=`<div class="section-label">Qué te faltaría para llegar a la estimación</div>`;
   html+= faltan.length ? faltan.map(m=>`
     <div class="card">
-      <div class="card-name">${esc(m.nombre)} <span style="color:var(--alert);font-weight:700;">faltan ${m.falta} ${esc(m.unidad)}</span></div>
+      <div class="card-name">${esc(m.nombre)} <span class="tag-ink">faltan ${m.falta} ${esc(m.unidad)}</span></div>
       <div class="card-meta">Necesario ${m.demanda} ${esc(m.unidad)} · tienes ${m.disponible} ${esc(m.unidad)}</div>
     </div>`).join("") : `<div class="todo-clear">✓ Tienes stock para todo lo estimado.</div>`;
   setInner(html);

@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v75</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v76</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -3533,6 +3533,18 @@ async function irA_ventas(){
         <div class="card-actions"><button class="btn-primary" ${embebido?"":"disabled"} onclick="sincronizarAgora(this)">Importar de Ágora</button></div>
         <div id="ag-res" style="font-size:11px;color:#888070;margin-top:10px;"></div>
       </div>
+      <div class="section-label">Diagnóstico Ágora</div>
+      <div class="card">
+        <div class="card-meta">Embebido en TPV: <b>${embebido?"SÍ ✓":"NO"}</b> · origen del TPV: <b>${esc(AGORA.targetOrigin)}</b></div>
+        <div class="field"><label>Origen del TPV (targetOrigin) — prueba '*' o el exacto</label>
+          <input id="ag-origin" value="${esc(AGORA.targetOrigin)}" placeholder="* o https://…">
+        </div>
+        <div class="card-actions">
+          <button class="btn-ghost" onclick="guardarAgoraOrigin()">Guardar origen</button>
+          <button class="btn-ghost" onclick="probarAgora()">Probar conexión</button>
+        </div>
+        <pre id="ag-log" style="white-space:pre-wrap;font-size:10px;color:#555040;background:#f2efe8;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:10px;max-height:200px;overflow:auto;">Pulsa "Probar conexión" dentro del TPV y mándame una captura de este recuadro.</pre>
+      </div>
       <div class="section-label">Alternativa: CSV</div>
       <div class="card">
         <div class="card-name">Subir CSV de ventas</div>
@@ -3541,6 +3553,7 @@ async function irA_ventas(){
         <div class="card-actions"><button class="btn-ghost" onclick="document.getElementById('csv-file').click()">Elegir archivo CSV</button></div>
         <div id="csv-res" style="font-size:11px;color:#888070;margin-top:10px;"></div>
       </div>`);
+    if(window._agoraLog && window._agoraLog.length){ const b=el("ag-log"); if(b) b.textContent=window._agoraLog.slice(-40).join("\n"); }
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
@@ -3553,32 +3566,65 @@ async function irA_ventas(){
 //   · nombres exactos de los campos del mensaje de respuesta.
 // Se dejan como constantes configurables para no fijar un valor que falle.
 const AGORA = {
-  targetOrigin: "*",                 // ← PROBAR: '*' o el origen exacto del TPV
+  targetOrigin: (function(){ try{ return localStorage.getItem("agora_target")||"*"; }catch(_){ return "*"; } })(),
   msgType: "agora:pos:invoke-api",
   responseType: "agora:pos:invoke-api:response",
   timeoutMs: 20000,
 };
 function enAgora(){ try{ return !!(window.parent && window.parent !== window); }catch(_){ return false; } }
 
+// Diagnóstico en pantalla: registra cada paso del puente para poder depurar en
+// el TPV sin consola (basta con hacer captura del recuadro).
+window._agoraLog = [];
+function agLog(msg, obj){
+  const t = new Date().toLocaleTimeString("es-ES");
+  let linea = `[${t}] ${msg}`;
+  if(obj !== undefined){ try{ linea += " " + JSON.stringify(obj).slice(0,300); }catch(_){}}
+  window._agoraLog.push(linea);
+  const box = el("ag-log"); if(box){ box.textContent = window._agoraLog.slice(-40).join("\n"); box.scrollTop = box.scrollHeight; }
+}
+
 const _agoraPend = {};
 let _agoraSeq = 0;
 window.addEventListener("message", (ev)=>{
   const d = ev.data;
+  // Registra TODO mensaje entrante mientras diagnosticamos (ayuda a ver el schema real).
+  if(d && typeof d === "object" && d.type) agLog("↩ mensaje recibido de "+(ev.origin||"?")+" · type="+d.type, d);
   if(!d || d.type !== AGORA.responseType) return;
   const p = _agoraPend[d.requestId]; if(!p) return;
   delete _agoraPend[d.requestId]; clearTimeout(p.t);
-  if(d.error) p.reject(new Error(String(d.error)));
-  else p.resolve(d.result != null ? d.result : d.data);
+  if(d.error){ agLog("✗ Ágora respondió error", {error:d.error}); p.reject(new Error(String(d.error))); }
+  else { agLog("✓ respuesta OK"); p.resolve(d.result != null ? d.result : d.data); }
 });
 // Pide a Ágora que invoque su API local. Devuelve una promesa con el resultado.
 function agoraInvoke(method, path, body){
   return new Promise((resolve, reject)=>{
     if(!enAgora()) return reject(new Error("La app no está embebida en el TPV Ágora."));
     const requestId = "req-"+(++_agoraSeq)+"-"+new Date().getTime();
-    const t = setTimeout(()=>{ delete _agoraPend[requestId]; reject(new Error("Ágora no respondió a tiempo.")); }, AGORA.timeoutMs);
+    const t = setTimeout(()=>{ delete _agoraPend[requestId]; agLog("✗ sin respuesta (timeout) · targetOrigin="+AGORA.targetOrigin); reject(new Error("Ágora no respondió a tiempo. Prueba otro 'origen del TPV' abajo.")); }, AGORA.timeoutMs);
     _agoraPend[requestId] = { resolve, reject, t };
-    window.parent.postMessage({ type: AGORA.msgType, requestId, method, path, body: body||null }, AGORA.targetOrigin);
+    agLog("→ postMessage "+method+" "+path+" · targetOrigin="+AGORA.targetOrigin);
+    try{ window.parent.postMessage({ type: AGORA.msgType, requestId, method, path, body: body||null }, AGORA.targetOrigin); }
+    catch(e){ clearTimeout(t); delete _agoraPend[requestId]; agLog("✗ postMessage lanzó error", {error:e.message}); reject(e); }
   });
+}
+
+// Diagnóstico: guardar el origen del TPV a probar (sin redeploy) y probar conexión.
+function guardarAgoraOrigin(){
+  const v = (el("ag-origin") && el("ag-origin").value.trim()) || "*";
+  AGORA.targetOrigin = v;
+  try{ localStorage.setItem("agora_target", v); }catch(_){}
+  agLog("Origen del TPV fijado a: "+v);
+}
+async function probarAgora(){
+  agLog("── Prueba de conexión ──");
+  agLog("Embebido en TPV: "+(enAgora()?"SÍ":"NO"));
+  if(!enAgora()){ agLog("No estás dentro del TPV: abre Control M embebido en Ágora."); return; }
+  try{
+    const bday=new Date().toISOString().slice(0,10);
+    const r=await agoraInvoke("GET", `/api/export/?business-day=${bday}&filter=Invoices,DeliveryNotes`);
+    agLog("✓ Ágora devolvió datos", r);
+  }catch(e){ agLog("✗ "+e.message); }
 }
 
 // Flujo completo: exportar del día → mapear/descontar (backend) → confirmar a Ágora.

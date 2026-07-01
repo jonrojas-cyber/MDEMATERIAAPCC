@@ -57,6 +57,33 @@ test("auditoría: las acciones críticas quedan registradas y son admin-only", a
   expect(r.status()).toBe(403);
 });
 
+test("Ágora: importa del export, descuenta stock por escandallo y es idempotente", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const headers = { Authorization: `Bearer ${sesion.token}` };
+  const docs = { docs: [{ id: "E2E-INV-1", businessDay: "2026-06-30", lines: [{ product: "Brasa", quantity: 1, amount: 8.5 }] }] };
+  const antes = (await (await request.get("/api/materias/mat-019", { headers })).json()).disponibilidad_actual;
+  const r1 = await (await request.post("/api/ventas/agora-import", { headers, data: docs })).json();
+  expect(r1.procesados).toBe(1);
+  expect(r1.importe_total).toBeCloseTo(8.5, 2); // parser JSON correcto (no 85)
+  const medio = (await (await request.get("/api/materias/mat-019", { headers })).json()).disponibilidad_actual;
+  expect(medio).toBeLessThan(antes); // descontó stock según escandallo
+  // Reimportar el MISMO documento no vuelve a descontar (idempotencia).
+  const r2 = await (await request.post("/api/ventas/agora-import", { headers, data: docs })).json();
+  expect(r2.procesados).toBe(0);
+  expect(r2.omitidos_ya_procesados).toBe(1);
+  const despues = (await (await request.get("/api/materias/mat-019", { headers })).json()).disponibilidad_actual;
+  expect(despues).toBe(medio);
+});
+
+test("Ágora: el puente rechaza con seguridad fuera del TPV", async ({ page }) => {
+  await login(page);
+  expect(await page.evaluate(() => enAgora())).toBeFalsy();
+  const msg = await page.evaluate(async () => { try { await agoraInvoke("GET", "/x"); return "resolved"; } catch (e) { return e.message; } });
+  expect(msg).toMatch(/no está embebida/i);
+  await page.evaluate(() => irA_ventas());
+  await expect(page.locator("button", { hasText: /Importar de Ágora/ })).toBeVisible();
+});
+
 test("seguridad: cambio de PIN requiere el PIN actual", async ({ request }) => {
   const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   // PIN actual incorrecto -> 400.

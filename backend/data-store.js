@@ -40,6 +40,7 @@ const ENTITIES = [
   "precios_historico",
   "usuarios", // cuentas con PIN hasheado (seguridad)
   "auditoria", // registro de acciones críticas (trazabilidad)
+  "docs_agora", // documentos de Ágora ya procesados (idempotencia)
 ];
 
 const cache = {};

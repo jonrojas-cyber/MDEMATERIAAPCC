@@ -21,6 +21,27 @@ router.post("/importar", textParser, (req, res) => {
   }
 });
 
+// POST /api/ventas/agora-import  { docs: [...] }  (export de Ágora vía puente)
+// Mapea producto→escandallo, descuenta stock y es IDEMPOTENTE por doc.id.
+// Responde con los ids procesados para que el frontend confirme a Ágora
+// (POST /api/doc/processed) y deje de reexportarlos.
+router.post("/agora-import", express.json({ limit: "8mb" }), async (req, res) => {
+  const docs = (req.body && (req.body.docs || req.body.documents || req.body)) || [];
+  try {
+    const r = agora.importarDocs(docs);
+    require("../auditoria").registrar(req, {
+      accion: "ventas_agora",
+      entidad: "ventas",
+      resumen: `Ágora: ${r.procesados} doc(s), ${r.unidades_vendidas} uds, ${r.importe_total} €${r.omitidos_ya_procesados ? ` · ${r.omitidos_ya_procesados} ya procesados` : ""}`,
+      meta: { procesados: r.procesados, omitidos: r.omitidos_ya_procesados, no_reconocidos: r.productos_no_reconocidos },
+    });
+    await store.flush(); // stock + ventas + docs procesados confirmados antes de responder
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: "No se pudo importar de Ágora: " + e.message });
+  }
+});
+
 // GET /api/ventas  — ventas importadas (más recientes primero)
 router.get("/", (req, res) => {
   res.json(store.readAll("ventas").slice().reverse());

@@ -1011,6 +1011,20 @@ input, select { font-family: inherit; font-size: 13px; }
 /* Pastilla de "atención" monocroma (sin rojo/ámbar): tinta sobre papel */
 .tag-ink { display: inline-block; background: var(--ink); color: var(--cream); font-size: 9.5px; font-weight: 700;
   letter-spacing: .04em; padding: 1px 7px; border-radius: 20px; vertical-align: middle; }
+/* Submenús como rejilla cuadrada que LLENA la pantalla (sin scroll), como la portada */
+#screen-inner.submenu { overflow: hidden; display: flex; flex-direction: column; }
+#screen-inner.submenu > #inner-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.submenu-grid { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 11px; min-height: 0; }
+.subtile { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 6px; text-align: left;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px; cursor: pointer; min-height: 0;
+  transition: border-color .12s; }
+.subtile:hover { border-color: var(--ink); }
+.subtile-name { font-family: var(--sans); font-size: 17px; font-weight: 700; letter-spacing: .03em; line-height: 1.05; text-transform: uppercase; }
+.subtile-sub { font-family: var(--sans); font-size: 10px; letter-spacing: .02em; color: var(--muted); line-height: 1.3; }
+.subtile-badge { position: absolute; top: 11px; right: 12px; min-width: 20px; text-align: center; font-size: 11px; font-weight: 700;
+  color: var(--muted); }
+.subtile-badge.on { color: #fff; background: #b5462a; border-radius: 20px; padding: 1px 6px; }
+@media (max-height: 620px) { .subtile-name { font-size: 15px; } .subtile-sub { font-size: 9px; } .subtile { padding: 12px; } }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
 /* Número con tamaño fijo y contenido (sin unidades cqh, que algunos móviles
    no soportan y hacían que se saliera del botón). Quitamos los puntos
@@ -1355,7 +1369,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v87</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v88</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1549,6 +1563,7 @@ async function cambiarMiPin() {
 
 // ── NAVEGACIÓN ────────────────────────────────────────
 function goHome() {
+  window._backOverride = null; // al ir a inicio se olvida cualquier "volver a…"
   currentSection = "home";
   document.getElementById("topbar-section").textContent = "Control total";
   document.getElementById("topbar-back").classList.remove("visible");
@@ -1565,6 +1580,12 @@ function goHome() {
 // "Volver": si estamos en una sección que pertenece a una categoría, regresa
 // a su submenú (no al inicio). Desde un submenú o el resumen, va al inicio.
 function goBack() {
+  // Si venimos de la rutina de apertura (profundizamos en una tarea), volver a
+  // ESA lista, no a donde vive la tarea.
+  if (window._backOverride) {
+    const f = window._backOverride; window._backOverride = null;
+    return f();
+  }
   const s = currentSection;
   if (s === "home" || s === "resumen" || (typeof s === "string" && s.indexOf("cat-") === 0)) {
     goHome();
@@ -1582,6 +1603,7 @@ let _sectionTitle = "";
 function openSection(id, title) {
   currentSection = id;
   _sectionTitle = title;
+  document.getElementById("screen-inner").classList.remove("submenu"); // reset rejilla submenú
   document.getElementById("topbar-section").textContent = title;
   document.getElementById("topbar-back").classList.add("visible");
   document.getElementById("screen-home").classList.add("exit");
@@ -1658,11 +1680,11 @@ function saludoHTML(u){
 const APERTURA_PASOS=[
   { k:"luces",          ico:"💡", t:"Enciende las luces del local" },
   { k:"cafe_despertar", ico:"☕", t:"Hazte un café para despertar" },
-  { k:"calibrar",       ico:"⚖️", t:"Calibra los cafés", sub:"Revisa los tiempos de extracción", go:"irA_recetarioCafe()" },
-  { k:"temperaturas",   ico:"🌡️", t:"Temperaturas de neveras (APPCC)", sub:"On tap, cocina y almacén", go:"irA_temperaturas()" },
-  { k:"fechas",         ico:"📅", t:"Controla todas las fechas de caducidad", go:"irA_lotes()" },
+  { k:"calibrar",       ico:"⚖️", t:"Calibra los cafés", sub:"Revisa los tiempos de extracción", go:"irA_recetarioCafe" },
+  { k:"temperaturas",   ico:"🌡️", t:"Temperaturas de neveras (APPCC)", sub:"On tap, cocina y almacén", go:"irA_temperaturas" },
+  { k:"fechas",         ico:"📅", t:"Controla todas las fechas de caducidad", go:"irA_lotes" },
   { k:"carros",         ico:"🧰", t:"Saca los carros de herramientas" },
-  { k:"produccion",     ico:"🏭", t:"Producción necesaria del día", go:"irA_preparaciones()" },
+  { k:"produccion",     ico:"🏭", t:"Producción necesaria del día", go:"irA_preparaciones" },
   { k:"limpieza",       ico:"🧽", t:"Suelo limpio, mesas y herramienta" },
   { k:"terraza",        ico:"⛱️", t:"Monta la terraza" },
   { k:"playlist",       ico:"🎵", t:"Pon tu playlist favorita para arrancar" },
@@ -2125,7 +2147,7 @@ function renderApertura(){
   html+=APERTURA_PASOS.map(p=>{
     const done=!!pasos[p.k];
     const quien=(done&&pasos[p.k].responsable)?` · ${esc(pasos[p.k].responsable)}`:"";
-    const go=p.go?`<button class="apstep-go" onclick="event.stopPropagation();${p.go}">Abrir →</button>`:"";
+    const go=p.go?`<button class="apstep-go" onclick="event.stopPropagation();aperAbrir('${p.go}')">Abrir →</button>`:"";
     const sub=p.sub?`<span class="apstep-sub">${esc(p.sub)}${quien}</span>`:(quien?`<span class="apstep-sub">hecho${quien}</span>`:"");
     return `<div class="apstep${done?' done':''}" onclick="toggleApertura('${p.k}',${done?false:true})">
       <span class="apstep-check">${done?'✓':''}</span>
@@ -2136,6 +2158,11 @@ function renderApertura(){
   }).join("");
   if(hechos>=total) html+=`<div class="todo-clear" style="margin-top:16px;font-size:15px;">🎬 Todo listo. Que empiece la función.</div>`;
   setInner(html);
+}
+// Abre una tarea de la apertura recordando que "volver" debe regresar aquí.
+function aperAbrir(fn){
+  window._backOverride = irA_apertura;
+  if (typeof window[fn] === "function") window[fn]();
 }
 async function toggleApertura(k, hecho){
   const u=getUser();
@@ -2266,20 +2293,20 @@ async function irA_categoria(cat) {
   const c = CATS[cat];
   if (!c) return;
   openSection("cat-"+cat, c.name);
+  el("screen-inner").classList.add("submenu"); // rejilla cuadrada que llena, sin scroll
   try {
     const d = await api("/inicio");
     const meta = modulosMeta(d);
-    const rows = c.ids.map(id => {
+    const tiles = c.ids.map(id => {
       const m = meta[id];
       if (!m) return "";
-      return `<div class="modrow" role="button" tabindex="0" onclick="irA_${id}()">
-        <span class="mnum">${m.num}</span>
-        <span class="mname">${m.name}</span>
-        <span class="mbadge" style="${m.urgent?"color:var(--alert)":""}">${m.badge}</span>
-        <span class="marrow">›</span>
-      </div>`;
+      return `<button class="subtile" onclick="irA_${id}()">
+        ${m.urgent?`<span class="subtile-badge on">!</span>`:""}
+        <span class="subtile-name">${esc(m.name)}</span>
+        <span class="subtile-sub">${esc(m.badge)}</span>
+      </button>`;
     }).join("");
-    setInner(rows);
+    setInner(`<div class="submenu-grid">${tiles}</div>`);
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }
 

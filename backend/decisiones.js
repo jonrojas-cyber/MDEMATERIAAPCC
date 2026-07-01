@@ -33,6 +33,16 @@ function estadoStock(m) {
   if (disp <= puntoPedido(m)) return "por_pedir";
   return "correcto";
 }
+// Cantidad a pedir para volver al nivel objetivo (óptimo, o el doble del mínimo/
+// punto de pedido si no hay óptimo). Redondeada y nunca negativa.
+function cantidadSugerida(m) {
+  const disp = Number(m.disponibilidad_actual) || 0;
+  const objetivo = m.stock_optimo != null ? Number(m.stock_optimo)
+    : m.stock_ideal != null ? Number(m.stock_ideal)
+    : Math.max(Number(m.stock_minimo) || 0, puntoPedido(m)) * 2;
+  const s = Math.round((objetivo - disp) * 100) / 100;
+  return s > 0 ? s : 0;
+}
 // Tiempo de preparación estimado (min) si la receta no lo define.
 function tiempoReceta(r) {
   if (r.tiempo_min) return Number(r.tiempo_min);
@@ -187,11 +197,16 @@ function construir() {
     const urgentePorAutonomia = autoMin != null && autoMin <= 2;
     const nombres = items.slice(0, 3).map((m) => m.nombre).join(", ");
     const critico = criticos > 0 || urgentePorAutonomia;
+    // Cantidades sugeridas para dejar el pedido casi hecho de un toque.
+    const sugeridos = items
+      .map((m) => ({ materia_id: m.id, cantidad: cantidadSugerida(m) }))
+      .filter((x) => x.cantidad > 0);
     acciones.push({
       id: nid("pedido"), tipo: "pedido", severidad: critico ? "critico" : "importante", prioridad: critico ? 2 : 5, estado: "pendiente",
       titulo: prov ? `Pedir a ${prov.nombre}` : "Pedir (sin proveedor asignado)",
       motivo: `${items.length} producto(s) bajo punto de pedido${autoMin != null ? ` · autonomía ${autoMin} día${autoMin === 1 ? "" : "s"}` : ""}: ${nombres}${items.length > 3 ? "…" : ""}`,
-      tiempo_min: 4, accion: { label: "Pedir", handler: "irA_pedidos" },
+      tiempo_min: 4,
+      accion: { label: "Pedir", handler: "irA_pedidos", args: { proveedor_id: provId !== "sin" ? provId : null, sugeridos } },
     });
   });
   // Riesgo: se quedará sin X, con autonomía en días si se conoce el ritmo.

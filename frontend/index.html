@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v80</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v81</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1731,7 +1731,9 @@ function decAccion(id){
   const a=(window._decIndex||{})[id]; if(!a||!a.accion)return;
   const h=a.accion.handler, args=a.accion.args||{};
   if(h==="decisionProducir") return iniciarYAbrir(args.receta_id, args.cantidad);
-  if(typeof window[h]==="function") return window[h]();
+  // Pasa los args al manejador (irA_pedidos usa proveedor + cantidades sugeridas;
+  // el resto de irA_* ignoran el argumento sin problema).
+  if(typeof window[h]==="function") return window[h](a.accion.args);
 }
 
 // Línea fina de KPIs (datos secundarios, sin protagonismo).
@@ -2245,8 +2247,10 @@ async function verLote(id){
       { k:"Caduca", v:l.caducado?"Fuera de plazo":fmtFecha(l.caduca_en), alerta:l.caducado },
       { k:"Restante", v:l.caducado?"—":`${l.horas_restantes} h` },
     ];
+    const enServicio=(l.cantidad_restante>0 && l.estado!=="Fuera de servicio" && !l.caducado);
     const acc=
-      `<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`
+      (enServicio?`<button class="btn-primary" onclick="registrarConsumoLote('${l.id}',${l.cantidad_restante})">Registrar consumo</button>`:"")
+      +`<button class="btn-ghost" onclick="imprimirEtiqueta('${l.id}')">Imprimir etiqueta</button>`
       +`<button class="btn-ghost" onclick="verQRLote('${l.id}')">Ver QR · vida útil</button>`
       +`<button class="btn-ghost" onclick="copiarEnlaceLote('${l.id}')">Copiar enlace</button>`
       +(l.caducado&&l.estado!=="Fuera de servicio"?`<button class="btn-warn" onclick="darDeBaja('${l.id}',()=>{cerrarFicha();irA_lotes();})">Dar de baja</button>`:"");
@@ -2286,6 +2290,20 @@ async function darDeBaja(id,cb){
   if(!confirm("¿Dar de baja este lote? Quedará fuera de servicio y no se podrá usar. Esta acción no se puede deshacer.")) return;
   try{await api(`/lotes/${id}/dar-de-baja`,{method:"POST"});cb();}
   catch(e){alert(e.message);}
+}
+
+// Registrar consumo real de un lote (uso en servicio). Descuenta de lo que queda.
+async function registrarConsumoLote(id,restante){
+  const v=prompt(`¿Cuánto se ha consumido de este lote?  (quedan ${restante})`);
+  if(v==null) return;
+  const cant=Number(String(v).replace(",","."));
+  if(!Number.isFinite(cant)||cant<=0){ alert("Pon una cantidad válida."); return; }
+  if(!bloqueaDoble("consumo-"+id)) return;
+  try{
+    await api(`/lotes/${id}/consumo`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cantidad:cant,origen:"manual"})});
+    cerrarFicha(); irA_lotes();
+  }catch(e){ alert(e.message); }
+  finally{ liberaDoble("consumo-"+id); }
 }
 
 function imprimirEtiqueta(loteId){
@@ -2968,7 +2986,7 @@ async function guardarCambioPrecio(btn){
 }
 
 // ── PEDIDOS ───────────────────────────────────────────
-async function irA_pedidos(){
+async function irA_pedidos(pre){
   openSection("pedidos","Pedidos");
   try{
     const [provs,mats,peds]=await Promise.all([api("/proveedores"),api("/materias"),api("/pedidos")]);
@@ -2997,6 +3015,16 @@ async function irA_pedidos(){
       );
     },"Aún no hay pedidos.");
     setInner(html);
+    // Si venimos del aviso "Pedir a X": proveedor preseleccionado y cantidades
+    // sugeridas ya puestas. El usuario solo revisa y confirma.
+    if(pre&&pre.proveedor_id){
+      const sel=el("ped-prov");
+      if(sel){ sel.value=pre.proveedor_id; renderPedidoLineas(); }
+      (pre.sugeridos||[]).forEach(s=>{
+        const row=document.querySelector(`.ped-row[data-mat="${s.materia_id}"]`);
+        if(row){ const inp=row.querySelector(".ped-cant"); if(inp && s.cantidad>0) inp.value=s.cantidad; }
+      });
+    }
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 

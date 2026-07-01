@@ -112,16 +112,50 @@ function descErr(e) {
   return txt;
 }
 
+// Cuenta cuántos documentos hay en la respuesta de Ágora (para diagnóstico).
+function contarDocs(body) {
+  if (!body || typeof body !== "object") return 0;
+  if (Array.isArray(body)) return body.length;
+  if (Array.isArray(body.documents)) return body.documents.length;
+  let n = 0;
+  for (const k of Object.keys(body)) if (Array.isArray(body[k])) n += body[k].length;
+  return n;
+}
+
 // ── 1) Leer el export de Ágora ──────────────────────────────────────────────
 async function leerDeAgora(c) {
   const p = new URLSearchParams();
   p.set("filter", c.filtro);
   p.set("include-processed", "false"); // solo lo que aún no hemos confirmado
+  // Día de negocio: por defecto HOY. Se puede fijar otro en config (business_day)
+  // o desactivar poniendo business_day: false.
+  if (c.business_day !== false) {
+    const hoy = new Date().toISOString().slice(0, 10); // aaaa-mm-dd
+    p.set("business-day", c.business_day || hoy);
+  }
   if (c.workplaces) p.set("workplaces", c.workplaces);
   const url = `${c.agora_base.replace(/\/$/, "")}/api/export/?${p.toString()}`;
+  log("→ Pido a Ágora: " + url);
   const r = await pedir(url, { headers: { "Api-Token": c.agora_token } });
   if (r.status === 401 || r.status === 403) salir("Ágora rechazó el Api-Token (401/403). Revisa 'agora_token'.");
   if (r.status >= 400) throw new Error(`Ágora respondió ${r.status}: ${r.texto.slice(0, 200)}`);
+
+  // Diagnóstico: qué contestó Ágora exactamente.
+  const claves = r.body && typeof r.body === "object" && !Array.isArray(r.body) ? Object.keys(r.body) : [];
+  log(`← Ágora HTTP ${r.status} · ${r.texto.length} caracteres · ${contarDocs(r.body)} documento(s)` +
+      (claves.length ? ` · claves: ${claves.join(", ")}` : ""));
+  if (r.texto && r.texto.length <= 800) log("  cuerpo Ágora: " + (r.texto || "(vacío)"));
+
+  // Si no vino ningún documento, miramos los tickets ABIERTOS solo para
+  // diagnosticar (no descuentan stock): así sabemos si la venta está en Ágora
+  // pero aún sin cerrar en documento.
+  if (contarDocs(r.body) === 0) {
+    try {
+      const rt = await pedir(`${c.agora_base.replace(/\/$/, "")}/api/export/tickets/`, { headers: { "Api-Token": c.agora_token } });
+      log(`  (diagnóstico) tickets abiertos: HTTP ${rt.status} · ${contarDocs(rt.body)} ticket(s)` +
+          (rt.texto && rt.texto.length <= 500 ? " · " + rt.texto : ""));
+    } catch (_) { /* diagnóstico, ignorar */ }
+  }
   return r.body || {};
 }
 

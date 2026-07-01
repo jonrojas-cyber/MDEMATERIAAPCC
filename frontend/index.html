@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v81</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v82</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1809,6 +1809,7 @@ async function irA_appcc(){
       <div class="section-label">Control de seguridad alimentaria</div>
       <div class="appcc-grid">
         ${tile("Lotes y caducidades","Trazabilidad y vida útil","irA_lotes()", caducados?`${caducados} caducados`:(proximos?`${proximos} por caducar`:""))}
+        ${tile("Calendario anual","Histórico · producción y APPCC","irA_calendario()", "")}
         ${tile("Etiquetas","Imprimir · Reimprimir · Historial","irA_etiquetas()", "")}
         ${tile("Recepciones","Entrada y cotejo de albaranes","irA_recepcion()", recepPend?`${recepPend} pendientes`:"")}
         ${tile("Temperaturas","Neveras y congelador",`almaccPronto()`, "")}
@@ -1820,6 +1821,71 @@ async function irA_appcc(){
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 function almaccPronto(){ alert("Disponible en la siguiente fase de APPCC."); }
+
+// ── CALENDARIO ANUAL · histórico de producción y APPCC ────────────────────
+const CAL_MESES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const CAL_MESES_L=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const CAL_TIPO={ produccion:"Producción", caducidad:"Caducidad", revision:"Revisión", merma:"Merma", recepcion:"Recepción" };
+
+async function irA_calendario(){
+  openSection("calendario","Calendario anual");
+  const hoy=new Date();
+  if(window._calYear==null) window._calYear=hoy.getFullYear();
+  if(window._calMes==null) window._calMes=hoy.getMonth();
+  window._calDia=null;
+  await cargarCalendario();
+}
+async function cargarCalendario(){
+  setInner(`<div class="empty">Cargando calendario…</div>`);
+  try{ window._cal=await api("/calendario?year="+window._calYear); renderCalendario(); }
+  catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function calYear(delta){ window._calYear+=delta; window._calDia=null; cargarCalendario(); }
+function calMes(m){ window._calMes=m; window._calDia=null; renderCalendario(); }
+function calDia(f){ window._calDia=(window._calDia===f?null:f); renderCalendario(); }
+
+function renderCalendario(){
+  const d=window._cal; if(!d) return;
+  const year=window._calYear, mes=window._calMes, dias=d.dias||{}, meses=d.meses||[];
+  const tot=meses.reduce((s,m)=>({p:s.p+m.produccion,a:s.a+m.appcc}),{p:0,a:0});
+  const chips=CAL_MESES.map((nm,m)=>{
+    const activo=m===mes, hay=(meses[m]&&meses[m].total)||0;
+    return `<button onclick="calMes(${m})" style="border:0;border-radius:8px;padding:6px 9px;margin:2px;font-family:var(--sans);font-size:11px;font-weight:${activo?800:600};background:${activo?'var(--ink)':'#e7e1d2'};color:${activo?'#f0ebe0':'var(--ink)'};cursor:pointer;position:relative;">${nm}${hay?`<span style="position:absolute;top:3px;right:4px;width:5px;height:5px;border-radius:50%;background:${activo?'#f0ebe0':'var(--ink)'};"></span>`:""}</button>`;
+  }).join("");
+  const primero=(new Date(year,mes,1).getDay()+6)%7;
+  const nDias=new Date(year,mes+1,0).getDate();
+  const cab=["L","M","X","J","V","S","D"].map(x=>`<div style="text-align:center;font-size:9px;color:var(--muted);font-weight:700;">${x}</div>`).join("");
+  let celdas="";
+  for(let i=0;i<primero;i++) celdas+=`<div></div>`;
+  for(let dia=1;dia<=nDias;dia++){
+    const f=`${year}-${String(mes+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
+    const n=(dias[f]||[]).length, esHoy=(f===d.hoy), sel=(f===window._calDia);
+    const bg=sel?'var(--ink)':(n?'#dcd4c2':'transparent'), col=sel?'#f0ebe0':'var(--ink)';
+    celdas+=`<button onclick="calDia('${f}')" style="aspect-ratio:1;border:${esHoy?'1.5px solid var(--ink)':'0'};border-radius:8px;background:${bg};color:${col};font-family:var(--sans);font-size:12px;font-weight:${n?700:500};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;">${dia}${n?`<span style="font-size:8px;opacity:.8;">${n}</span>`:""}</button>`;
+  }
+  let detalle="";
+  if(window._calDia){
+    const evs=dias[window._calDia]||[];
+    const fdmt=new Date(window._calDia+"T00:00:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
+    detalle=`<div class="section-label" style="margin-top:14px;">${esc(fdmt)}</div>`;
+    detalle+= evs.length? evs.map(e=>`<div class="card"><div class="card-name">${e.hora?`<span style="color:var(--muted);font-weight:600;">${esc(e.hora)}</span> `:""}${esc(e.titulo||CAL_TIPO[e.tipo]||e.tipo)}</div>${e.detalle?`<div class="card-meta">${esc(e.detalle)}${e.responsable?` · ${esc(e.responsable)}`:""}</div>`:""}</div>`).join("")
+      : `<div class="empty" style="padding:14px;">Sin registros ese día.</div>`;
+  }else{
+    detalle=`<div class="card-meta" style="margin-top:12px;color:var(--muted);text-align:center;font-size:11px;">Toca un día con actividad para ver todo lo que pasó.</div>`;
+  }
+  setInner(`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <button onclick="calYear(-1)" style="border:0;background:#e7e1d2;border-radius:8px;padding:6px 13px;font-size:16px;cursor:pointer;">‹</button>
+      <div style="text-align:center;"><div style="font-family:var(--sans);font-size:20px;font-weight:800;">${year}</div>
+        <div style="font-size:10px;color:var(--muted);">${tot.p} producciones · ${tot.a} registros APPCC</div></div>
+      <button onclick="calYear(1)" style="border:0;background:#e7e1d2;border-radius:8px;padding:6px 13px;font-size:16px;cursor:pointer;">›</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">${chips}</div>
+    <div class="section-label">${CAL_MESES_L[mes]}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;">${cab}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">${celdas}</div>
+    ${detalle}`);
+}
 
 // ── AUDITORÍA · registro de acciones críticas (admin) ─────────────────────
 const AUD_LABEL = { lote_baja:"Baja de lote", lote_creado:"Lote creado", recepcion_aceptada:"Recepción aceptada", recepcion_rechazada:"Recepción rechazada", ajuste_stock:"Ajuste / merma", etiqueta_impresa:"Etiqueta impresa" };
@@ -2027,6 +2093,7 @@ async function irA_preparaciones() {
         card(`${p.nombre_receta} — ${p.cantidad_objetivo} g`, `${p.responsable} · ${fmt(p.finalizada_en)}`)
       );
     }
+    html += `<div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="irA_calendario()">Ver calendario anual · histórico completo →</button></div>`;
     setInner(html);
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }

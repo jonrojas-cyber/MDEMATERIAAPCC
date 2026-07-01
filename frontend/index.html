@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v82</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v83</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1658,7 +1658,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir ahora · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción", ids:["materias","pedidos","proveedores","recepcion"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Costes · Márgenes · Ventas · Config", ids:["carta","analisis","ventas","pagos","archivo","avisos","manual","resumen"], admin:true },
+  informes:   { name:"Informes", desc:"Costes · Márgenes · Ventas · Config", ids:["carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -2014,14 +2014,9 @@ async function loadHome() {
 }
 
 // Resumen del día (el antiguo dashboard).
-async function irA_resumen() {
-  openSection("resumen","Resumen del día");
-  try {
-    const d = await api("/inicio");
-    const u = getUser();
-    setInner(dashboardHTML(d, u && u.rol==="admin"));
-  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
-}
+// "Resumen del día" se fusionó con Análisis (una sola pantalla de números).
+// Se mantiene el nombre como alias por compatibilidad con enlaces antiguos.
+function irA_resumen(){ return irA_analisis(); }
 
 // Pantalla de categoría: lista de sus módulos.
 async function irA_categoria(cat) {
@@ -4164,9 +4159,20 @@ async function borrarReceta(id){
 
 // ── ANÁLISIS ──────────────────────────────────────────
 async function irA_analisis(){
-  openSection("analisis","Análisis");
+  openSection("analisis","Análisis · números");
   try{
-    const [sem,stock]=await Promise.all([api("/reportes/semana"),api("/reportes/stock")]);
+    // Los KPIs del día salen del MISMO cerebro que las Tareas (/decisiones),
+    // así los números de Análisis nunca se contradicen con la bandeja.
+    const [dec,sem,stock]=await Promise.all([api("/decisiones").catch(()=>({})),api("/reportes/semana"),api("/reportes/stock")]);
+    const k=dec.kpis||{};
+    const kbox=(label,val,sub,warn)=>`<div class="kpi-box ${warn?'warn':''}"><div class="kpi-label">${label}</div><div class="kpi-val" style="${warn?'color:var(--warn)':''}">${val}</div><div class="kpi-sub">${sub||''}</div></div>`;
+    const kpisHTML=`<div class="section-label">Números de hoy</div><div class="home-kpis">
+      ${kbox("Ventas hoy", k.ventas_hoy!=null?Math.round(k.ventas_hoy)+" €":"—","")}
+      ${kbox("Food cost", k.food_cost!=null?k.food_cost+" %":"—","medio carta")}
+      ${kbox("Valor stock", k.valor_stock!=null?Math.round(k.valor_stock)+" €":"—","en materias")}
+      ${kbox("Mermas hoy", Math.round(k.merma_hoy||0)+" €","",(k.merma_hoy||0)>0)}
+      ${kbox("Tareas activas", (k.alertas||0),"por resolver",(k.alertas||0)>0)}
+    </div>`;
     const maxCoste=Math.max(1,...sem.dias.map(x=>Math.max(x.coste_produccion,x.coste_mermas)));
     const barrasDias=sem.dias.map(x=>{
       const wp=Math.round(x.coste_produccion/maxCoste*100), wm=Math.round(x.coste_mermas/maxCoste*100);
@@ -4187,6 +4193,7 @@ async function irA_analisis(){
         <div style="margin-top:6px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:var(--ink);"></div></div></div>`;
     }, "Sin materias.");
     setInner(
+      kpisHTML+
       `<div class="section-label">Producción vs mermas (7 días)</div><div class="card">${barrasDias}</div>`+
       `<div class="card" style="font-size:11px;color:#888070;">Total semana — producción ${sem.totales.coste_produccion.toFixed(2)} € · mermas ${sem.totales.coste_mermas.toFixed(2)} € · ${sem.totales.preparaciones} preparaciones</div>`+
       masUsadas+barrasStock

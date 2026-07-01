@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v77</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v78</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -3481,37 +3481,55 @@ function renderLineasAlbaran(lineas){
   const cont=el("alb-lineas"); if(!cont) return;
   if(!lineas.length){cont.innerHTML="";return;}
   const opts=(sel)=>`<option value="">— no cargar —</option>`+(window._mat||[]).map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${m.nombre}</option>`).join("");
-  cont.innerHTML=`<div class="section-label" style="margin-top:10px;">Cargar al almacén (revisa materia y cantidad)</div>`+
+  cont.innerHTML=`<div class="section-label" style="margin-top:10px;">Cargar al almacén (revisa materia, unidad y cantidad)</div>`+
     lineas.map(l=>{
       // Desglose de precio por producto: precio unitario e importe de la línea,
       // tal y como los lee el albarán (cuando vienen). Así no se ve solo el total.
       const pu=(l.precio_unitario!=null&&l.precio_unitario!=="")?Number(l.precio_unitario):null;
-      const imp=(l.importe!=null&&l.importe!=="")?Number(l.importe):(pu!=null&&l.cantidad!=null?pu*Number(l.cantidad):null);
+      // La cantidad del albarán (kg, L, caja…) sirve para el precio; la cantidad
+      // "al almacén" (l.cantidad) ya viene convertida a la unidad de la materia.
+      const cantAlb=(l.cantidad_albaran!=null?l.cantidad_albaran:l.cantidad);
+      const imp=(l.importe!=null&&l.importe!=="")?Number(l.importe):(pu!=null&&cantAlb!=null?pu*Number(cantAlb):null);
+      const uded=l.unidad_detectada||"";
+      const uDest=l.unidad_destino||unidadDe(l.materia_id);
+      const convWarn=l.conversion_ok===false;
+      // Aviso de conversión: qué se leyó y a qué se transformó (o alerta si no supo).
+      const conv=(uded&&cantAlb!=null)
+        ? `<div class="alb-conv" style="width:100%;font-size:9px;margin-top:1px;color:${convWarn?"var(--alert)":"#9a927e"};">${convWarn?"⚠ ":""}leído: ${esc(String(cantAlb))} ${esc(uded)}${(!convWarn&&uDest)?` → ${l.cantidad} ${esc(uDest)}`:""}${convWarn?" · no supe convertir la unidad, revísala":""}</div>`
+        : "";
       const precioTxt=(pu!=null||imp!=null)
-        ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/ud`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
+        ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/${esc(uded||"ud")}`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
         : `<span class="alb-precio" style="font-size:10px;color:#b8b3a3;min-width:96px;text-align:right;flex:0 0 auto;">sin precio</span>`;
-      return `<div class="alb-row" data-pu="${pu!=null?pu:""}" data-imp="${imp!=null?imp:""}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+      return `<div class="alb-row" data-pu="${pu!=null?pu:""}" data-imp="${imp!=null?imp:""}" data-cantalb="${cantAlb!=null?cantAlb:""}" data-uded="${esc(uded)}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
       <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
-      <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" style="width:64px;font-size:11px;">
+      <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" title="Cantidad que entra al almacén, en ${esc(uDest||"la unidad de la materia")}" style="width:70px;font-size:11px;">
       <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>
       ${precioTxt}
+      ${conv}
     </div>`;
     }).join("");
 }
 function recogerLineasAlbaran(){
   return [...document.querySelectorAll(".alb-row")].map(row=>{
     const mat=row.querySelector(".alb-mat").value;
+    // La cantidad editable ya está en la unidad de la materia (la que entra al almacén).
     const cant=Number(row.querySelector(".alb-cant").value);
     const cantOk=Number.isFinite(cant)?cant:0;
     // Conservamos el precio leído por el lector (estaba en data-pu / data-imp);
     // así el albarán digital guarda precio unitario e importe, no solo el total.
-    const puRaw=row.dataset.pu, impRaw=row.dataset.imp;
+    const puRaw=row.dataset.pu;
     const pu=(puRaw!=null&&puRaw!=="")?Number(puRaw):null;
+    // El importe se calcula con la cantidad DEL ALBARÁN (no la convertida), que
+    // es a la que corresponde el precio unitario del proveedor.
+    const cantAlbRaw=row.dataset.cantalb;
+    const cantAlb=(cantAlbRaw!=null&&cantAlbRaw!=="")?Number(cantAlbRaw):cantOk;
+    const impRaw=row.dataset.imp;
     let imp=(impRaw!=null&&impRaw!=="")?Number(impRaw):null;
-    // Si cambian la cantidad y tenemos precio unitario, recalculamos el importe.
-    if(pu!=null) imp=Math.round(pu*cantOk*100)/100;
-    return {descripcion:row.querySelector(".alb-desc").textContent.trim(), materia_id:mat||null, cantidad:cantOk, precio_unitario:pu, importe:imp};
+    if(pu!=null) imp=Math.round(pu*cantAlb*100)/100;
+    return {descripcion:row.querySelector(".alb-desc").textContent.trim(), materia_id:mat||null,
+      cantidad:cantOk, cantidad_albaran:cantAlb, unidad_detectada:row.dataset.uded||null,
+      precio_unitario:pu, importe:imp};
   });
 }
 

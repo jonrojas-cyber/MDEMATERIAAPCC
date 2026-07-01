@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../data-store");
 const ocr = require("../ocr");
+const { convertir } = require("../unidades");
 
 const router = express.Router();
 
@@ -139,9 +140,18 @@ router.post("/escanear", jsonGrande, async (req, res) => {
     const avisos_precio = [];
     const lineas = (datos.lineas || []).map((l) => {
       const m = mejorMateriaPorPalabras(l.descripcion, materias);
+      // Convertir la cantidad del albarán (kg, L, caja…) a la unidad de consumo
+      // de la materia (g, ml, ud). Así lo que entra al almacén ya está en la
+      // unidad correcta. Se guarda también lo leído para poder revisarlo.
+      const conv = m ? convertir(l.cantidad, l.unidad, m) : null;
       const linea = {
         descripcion: l.descripcion,
-        cantidad: l.cantidad,
+        cantidad_albaran: l.cantidad,          // cantidad tal cual en el albarán
+        unidad_detectada: l.unidad || null,    // unidad leída de la foto
+        cantidad: conv ? conv.cantidad : l.cantidad, // ya en unidad de la materia
+        unidad_destino: m ? m.unidad : null,   // unidad de consumo (g/ml/ud)
+        conversion_ok: conv ? conv.ok : null,  // false → revisar a mano
+        conversion_nota: conv ? conv.nota : "",
         precio_unitario: l.precio_unitario,
         importe: l.importe,
         materia_id: m ? m.id : null,

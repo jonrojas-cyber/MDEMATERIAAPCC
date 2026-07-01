@@ -38,6 +38,7 @@ const ESQUEMA = {
         properties: {
           descripcion: { type: "string" },
           cantidad: { type: "number" },
+          unidad: { type: "string", description: "Unidad de medida de la cantidad tal cual aparece: kg, g, L, ml, ud, caja, saco, bandeja… Si no se ve, cadena vacía." },
           precio_unitario: { type: "number" },
           importe: { type: "number" },
         },
@@ -100,8 +101,11 @@ async function extraerAlbaran(base64, mediaType) {
               text:
                 "Esto es la foto de un albarán de un proveedor de hostelería. " +
                 "Extrae el proveedor, la fecha, el importe total y las líneas de producto " +
-                "(descripción, cantidad, precio unitario e importe). Importes en euros con punto decimal. " +
-                "Si un dato no es legible, deja la cadena vacía o 0. " +
+                "(descripción, cantidad, UNIDAD de medida, precio unitario e importe). " +
+                "La UNIDAD es clave: cópiala tal cual aparece (kg, g, L, ml, ud, caja, saco, bandeja, docena…). " +
+                "Si la línea indica un formato con peso/volumen (p. ej. 'saco 25 kg', 'garrafa 5 L', 'caja 12 ud'), " +
+                "pon en 'unidad' ese detalle completo. Si no se ve la unidad, deja 'unidad' como cadena vacía. " +
+                "Importes en euros con punto decimal. Si un dato no es legible, deja la cadena vacía o 0. " +
                 "Responde ÚNICAMENTE con el objeto JSON, sin texto adicional ni markdown.",
             },
           ],

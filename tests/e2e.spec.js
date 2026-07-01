@@ -234,8 +234,8 @@ test("avisos: la pantalla carga con activación de dispositivo, config y vista p
   // Botón de guardar y de prueba.
   await expect(page.locator("button", { hasText: /Guardar/ })).toBeVisible();
   await expect(page.locator("button", { hasText: /aviso de prueba/i })).toBeVisible();
-  // Vista previa (tarjetas de pedidos y caducidades).
-  await expect(page.locator(".card-name", { hasText: /conviene pedir/i })).toBeVisible();
+  // Vista previa: compras agrupadas por proveedor + caducidades.
+  await expect(page.locator(".section-label", { hasText: /compras por proveedor/i })).toBeVisible();
   await expect(page.locator(".card-name", { hasText: /caducar/i })).toBeVisible();
   expect(errors).toEqual([]);
 });

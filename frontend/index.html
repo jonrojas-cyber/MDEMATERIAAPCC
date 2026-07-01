@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v83</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v84</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -3051,9 +3051,22 @@ async function guardarCambioPrecio(btn){
 async function irA_pedidos(pre){
   openSection("pedidos","Pedidos");
   try{
-    const [provs,mats,peds]=await Promise.all([api("/proveedores"),api("/materias"),api("/pedidos")]);
-    window._provPed=provs; window._matPed=mats;
-    let html=`
+    const [provs,mats,peds,sug]=await Promise.all([api("/proveedores"),api("/materias"),api("/pedidos"),api("/pedidos/sugerencias").catch(()=>[])]);
+    window._provPed=provs; window._matPed=mats; window._pedSug=sug;
+    // Sugerencias de compra POR PROVEEDOR (lo mismo que el aviso de las 16:00).
+    let sugHtml="";
+    if(sug.length){
+      sugHtml=`<div class="section-label">Sugerencias de compra · por proveedor</div>`+
+        sug.map((g,idx)=>{
+          const items=g.items.map(it=>`${esc(it.nombre)} <span style="color:${it.estado==='critico'?'var(--alert)':'#c79a3a'};font-weight:700;">(${it.estado==='critico'?'bajo mínimo':'va justo'})</span> · sugerido ${it.cantidad_sugerida} ${esc(it.unidad)}`).join("<br>");
+          return `<div class="card" style="${g.criticos?'border-color:var(--alert);':''}">
+            <div class="card-name">${esc(g.proveedor)} · ${g.total_items} producto(s)${g.criticos?` · ${g.criticos} bajo mínimo`:""}</div>
+            <div class="card-meta" style="margin-top:4px;line-height:1.6;">${items}</div>
+            <div class="card-actions"><button class="btn-primary" onclick="prepararPedidoDesdeSug(${idx})">Preparar pedido</button></div>
+          </div>`;
+        }).join("");
+    }
+    let html=sugHtml+`
       <div class="section-label">Nuevo pedido</div>
       <div class="card">
         <div class="field"><label>Proveedor</label>
@@ -3234,6 +3247,11 @@ async function irA_recepcion(pre){
 // Abre la recepción ya enfocada en un pedido concreto (proveedor preseleccionado).
 function recibirPedido(pedidoId, proveedorId, codigo){
   irA_recepcion({ pedido_id:pedidoId, proveedor_id:proveedorId, pedido_codigo:codigo });
+}
+// Desde una sugerencia por proveedor: abre el pedido con proveedor y cantidades puestas.
+function prepararPedidoDesdeSug(idx){
+  const g=(window._pedSug||[])[idx]; if(!g) return;
+  irA_pedidos({ proveedor_id:g.proveedor_id, sugeridos:g.items.map(it=>({materia_id:it.materia_id,cantidad:it.cantidad_sugerida})) });
 }
 
 // Comprueba si el lector automático está activado y lo muestra de forma evidente.
@@ -3770,11 +3788,12 @@ async function irA_avisos(){
         <div id="av-msg" style="font-size:12px;color:var(--olive);margin-top:8px;"></div>
         <div class="card-meta" style="margin-top:6px;">Último aviso: ${ultimo}</div>
       </div>
-      <div class="section-label">Vista previa de lo que se avisaría ahora</div>
-      <div class="card">
-        <div class="card-name">Materias que conviene pedir (${r.pedir.length})</div>
-        ${r.pedir.length?r.pedir.map(m=>`<div class="card-meta">· ${m.nombre} — quedan ${m.disponibilidad_actual} ${m.unidad}, pedir ${m.cantidad_sugerida} ${m.unidad} (${m.proveedor})</div>`).join(""):`<div class="card-meta">✔ Nada por debajo del stock mínimo.</div>`}
-      </div>
+      <div class="section-label">Vista previa del aviso de las 16:00 · compras por proveedor</div>
+      ${(r.por_proveedor&&r.por_proveedor.length)?r.por_proveedor.map(g=>`
+        <div class="card" style="${g.criticos?'border-color:var(--alert);':''}">
+          <div class="card-name">${esc(g.proveedor)} · ${g.total_items} producto(s)</div>
+          ${g.items.map(it=>`<div class="card-meta">· ${esc(it.nombre)} — quedan ${it.disponibilidad_actual} ${esc(it.unidad)}, pedir ${it.cantidad_sugerida} ${esc(it.unidad)} <span style="color:${it.estado==='critico'?'var(--alert)':'#c79a3a'}">(${it.estado==='critico'?'bajo mínimo':'va justo'})</span></div>`).join("")}
+        </div>`).join(""):`<div class="card"><div class="card-meta">✔ Nada que pedir ahora mismo.</div></div>`}
       <div class="card">
         <div class="card-name">Lotes a punto de caducar (${r.caducando.length})</div>
         ${r.caducando.length?r.caducando.map(l=>`<div class="card-meta">· ${l.nombre} (${l.codigo}) — ${l.caducado?"CADUCADO":"caduca en "+l.horas_restantes+" h"}${l.ubicacion?" · "+l.ubicacion:""}</div>`).join(""):`<div class="card-meta">✔ Ningún lote caduca en el plazo vigilado.</div>`}

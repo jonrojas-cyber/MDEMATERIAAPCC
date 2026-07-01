@@ -1,10 +1,16 @@
 const express = require("express");
 const store = require("../data-store");
+const compras = require("../compras");
 
 const router = express.Router();
 
 router.get("/", (req, res) => {
   res.json(store.readAll("pedidos").slice().reverse());
+});
+
+// Sugerencias de compra agrupadas por proveedor (lo mismo que el aviso de 16:00).
+router.get("/sugerencias", (req, res) => {
+  res.json(compras.sugerencias());
 });
 
 router.get("/:id", (req, res) => {

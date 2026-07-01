@@ -126,6 +126,31 @@ function contarDocs(body) {
 // guarda la respuesta cruda de Ágora en respuesta-agora.json (para soporte).
 const DIAG = process.argv.includes("--todo") || process.argv.includes("--diag");
 
+// Enseña la estructura del primer documento y su primera línea (nombres de
+// campos + un valor de muestra), para saber cómo mapearlo en Control M.
+function inspeccionar(body) {
+  let docs = [];
+  if (Array.isArray(body)) docs = body;
+  else if (body && Array.isArray(body.documents)) docs = body.documents;
+  else if (body && typeof body === "object") {
+    for (const k of Object.keys(body)) if (Array.isArray(body[k])) { docs = body[k]; break; }
+  }
+  const d = docs[0];
+  if (!d || typeof d !== "object") { log("  (inspección) no hay documentos que inspeccionar"); return; }
+  log("  (inspección) CAMPOS DEL DOCUMENTO: " + Object.keys(d).join(", "));
+  let huboLinea = false;
+  for (const k of Object.keys(d)) {
+    if (Array.isArray(d[k]) && d[k].length && typeof d[k][0] === "object") {
+      huboLinea = true;
+      log(`  (inspección) LÍNEAS en '${k}' (${d[k].length}); CAMPOS DE LÍNEA: ` + Object.keys(d[k][0]).join(", "));
+      const ln = d[k][0];
+      log("  (inspección) PRIMERA LÍNEA: " +
+        Object.keys(ln).map((kk) => `${kk}=${JSON.stringify(ln[kk])}`).join(" | ").slice(0, 500));
+    }
+  }
+  if (!huboLinea) log("  (inspección) el documento no tiene ninguna lista de líneas dentro");
+}
+
 // ── 1) Leer el export de Ágora ──────────────────────────────────────────────
 async function leerDeAgora(c) {
   const p = new URLSearchParams();
@@ -149,6 +174,10 @@ async function leerDeAgora(c) {
     fs.writeFileSync(path.join(__dirname, "respuesta-agora.json"), r.texto || "");
     log("  (guardada la respuesta en respuesta-agora.json)");
   } catch (_) { /* si no se puede escribir, seguimos */ }
+
+  // En modo --todo, enseña por pantalla los NOMBRES de los campos de la factura
+  // y de sus líneas: es lo que hace falta para ajustar el mapeo en Control M.
+  if (DIAG) inspeccionar(r.body);
 
   // Diagnóstico: qué contestó Ágora exactamente.
   const claves = r.body && typeof r.body === "object" && !Array.isArray(r.body) ? Object.keys(r.body) : [];

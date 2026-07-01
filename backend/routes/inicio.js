@@ -2,6 +2,7 @@ const express = require("express");
 const store = require("../data-store");
 const { costePorUnidad, tamanosLote } = require("../costing");
 const { velocidadConsumo, horasDeStock } = require("../consumo");
+const { estadoStock, cantidadSugerida } = require("../umbral");
 const agora = require("../agora");
 
 const router = express.Router();
@@ -138,17 +139,17 @@ router.get("/", (req, res) => {
     .sort((a, b) => a.horas_restantes - b.horas_restantes);
 
   // ── PEDIR ─────────────────────────────────────────────────────────────────
+  // Mismo umbral que las Tareas (módulo umbral): por debajo del punto de pedido.
   const pedir = materias
-    .filter((m) => m.disponibilidad_actual <= m.stock_minimo)
+    .filter((m) => estadoStock(m) !== "correcto")
     .map((m) => {
       const proveedor = proveedores.find((p) => p.id === m.proveedor_id);
-      const cantidadSugerida = Math.round((m.stock_ideal - m.disponibilidad_actual) * 100) / 100;
       return {
         materia_id: m.id,
         nombre: m.nombre,
         disponibilidad_actual: m.disponibilidad_actual,
         unidad: m.unidad,
-        cantidad_sugerida: cantidadSugerida,
+        cantidad_sugerida: cantidadSugerida(m),
         valor_stock_actual: Math.round(m.disponibilidad_actual * m.coste_medio * 100) / 100,
         proveedor: proveedor ? proveedor.nombre : "Sin proveedor asignado",
         contacto: proveedor ? proveedor.contacto : "",

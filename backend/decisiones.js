@@ -13,6 +13,7 @@ const store = require("./data-store");
 const { costePorUnidad, tamanosLote } = require("./costing");
 const { velocidadConsumo, horasDeStock } = require("./consumo");
 const { consumoDiarioPorMateria, autonomiaDe } = require("./autonomia");
+const { puntoPedido, estadoStock, cantidadSugerida } = require("./umbral");
 
 const BLOQUEADOS = ["Fuera de servicio", "Bloqueado", "No apto", "Rechazado"];
 
@@ -22,27 +23,7 @@ function horasRestantes(lote) {
 function fechaValida(iso) {
   return iso && !isNaN(new Date(iso).getTime());
 }
-function puntoPedido(m) {
-  if (m.punto_pedido != null && m.punto_pedido !== "") return Number(m.punto_pedido);
-  return Math.round((Number(m.stock_minimo) || 0) * 1.3);
-}
-function estadoStock(m) {
-  const disp = Number(m.disponibilidad_actual) || 0;
-  const min = Number(m.stock_minimo) || 0;
-  if (disp <= min) return "critico";
-  if (disp <= puntoPedido(m)) return "por_pedir";
-  return "correcto";
-}
-// Cantidad a pedir para volver al nivel objetivo (óptimo, o el doble del mínimo/
-// punto de pedido si no hay óptimo). Redondeada y nunca negativa.
-function cantidadSugerida(m) {
-  const disp = Number(m.disponibilidad_actual) || 0;
-  const objetivo = m.stock_optimo != null ? Number(m.stock_optimo)
-    : m.stock_ideal != null ? Number(m.stock_ideal)
-    : Math.max(Number(m.stock_minimo) || 0, puntoPedido(m)) * 2;
-  const s = Math.round((objetivo - disp) * 100) / 100;
-  return s > 0 ? s : 0;
-}
+// (puntoPedido, estadoStock y cantidadSugerida viven en ./umbral — cerebro único.)
 // Tiempo de preparación estimado (min) si la receta no lo define.
 function tiempoReceta(r) {
   if (r.tiempo_min) return Number(r.tiempo_min);

@@ -241,9 +241,14 @@ router.post("/cotejar", jsonGrande, (req, res) => {
 
 // Entrada de recepción (manual o tras escanear). Admite fotos, líneas, pedido,
 // lote del proveedor y caducidad.
-router.post("/", jsonGrande, (req, res) => {
+router.post("/", jsonGrande, async (req, res) => {
   const { proveedor_id, importe_total, foto_albaran, foto_producto, lineas, pedido_id, lote_proveedor, caducidad } = req.body;
   if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor de la recepción" });
+  // El importe puede venir como "120,50" (coma) o número; lo normalizamos y
+  // exigimos que sea un número válido y no negativo (evita NaN/strings en pagos).
+  let importe = typeof importe_total === "string" ? Number(importe_total.replace(/\./g, "").replace(",", ".")) : Number(importe_total);
+  if (!Number.isFinite(importe) || importe < 0) importe = 0;
+  importe = Math.round(importe * 100) / 100;
   const recepcion = {
     id: store.nextId("rcp", "recepciones"),
     proveedor_id,
@@ -255,10 +260,11 @@ router.post("/", jsonGrande, (req, res) => {
     caducidad: caducidad ? String(caducidad).trim() : "",
     lineas: Array.isArray(lineas) ? lineas : [],
     estado: "Pendiente de confirmar",
-    importe_total: importe_total || 0,
-    pendiente_pago: importe_total || 0,
+    importe_total: importe,
+    pendiente_pago: importe,
   };
   store.insert("recepciones", recepcion);
+  await store.flush();
   res.status(201).json(recepcion);
 });
 
@@ -286,7 +292,7 @@ const ESTADOS_RECEPCION = ["Aceptado", "Aceptado con incidencia", "Rechazado"];
 
 // Resolver una recepción con uno de los tres estados. Aceptado / Aceptado con
 // incidencia cargan el stock; Rechazado no toca el almacén.
-router.post("/:id/estado", jsonGrande, (req, res) => {
+router.post("/:id/estado", jsonGrande, async (req, res) => {
   const recepcion = store.findById("recepciones", req.params.id);
   if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
   const estado = String((req.body && req.body.estado) || "").trim();
@@ -310,11 +316,12 @@ router.post("/:id/estado", jsonGrande, (req, res) => {
     resumen: `Recepción ${recepcion.proveedor_nombre || recepcion.proveedor_id || ""} ${estado.toLowerCase()}${aceptada ? ` · ${aplicado.length} línea(s) al stock` : ""}`,
     meta: { estado, importe_total: recepcion.importe_total, lineas_cargadas: aplicado.length },
   });
+  await store.flush(); // stock + estado confirmados en la BD antes de responder
   res.json({ ...actualizada, stock_cargado: aplicado });
 });
 
 // Compatibilidad: confirmar = Aceptado.
-router.post("/:id/confirmar", (req, res) => {
+router.post("/:id/confirmar", async (req, res) => {
   const recepcion = store.findById("recepciones", req.params.id);
   if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
   const aplicado = aplicarStock(recepcion);
@@ -324,6 +331,7 @@ router.post("/:id/confirmar", (req, res) => {
   const actualizada = store.update("recepciones", req.params.id, {
     estado: "Aceptado", resuelta_en: new Date().toISOString(), stock_aplicado: true,
   });
+  await store.flush();
   res.json({ ...actualizada, stock_cargado: aplicado });
 });
 

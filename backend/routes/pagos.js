@@ -142,6 +142,7 @@ router.post("/:proveedorId/marcar-pagado", async (req, res) => {
   }
 
   store.insert("justificantes", justificante);
+  await store.flush(); // pagos marcados + justificante confirmados antes de responder
   res.json({ actualizadas: albaranes.length, justificante });
 });
 

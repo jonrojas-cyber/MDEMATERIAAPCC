@@ -29,15 +29,30 @@ router.get("/:id", (req, res) => {
   res.json(decorate(lote));
 });
 
-router.patch("/:id", (req, res) => {
-  const updated = store.update("lotes", req.params.id, req.body);
-  if (!updated) return res.status(404).json({ error: "Lote no encontrado" });
+// Solo se permiten editar campos concretos (evita que se sobreescriban
+// código/receta/caducidad y se salte la trazabilidad de seguridad alimentaria).
+const LOTE_EDITABLE = new Set(["ubicacion", "estado", "notas", "observacion"]);
+router.patch("/:id", async (req, res) => {
+  const existe = store.findById("lotes", req.params.id);
+  if (!existe) return res.status(404).json({ error: "Lote no encontrado" });
+  const cambios = {};
+  for (const [k, v] of Object.entries(req.body || {})) {
+    if (LOTE_EDITABLE.has(k)) cambios[k] = typeof v === "string" ? v.trim() : v;
+  }
+  if (!Object.keys(cambios).length) return res.status(400).json({ error: "Nada que actualizar" });
+  const updated = store.update("lotes", req.params.id, cambios);
+  require("../auditoria").registrar(req, {
+    accion: "lote_editado", entidad: "lotes", entidad_id: existe.id,
+    resumen: `Lote ${existe.codigo || existe.id} editado (${Object.keys(cambios).join(", ")})`,
+    meta: cambios,
+  });
+  await store.flush();
   res.json(decorate(updated));
 });
 
 // Registra consumo real de un lote (uso en servicio) con timestamp.
 // Descuenta de cantidad_restante y guarda un consumo para el cálculo JIT.
-router.post("/:id/consumo", (req, res) => {
+router.post("/:id/consumo", async (req, res) => {
   const lote = store.findById("lotes", req.params.id);
   if (!lote) return res.status(404).json({ error: "Lote no encontrado" });
 
@@ -61,10 +76,11 @@ router.post("/:id/consumo", (req, res) => {
   const patch = { cantidad_restante: restante };
   if (restante === 0) patch.estado = "Fuera de servicio";
   const actualizado = store.update("lotes", req.params.id, patch);
+  await store.flush();
   res.json(decorate(actualizado));
 });
 
-router.post("/:id/dar-de-baja", (req, res) => {
+router.post("/:id/dar-de-baja", async (req, res) => {
   const lote = store.findById("lotes", req.params.id);
   if (!lote) return res.status(404).json({ error: "Lote no encontrado" });
 
@@ -98,6 +114,7 @@ router.post("/:id/dar-de-baja", (req, res) => {
     resumen: `Baja del lote ${lote.codigo}${lote.cantidad_restante > 0 ? ` (${lote.cantidad_restante} de merma, ${coste.toFixed(2)} €)` : ""}`,
     meta: { codigo: lote.codigo, cantidad_baja: lote.cantidad_restante, coste },
   });
+  await store.flush();
   res.json(decorate(actualizado));
 });
 

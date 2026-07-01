@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#3E4534"/>
 <title>Control M · m de materia</title>
 <!-- Tipografía autoalojada (Courier Prime WOFF2). Sin dependencias externas. -->
@@ -1326,7 +1326,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v78</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v79</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1585,6 +1585,12 @@ async function api(path, opts = {}) {
 function el(id) { return document.getElementById(id); }
 // Escapa texto para meterlo con seguridad en HTML (valores de campos, etc.).
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+// Anti doble-envío: evita que un doble toque (habitual en móvil con mala red)
+// cree dos pedidos/recepciones/lotes. bloqueaDoble devuelve false si ya hay uno
+// en curso con esa clave; libera en el finally.
+const _enviando=new Set();
+function bloqueaDoble(clave){ if(_enviando.has(clave)) return false; _enviando.add(clave); return true; }
+function liberaDoble(clave){ _enviando.delete(clave); }
 // Cada pantalla interna lleva su título serif (misma línea que la home).
 function setInner(html) {
   el("inner-content").innerHTML =
@@ -2068,7 +2074,7 @@ async function comenzarProduccion(rid, cantidad, btn){
   if(btn){ btn.disabled=true; btn.textContent="Comenzando…"; }
   try {
     const p = await api("/preparaciones",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({receta_id:rid,cantidad_objetivo:cantidad,responsable:getUser()||"Sin asignar"})});
+      body:JSON.stringify({receta_id:rid,cantidad_objetivo:cantidad,responsable:(getUser()&&getUser().nombre)||"Sin asignar"})});
     document.body.style.overflow="";
     pintarWizard(p);
   } catch(e){ alert(e.message); if(btn){ btn.disabled=false; btn.textContent="Todo preparado · comenzar"; } }
@@ -2132,6 +2138,7 @@ async function confirmarPaso(id){
 }
 
 async function finalizarPrep(id){
+  if(!bloqueaDoble("finalizar-"+id)) return;
   const u=getUser(); const resp=encodeURIComponent(u?u.nombre:"");
   // Abrimos la ventana YA (dentro del clic) para que el móvil no la bloquee;
   // luego la redirigimos a la etiqueta del lote recién creado.
@@ -2143,6 +2150,7 @@ async function finalizarPrep(id){
     else if(w){ w.close(); }
     cerrarWizard();
   }catch(e){ if(w)w.close(); alert(e.message); }
+  finally{ liberaDoble("finalizar-"+id); }
 }
 
 // ── FICHA TÉCNICA · detalle de producto a pantalla completa (layout etiqueta) ──
@@ -2268,6 +2276,7 @@ async function irA_lotes(){
 }
 
 async function darDeBaja(id,cb){
+  if(!confirm("¿Dar de baja este lote? Quedará fuera de servicio y no se podrá usar. Esta acción no se puede deshacer.")) return;
   try{await api(`/lotes/${id}/dar-de-baja`,{method:"POST"});cb();}
   catch(e){alert(e.message);}
 }
@@ -2552,7 +2561,7 @@ async function regRev(tipo,valor){
   if(!valor){alert("Introduce un valor.");return;}
   try{
     await api("/revisiones/registrar",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({tipo,valor,responsable:getUser()||"Sin asignar"})});
+      body:JSON.stringify({tipo,valor,responsable:(getUser()&&getUser().nombre)||"Sin asignar"})});
     irA_revisiones();
   }catch(e){alert(e.message);}
 }
@@ -2589,7 +2598,7 @@ async function irA_ajustes(){
             ${mat.map(m=>`<option value="${m.id}">${m.nombre} (${m.disponibilidad_actual} ${m.unidad})</option>`).join("")}
           </select>
         </div>
-        <div class="field"><label>Cantidad</label><input type="number" id="aj-cant" style="width:130px;"></div>
+        <div class="field"><label>Cantidad</label><input type="number" inputmode="decimal" id="aj-cant" style="width:130px;"></div>
         <div class="field">
           <label>Motivo</label>
           <div class="toggle-row" id="aj-motivos">
@@ -2636,7 +2645,7 @@ async function regAjuste(){
   if(!_aj.motivo){alert("Selecciona un motivo.");return;}
   try{
     await api("/ajustes",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({tipo_objetivo:_aj.tipo,objetivo_id:obj,cantidad:cant,motivo:_aj.motivo,observacion:obs,responsable:getUser()||"Sin asignar"})});
+      body:JSON.stringify({tipo_objetivo:_aj.tipo,objetivo_id:obj,cantidad:cant,motivo:_aj.motivo,observacion:obs,responsable:(getUser()&&getUser().nombre)||"Sin asignar"})});
     irA_ajustes();
   }catch(e){alert(e.message);}
 }
@@ -2993,9 +3002,9 @@ function renderPedidoLineas(){
   cont.innerHTML=`<div class="section-label" style="margin-top:8px;">Productos (pon cantidad a los que pidas)</div>`+
     mats.map(m=>`<div class="ped-row" data-mat="${m.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
       <span style="font-size:11px;flex:1;min-width:90px;">${m.nombre}</span>
-      <input class="ped-cant" type="number" step="0.01" placeholder="0" style="width:62px;font-size:11px;">
+      <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" style="width:62px;font-size:11px;">
       <span style="font-size:10px;color:#888070;">${m.unidad}</span>
-      <input class="ped-precio" type="number" step="0.0001" value="${m.coste_medio}" style="width:74px;font-size:11px;" title="Precio esperado por ${m.unidad}">
+      <input class="ped-precio" type="number" inputmode="decimal" step="0.0001" value="${m.coste_medio}" style="width:74px;font-size:11px;" title="Precio esperado por ${m.unidad}">
       <span style="font-size:10px;color:#888070;">€/${m.unidad}</span>
     </div>`).join("");
 }
@@ -3009,11 +3018,13 @@ async function crearPedido(){
     precio_esperado:Number(r.querySelector(".ped-precio").value)||0,
   })).filter(l=>l.cantidad>0);
   if(!lineas.length){alert("Pon cantidad en al menos un producto.");return;}
+  if(!bloqueaDoble("pedido")) return;
   try{
     const p=await api("/pedidos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({proveedor_id:provId,lineas})});
     if(confirm("Pedido creado. ¿Enviarlo ahora por WhatsApp al proveedor?")){ enviarPedidoWA(p.id); }
     else { irA_pedidos(); }
   }catch(e){alert(e.message);}
+  finally{ liberaDoble("pedido"); }
 }
 
 async function enviarPedidoWA(id){
@@ -3068,7 +3079,7 @@ async function irA_recepcion(){
             ${provs.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join("")}
           </select>
         </div>
-        <div class="field"><label>Importe total (€)</label><input type="number" step="0.01" id="rcp-imp" style="width:140px;"></div>
+        <div class="field"><label>Importe total (€)</label><input type="number" inputmode="decimal" step="0.01" id="rcp-imp" style="width:140px;"></div>
         <div class="field"><label>Lote del proveedor</label><input id="rcp-lote" style="width:100%;" placeholder="opcional"></div>
         <div class="field"><label>Caducidad</label><input id="rcp-cad" style="width:100%;" placeholder="p. ej. 12/07/2026"></div>
         <input type="file" accept="image/*" capture="environment" id="rcp-prod-file" style="display:none" onchange="elegirFotoProducto(this)">
@@ -3180,11 +3191,13 @@ async function nuevaRcp(){
     caducidad:(el("rcp-cad")&&el("rcp-cad").value.trim())||"",
     lineas:recogerLineasAlbaran(), pedido_id:window._pedidoId||null,
   };
+  if(!bloqueaDoble("recepcion")) return;
   try{
     await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     window._albFoto=null; window._pedidoId=null; window._rcpProdFoto=null;
     irA_recepcion();
   }catch(e){alert(e.message);}
+  finally{ liberaDoble("recepcion"); }
 }
 
 // Resuelve una recepción con uno de los tres estados.
@@ -3193,12 +3206,14 @@ async function resolverRcp(id,estado){
   if(estado==="Aceptado con incidencia"||estado==="Rechazado"){
     nota=prompt(estado==="Rechazado"?"Motivo del rechazo (opcional):":"Describe la incidencia (opcional):")||"";
   }
+  if(!bloqueaDoble("resolver-"+id)) return;
   try{
     const r=await api(`/recepciones/${id}/estado`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({estado,nota_incidencia:nota})});
     const det=r.stock_cargado||[];
-    if(det.length) alert("Recepción "+estado.toLowerCase()+". Cargado al almacén:\n"+det.map(d=>`+${d.cantidad} ${d.unidad} de ${d.nombre}`).join("\n"));
+    if(det.length) alert("Recepción "+estado.toLowerCase()+". Cargado al almacén:\n"+det.map(d=>`+${d.cantidad} ${esc(d.unidad)} de ${esc(d.nombre)}`).join("\n"));
     irA_recepcion();
   }catch(e){alert(e.message);}
+  finally{ liberaDoble("resolver-"+id); }
 }
 
 // Reduce la imagen en el navegador antes de enviarla (tamaño y coste OCR).
@@ -3243,7 +3258,7 @@ async function procesarFotoAlbaran(dataUrl){
     const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
     if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
-    if(hint) hint.innerHTML=`Leído: <b>${r.proveedor||"proveedor ?"}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
+    if(hint) hint.innerHTML=`Leído: <b>${esc(r.proveedor||"proveedor ?")}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
     window._avisosPrecio=r.avisos_precio||[];
     renderLineasAlbaran(r.lineas||[]);
     // Cotejo: comparar con el pedido del proveedor y los precios habituales.
@@ -3480,7 +3495,7 @@ function actualizarUni(sel){const row=sel.closest(".alb-row");if(!row)return;con
 function renderLineasAlbaran(lineas){
   const cont=el("alb-lineas"); if(!cont) return;
   if(!lineas.length){cont.innerHTML="";return;}
-  const opts=(sel)=>`<option value="">— no cargar —</option>`+(window._mat||[]).map(m=>`<option value="${m.id}" ${m.id===sel?"selected":""}>${m.nombre}</option>`).join("");
+  const opts=(sel)=>`<option value="">— no cargar —</option>`+(window._mat||[]).map(m=>`<option value="${esc(m.id)}" ${m.id===sel?"selected":""}>${esc(m.nombre)}</option>`).join("");
   cont.innerHTML=`<div class="section-label" style="margin-top:10px;">Cargar al almacén (revisa materia, unidad y cantidad)</div>`+
     lineas.map(l=>{
       // Desglose de precio por producto: precio unitario e importe de la línea,
@@ -3501,9 +3516,9 @@ function renderLineasAlbaran(lineas){
         ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/${esc(uded||"ud")}`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
         : `<span class="alb-precio" style="font-size:10px;color:#b8b3a3;min-width:96px;text-align:right;flex:0 0 auto;">sin precio</span>`;
       return `<div class="alb-row" data-pu="${pu!=null?pu:""}" data-imp="${imp!=null?imp:""}" data-cantalb="${cantAlb!=null?cantAlb:""}" data-uded="${esc(uded)}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${l.descripcion||""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
+      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${esc(l.descripcion||"")}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
-      <input class="alb-cant" type="number" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" title="Cantidad que entra al almacén, en ${esc(uDest||"la unidad de la materia")}" style="width:70px;font-size:11px;">
+      <input class="alb-cant" type="number" inputmode="decimal" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" title="Cantidad que entra al almacén, en ${esc(uDest||"la unidad de la materia")}" style="width:70px;font-size:11px;">
       <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>
       ${precioTxt}
       ${conv}

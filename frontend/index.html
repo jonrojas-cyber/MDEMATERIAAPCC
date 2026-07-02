@@ -1490,7 +1490,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v99</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v100</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1517,26 +1517,11 @@ const USUARIOS = {
   "Moni": { rol: "admin",  nombre: "Mónica" },
 };
 
-const MODULOS_EQUIPO = ["preparaciones","lotes","revisiones","ajustes"];
-const MODULOS_ADMIN  = ["preparaciones","lotes","materias","revisiones","ajustes","proveedores","recepcion","pagos","manual"];
 
 function getUser()  { try{ return JSON.parse(localStorage.getItem("cm_session")); }catch{ return null; } }
 function getToken() { const u = getUser(); return u && u.token; }
 function setSession(u) { localStorage.setItem("cm_session", JSON.stringify(u)); }
 function logout()   { localStorage.removeItem("cm_session"); location.reload(); }
-
-function puedeVer(seccion) {
-  const u = getUser();
-  if (!u) return false;
-  if (u.rol === "admin") return true;
-  return MODULOS_EQUIPO.includes(seccion);
-}
-
-function modulosVisibles() {
-  const u = getUser();
-  if (!u) return [];
-  return u.rol === "admin" ? MODULOS_ADMIN : MODULOS_EQUIPO;
-}
 
 // ── LOGIN SCREEN ──────────────────────────────────────
 let _loginKey = null;
@@ -1992,21 +1977,6 @@ function hoyHTML(hoy){
 }
 
 // Bloque de tareas para la home: top por nivel, una sola pregunta.
-function qhaHomeHTML(dec){
-  if(!dec) return "";
-  decIndexar(dec);
-  const c=decCuenta(dec);
-  const total=c.critico+c.importante+c.informativo;
-  const cuenta = total
-    ? `<div class="tareas-cuenta"><span style="color:#b5462a">${c.critico} críticas</span> · <span style="color:#c79a3a">${c.importante} importantes</span> · <span style="color:#3f6079">${c.informativo} info</span></div>`
-    : "";
-  return `<div class="qha">
-    ${cuenta}
-    ${decGruposHTML(dec,{max:3})}
-    ${total>0?`<button class="qha-allbtn" onclick="irA_tareas()">Ver todas las tareas →</button>`:""}
-  </div>`;
-}
-
 // Pantalla TAREAS: la bandeja única completa.
 async function irA_tareas(){
   openSection("tareas","Tareas");
@@ -2182,36 +2152,6 @@ async function irA_etiquetas(){
 }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
-function dashboardHTML(d, esAdmin) {
-  const k = d.kpis || {};
-  const alerta = d.estado_servicio !== "Servicio en orden";
-  const enCurso=(d.en_curso||[]).length, pendPrep=(d.preparar||[]).length,
-        pendPedir=(d.pedir||[]).length, pendRevisar=(d.revisar||[]).length, pendLotes=(d.lotes_a_vigilar||[]).length;
-  const kpisHTML = esAdmin ? `
-      <div class="home-kpis">
-        <div class="kpi-box"><div class="kpi-label">Producción hoy</div><div class="kpi-val">${k.coste_produccion_hoy!=null?k.coste_produccion_hoy.toFixed(2)+" €":"—"}</div><div class="kpi-sub">${k.preparaciones_hoy||0} preparaciones</div></div>
-        <div class="kpi-box ${(k.coste_mermas_hoy||0)>0?"warn":""}"><div class="kpi-label">Mermas hoy</div><div class="kpi-val" style="${(k.coste_mermas_hoy||0)>0?"color:var(--warn)":""}">${k.coste_mermas_hoy!=null?k.coste_mermas_hoy.toFixed(2)+" €":"—"}</div><div class="kpi-sub">${k.ajustes_hoy||0} ajustes</div></div>
-        <div class="kpi-box"><div class="kpi-label">Valor stock</div><div class="kpi-val">${k.valor_stock_total!=null?k.valor_stock_total.toFixed(2)+" €":"—"}</div><div class="kpi-sub">en materias</div></div>
-        <div class="kpi-box"><div class="kpi-label">Margen carta</div><div class="kpi-val">${k.margen_medio_carta!=null?Math.round(k.margen_medio_carta*100)+" %":"—"}</div><div class="kpi-sub">${k.productos_carta||0} productos</div></div>
-        <div class="kpi-box ${alerta?"warn":""}"><div class="kpi-label">Estado</div><div class="kpi-val" style="font-size:14px;padding-top:4px;${alerta?"color:var(--warn)":""}">${alerta?"Requiere atención":"En orden"}</div><div class="kpi-sub">${pendPrep?pendPrep+" pendientes de prep.":"Producción al día"}</div></div>
-      </div>` : "";
-  const acc = [];
-  if (enCurso) acc.push({ txt:"Preparaciones en curso", n:enCurso, go:"preparaciones" });
-  else if (pendPrep) acc.push({ txt:"Preparaciones recomendadas", n:pendPrep, go:"preparaciones" });
-  if (pendLotes) acc.push({ txt:"Lotes a vigilar", n:pendLotes, go:"lotes" });
-  if (pendRevisar) acc.push({ txt:"Revisiones pendientes", n:pendRevisar, go:"revisiones" });
-  if (esAdmin && pendPedir) acc.push({ txt:"Materias con stock bajo", n:pendPedir, go:"materias" });
-  const todoHTML = `<div class="todo"><div class="todo-h">Qué hacer ahora</div>${acc.length
-        ? `<div class="todo-row">${acc.map(a=>`<button class="todo-chip" onclick="irA_${a.go}()">${a.txt}<span class="n">${a.n}</span></button>`).join("")}</div>`
-        : `<div class="todo-clear">✓ Todo al día. Sin acciones pendientes.</div>`}</div>`;
-  return `
-      <div class="banner ${alerta?"warn":""}"><span class="dot"></span><span>${d.estado_servicio}</span></div>
-      ${alertCenterHTML(d, esAdmin)}
-      ${esAdmin && d.agora ? `<div class="agora-line">${d.agora.mensaje}</div>` : ""}
-      ${todoHTML}
-      ${kpisHTML}`;
-}
-
 // INICIO MINIMAL — solo marca + categorías.
 async function loadHome() {
   try {
@@ -3802,7 +3742,7 @@ async function formProducto(id, macroEnc, subEnc){
           ${f("Lote", inp("prod-lote", m.lote, "Opcional"))}
         </div>
         <div class="pf-2">
-          ${f("Foto producto", `<div><input type="file" accept="image/*" id="prod-foto-in" style="display:none" onchange="elegirFotoProd(this)"><button class="btn-ghost" type="button" onclick="el('prod-foto-in').click()">${window._prodFoto?"Cambiar":"Añadir"} foto</button><div id="prod-foto-prev">${window._prodFoto?`<img src="${window._prodFoto}" style="max-width:100%;border-radius:6px;margin-top:6px;">`:""}</div></div>`)}
+          ${f("Foto producto", `<div><input type="file" accept="image/*" id="prod-foto-in" style="display:none" onchange="elegirFotoProdForm(this)"><button class="btn-ghost" type="button" onclick="el('prod-foto-in').click()">${window._prodFoto?"Cambiar":"Añadir"} foto</button><div id="prod-foto-prev">${window._prodFoto?`<img src="${window._prodFoto}" style="max-width:100%;border-radius:6px;margin-top:6px;">`:""}</div></div>`)}
           ${f("Foto etiqueta", `<div><input type="file" accept="image/*" id="prod-fetq-in" style="display:none" onchange="elegirFotoProdEtq(this)"><button class="btn-ghost" type="button" onclick="el('prod-fetq-in').click()">${window._prodFotoEtq?"Cambiar":"Añadir"} foto</button><div id="prod-fetq-prev">${window._prodFotoEtq?`<img src="${window._prodFotoEtq}" style="max-width:100%;border-radius:6px;margin-top:6px;">`:""}</div></div>`)}
         </div>
         ${f("Observaciones", `<textarea id="prod-obs" rows="2" placeholder="Notas, alérgenos, conservación…">${m.observaciones?esc(m.observaciones):""}</textarea>`)}
@@ -3811,7 +3751,7 @@ async function formProducto(id, macroEnc, subEnc){
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-async function elegirFotoProd(input){
+async function elegirFotoProdForm(input){
   const file=input.files&&input.files[0]; if(!file)return;
   try{ window._prodFoto=await reducirImagen(file,1200,0.7);
     el("prod-foto-prev").innerHTML=`<img src="${window._prodFoto}" style="max-width:100%;border-radius:6px;margin-top:6px;">`;

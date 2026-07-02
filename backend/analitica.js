@@ -132,16 +132,33 @@ function balance(dias = 30) {
   return { producido_eur: eur(producido), vendido_eur: eur(vendido), tirado_eur: eur(tirado) };
 }
 
+// Merma € por motivo (taxonomía) y por producto/materia (últimos N días).
+function mermasPorMotivo(dias = 30) {
+  const desde = Date.now() - dias * DAY;
+  const ajustes = store.readAll("ajustes").filter((a) => a.fecha && new Date(a.fecha).getTime() >= desde);
+  const porMotivo = {};
+  const porObjetivo = {};
+  ajustes.forEach((a) => {
+    const c = Number(a.coste_estimado) || 0;
+    porMotivo[a.motivo || "otro"] = (porMotivo[a.motivo || "otro"] || 0) + c;
+    const key = a.objetivo_nombre || a.objetivo_id || "?";
+    porObjetivo[key] = (porObjetivo[key] || 0) + c;
+  });
+  const toArr = (o) => Object.entries(o).map(([label, value]) => ({ label, value: eur(value) })).sort((a, b) => b.value - a.value);
+  return { por_motivo: toArr(porMotivo), por_producto: toArr(porObjetivo).slice(0, 8) };
+}
+
 function panel(dias = 30) {
   return {
     dias,
     kpis: kpis(),
     valor_almacen_categoria: valorAlmacenPorCategoria(),
     mermas_por_dia: mermasPorDia(14),
+    mermas: mermasPorMotivo(dias),
     top: topProductos(dias),
     compras_proveedor: comprasPorProveedor(dias),
     balance: balance(dias),
   };
 }
 
-module.exports = { kpis, valorAlmacenPorCategoria, mermasPorDia, topProductos, comprasPorProveedor, balance, panel };
+module.exports = { kpis, valorAlmacenPorCategoria, mermasPorDia, mermasPorMotivo, topProductos, comprasPorProveedor, balance, panel };

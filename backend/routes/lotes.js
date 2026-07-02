@@ -95,7 +95,7 @@ router.post("/:id/dar-de-baja", async (req, res) => {
       tipo_objetivo: "lote",
       objetivo_id: lote.id,
       cantidad: lote.cantidad_restante,
-      motivo: "fuera de vida útil",
+      motivo: "caducidad",
       coste_estimado: coste,
       responsable: (req.body && req.body.responsable) || "Sin asignar",
       observacion: `Baja automática del lote ${lote.codigo} al superar su vida útil`,

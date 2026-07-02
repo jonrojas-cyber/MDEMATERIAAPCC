@@ -543,3 +543,18 @@ test("centro de control: crear una deuda desde la interfaz y verla en el resumen
   await expect(page.locator(".card-name", { hasText: /Préstamo prueba/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+// Regresión de auditoría: los dos manejadores de foto tenían el MISMO nombre
+// (elegirFotoProd), y la segunda declaración anulaba a la primera, rompiendo la
+// foto del formulario de producto. Deben existir como funciones DISTINTAS.
+test("auditoría: los manejadores de foto de producto y de compra no colisionan", async ({ page }) => {
+  await login(page);
+  const check = await page.evaluate(() => ({
+    form: typeof window.elegirFotoProdForm,   // foto del producto de carta
+    compra: typeof window.elegirFotoProd,      // foto del producto de compra
+    distintos: window.elegirFotoProdForm !== window.elegirFotoProd,
+  }));
+  expect(check.form).toBe("function");
+  expect(check.compra).toBe("function");
+  expect(check.distintos).toBe(true);
+});

@@ -32,45 +32,9 @@ function usoMaterias(preparaciones, recetas, desde, hasta) {
   return uso;
 }
 
-// GET /api/reportes/dia?fecha=YYYY-MM-DD
-router.get("/dia", (req, res) => {
-  const fecha = req.query.fecha || fechaClave(Date.now());
-  const recetas = store.readAll("recetas");
-  const preparaciones = store.readAll("preparaciones");
-  const ajustes = store.readAll("ajustes");
-
-  const prepDia = preparaciones.filter(
-    (p) => p.estado === "Finalizada" && p.finalizada_en && fechaClave(p.finalizada_en) === fecha
-  );
-  const costeProduccion = prepDia.reduce((s, p) => {
-    const receta = recetas.find((r) => r.id === p.receta_id);
-    return s + (receta ? costePorUnidad(receta) * p.cantidad_objetivo : 0);
-  }, 0);
-  const cantidadProducida = prepDia.reduce((s, p) => s + (p.cantidad_objetivo || 0), 0);
-
-  const ajustesDia = ajustes.filter((a) => a.fecha && fechaClave(a.fecha) === fecha);
-  const costeMermas = ajustesDia.reduce((s, a) => s + (a.coste_estimado || 0), 0);
-
-  const ratioMerma = costeProduccion > 0 ? costeMermas / costeProduccion : null;
-
-  res.json({
-    fecha,
-    preparaciones: prepDia.length,
-    cantidad_producida: r2(cantidadProducida),
-    coste_produccion: r2(costeProduccion),
-    mermas: ajustesDia.length,
-    coste_mermas: r2(costeMermas),
-    ratio_merma: ratioMerma != null ? Math.round(ratioMerma * 1000) / 1000 : null,
-    detalle_preparaciones: prepDia.map((p) => {
-      const receta = recetas.find((r) => r.id === p.receta_id);
-      return {
-        receta: receta ? receta.nombre : p.receta_id,
-        cantidad: p.cantidad_objetivo,
-        coste: receta ? r2(costePorUnidad(receta) * p.cantidad_objetivo) : 0,
-      };
-    }),
-  });
-});
+// El antiguo GET /reportes/dia se eliminó: su cálculo de coste/merma duplicaba
+// el motor único (costing.js) y el panel del propietario (analitica.js). El
+// resumen diario vive ahora en el panel y en el centro de decisiones.
 
 // GET /api/reportes/semana  (últimos 7 días)
 router.get("/semana", (req, res) => {

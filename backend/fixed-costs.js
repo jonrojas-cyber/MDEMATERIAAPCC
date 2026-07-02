@@ -11,20 +11,29 @@ const store = require("./data-store");
 const DIAS = {
   daily: 1,
   weekly: 7,
-  monthly: 365 / 12, // 30.4375
+  biweekly: 14,       // quincenal (cada dos semanas)
+  monthly: 365 / 12,  // 30.4375
   quarterly: 365 / 4, // 91.25
+  semiannual: 365 / 2, // 182.5 (semestral)
   yearly: 365,
-  one_time: 0, // gasto puntual: no prorratea a coste recurrente
+  custom: null,       // periodicidad libre: usa fc.custom_days como divisor
+  one_time: 0,        // gasto puntual: no prorratea a coste recurrente
 };
 
 const PERIODICIDADES = Object.keys(DIAS);
 
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
+// Días de referencia de un coste, resolviendo la periodicidad "custom".
+function diasDe(fc) {
+  if (fc.periodicity === "custom") { const d = Number(fc.custom_days) || 0; return d > 0 ? d : 0; }
+  return DIAS[fc.periodicity];
+}
+
 // Coste diario prorrateado de un coste fijo. one_time no aporta coste diario.
 function costeDiario(fc) {
   const amount = Number(fc.amount) || 0;
-  const d = DIAS[fc.periodicity];
+  const d = diasDe(fc);
   if (!d || d <= 0) return 0;
   return amount / d;
 }
@@ -96,4 +105,52 @@ function porCategoria(now = Date.now(), lista = null) {
   return Object.entries(g).map(([label, value]) => ({ label, value: eur(value) })).sort((a, b) => b.value - a.value);
 }
 
-module.exports = { DIAS, PERIODICIDADES, costeDiario, activoEn, prorrateo, totales, costeEnRango, porCategoria, eur };
+// ── COSTE POR HORA / MINUTO DE APERTURA ─────────────────────────────────────
+// El coste de "tener la persiana levantada": coste fijo diario repartido entre las
+// horas de apertura. `perfil` = {dias_semana, horas_dia}. Sin materia ni laboral:
+// esos los añade financials cuando calcula el coste operativo por hora.
+function costePorHora(now = Date.now(), perfil = {}, lista = null) {
+  const diasSemana = Number(perfil.dias_semana) > 0 ? Number(perfil.dias_semana) : 7;
+  const horasDia = Number(perfil.horas_dia) > 0 ? Number(perfil.horas_dia) : 24;
+  const tot = totales(now, lista);
+  // Coste fijo mensual repartido entre las horas realmente abiertas al mes.
+  const horasMes = diasSemana * horasDia * (365 / 12 / 7);
+  const porHora = horasMes > 0 ? tot.mensual / horasMes : 0;
+  return {
+    coste_hora: eur(porHora),
+    coste_minuto: eur(porHora / 60),
+    horas_mes: Math.round(horasMes * 10) / 10,
+    horas_dia: horasDia,
+    dias_semana: diasSemana,
+  };
+}
+
+// ── PROYECCIÓN ANUAL CON INFLACIÓN ──────────────────────────────────────────
+// Arquitectura de inflación (nunca hardcodeada): usa la subida anual propia de cada
+// coste (fc.inflation_pct) o, si no la tiene, la subida por defecto del perfil.
+function costeAnualProyectado(now = Date.now(), inflacionDefault = 0, lista = null) {
+  const fijos = (lista || store.readAll("fixed_costs")).filter((f) => activoEn(f, now) && f.periodicity !== "one_time");
+  let base = 0;
+  let proyectado = 0;
+  fijos.forEach((f) => {
+    const anual = costeDiario(f) * 365;
+    const inf = f.inflation_pct != null ? Number(f.inflation_pct) : Number(inflacionDefault) || 0;
+    base += anual;
+    proyectado += anual * (1 + inf / 100);
+  });
+  return { base: eur(base), proyectado: eur(proyectado), incremento: eur(proyectado - base) };
+}
+
+// ── MAYOR GASTO (para el titular ejecutivo) ─────────────────────────────────
+function mayorGasto(now = Date.now(), lista = null) {
+  const fijos = (lista || store.readAll("fixed_costs")).filter((f) => activoEn(f, now) && f.periodicity !== "one_time");
+  if (!fijos.length) return null;
+  const orden = fijos.map((f) => ({ nombre: f.name, categoria: f.category || "Otros", mensual: eur(costeDiario(f) * (365 / 12)) }))
+    .sort((a, b) => b.mensual - a.mensual);
+  return orden[0];
+}
+
+module.exports = {
+  DIAS, PERIODICIDADES, diasDe, costeDiario, activoEn, prorrateo, totales, costeEnRango,
+  porCategoria, costePorHora, costeAnualProyectado, mayorGasto, eur,
+};

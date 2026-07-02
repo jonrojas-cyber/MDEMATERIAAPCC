@@ -57,6 +57,7 @@ const ENTITIES = [
   "financial_snapshots", // fotos financieras periódicas (base para la "máquina del tiempo")
   "executive_notes", // notas del propietario en el Centro de Control
   "business_health_config", // pesos configurables de la Salud del Negocio (no hardcodeados)
+  "business_config", // perfil operativo (horario de apertura, ticket medio, inflación) — singleton
 ];
 
 const cache = {};

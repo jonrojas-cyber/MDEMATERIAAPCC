@@ -1,15 +1,18 @@
 const express = require("express");
 const store = require("../data-store");
 const fixedCosts = require("../fixed-costs");
+const fixedCostsOS = require("../fixed-costs-os");
+const operatingProfile = require("../operating-profile");
 const { soloAdmin } = require("./_guard");
 
 const router = express.Router();
 
 const CATEGORIAS = [
   "Alquiler", "Personal", "Luz", "Agua", "Gas", "Internet", "Teléfono", "Gestoría",
-  "Software", "Seguros", "Autónomos", "Seguridad Social", "Prevención", "Control de plagas",
-  "Limpieza", "Alarma", "TPV", "Comisiones bancarias", "Renting", "Leasing", "Créditos",
-  "Mantenimiento", "Marketing", "Otros",
+  "Software", "Suscripciones", "Seguros", "Autónomos", "Seguridad Social", "Prevención",
+  "Control de plagas", "Limpieza", "Recogida de residuos", "Alarma", "Seguridad", "TPV",
+  "Comisiones bancarias", "Renting", "Leasing", "Créditos", "Mantenimiento", "Vehículos",
+  "Marketing", "Licencias", "Impuestos", "Uniformes", "Servicios profesionales", "Otros",
 ];
 
 function camposDe(body) {
@@ -19,6 +22,8 @@ function camposDe(body) {
   if (body.amount != null && body.amount !== "") c.amount = Number(body.amount) || 0;
   if (body.vat != null && body.vat !== "") c.vat = Number(body.vat) || 0;
   if (body.periodicity != null) c.periodicity = fixedCosts.PERIODICIDADES.includes(body.periodicity) ? body.periodicity : "monthly";
+  if (body.custom_days != null && body.custom_days !== "") c.custom_days = Number(body.custom_days) || null;
+  if (body.inflation_pct != null && body.inflation_pct !== "") c.inflation_pct = Number(body.inflation_pct);
   if (body.start_date != null) c.start_date = String(body.start_date) || null;
   if (body.end_date != null) c.end_date = body.end_date ? String(body.end_date) : null;
   if (body.payment_day != null && body.payment_day !== "") c.payment_day = Number(body.payment_day) || null;
@@ -40,6 +45,33 @@ router.get("/", (req, res) => {
   if (!soloAdmin(req, res)) return;
   const lista = store.readAll("fixed_costs").map((f) => ({ ...f, prorrateo: fixedCosts.prorrateo(f) }));
   res.json({ costes: lista, totales: fixedCosts.totales(), por_categoria: fixedCosts.porCategoria() });
+});
+
+// Fixed Costs Operating System: coste de existir, coste por hora, break-even,
+// contribución, forecast con inflación y análisis de ahorro. Una sola llamada.
+router.get("/os", (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  const localId = (req.user && req.user.local_id) || "principal";
+  try {
+    res.json(fixedCostsOS.sistemaOperativo(Date.now(), localId));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Perfil operativo (horario de apertura, ticket medio, inflación) — configurable.
+router.get("/perfil", (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  res.json(operatingProfile.leer());
+});
+
+router.put("/perfil", async (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  try {
+    res.json(await operatingProfile.guardar(req.body || {}));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/", async (req, res) => {

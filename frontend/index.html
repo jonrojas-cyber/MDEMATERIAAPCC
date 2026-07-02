@@ -1490,7 +1490,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v104</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v105</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2722,7 +2722,7 @@ function ccAplicarCustom(){
 
 function ccRender(d){
   if(!d||!d.periodo) return ccFiltroHTML()+`<div class="empty">Sin datos.</div>`;
-  const s=d.salud||{}, v=d.valor_empresa||{}, b=d.beneficio||{}, ca=d.coste_abrir||{}, t=d.tesoreria||{}, de=d.deuda||{}, eq=d.equipo||{}, cp=d.capital_parado||{}, obj=d.objetivos||[], cop=d.copiloto||[];
+  const s=d.salud||{}, v=d.valor_empresa||{}, b=d.beneficio||{}, ca=d.coste_abrir||{}, be=d.break_even||{}, t=d.tesoreria||{}, de=d.deuda||{}, eq=d.equipo||{}, cp=d.capital_parado||{}, obj=d.objetivos||[], cop=d.copiloto||[];
   const fin=d.financiero||{}, op=d.operaciones||{}, tend=d.tendencia||{};
   // Tendencia a 7 días (desde los snapshots diarios), si hay histórico.
   const tendSem=(campo)=>{ const x=tend.disponible&&tend.semana&&tend.semana[campo]; return (x&&x.pct!=null)?`<span class="cc-delta ${x.abs>=0?'up':'down'}">${x.abs>=0?'▲ +':'▼ −'}${Math.abs(x.pct)}% · 7 días</span>`:""; };
@@ -2753,7 +2753,7 @@ function ccRender(d){
     <div class="cc-label">Coste de abrir la persiana · ${esc(d.periodo.label)}</div>
     <div class="cc-kpi">${ccEur(ca.total)}</div>
     <div class="cc-mini">Al día ${ccEur(ca.prorrateo&&ca.prorrateo.diario)} · semana ${ccEur(ca.prorrateo&&ca.prorrateo.semanal)} · mes ${ccEur(ca.prorrateo&&ca.prorrateo.mensual)}</div>
-    <div class="cc-mini cc-accent">Necesitas vender ${ccEur(ventaNec)}/día para cubrirlo con margen</div></button>`;
+    <div class="cc-mini cc-accent">${be&&be.ingreso_equilibrio_dia!=null?`Punto de equilibrio: ${ccEur(be.ingreso_equilibrio_dia)}/día${be.hoy&&be.hoy.cafes?` (≈ ${eur0(be.hoy.cafes)} cafés)`:""}`:`Necesitas vender ${ccEur(ventaNec)}/día para cubrirlo con margen`}</div></button>`;
   // Valor empresa
   const valorCard=`<button class="cc-card" onclick="irA_valorEmpresa()">
     <div class="cc-label">Valor de la empresa</div>
@@ -2942,20 +2942,70 @@ async function guardarSaludPesos(btn){
 }
 
 // ── COSTES FIJOS · CRUD ────────────────────────────────────────────────────
+const CC_PER_LABEL={daily:"al día",weekly:"a la semana",biweekly:"quincenal",monthly:"al mes",quarterly:"al trimestre",semiannual:"semestral",yearly:"al año",custom:"personalizada",one_time:"puntual"};
 async function irA_costesFijos(){
   ccVolver(); openSection("cc-fijos","Costes fijos");
   try{
-    const [d,meta]=await Promise.all([api("/fixed-costs"),api("/fixed-costs/meta").catch(()=>({categorias:[],periodicidades:[]}))]);
+    const [os,d,meta]=await Promise.all([
+      api("/fixed-costs/os"),
+      api("/fixed-costs"),
+      api("/fixed-costs/meta").catch(()=>({categorias:[],periodicidades:[]})),
+    ]);
     window._ccFcMeta=meta; window._ccFcList=d.costes||[];
-    const PER={daily:"al día",weekly:"a la semana",monthly:"al mes",quarterly:"al trimestre",yearly:"al año",one_time:"puntual"};
-    const filas=d.costes.map(f=>`<div class="card"><div class="card-name">${esc(f.name)} <span class="tag-ink">${esc(f.category||'Otros')}</span></div>
-      <div class="card-meta">${eur0(f.amount)} € ${PER[f.periodicity]||f.periodicity} · ${eur0(f.prorrateo.diario)} €/día · ${eur0(f.prorrateo.mensual)} €/mes${f.active===false?' · <b>inactivo</b>':''}</div>
+    const db=os.dashboard||{}, be=os.break_even||{}, ct=os.contribucion||{}, an=os.analitica||{}, ph=os.por_hora||{}, fc=os.forecast||{}, ev=os.evolucion||{};
+    const filas=(d.costes||[]).map(f=>`<div class="card"><div class="card-name">${esc(f.name)} <span class="tag-ink">${esc(f.category||'Otros')}</span></div>
+      <div class="card-meta">${eur0(f.amount)} € ${CC_PER_LABEL[f.periodicity]||f.periodicity} · ${eur0(f.prorrateo.diario)} €/día · ${eur0(f.prorrateo.mensual)} €/mes${f.active===false?' · <b>inactivo</b>':''}</div>
       <div class="card-actions"><button class="btn-ghost" onclick='ccFcForm(${JSON.stringify(f.id)})'>Editar</button><button class="btn-ghost" onclick='ccFcBorrar(${JSON.stringify(f.id)})'>Quitar</button></div></div>`).join("");
-    setInner(`<div class="cc-card"><div class="cc-label">Coste de existir</div>
-        <div class="cc-mini">Al día ${ccEur(d.totales.diario)} · semana ${ccEur(d.totales.semanal)} · mes ${ccEur(d.totales.mensual)} · año ${ccEur(d.totales.anual)}</div></div>
-      <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccFcForm()">Añadir coste fijo</button></div>
+    // Break-even: margen de seguridad (verde por encima, rojo en pérdidas).
+    const ms=be.margen_seguridad_pct;
+    const msTxt=ms==null?"Registra ventas para ver tu margen":`${ms>=0?'▲ +':'▼ '}${Math.abs(ms)}% de margen de seguridad${ms<0?' · en pérdidas':''}`;
+    const cats=(os.por_categoria||[]).slice(0,6).map(c=>`<div class="cc-line"><span>${esc(c.label)}</span><b>${eur0(c.value)} €/mes</b></div>`).join("")||`<div class="cc-mini">Sin costes por categoría.</div>`;
+    const top=(ct.top_contribuyentes||[]).slice(0,4).map(p=>`<div class="cc-line"><span>${esc(p.nombre)}</span><b>${eur0(p.contribucion_eur)} € · ${Math.round((p.contribucion_pct||0)*100)}%</b></div>`).join("")||`<div class="cc-mini">Añade productos con precio para ver la contribución.</div>`;
+    const alertas=(an.alertas||[]).slice(0,5).map(a=>`<div class="cc-line" style="${a.severidad==='importante'?'border-left:2px solid #b5462a;padding-left:8px;':''}"><span>${esc(a.titulo)}<br><span class="cc-mini">${esc(a.detalle)}</span></span>${a.ahorro_anual?`<b>${eur0(a.ahorro_anual)} €/año</b>`:''}</div>`).join("")||`<div class="cc-mini">Sin alertas: tus costes fijos están limpios.</div>`;
+    setInner(`
+      <div class="cc-card cc-hero-single"><div class="cc-label">Coste de existir · ${db.lineas||0} costes</div>
+        <div class="cc-kpi cc-big">${ccEur(db.coste_mes)}<span class="cc-score-max"> /mes</span></div>
+        <div class="cc-mini">Al día ${ccEur(db.coste_dia)} · semana ${ccEur(db.coste_semana)} · año ${ccEur(db.coste_anio)}</div>
+        <div class="cc-mini">Cada hora abierta cuesta <b>${ccEur(db.coste_hora)}</b> (${ccEur(db.coste_minuto)}/min)${db.mayor_gasto?` · mayor gasto: <b>${esc(db.mayor_gasto.nombre)}</b> ${eur0(db.mayor_gasto.mensual)} €/mes`:""}</div></div>
+      <div class="cc-card"><div class="cc-label">Punto de equilibrio · hoy</div>
+        <div class="cc-kpi">${be.ingreso_equilibrio_dia!=null?ccEur(be.ingreso_equilibrio_dia):'—'}</div>
+        <div class="cc-mini">${be.hoy&&be.hoy.cafes?`≈ ${eur0(be.hoy.cafes)} cafés o ${eur0(be.hoy.clientes)} clientes`:'Configura ticket medio en el perfil'} · contribución ${ct.ratio_contribucion_pct!=null?ct.ratio_contribucion_pct+'%':'—'}</div>
+        <div class="cc-mini ${ms!=null&&ms<0?'cc-accent':''}">${msTxt}</div>
+        <div class="cc-mini">Semana ${be.semana&&be.semana.disponible?ccEur(be.semana.ingreso_necesario):'—'} · mes ${be.mes&&be.mes.disponible?ccEur(be.mes.ingreso_necesario):'—'} · año ${be.anio&&be.anio.disponible?ccEur(be.anio.ingreso_necesario):'—'}</div></div>
+      <div class="cc-grid">
+        <div class="cc-card"><div class="cc-label">Ahorro detectado</div><div class="cc-kpi">${db.ahorro_anual_potencial?ccEur(db.ahorro_anual_potencial):'0 €'}</div><div class="cc-mini">al año · ${an.n||0} oportunidad${(an.n||0)===1?'':'es'}</div></div>
+        <div class="cc-card"><div class="cc-label">Con inflación (${fc.inflacion_default_pct||0}%)</div><div class="cc-kpi">${ccEur(fc.anual_proyectado)}</div><div class="cc-mini">+${eur0(fc.incremento_anual)} €/año vs hoy${ev.disponible&&ev.mes_vs_mes?` · mes vs mes ${ev.mes_vs_mes.pct>=0?'+':''}${ev.mes_vs_mes.pct}%`:""}</div></div>
+      </div>
+      <div class="section-label">Dónde ahorrar</div><div class="cc-card">${alertas}</div>
+      <div class="section-label">Coste por categoría</div><div class="cc-card">${cats}</div>
+      <div class="section-label">Qué sostiene el negocio (contribución)</div><div class="cc-card">${top}</div>
+      <div class="section-label">Tus costes fijos</div>
+      <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="ccFcForm()">Añadir coste fijo</button> <button class="btn-ghost" onclick="ccPerfilForm()">Perfil operativo</button></div>
       ${d.costes.length?filas:`<div class="empty">Añade tus costes fijos para calcular cuánto cuesta abrir cada día.</div>`}`);
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+async function ccPerfilForm(){
+  const p=await api("/fixed-costs/perfil").catch(()=>({}));
+  setInner(`<div class="section-label">Perfil operativo</div>
+    <div class="card"><div class="cc-mini" style="margin-bottom:8px;">Estos datos convierten los costes en inteligencia: coste por hora, break-even en clientes/cafés y proyección con inflación.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:110px;"><label>Días abierto/semana</label><input id="pf-dias" type="number" min="1" max="7" value="${p.dias_semana||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:110px;"><label>Horas abierto/día</label><input id="pf-horas" type="number" min="1" max="24" step="0.5" value="${p.horas_dia||''}" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:110px;"><label>Ticket medio (€)</label><input id="pf-ticket" type="number" step="0.1" value="${p.ticket_medio||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:110px;"><label>Café medio (€)</label><input id="pf-cafe" type="number" step="0.1" value="${p.cafe_medio||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:110px;"><label>Inflación anual (%)</label><input id="pf-inf" type="number" step="0.5" value="${p.inflacion_anual_pct||''}" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccPerfilGuardar(this)">Guardar</button><button class="btn-ghost" onclick="irA_costesFijos()">Cancelar</button></div>
+    <div id="pf-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccPerfilGuardar(btn){
+  const body={dias_semana:el("pf-dias").value,horas_dia:el("pf-horas").value,ticket_medio:el("pf-ticket").value,cafe_medio:el("pf-cafe").value,inflacion_anual_pct:el("pf-inf").value};
+  if(btn) btn.disabled=true;
+  try{ await api("/fixed-costs/perfil",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); irA_costesFijos(); }
+  catch(e){ el("pf-msg").textContent=e.message; if(btn) btn.disabled=false; }
 }
 function ccFcForm(id){
   const meta=window._ccFcMeta||{categorias:[],periodicidades:[]};
@@ -2964,7 +3014,7 @@ function ccFcForm(id){
   if(id){ const fromList=(window._ccFcList||[]).find(x=>x.id===id); if(fromList) reg=fromList; }
   window._ccFcEdit=id||null;
   const cats=meta.categorias.map(c=>`<option ${c===reg.category?'selected':''}>${esc(c)}</option>`).join("");
-  const PER=[["daily","Diario"],["weekly","Semanal"],["monthly","Mensual"],["quarterly","Trimestral"],["yearly","Anual"],["one_time","Puntual"]];
+  const PER=[["daily","Diario"],["weekly","Semanal"],["biweekly","Quincenal"],["monthly","Mensual"],["quarterly","Trimestral"],["semiannual","Semestral"],["yearly","Anual"],["custom","Personalizada"],["one_time","Puntual"]];
   const pers=PER.map(([k,l])=>`<option value="${k}" ${k===reg.periodicity?'selected':''}>${l}</option>`).join("");
   setInner(`<div class="section-label">${id?'Editar coste':'Nuevo coste fijo'}</div>
     <div class="card">
@@ -2973,6 +3023,10 @@ function ccFcForm(id){
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="field" style="flex:1;min-width:110px;"><label>Importe (€)</label><input id="fc-amount" type="number" step="0.01" value="${reg.amount||''}" style="width:100%"></div>
         <div class="field" style="flex:1;min-width:110px;"><label>Periodicidad</label><select id="fc-per" style="width:100%">${pers}</select></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:90px;"><label>Cada X días (si personalizada)</label><input id="fc-cdays" type="number" min="1" value="${reg.custom_days||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:90px;"><label>Subida anual (%)</label><input id="fc-inf" type="number" step="0.5" value="${reg.inflation_pct!=null?reg.inflation_pct:''}" style="width:100%"></div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <div class="field" style="flex:1;min-width:90px;"><label>IVA (%)</label><input id="fc-vat" type="number" step="1" value="${reg.vat||''}" style="width:100%"></div>
@@ -2986,7 +3040,7 @@ function ccFcForm(id){
     <div id="fc-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
 }
 async function ccFcGuardar(btn){
-  const body={name:el("fc-name").value.trim(),category:el("fc-cat").value,amount:el("fc-amount").value,periodicity:el("fc-per").value,vat:el("fc-vat").value,payment_day:el("fc-day").value,provider:el("fc-prov").value,notes:el("fc-notes").value,is_direct_debit:el("fc-dd").checked,active:el("fc-active").checked};
+  const body={name:el("fc-name").value.trim(),category:el("fc-cat").value,amount:el("fc-amount").value,periodicity:el("fc-per").value,custom_days:el("fc-cdays").value,inflation_pct:el("fc-inf").value,vat:el("fc-vat").value,payment_day:el("fc-day").value,provider:el("fc-prov").value,notes:el("fc-notes").value,is_direct_debit:el("fc-dd").checked,active:el("fc-active").checked};
   if(!body.name){ el("fc-msg").textContent="Indica el nombre."; return; }
   if(btn) btn.disabled=true;
   try{

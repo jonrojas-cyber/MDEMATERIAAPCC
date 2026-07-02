@@ -28,6 +28,7 @@ const METRICAS = {
   coste_laboral_dia: { campo: "coste_laboral_dia", tipo: "flow", label: "Coste laboral", dir: "down" },
   coste_materia_dia: { campo: "coste_materia_dia", tipo: "flow", label: "Food cost", dir: "down" },
   merma_dia:       { campo: "merma_dia", tipo: "flow", label: "Merma", dir: "down" },
+  fixed_cost_dia:  { campo: "fixed_cost_dia", tipo: "flow", label: "Coste fijo", dir: "down" },
 };
 
 function metricaDe(key) { return METRICAS[key] || METRICAS.patrimonio_neto; }

@@ -5,9 +5,9 @@
   "description": "Control M · Producción — m de materia. Scripts de arranque y tests E2E.",
   "scripts": {
     "start": "node backend/server.js",
-    "test:unit": "node tests/persistence.unit.js && node tests/agora.unit.js && node tests/unidades.unit.js && node tests/calendario.unit.js && node tests/compras.unit.js && node tests/prevision.unit.js && node tests/insights.unit.js && node tests/financials.unit.js && node tests/snapshot.unit.js && node tests/timeline.unit.js && node tests/health.unit.js",
+    "test:unit": "node tests/persistence.unit.js && node tests/agora.unit.js && node tests/unidades.unit.js && node tests/calendario.unit.js && node tests/compras.unit.js && node tests/prevision.unit.js && node tests/insights.unit.js && node tests/financials.unit.js && node tests/snapshot.unit.js && node tests/timeline.unit.js && node tests/health.unit.js && node tests/treasury.unit.js",
     "test:e2e": "playwright test",
-    "test": "node tests/persistence.unit.js && node tests/agora.unit.js && node tests/unidades.unit.js && node tests/calendario.unit.js && node tests/compras.unit.js && node tests/prevision.unit.js && node tests/insights.unit.js && node tests/financials.unit.js && node tests/snapshot.unit.js && node tests/timeline.unit.js && node tests/health.unit.js && playwright test"
+    "test": "node tests/persistence.unit.js && node tests/agora.unit.js && node tests/unidades.unit.js && node tests/calendario.unit.js && node tests/compras.unit.js && node tests/prevision.unit.js && node tests/insights.unit.js && node tests/financials.unit.js && node tests/snapshot.unit.js && node tests/timeline.unit.js && node tests/health.unit.js && node tests/treasury.unit.js && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1"

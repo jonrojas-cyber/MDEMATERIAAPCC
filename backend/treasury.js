@@ -70,4 +70,45 @@ function resumen(now = Date.now(), costeMedioDiario = 0, opts = {}) {
   };
 }
 
-module.exports = { liquidez, pendientes, proximos, runway, resumen, eur };
+// ── LIQUIDITY ENGINE ────────────────────────────────────────────────────────
+// Fondo de maniobra, reserva de emergencia, ratio de liquidez, margen de
+// seguridad y burn. Cálculo centralizado (nadie más lo recalcula).
+// Se le inyectan cifras ya calculadas (patrimonio, burn) para no reescanear.
+function liquidezAvanzada(now = Date.now(), opts = {}) {
+  const store = require("./data-store");
+  const financials = require("./financials");
+  const debtsMod = require("./debts");
+  const liq = liquidez(opts.cuentas);
+  const pend = pendientes(now, opts.movs);
+  const patr = opts.patrimonio || financials.patrimonioNeto(now);
+  const burn = opts.monthlyBurn != null ? opts.monthlyBurn : financials.extrasFinancieros(now).monthly_burn;
+  const cuota = debtsMod.resumen(now).cuota_mensual_total;
+
+  // Activo corriente vs pasivo corriente (corto plazo).
+  const activoCorriente = eur(liq.liquidez_inmediata + pend.cobros_pendientes + patr.valor_almacen + patr.valor_produccion);
+  const pasivoCorriente = eur(pend.pagos_pendientes + pend.iva_pendiente + pend.irpf_pendiente + pend.ss_pendiente + cuota);
+  const fondoManiobra = eur(activoCorriente - pasivoCorriente);
+  const ratio = pasivoCorriente > 0 ? Math.round((activoCorriente / pasivoCorriente) * 100) / 100 : null;
+
+  // Reserva de emergencia: objetivo configurable (reserva_caja) vs liquidez real.
+  const targets = require("./targets");
+  const objReserva = (targets.lista().find((t) => t.tipo === "reserva_caja") || {}).valor;
+  const reservaObjetivo = objReserva != null ? Number(objReserva) : eur(burn * 2); // 2 meses de burn por defecto
+  const mesesBuffer = burn > 0 ? Math.round((liq.liquidez_inmediata / burn) * 10) / 10 : null;
+
+  return {
+    liquidez_inmediata: liq.liquidez_inmediata,
+    activo_corriente: activoCorriente,
+    pasivo_corriente: pasivoCorriente,
+    fondo_maniobra: fondoManiobra,
+    ratio_liquidez: ratio,
+    burn_mensual: eur(burn),
+    meses_de_buffer: mesesBuffer,
+    reserva_objetivo: eur(reservaObjetivo),
+    reserva_actual: liq.liquidez_inmediata,
+    reserva_cubierta_pct: reservaObjetivo > 0 ? Math.round((liq.liquidez_inmediata / reservaObjetivo) * 100) : null,
+    margen_seguridad: eur(liq.liquidez_inmediata - reservaObjetivo),
+  };
+}
+
+module.exports = { liquidez, pendientes, proximos, runway, resumen, liquidezAvanzada, eur };

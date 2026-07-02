@@ -1490,7 +1490,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v103</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v104</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -3156,15 +3156,37 @@ async function ccTgtBorrar(id){ if(!confirm("¿Quitar este objetivo?")) return; 
 async function irA_tesoreria(){
   ccVolver(); openSection("cc-tesoreria","Tesorería");
   try{
-    const d=await api("/treasury");
+    const d=await api("/treasury/os");
     window._ccCuentas=d.cuentas||[];
+    const db=d.dashboard||{}, lq=d.liquidez||{}, cf=d.cashflow||{}, ve=d.valor_empresa||{}, em=d.emergency||{};
     const fmt=t=>t?new Date(t).toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"—";
+    // Monitor de emergencia (solo si hay riesgo).
+    const emBanner=(em.nivel_riesgo&&em.nivel_riesgo!=="bajo")?`<div class="cc-card" style="border-left:3px solid #b5462a;">
+      <div class="cc-label">⚠ Alerta de tesorería · riesgo ${em.nivel_riesgo}</div>
+      <div class="cc-mini cc-accent">${esc(em.accion)}</div>
+      ${em.dias_hasta_problema!=null?`<div class="cc-mini">Problema de liquidez estimado en ${em.dias_hasta_problema} días (${em.fecha_estimada}).</div>`:""}
+      ${(em.eventos_negativos||[]).map(e=>`<div class="cc-mini">${fmt(e.fecha)} · ${esc(e.concepto)} deja la caja en ${eur0(e.saldo_tras)} €.</div>`).join("")}</div>`:"";
     const cuentas=(d.cuentas||[]).map(c=>`<div class="cc-line"><span>${esc(c.name)} · ${c.type==='caja'?'Caja':'Banco'}</span><b>${eur0(c.balance)} €</b> <button class="btn-ghost" style="padding:2px 8px" onclick='ccAccForm(${JSON.stringify(c.id)})'>Editar</button><button class="btn-ghost" style="padding:2px 8px" onclick='ccAccBorrar(${JSON.stringify(c.id)})'>×</button></div>`).join("")||`<div class="cc-mini">Añade tus cuentas (caja y banco) para ver liquidez y días de supervivencia.</div>`;
     const pagos=(d.proximos_pagos||[]).map(p=>`<div class="cc-line"><span>${fmt(p.fecha)} · ${esc(p.concepto)}</span><b>−${eur0(p.importe)} €</b></div>`).join("")||`<div class="cc-mini">Sin pagos próximos.</div>`;
     const cobros=(d.proximos_cobros||[]).map(p=>`<div class="cc-line"><span>${fmt(p.fecha)} · ${esc(p.concepto)}</span><b>+${eur0(p.importe)} €</b></div>`).join("")||`<div class="cc-mini">Sin cobros próximos.</div>`;
-    setInner(`<div class="cc-card"><div class="cc-label">Liquidez inmediata</div><div class="cc-kpi">${ccEur(d.liquidez_inmediata)}</div>
-        <div class="cc-mini">${d.dias_supervivencia!=null?`<b>${d.dias_supervivencia} días de supervivencia</b> · coste medio ${ccEur(d.coste_medio_diario)}/día`:"Añade cuentas para calcular los días de supervivencia."}</div></div>
-      <div class="cc-card"><div class="cc-line"><span>IVA pendiente</span><b>${ccEur(d.iva_pendiente)}</b></div><div class="cc-line"><span>IRPF pendiente</span><b>${ccEur(d.irpf_pendiente)}</b></div><div class="cc-line"><span>Seguridad Social</span><b>${ccEur(d.ss_pendiente)}</b></div></div>
+    const obl=(d.obligaciones||[]).slice(0,5).map(o=>`<div class="cc-line"><span>${esc(o.nombre)} · ${esc(o.categoria)}</span><b>${eur0(o.importe_mes)} €/mes</b></div>`).join("")||`<div class="cc-mini">Sin obligaciones recurrentes registradas.</div>`;
+    setInner(`
+      ${emBanner}
+      <div class="cc-card cc-hero-single"><div class="cc-label">Liquidez inmediata</div>
+        <div class="cc-kpi cc-big">${ccEur(db.liquidez_inmediata)}</div>
+        <div class="cc-mini">Disponible <b>${ccEur(db.disponible)}</b> · comprometido ${ccEur(db.comprometido)}${db.runway!=null?` · <b>${db.runway} días de supervivencia</b>`:""}</div></div>
+      <div class="cc-grid">
+        <div class="cc-card"><div class="cc-label">Flujo de caja · mes</div><div class="cc-kpi">${ccEur(cf.mes&&cf.mes.neto)}</div>
+          <div class="cc-mini">Entradas ${ccEur(cf.mes&&cf.mes.entradas)} · salidas ${ccEur(cf.mes&&cf.mes.salidas)}${cf.tendencia_pct!=null?` · ${cf.tendencia_pct>=0?'+':''}${cf.tendencia_pct}% vs mes ant.`:""}</div></div>
+        <div class="cc-card"><div class="cc-label">Valor de la empresa</div><div class="cc-kpi">${ccEur(ve.valor_negocio)}</div>
+          <div class="cc-mini">${ve.forecast_30d!=null?`Previsión 30 días ${ccEur(ve.forecast_30d)}`:"Previsión con histórico"}</div></div>
+        <div class="cc-card"><div class="cc-label">Ratio de liquidez</div><div class="cc-kpi">${db.ratio_liquidez!=null?db.ratio_liquidez:'—'}</div>
+          <div class="cc-mini">Fondo de maniobra ${ccEur(db.fondo_maniobra)}</div></div>
+        <div class="cc-card"><div class="cc-label">Burn mensual</div><div class="cc-kpi">${ccEur(db.burn_mensual)}</div>
+          <div class="cc-mini">Reserva cubierta ${db.reserva_cubierta_pct!=null?db.reserva_cubierta_pct+'%':'—'} (obj. ${ccEur(db.reserva_objetivo)})</div></div>
+      </div>
+      <div class="cc-card"><div class="cc-line"><span>IVA pendiente</span><b>${ccEur(db.iva_pendiente)}</b></div><div class="cc-line"><span>IRPF pendiente</span><b>${ccEur(db.irpf_pendiente)}</b></div><div class="cc-line"><span>Seguridad Social</span><b>${ccEur(db.ss_pendiente)}</b></div></div>
+      <div class="section-label">Obligaciones recurrentes</div><div class="cc-card">${obl}</div>
       <div class="section-label">Cuentas</div>
       <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="ccAccForm()">Añadir cuenta</button> <button class="btn-ghost" onclick="ccMovForm()">Registrar cobro/pago</button></div>
       <div class="cc-card">${cuentas}</div>

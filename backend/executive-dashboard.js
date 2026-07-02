@@ -13,6 +13,8 @@ const staff = require("./staff-finance");
 const targets = require("./targets");
 const inventoryCapital = require("./inventory-capital");
 const copilot = require("./copilot");
+const breakEven = require("./break-even");
+const costAnalytics = require("./cost-analytics");
 const snapshotEngine = require("./snapshot-engine");
 const forecast = require("./forecast");
 const anomaly = require("./anomaly");
@@ -123,6 +125,10 @@ function construir(preset = "hoy", opts = {}) {
     },
   };
 
+  // Break-even en vivo + ahorro potencial en costes fijos (para titular y copiloto).
+  const puntoEquilibrio = breakEven.puntoEquilibrio(now);
+  const ahorroFijos = costAnalytics.alertas(now);
+
   // Inteligencia temporal: forecast de caja/salud y anomalías sobre la serie.
   const runwayForecast = forecast.runwayCaja();
   const anomalias = anomaly.detectar();
@@ -133,6 +139,7 @@ function construir(preset = "hoy", opts = {}) {
     rango: r, now, periodoLabel: r.label,
     costeAbrir, beneficio, tesoreria, deuda, salud: saludBloque,
     capitalParado, objetivos, runwayForecast, anomalias,
+    breakEven: puntoEquilibrio, ahorroFijos,
   });
 
   return {
@@ -144,6 +151,7 @@ function construir(preset = "hoy", opts = {}) {
     financiero: financials.extrasFinancieros(now), // burn, nómina/fijos esperados, EBITDA-ready
     beneficio,
     coste_abrir: costeAbrir,
+    break_even: puntoEquilibrio,                   // ingreso/clientes/cafés para no perder + margen de seguridad
     tesoreria,
     deuda,
     equipo,

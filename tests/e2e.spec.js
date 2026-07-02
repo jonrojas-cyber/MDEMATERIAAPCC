@@ -494,7 +494,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
 test("centro de control: el trabajador NO puede leer los datos financieros", async ({ request }) => {
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const headers = { Authorization: "Bearer " + lara.token };
-  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline", "/api/business-health/config", "/api/treasury/os"]) {
+  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline", "/api/business-health/config", "/api/treasury/os", "/api/fixed-costs/os", "/api/fixed-costs/perfil"]) {
     const r = await request.get(path, { headers });
     expect(r.status(), path + " debe estar prohibido para el equipo").toBe(403);
   }
@@ -657,5 +657,29 @@ test("tesorería OS: la pantalla muestra flujo de caja y valor de empresa", asyn
   await page.evaluate(() => irA_tesoreria());
   await expect(page.locator(".cc-label", { hasText: /Flujo de caja · mes/ })).toBeVisible();
   await expect(page.locator(".cc-label", { hasText: /Valor de la empresa/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+// PRD 005 — Fixed Costs OS: una llamada trae coste de existir, coste por hora,
+// break-even, contribución, forecast con inflación y análisis de ahorro.
+test("costes fijos OS: el endpoint ensambla todos los bloques", async ({ page }) => {
+  await login(page);
+  const os = await page.evaluate(async () => await api("/fixed-costs/os"));
+  expect(os.dashboard).toBeTruthy();
+  expect(typeof os.dashboard.coste_mes).toBe("number");
+  expect(typeof os.dashboard.coste_hora).toBe("number");
+  expect(os.break_even).toBeTruthy();
+  expect(os.contribucion).toBeTruthy();
+  expect(os.forecast).toBeTruthy();
+  expect(os.analitica && Array.isArray(os.analitica.alertas)).toBe(true);
+});
+
+test("costes fijos OS: la pantalla muestra coste de existir y punto de equilibrio", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_costesFijos());
+  await expect(page.locator(".cc-label", { hasText: /Coste de existir/ })).toBeVisible();
+  await expect(page.locator(".cc-label", { hasText: /Punto de equilibrio · hoy/ })).toBeVisible();
   expect(errors).toEqual([]);
 });

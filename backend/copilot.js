@@ -13,7 +13,7 @@ function generar(ctx) {
   const out = [];
   const push = (severidad, texto, handler) => out.push({ id: nid(), severidad, texto, accion: handler ? { handler } : null });
 
-  const { costeAbrir, beneficio, tesoreria, deuda, salud, capitalParado, objetivos, periodoLabel, runwayForecast, anomalias } = ctx;
+  const { costeAbrir, beneficio, tesoreria, deuda, salud, capitalParado, objetivos, periodoLabel, runwayForecast, anomalias, breakEven, ahorroFijos } = ctx;
 
   // 0) Inteligencia temporal (forecast + anomalías): lo más "predictivo" primero.
   if (runwayForecast && runwayForecast.en_riesgo && runwayForecast.dias_hasta_cero != null) {
@@ -25,12 +25,25 @@ function generar(ctx) {
     if (critica) push("importante", `${critica.explicacion} (${critica.label}). ${critica.accion}`, "irA_timeline");
   }
 
-  // 1) Cuánto cuesta abrir y cuánto hay que vender para cubrirlo con margen.
-  if (costeAbrir && costeAbrir.prorrateo && costeAbrir.prorrateo.diario > 0) {
+  // 1) Break-even en vivo: cuánto (y cuántos clientes/cafés) hay que vender hoy
+  //    para no perder. Usa el motor de contribución real de la carta.
+  if (breakEven && breakEven.disponible && breakEven.ingreso_equilibrio_dia != null) {
+    const detalle = breakEven.hoy && breakEven.hoy.cafes ? ` (≈ ${eur0(breakEven.hoy.cafes)} cafés o ${eur0(breakEven.hoy.clientes)} clientes)` : "";
+    push("importante", `Hoy necesitas vender ${eur0(breakEven.ingreso_equilibrio_dia)} € para no perder dinero${detalle}. Coste de existir: ${eur0(breakEven.base_fija_diaria)} €/día.`, "irA_costesFijos");
+    if (breakEven.margen_seguridad_pct != null && breakEven.margen_seguridad_pct < 0) {
+      push("importante", `Estás por debajo del punto de equilibrio: las ventas medias no cubren los costes fijos. Sube ventas o recorta gasto fijo.`, "irA_costesFijos");
+    }
+  } else if (costeAbrir && costeAbrir.prorrateo && costeAbrir.prorrateo.diario > 0) {
     const costeHoy = costeAbrir.prorrateo.diario;
     const objMargen = (objetivos && objetivos.find((o) => o.tipo === "food_cost")) ? (1 - objetivos.find((o) => o.tipo === "food_cost").objetivo / 100) : 0.65;
     const ventaNecesaria = objMargen > 0 ? costeHoy / objMargen : costeHoy;
     push("importante", `Hoy abrir el negocio cuesta ${eur0(costeHoy)} €. Necesitas vender ${eur0(ventaNecesaria)} € para cubrir costes con tu margen objetivo.`, "irA_costeAbrir");
+  }
+
+  // 1b) Ahorro detectado en costes fijos (duplicados, contratos vencidos, renegociar).
+  if (ahorroFijos && ahorroFijos.ahorro_anual_potencial > 100 && ahorroFijos.alertas && ahorroFijos.alertas.length) {
+    const top = ahorroFijos.alertas[0];
+    push("importante", `Ahorro posible en costes fijos: ${eur0(ahorroFijos.ahorro_anual_potencial)} €/año. Empieza por "${top.titulo}".`, "irA_costesFijos");
   }
 
   // 2) Coste laboral por encima del objetivo.

@@ -384,6 +384,14 @@ test("recetas: editor calcula escandallo y PVP recomendado en vivo", async ({ pa
   await page.evaluate(() => usarPvp());
   const precio = await page.inputValue("#rc-precio");
   expect(Number(precio)).toBeGreaterThan(0);
+  // Ficha profesional: chips de alérgenos, versión y vida útil.
+  await expect(page.locator("#rc-alergenos .alerg-chip").first()).toBeVisible();
+  await page.locator("#rc-alergenos .alerg-chip", { hasText: "Gluten" }).click();
+  await expect(page.locator("#rc-alergenos .alerg-chip.on")).toHaveCount(1);
+  const alerg = await page.evaluate(() => recogerAlergenos());
+  expect(alerg).toContain("Gluten");
+  await page.fill("#rc-version", "v2 verano");
+  await page.fill("#rc-vida", "48");
   expect(errors).toEqual([]);
 });
 

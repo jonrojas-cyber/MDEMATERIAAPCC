@@ -19,10 +19,13 @@ function objetivoDe(tipo, def) {
 }
 
 // Cada señal → { score 0-100, estado 'bien'|'regular'|'mal', texto, peso }.
-function calcular(rango, now = Date.now()) {
-  const ben = financials.beneficio(rango, now);
+// opts permite inyectar cifras ya calculadas (beneficio, costeMedioDiario) para
+// no repetir escaneos costosos de ventas cuando el dashboard ya las tiene.
+function calcular(rango, now = Date.now(), opts = {}) {
+  const ben = opts.beneficio || financials.beneficio(rango, now);
   const liq = treasury.liquidez();
-  const runway = treasury.runway(liq.liquidez_inmediata, financials.costeMedioDiario(now));
+  const costeDiario = opts.costeMedioDiario != null ? opts.costeMedioDiario : financials.costeMedioDiario(now);
+  const runway = treasury.runway(liq.liquidez_inmediata, costeDiario);
   const materias = store.readAll("materias");
   const criticos = materias.filter((m) => estadoStock(m) !== "correcto").length;
   const deuda = debtsMod.resumen(now);
@@ -88,11 +91,12 @@ function calcular(rango, now = Date.now()) {
 }
 
 // Nota + variación respecto al periodo anterior (para "+3 vs semana anterior").
-function calcularConComparativo(actualR, anteriorR, now = Date.now()) {
-  const actual = calcular(actualR, now);
+// opts.beneficio / opts.beneficioAnterior / opts.costeMedioDiario evitan recalcular.
+function calcularConComparativo(actualR, anteriorR, now = Date.now(), opts = {}) {
+  const actual = calcular(actualR, now, { beneficio: opts.beneficio, costeMedioDiario: opts.costeMedioDiario });
   let delta = null;
   try {
-    const prev = calcular(anteriorR, now);
+    const prev = calcular(anteriorR, now, { beneficio: opts.beneficioAnterior, costeMedioDiario: opts.costeMedioDiario });
     delta = actual.score - prev.score;
   } catch (_) { delta = null; }
   return { ...actual, delta };

@@ -478,7 +478,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  await expect(page.locator(".dash-centro")).toBeVisible();
+  await expect(page.locator(".dash-owner")).toBeVisible();
   await page.evaluate(() => irA_centroControl("mes"));
   await expect(page.locator(".cc-grid")).toBeVisible();
   await expect(page.locator(".cc-score").first()).toBeVisible(); // salud del negocio
@@ -487,7 +487,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
   await expect(page.locator(".cc-label", { hasText: /Coste de abrir la persiana/ })).toBeVisible();
   await expect(page.locator(".cc-label", { hasText: /Valor de la empresa/ })).toBeVisible();
   await expect(page.locator(".cc-label", { hasText: /Tesorería/ })).toBeVisible();
-  await expect(page.locator(".cc-chip", { hasText: /Esta semana/ })).toBeVisible();
+  await expect(page.locator(".cc-chip", { hasText: /^Semana$/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -503,7 +503,7 @@ test("centro de control: el trabajador NO puede leer los datos financieros", asy
 test("centro de control: el filtro de tiempo cambia el periodo (semana empieza lunes)", async ({ page }) => {
   await login(page);
   await page.evaluate(() => irA_centroControl("semana"));
-  await expect(page.locator(".cc-chip.on", { hasText: /Esta semana/ })).toBeVisible();
+  await expect(page.locator(".cc-chip.on", { hasText: /^Semana$/ })).toBeVisible();
   const inicioSemanaEsLunes = await page.evaluate(() => {
     const d = new Date(window._ccData.periodo.desde);
     return d.getDay(); // 1 = lunes

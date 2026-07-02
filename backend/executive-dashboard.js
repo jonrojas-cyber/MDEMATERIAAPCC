@@ -14,6 +14,8 @@ const targets = require("./targets");
 const inventoryCapital = require("./inventory-capital");
 const copilot = require("./copilot");
 const snapshotEngine = require("./snapshot-engine");
+const forecast = require("./forecast");
+const anomaly = require("./anomaly");
 const { estadoStock } = require("./umbral");
 
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
@@ -121,11 +123,15 @@ function construir(preset = "hoy", opts = {}) {
     },
   };
 
-  // Copiloto (a partir del contexto ya calculado).
+  // Inteligencia temporal: forecast de caja y anomalías sobre la serie histórica.
+  const runwayForecast = forecast.runwayCaja();
+  const anomalias = anomaly.detectar();
+
+  // Copiloto (a partir del contexto ya calculado, incluida la inteligencia temporal).
   const copiloto = copilot.generar({
     rango: r, now, periodoLabel: r.label,
     costeAbrir, beneficio, tesoreria, deuda, salud: saludBloque,
-    capitalParado, objetivos,
+    capitalParado, objetivos, runwayForecast, anomalias,
   });
 
   return {
@@ -145,6 +151,7 @@ function construir(preset = "hoy", opts = {}) {
     activos,
     objetivos,
     tendencia: snapshotEngine.tendencia(now),      // serie histórica (semana/mes) desde los snapshots
+    inteligencia: { runway_forecast: runwayForecast, anomalias },
     copiloto,
   };
 }

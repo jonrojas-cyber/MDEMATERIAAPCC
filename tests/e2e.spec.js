@@ -494,7 +494,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
 test("centro de control: el trabajador NO puede leer los datos financieros", async ({ request }) => {
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const headers = { Authorization: "Bearer " + lara.token };
-  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health"]) {
+  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline"]) {
     const r = await request.get(path, { headers });
     expect(r.status(), path + " debe estar prohibido para el equipo").toBe(403);
   }
@@ -582,5 +582,27 @@ test("executive: la tarjeta de Operaciones aparece en el Centro de Control", asy
   await login(page);
   await page.evaluate(() => irA_centroControl("mes"));
   await expect(page.locator(".cc-label", { hasText: /Operaciones · hoy/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+// PRD 002 — Financial Timeline: el endpoint único devuelve serie + delta +
+// forecast + anomalías; y la pantalla Línea temporal se abre sin errores.
+test("timeline: el endpoint devuelve métricas, serie, forecast y anomalías", async ({ page }) => {
+  await login(page);
+  const d = await page.evaluate(async () => await api("/executive-dashboard/timeline?metric=patrimonio_neto&horizon=30"));
+  expect(Array.isArray(d.metricas)).toBe(true);
+  expect(d.metricas.length).toBeGreaterThan(5);
+  expect(Array.isArray(d.serie)).toBe(true);
+  expect(d.forecast).toBeTruthy();          // {disponible:...}
+  expect(Array.isArray(d.anomalies)).toBe(true);
+  expect(d.runway_caja).toBeTruthy();
+});
+
+test("timeline: la pantalla Línea temporal se abre con el selector de métricas", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_timeline());
+  await expect(page.locator(".cc-chip", { hasText: /Valor de la empresa/ })).toBeVisible();
   expect(errors).toEqual([]);
 });

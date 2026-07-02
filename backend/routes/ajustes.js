@@ -4,13 +4,15 @@ const { costePorUnidad } = require("../costing");
 
 const router = express.Router();
 
+// Taxonomía de merma (única): cada merma se clasifica en uno de estos motivos.
+// El propietario ve el dinero perdido agrupado por causa.
 const MOTIVOS = [
-  "maduración avanzada",
-  "fuera de vida útil",
-  "caída / rotura",
-  "preparación incorrecta",
-  "prueba I+D",
+  "caducidad",
+  "error de preparación",
+  "rotura",
+  "sobreproducción",
   "devolución",
+  "prueba I+D",
 ];
 
 router.get("/motivos", (req, res) => {

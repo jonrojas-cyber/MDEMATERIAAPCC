@@ -1380,7 +1380,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v90</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v91</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2431,6 +2431,8 @@ async function irA_panel(){
       svgBarsH([{label:"Producido",value:b.producido_eur},{label:"Vendido",value:b.vendido_eur},{label:"Tirado",value:b.tirado_eur}],{unit:"€"});
     html+=`<div class="section-label">Valor de almacén por categoría</div>`+svgBarsH(p.valor_almacen_categoria,{unit:"€"});
     html+=`<div class="section-label">Mermas € · últimos 14 días</div><div class="card">`+svgLine(p.mermas_por_dia)+`</div>`;
+    if(p.mermas&&p.mermas.por_motivo&&p.mermas.por_motivo.length) html+=`<div class="section-label">Merma por motivo (30 días)</div>`+svgBarsH(p.mermas.por_motivo,{unit:"€"});
+    if(p.mermas&&p.mermas.por_producto&&p.mermas.por_producto.length) html+=`<div class="section-label">Qué produce más merma</div>`+svgBarsH(p.mermas.por_producto,{unit:"€"});
     html+=`<div class="section-label">Top productos por venta (30 días)</div>`+
       (p.top.por_venta.length? svgBarsH(p.top.por_venta.map(x=>({label:x.producto,value:x.importe})),{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Aún sin ventas registradas (llegan de Ágora).</div>`);
     if(p.top.por_beneficio.length) html+=`<div class="section-label">Top por beneficio</div>`+svgBarsH(p.top.por_beneficio.map(x=>({label:x.producto,value:x.beneficio})),{unit:"€"});

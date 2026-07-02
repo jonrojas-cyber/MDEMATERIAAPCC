@@ -1420,7 +1420,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v95</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v96</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2635,6 +2635,17 @@ async function irA_panel(){
     html+=`<div class="section-label">Mermas € · últimos 14 días</div><div class="card">`+svgLine(p.mermas_por_dia)+`</div>`;
     if(p.mermas&&p.mermas.por_motivo&&p.mermas.por_motivo.length) html+=`<div class="section-label">Merma por motivo (30 días)</div>`+svgBarsH(p.mermas.por_motivo,{unit:"€"});
     if(p.mermas&&p.mermas.por_producto&&p.mermas.por_producto.length) html+=`<div class="section-label">Qué produce más merma</div>`+svgBarsH(p.mermas.por_producto,{unit:"€"});
+    const inv=p.inventario;
+    if(inv){
+      html+=`<div class="section-label">Descuadre de inventario (30 días)</div>`;
+      if(inv.recuentos){
+        const oculta=Math.abs(inv.merma_oculta_eur);
+        html+=`<div class="card"><div class="card-name">${inv.descuadre_eur>=0?"+":""}${eur0(inv.descuadre_eur)} € de descuadre</div>
+          <div class="card-meta">${inv.recuentos} recuento(s) · merma oculta ${eur0(oculta)} € (lo que faltaba al contar y no estaba registrado como merma)${inv.ultimo?` · último ${new Date(inv.ultimo.fecha).toLocaleDateString("es-ES",{day:"2-digit",month:"short"})}`:""}</div></div>`;
+      } else {
+        html+=`<div class="card"><div class="card-meta">Aún no has hecho ningún recuento físico. Hazlo en Materia → Inventario físico para ver la merma oculta.</div></div>`;
+      }
+    }
     html+=`<div class="section-label">Top productos por venta (30 días)</div>`+
       (p.top.por_venta.length? svgBarsH(p.top.por_venta.map(x=>({label:x.producto,value:x.importe})),{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Aún sin ventas registradas (llegan de Ágora).</div>`);
     if(p.top.por_beneficio.length) html+=`<div class="section-label">Top por beneficio</div>`+svgBarsH(p.top.por_beneficio.map(x=>({label:x.producto,value:x.beneficio})),{unit:"€"});

@@ -148,6 +148,20 @@ function mermasPorMotivo(dias = 30) {
   return { por_motivo: toArr(porMotivo), por_producto: toArr(porObjetivo).slice(0, 8) };
 }
 
+// Descuadre de inventario (últimos N días): merma oculta que solo aflora al
+// contar físicamente. Dinero que se va sin quedar registrado como merma.
+function descuadreInventario(dias = 30) {
+  const desde = Date.now() - dias * DAY;
+  const invs = store.readAll("inventarios").filter((i) => i.fecha && new Date(i.fecha).getTime() >= desde);
+  const ultimo = invs.length ? invs[invs.length - 1] : null;
+  return {
+    recuentos: invs.length,
+    descuadre_eur: eur(invs.reduce((s, i) => s + (Number(i.descuadre_eur) || 0), 0)),
+    merma_oculta_eur: eur(invs.reduce((s, i) => s + (Number(i.merma_oculta_eur) || 0), 0)),
+    ultimo: ultimo ? { fecha: ultimo.fecha, descuadre_eur: eur(ultimo.descuadre_eur), lineas_con_descuadre: ultimo.lineas_con_descuadre } : null,
+  };
+}
+
 function panel(dias = 30) {
   return {
     dias,
@@ -158,7 +172,8 @@ function panel(dias = 30) {
     top: topProductos(dias),
     compras_proveedor: comprasPorProveedor(dias),
     balance: balance(dias),
+    inventario: descuadreInventario(dias),
   };
 }
 
-module.exports = { kpis, valorAlmacenPorCategoria, mermasPorDia, mermasPorMotivo, topProductos, comprasPorProveedor, balance, panel };
+module.exports = { kpis, valorAlmacenPorCategoria, mermasPorDia, mermasPorMotivo, topProductos, comprasPorProveedor, balance, descuadreInventario, panel };

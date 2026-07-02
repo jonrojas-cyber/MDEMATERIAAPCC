@@ -367,6 +367,17 @@ test("inventario: recuento físico calcula descuadre en vivo", async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test("panel del propietario: KPIs, balance y descuadre de inventario sin errores", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_panel());
+  await expect(page.locator(".section-label", { hasText: /Hoy/ }).first()).toBeVisible();
+  await expect(page.locator(".section-label", { hasText: /Descuadre de inventario/ })).toBeVisible();
+  await expect(page.locator(".kpi-box").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("recepción: campos de lote/caducidad y tres estados", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

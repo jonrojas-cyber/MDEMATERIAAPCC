@@ -1,0 +1,23 @@
+[
+  {
+    "id": "inv-001-23809",
+    "fecha": "2026-07-02T06:55:23.809Z",
+    "responsable": "Test",
+    "observacion": "",
+    "total_lineas": 1,
+    "lineas_con_descuadre": 1,
+    "descuadre_eur": -0.03,
+    "merma_oculta_eur": -0.03,
+    "lineas": [
+      {
+        "materia_id": "mat-003",
+        "nombre": "AOVE",
+        "unidad": "ml",
+        "teorico": 3980,
+        "fisico": 3975,
+        "diferencia": -5,
+        "valor_diferencia": -0.03
+      }
+    ]
+  }
+]

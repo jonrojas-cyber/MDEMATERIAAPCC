@@ -507,6 +507,17 @@ input, select { font-family: inherit; font-size: 13px; }
 .appcc-tabla tr.appcc-fuera td:first-child::before { content: "▲ "; }
 .appcc-doc-firma { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; line-height: 2.2; }
 .btn-ghost.activo { border-color: var(--ink); font-weight: 700; }
+
+/* Inventario físico vs teórico */
+.inv-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 10px; margin-bottom: 6px; background: var(--paper); }
+.inv-row.inv-desc { border-color: var(--ink); }
+.inv-info { flex: 1; min-width: 0; }
+.inv-nombre { font-size: 13px; font-weight: 700; }
+.inv-teo { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+.inv-dif { font-weight: 700; color: var(--ink); }
+.inv-resumen { font-size: 12px; font-weight: 700; margin-top: 10px; padding: 8px 12px;
+  border: 1px dashed var(--line); border-radius: 8px; background: var(--cream); }
 @media print {
   body * { visibility: hidden; }
   .appcc-doc, .appcc-doc * { visibility: visible; }
@@ -1409,7 +1420,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v94</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v95</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1793,6 +1804,7 @@ function modulosMeta(d) {
     pedidos:      { num:"02", name:"Pedidos", badge:"Crear y enviar a proveedores", urgent:false },
     proveedores:  { num:"03", name:"Proveedores", badge: pendPedir?`${pendPedir} a contactar`:"Sin pedidos urgentes", urgent:false },
     recepcion:    { num:"04", name:"Recepción", badge:"Escanear albarán y entrada", urgent:false },
+    inventario:   { num:"05", name:"Inventario físico", badge:"Recuento real vs teórico", urgent:false },
     // APPCC
     lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
     // Informes y configuración
@@ -1812,7 +1824,7 @@ function modulosMeta(d) {
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
   produccion: { name:"Producción", desc:"Producir ahora · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
-  materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción", ids:["materias","pedidos","proveedores","recepcion"] },
+  materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario", ids:["materias","pedidos","proveedores","recepcion","inventario"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
   informes:   { name:"Informes", desc:"Costes · Márgenes · Ventas · Config", ids:["carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
 };
@@ -2406,6 +2418,85 @@ async function irA_appccRegistro(dias){
         </div>
       </div>`);
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// ── INVENTARIO FÍSICO vs TEÓRICO ──────────────────────────────────────────
+async function irA_inventario(){
+  openSection("inventario","Inventario físico");
+  try{
+    const d=await api("/inventario");
+    window._invMats=d.materias;
+    const u=getUser();
+    const filas=d.materias.map((m,i)=>`
+      <div class="inv-row" data-mid="${m.materia_id}" data-teo="${m.teorico}" data-coste="${m.coste_medio}">
+        <div class="inv-info">
+          <div class="inv-nombre">${esc(m.nombre)}</div>
+          <div class="inv-teo">Teórico: <b>${m.teorico}</b> ${esc(m.unidad)}${m.ubicacion?` · ${esc(m.ubicacion)}`:""}</div>
+        </div>
+        <input class="inv-fisico" type="number" inputmode="decimal" step="0.01" placeholder="real" style="width:80px;" oninput="recalcInvFila(this)">
+        <span class="inv-dif" style="min-width:74px;text-align:right;font-size:11px;"></span>
+      </div>`).join("");
+    const hist=d.historico.length?`
+      <div class="section-label" style="margin-top:18px;">Recuentos anteriores</div>
+      ${d.historico.map(h=>card(
+        new Date(h.fecha).toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"})+" · "+esc(h.responsable),
+        `${h.lineas_con_descuadre}/${h.total_lineas} con descuadre · ${h.descuadre_eur>=0?"+":""}${h.descuadre_eur.toFixed(2)} € (merma oculta ${Math.abs(h.merma_oculta_eur).toFixed(2)} €)`,
+        ""
+      )).join("")}`:"";
+    setInner(`
+      <div class="card-meta" style="margin-bottom:10px;">Cuenta lo que hay de verdad. Deja en blanco lo que no cuentes: no se toca. Al guardar, el stock teórico se ajusta al real y el descuadre queda registrado.</div>
+      <div id="inv-lista">${filas}</div>
+      <div class="inv-resumen" id="inv-resumen">Sin cambios todavía.</div>
+      <div class="card-actions" style="margin-top:12px;">
+        <button class="btn-primary" id="inv-guardar" onclick="guardarInventario(this)">Guardar recuento</button>
+      </div>
+      <div id="inv-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>
+      ${hist}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function recalcInvFila(input){
+  const row=input.closest(".inv-row");
+  const teo=Number(row.getAttribute("data-teo"))||0;
+  const dif=row.querySelector(".inv-dif");
+  const v=input.value;
+  if(v===""||v==null){ dif.textContent=""; row.classList.remove("inv-desc"); recalcInvTotal(); return; }
+  const fis=Number(String(v).replace(",","."))||0;
+  const delta=Math.round((fis-teo)*100)/100;
+  dif.textContent=delta===0?"✓":(delta>0?`+${delta}`:`${delta}`);
+  row.classList.toggle("inv-desc", delta!==0);
+  recalcInvTotal();
+}
+function recalcInvTotal(){
+  let cont=0, eurTot=0;
+  document.querySelectorAll(".inv-row").forEach(row=>{
+    const inp=row.querySelector(".inv-fisico");
+    if(inp.value===""||inp.value==null) return;
+    const teo=Number(row.getAttribute("data-teo"))||0;
+    const coste=Number(row.getAttribute("data-coste"))||0;
+    const fis=Number(String(inp.value).replace(",","."))||0;
+    const delta=Math.round((fis-teo)*100)/100;
+    if(delta!==0){ cont++; eurTot+=delta*coste; }
+  });
+  eurTot=Math.round(eurTot*100)/100;
+  const r=el("inv-resumen");
+  if(r) r.textContent=cont?`${cont} materia(s) con descuadre · valor ${eurTot>=0?"+":""}${eurTot.toFixed(2)} €`:"Sin descuadres. Todo cuadra.";
+}
+async function guardarInventario(btn){
+  const conteos=[...document.querySelectorAll(".inv-row")].map(row=>{
+    const inp=row.querySelector(".inv-fisico");
+    if(inp.value===""||inp.value==null) return null;
+    return { materia_id:row.getAttribute("data-mid"), fisico:inp.value };
+  }).filter(Boolean);
+  const msg=el("inv-msg");
+  if(!conteos.length){ if(msg) msg.textContent="Cuenta al menos una materia antes de guardar."; return; }
+  if(!confirm(`Vas a ajustar el stock de ${conteos.length} materia(s) al recuento real. ¿Continuar?`)) return;
+  const u=getUser();
+  if(btn) btn.disabled=true;
+  try{
+    const r=await api("/inventario/conteo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({conteos,responsable:(u&&u.nombre)||"Sin asignar"})});
+    alert(`Recuento guardado.\n${r.lineas_con_descuadre}/${r.total_lineas} con descuadre.\nDescuadre: ${r.descuadre_eur>=0?"+":""}${r.descuadre_eur.toFixed(2)} €`);
+    irA_inventario();
+  }catch(e){ if(msg) msg.textContent="No se pudo guardar: "+e.message; if(btn) btn.disabled=false; }
 }
 
 // Pantalla de categoría: lista de sus módulos.

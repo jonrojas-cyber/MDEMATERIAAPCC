@@ -494,7 +494,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
 test("centro de control: el trabajador NO puede leer los datos financieros", async ({ request }) => {
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const headers = { Authorization: "Bearer " + lara.token };
-  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline", "/api/business-health/config"]) {
+  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline", "/api/business-health/config", "/api/treasury/os"]) {
     const r = await request.get(path, { headers });
     expect(r.status(), path + " debe estar prohibido para el equipo").toBe(403);
   }
@@ -631,5 +631,31 @@ test("salud: la pantalla muestra la salud por categoría", async ({ page }) => {
   await page.evaluate(() => irA_centroControl("mes"));
   await page.evaluate(() => irA_salud());
   await expect(page.locator(".section-label", { hasText: /Salud por categoría/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+// PRD 004 — Treasury OS: una llamada trae dashboard, cash flow, liquidez, valor
+// de empresa, obligaciones, monitor de emergencia y forecast; la pantalla se abre.
+test("tesorería OS: el endpoint ensambla todos los bloques", async ({ page }) => {
+  await login(page);
+  const os = await page.evaluate(async () => await api("/treasury/os"));
+  expect(os.dashboard).toBeTruthy();
+  expect(typeof os.dashboard.liquidez_inmediata).toBe("number");
+  expect(typeof os.dashboard.disponible).toBe("number");
+  expect(os.cashflow && os.cashflow.mes).toBeTruthy();
+  expect(os.liquidez).toBeTruthy();
+  expect(os.valor_empresa).toBeTruthy();
+  expect(os.emergency).toBeTruthy();
+  expect(os.forecast).toBeTruthy();
+  expect(Array.isArray(os.obligaciones)).toBe(true);
+});
+
+test("tesorería OS: la pantalla muestra flujo de caja y valor de empresa", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_tesoreria());
+  await expect(page.locator(".cc-label", { hasText: /Flujo de caja · mes/ })).toBeVisible();
+  await expect(page.locator(".cc-label", { hasText: /Valor de la empresa/ })).toBeVisible();
   expect(errors).toEqual([]);
 });

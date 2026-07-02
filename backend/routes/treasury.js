@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../data-store");
 const treasuryMod = require("../treasury");
+const treasuryOS = require("../treasury-os");
 const financials = require("../financials");
 const { soloAdmin } = require("./_guard");
 
@@ -11,6 +12,18 @@ router.get("/", (req, res) => {
   if (!soloAdmin(req, res)) return;
   const costeDiario = financials.costeMedioDiario();
   res.json({ ...treasuryMod.resumen(Date.now(), costeDiario), cuentas: store.readAll("financial_accounts") });
+});
+
+// Treasury Operating System: dashboard + cash flow + liquidez + valor de empresa +
+// obligaciones + monitor de emergencia + forecast. Una sola llamada (admin-only).
+router.get("/os", (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  const localId = (req.user && req.user.local_id) || "principal";
+  try {
+    res.json({ ...treasuryOS.sistemaOperativo(Date.now(), localId), cuentas: store.readAll("financial_accounts") });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Cuentas de dinero (caja / banco) ───────────────────────────────────────

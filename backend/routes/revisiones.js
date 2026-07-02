@@ -68,6 +68,44 @@ router.post("/registrar", (req, res) => {
   res.status(201).json(revision);
 });
 
+// Registro APPCC para inspección de Sanidad: revisiones agrupadas por día,
+// con incidencias y acciones correctivas. Trazabilidad exigible por ley.
+function ymd(d) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+router.get("/registro", (req, res) => {
+  const dias = Math.min(370, Math.max(1, Number(req.query.dias) || 30));
+  const desde = Date.now() - dias * 86400000;
+  const revs = store.readAll("revisiones")
+    .filter((r) => r.fecha && new Date(r.fecha).getTime() >= desde)
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+  const porDia = {};
+  revs.forEach((r) => {
+    const k = ymd(r.fecha);
+    (porDia[k] = porDia[k] || []).push(r);
+  });
+  const dds = Object.keys(porDia).sort().reverse().map((fecha) => {
+    const items = porDia[fecha];
+    const incidencias = items.filter((r) => r.estado && r.estado !== "Correcto" && !r.resuelta_en).length;
+    return { fecha, total: items.length, incidencias, revisiones: items };
+  });
+
+  const totalRev = revs.length;
+  const incidenciasAbiertas = revs.filter((r) => r.estado && r.estado !== "Correcto" && !r.resuelta_en).length;
+  const config = store.readAll("config");
+  const local = (config.find && config.find((c) => c.id === "local")) || {};
+  res.json({
+    generado_en: new Date().toISOString(),
+    dias,
+    local: { nombre: local.nombre || "m de materia", direccion: local.direccion || "", responsable_sanidad: local.responsable_sanidad || "" },
+    rangos: TIPOS_REVISION.filter((t) => t.clase === "temperatura").map((t) => ({ tipo: t.tipo, min: t.min, max: t.max, unidad: t.unidad })),
+    resumen: { dias_con_registro: dds.length, revisiones: totalRev, incidencias_abiertas: incidenciasAbiertas },
+    por_dia: dds,
+  });
+});
+
 router.post("/:id/resolver", (req, res) => {
   const revision = store.findById("revisiones", req.params.id);
   if (!revision) return res.status(404).json({ error: "Revisión no encontrada" });

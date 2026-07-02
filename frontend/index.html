@@ -492,6 +492,29 @@ input, select { font-family: inherit; font-size: 13px; }
 .appcc-badge { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 700; color: #b5462a; background: #f3ddd2; border-radius: 20px; padding: 2px 8px; }
 .appcc-nota { font-size: 11.5px; color: var(--muted); margin-top: 14px; line-height: 1.5; }
 
+/* Registro APPCC para inspección (documento imprimible) */
+.appcc-doc { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+.appcc-doc-head { border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 12px; }
+.appcc-doc-title { font-size: 15px; font-weight: 700; }
+.appcc-doc-sub { font-size: 12px; margin-top: 2px; }
+.appcc-doc-meta { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+.appcc-dia { margin-bottom: 14px; }
+.appcc-dia-cab { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.appcc-tabla { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.appcc-tabla th, .appcc-tabla td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+.appcc-tabla th { background: var(--paper); font-weight: 700; }
+.appcc-tabla tr.appcc-fuera td { font-weight: 700; }
+.appcc-tabla tr.appcc-fuera td:first-child::before { content: "▲ "; }
+.appcc-doc-firma { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; line-height: 2.2; }
+.btn-ghost.activo { border-color: var(--ink); font-weight: 700; }
+@media print {
+  body * { visibility: hidden; }
+  .appcc-doc, .appcc-doc * { visibility: visible; }
+  .appcc-doc { position: absolute; left: 0; top: 0; width: 100%; border: none; padding: 0; }
+  .no-print { display: none !important; }
+  .appcc-dia { page-break-inside: avoid; }
+}
+
 .wiz-bar {
   height: 3px;
   background: var(--line);
@@ -1386,7 +1409,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v93</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v94</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1945,7 +1968,7 @@ async function irA_appcc(){
         ${tile("Calendario anual","Histórico · producción y APPCC","irA_calendario()", "")}
         ${tile("Etiquetas","Imprimir · Reimprimir · Historial","irA_etiquetas()", "")}
         ${tile("Temperaturas","Neveras y congeladores","irA_temperaturas()", "")}
-        ${tile("Limpieza","Registro de limpieza",`almaccPronto()`, "")}
+        ${tile("Registro para Sanidad","Exportar APPCC para inspección","irA_appccRegistro()", "")}
         ${tile("Incidencias","Producto no apto y bloqueos",`almaccPronto()`, "")}
         ${tile("Auditoría","Quién hizo qué y cuándo","irA_auditoria()", "")}
       </div>
@@ -2334,6 +2357,55 @@ async function guardarTemp(i){
     irA_temperaturas();
   }catch(e){ alert(e.message); }
   finally{ liberaDoble("temp-"+i); }
+}
+
+// ── REGISTRO APPCC PARA INSPECCIÓN DE SANIDAD ─────────────────────────────
+async function irA_appccRegistro(dias){
+  openSection("appcc-registro","Registro para Sanidad");
+  window._appccBackOverride=true; window._backOverride=()=>irA_appcc();
+  const d=dias||30;
+  try{
+    const r=await api("/revisiones/registro?dias="+d);
+    const rangos=r.rangos.map(x=>`${esc(x.tipo)} ${x.min}–${x.max} ${esc(x.unidad)}`).join(" · ");
+    const opts=[7,30,90,365].map(n=>`<button class="btn-ghost${n===d?" activo":""}" onclick="irA_appccRegistro(${n})">${n===365?"1 año":n+" días"}</button>`).join("");
+    const cab=`
+      <div class="card-actions no-print" style="margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+        ${opts}
+        <button class="btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button>
+      </div>`;
+    const dias_html=r.por_dia.map(dia=>{
+      const filas=dia.revisiones.map(rev=>{
+        const fuera=rev.estado&&rev.estado!=="Correcto"&&!rev.resuelta_en;
+        const hora=new Date(rev.fecha).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+        return `<tr${fuera?' class="appcc-fuera"':""}>
+          <td>${hora}</td><td>${esc(rev.tipo)}</td><td>${esc(rev.valor||"")}</td>
+          <td>${esc(rev.estado||"")}${rev.resuelta_en?" (resuelta)":""}</td>
+          <td>${esc(rev.accion_correctiva||"")}</td><td>${esc(rev.responsable||"")}</td>
+        </tr>`;
+      }).join("");
+      return `<div class="appcc-dia">
+        <div class="appcc-dia-cab">${dia.fecha}${dia.incidencias?` · ${dia.incidencias} incidencia(s)`:""}</div>
+        <table class="appcc-tabla"><thead><tr>
+          <th>Hora</th><th>Punto de control</th><th>Valor</th><th>Estado</th><th>Acción correctiva</th><th>Responsable</th>
+        </tr></thead><tbody>${filas}</tbody></table>
+      </div>`;
+    }).join("");
+    const cuerpo=r.por_dia.length?dias_html:`<div class="empty">Sin registros en el periodo.</div>`;
+    setInner(cab+`
+      <div class="appcc-doc">
+        <div class="appcc-doc-head">
+          <div class="appcc-doc-title">Registro APPCC · Control de temperaturas y limpieza</div>
+          <div class="appcc-doc-sub">${esc(r.local.nombre)}${r.local.direccion?" · "+esc(r.local.direccion):""}</div>
+          <div class="appcc-doc-meta">Periodo: últimos ${r.dias} días · ${r.resumen.dias_con_registro} días con registro · ${r.resumen.revisiones} controles · ${r.resumen.incidencias_abiertas} incidencia(s) abierta(s)</div>
+          <div class="appcc-doc-meta">Rangos de referencia: ${rangos}</div>
+        </div>
+        ${cuerpo}
+        <div class="appcc-doc-firma">
+          <div>Responsable del sistema APPCC: ${esc(r.local.responsable_sanidad||"____________________")}</div>
+          <div>Firma: ____________________&nbsp;&nbsp;&nbsp;Fecha: ______ / ______ / __________</div>
+        </div>
+      </div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
 
 // Pantalla de categoría: lista de sus módulos.

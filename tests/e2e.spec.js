@@ -161,6 +161,19 @@ test("APPCC: hub de seguridad alimentaria (sin compras: recepción vive en Mater
   await expect(page.locator(".appcc-tile", { hasText: /Temperaturas/ })).toBeVisible();
   // Recepción es COMPRAS: no debe aparecer en APPCC.
   await expect(page.locator(".appcc-tile", { hasText: /Recepcion/i })).toHaveCount(0);
+  // Registro para Sanidad: exportación APPCC imprimible.
+  await expect(page.locator(".appcc-tile", { hasText: /Registro para Sanidad/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("APPCC: registro para inspección genera documento imprimible con firma", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_appccRegistro());
+  await expect(page.locator(".appcc-doc-title")).toContainText(/Registro APPCC/i);
+  await expect(page.locator(".appcc-doc-firma")).toContainText(/Firma/i);
+  await expect(page.locator("button", { hasText: /Imprimir/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

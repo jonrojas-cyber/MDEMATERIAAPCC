@@ -125,18 +125,21 @@ test("login + inicio: 4 tarjetas con el título completo (sin recorte) y cero er
   // 4 bloques grandes (2×2); el primero es ALERTAS.
   await expect(page.locator(".dashcard")).toHaveCount(4);
   await expect(page.locator(".dashcard").first()).toContainText(/ALERTAS/);
-  // Ninguna tarjeta recorta su título: el nombre queda DENTRO de su tarjeta
-  // (regresión del bug donde la rejilla se aplastaba y cortaba los títulos).
-  const clipped = await page.evaluate(() => {
-    const cards = Array.from(document.querySelectorAll(".dashcard"));
-    return cards.filter((c) => {
+  // El inicio NO hace scroll (todo visible) y ningún título se sale de su
+  // tarjeta (regresión del bug donde la rejilla se aplastaba y recortaba los
+  // títulos). El título se autoajusta al alto de la tarjeta (container queries).
+  const r = await page.evaluate(() => {
+    const s = document.getElementById("screen-home");
+    const clipped = Array.from(document.querySelectorAll(".dashcard")).filter((c) => {
       const name = c.querySelector(".dashcard-name");
       if (!name) return true;
       const cr = c.getBoundingClientRect(), nr = name.getBoundingClientRect();
-      return nr.top < cr.top - 1 || nr.bottom > cr.bottom + 1; // sobresale del recuadro
+      return nr.top < cr.top - 1 || nr.bottom > cr.bottom + 1;
     }).length;
+    return { scroll: s.scrollHeight > s.clientHeight + 2, clipped };
   });
-  expect(clipped, "ningún título debe salirse de su tarjeta").toBe(0);
+  expect(r.scroll, "el inicio no debe hacer scroll").toBeFalsy();
+  expect(r.clipped, "ningún título debe salirse de su tarjeta").toBe(0);
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 

@@ -2,6 +2,7 @@
 // de los módulos financieros (que a su vez componen costing.js). Punto único que
 // consume la ruta /api/executive-dashboard. Nada de dinero se calcula aquí: se orquesta.
 
+const store = require("./data-store");
 const periods = require("./periods");
 const financials = require("./financials");
 const health = require("./business-health");
@@ -12,8 +13,40 @@ const staff = require("./staff-finance");
 const targets = require("./targets");
 const inventoryCapital = require("./inventory-capital");
 const copilot = require("./copilot");
+const snapshotEngine = require("./snapshot-engine");
+const { estadoStock } = require("./umbral");
 
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function enRango(fecha, r) { const t = new Date(fecha).getTime(); return Number.isFinite(t) && t >= r.desde && t < r.hasta; }
+
+// OPERACIONES · estado operativo del día unificado en la pantalla ejecutiva.
+// Compone módulos existentes (preparaciones, lotes, materias, recepciones, mermas):
+// no recalcula dinero ni duplica reglas.
+function operaciones(now) {
+  const rHoy = periods.rango("hoy", now);
+  const rSem = periods.rango("semana", now);
+  const rMes = periods.rango("mes", now);
+  const preps = store.readAll("preparaciones");
+  const produccionHoy = preps.filter((p) => p.estado === "Finalizada" && p.finalizada_en && enRango(p.finalizada_en, rHoy)).length;
+  const produccionEnCurso = preps.filter((p) => p.estado === "En curso").length;
+  const materias = store.readAll("materias");
+  const stockCritico = materias.filter((m) => estadoStock(m) !== "correcto").length;
+  const caducan48h = store.readAll("lotes").filter((l) => l.estado !== "Fuera de servicio" && l.caduca_en &&
+    (l.cantidad_restante == null || l.cantidad_restante > 0) &&
+    new Date(l.caduca_en).getTime() - now <= 48 * 3.6e6).length;
+  const recepPendientes = store.readAll("recepciones").filter((r) => r.estado === "Pendiente de confirmar").length;
+  const pedidosEnCamino = store.readAll("pedidos").filter((p) => p.estado === "enviado").length;
+  return {
+    produccion_hoy: produccionHoy,
+    produccion_en_curso: produccionEnCurso,
+    stock_critico: stockCritico,
+    caducan_48h: caducan48h,
+    entregas_esperadas: recepPendientes + pedidosEnCamino,
+    merma_hoy: eur(financials.mermaEnRango(rHoy)),
+    merma_semana: eur(financials.mermaEnRango(rSem)),
+    merma_mes: eur(financials.mermaEnRango(rMes)),
+  };
+}
 function delta(actual, anterior) {
   if (actual == null || anterior == null) return null;
   return { abs: eur(actual - anterior), pct: anterior !== 0 ? Math.round(((actual - anterior) / Math.abs(anterior)) * 100) : null };
@@ -101,14 +134,17 @@ function construir(preset = "hoy", opts = {}) {
     comparativo: { anterior: res.anterior, anio_anterior: res.anio_anterior },
     salud: saludBloque,
     valor_empresa: patrimonio,
+    financiero: financials.extrasFinancieros(now), // burn, nómina/fijos esperados, EBITDA-ready
     beneficio,
     coste_abrir: costeAbrir,
     tesoreria,
     deuda,
     equipo,
+    operaciones: operaciones(now),                 // producción, entregas, stock crítico, caducidades, merma
     capital_parado: capitalParado,
     activos,
     objetivos,
+    tendencia: snapshotEngine.tendencia(now),      // serie histórica (semana/mes) desde los snapshots
     copiloto,
   };
 }

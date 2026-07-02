@@ -5,6 +5,7 @@
 
 const store = require("./data-store");
 const costing = require("./costing");
+const periods = require("./periods");
 const fixedCosts = require("./fixed-costs");
 const staff = require("./staff-finance");
 const debtsMod = require("./debts");
@@ -152,7 +153,26 @@ function costeMedioDiario(now = Date.now()) {
   return eur(fijoDiario + laboralDiario + materiaDiaria);
 }
 
+// ── EXTRAS FINANCIEROS DEL SNAPSHOT EJECUTIVO ───────────────────────────────
+// Burn mensual (dinero que sale sí o sí, SIN materia — que escala con la venta),
+// nómina esperada, coste fijo esperado y EBITDA (preparado: el add-back de
+// amortización es 0 hasta que los activos amorticen en la cuenta de resultados).
+function extrasFinancieros(now = Date.now()) {
+  const fijo = fixedCosts.totales(now);
+  const laboralDiario = staff.costeDiarioTotal();
+  const MES = 365 / 12;
+  const benMes = beneficio(periods.rango("mes", now), now);
+  return {
+    monthly_burn: eur((fijo.diario + laboralDiario) * MES),
+    expected_payroll: eur(laboralDiario * MES),
+    expected_fixed_costs: fijo.mensual,
+    beneficio_mes: benMes.beneficio_operativo,
+    margen_mes_pct: benMes.margen_operativo_pct,
+    ebitda_mes: benMes.beneficio_operativo, // EBITDA-ready (ver comentario)
+  };
+}
+
 module.exports = {
   ventasEnRango, ticketsEnRango, costeMateriaVendidaEnRango, mermaEnRango, comprasEnRango, variablesEnRango,
-  costeDeAbrir, patrimonioNeto, beneficio, costeMedioDiario, indicesProducto, eur,
+  costeDeAbrir, patrimonioNeto, beneficio, costeMedioDiario, extrasFinancieros, indicesProducto, eur,
 };

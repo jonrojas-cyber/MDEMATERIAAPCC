@@ -1490,7 +1490,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v100</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v101</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2723,6 +2723,9 @@ function ccAplicarCustom(){
 function ccRender(d){
   if(!d||!d.periodo) return ccFiltroHTML()+`<div class="empty">Sin datos.</div>`;
   const s=d.salud||{}, v=d.valor_empresa||{}, b=d.beneficio||{}, ca=d.coste_abrir||{}, t=d.tesoreria||{}, de=d.deuda||{}, eq=d.equipo||{}, cp=d.capital_parado||{}, obj=d.objetivos||[], cop=d.copiloto||[];
+  const fin=d.financiero||{}, op=d.operaciones||{}, tend=d.tendencia||{};
+  // Tendencia a 7 días (desde los snapshots diarios), si hay histórico.
+  const tendSem=(campo)=>{ const x=tend.disponible&&tend.semana&&tend.semana[campo]; return (x&&x.pct!=null)?`<span class="cc-delta ${x.abs>=0?'up':'down'}">${x.abs>=0?'▲ +':'▼ −'}${Math.abs(x.pct)}% · 7 días</span>`:""; };
   // Salud
   const razones=(s.razones||[]).slice(0,5).map(r=>`<div class="cc-reason">${ccEstadoDot(r.estado)}${esc(r.texto)}</div>`).join("");
   const deltaS=s.delta!=null&&s.delta!==0?`<span class="cc-delta ${s.delta>=0?'up':'down'}">${s.delta>=0?'▲ +':'▼ −'}${Math.abs(s.delta)} vs anterior</span>`:"";
@@ -2735,7 +2738,14 @@ function ccRender(d){
     <div class="cc-label">Beneficio real · ${esc(d.periodo.label)}</div>
     <div class="cc-kpi">${ccEur(b.beneficio_operativo)}</div>
     ${ccDelta(b.vs_anterior&&b.vs_anterior.beneficio)}
-    <div class="cc-mini">Ventas ${ccEur(b.ventas)} · Materia ${ccEur(b.coste_materia)} · Personal ${ccEur(b.coste_laboral)} · Fijos ${ccEur(b.gastos_fijos)}</div></button>`;
+    <div class="cc-mini">Ventas ${ccEur(b.ventas)} · Materia ${ccEur(b.coste_materia)} · Personal ${ccEur(b.coste_laboral)} · Fijos ${ccEur(b.gastos_fijos)}</div>
+    <div class="cc-mini">Burn mensual ${ccEur(fin.monthly_burn)} · EBITDA mes ${ccEur(fin.ebitda_mes)}</div></button>`;
+  // Operaciones (estado del día unificado)
+  const opCard=`<button class="cc-card" onclick="irA_tareas()">
+    <div class="cc-label">Operaciones · hoy</div>
+    <div class="cc-kpi">${(op.stock_critico||0)+(op.caducan_48h||0)}<span class="cc-score-max"> a vigilar</span></div>
+    <div class="cc-mini">Stock crítico ${op.stock_critico||0} · caducan 48h ${op.caducan_48h||0} · entregas ${op.entregas_esperadas||0}</div>
+    <div class="cc-mini">Producción hoy ${op.produccion_hoy||0} · en curso ${op.produccion_en_curso||0} · merma hoy ${ccEur(op.merma_hoy)}</div></button>`;
   // Coste de abrir
   const objMargen=(obj.find(o=>o.tipo==='food_cost'));
   const ventaNec=ca.prorrateo&&ca.prorrateo.diario>0?ca.prorrateo.diario/((objMargen?1-objMargen.objetivo/100:0.65)||0.65):0;
@@ -2748,6 +2758,7 @@ function ccRender(d){
   const valorCard=`<button class="cc-card" onclick="irA_valorEmpresa()">
     <div class="cc-label">Valor de la empresa</div>
     <div class="cc-kpi">${ccEur(v.patrimonio_neto)}</div>
+    ${tendSem("patrimonio_neto")}
     <div class="cc-mini">Almacén ${ccEur(v.valor_almacen)} · Producción ${ccEur(v.valor_produccion)} · Activos ${ccEur(v.valor_activos)} − Deuda ${ccEur(v.deuda_pendiente)}</div></button>`;
   // Tesorería
   const runway=t.dias_supervivencia;
@@ -2782,7 +2793,7 @@ function ccRender(d){
 
   return `${ccFiltroHTML()}
     <div class="cc-grid">
-      ${saludCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${capCard}
+      ${saludCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${opCard}${capCard}
     </div>
     ${objCard}
     ${copCard}

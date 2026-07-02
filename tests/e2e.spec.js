@@ -558,3 +558,29 @@ test("auditoría: los manejadores de foto de producto y de compra no colisionan"
   expect(check.compra).toBe("function");
   expect(check.distintos).toBe(true);
 });
+
+// PRD 001 — Executive Control Center: la respuesta única incluye operaciones,
+// extras financieros (burn/EBITDA) y la tendencia histórica; y la snapshot diaria
+// se captura de forma idempotente.
+test("executive: la respuesta única trae operaciones, financiero y tendencia", async ({ page }) => {
+  await login(page);
+  const d = await page.evaluate(async () => await api("/executive-dashboard?preset=mes"));
+  expect(d.operaciones).toBeTruthy();
+  expect(typeof d.operaciones.stock_critico).toBe("number");
+  expect(d.financiero).toBeTruthy();
+  expect(typeof d.financiero.monthly_burn).toBe("number");
+  expect(d.financiero).toHaveProperty("ebitda_mes");
+  expect(d.tendencia).toBeTruthy(); // {disponible:...}
+  // El histórico de snapshots es consultable (serie temporal AI-ready).
+  const h = await page.evaluate(async () => await api("/executive-dashboard/historico?dias=30"));
+  expect(Array.isArray(h.historico)).toBe(true);
+});
+
+test("executive: la tarjeta de Operaciones aparece en el Centro de Control", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_centroControl("mes"));
+  await expect(page.locator(".cc-label", { hasText: /Operaciones · hoy/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});

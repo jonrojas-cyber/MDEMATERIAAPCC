@@ -1067,6 +1067,15 @@ input, select { font-family: inherit; font-size: 13px; }
 @media (max-height: 620px) { .subtile-name { font-size: 15px; } .subtile-sub { font-size: 9px; } .subtile { padding: 12px; } }
 /* Gráficos del panel del propietario (monocromo tinta/papel) */
 .panel-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 6px; }
+/* Insights del panel: frases accionables ("lo que deberías saber") */
+.insight-card { display: block; width: 100%; text-align: left; background: var(--paper);
+  border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 10px;
+  padding: 11px 13px; margin-bottom: 7px; cursor: pointer; }
+.insight-card.alta { border-left-color: var(--ink); }
+.insight-card:hover { border-color: var(--ink); }
+.insight-titulo { font-size: 13px; font-weight: 700; line-height: 1.25; }
+.insight-detalle { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+.insight-accion { font-size: 10.5px; font-weight: 700; color: var(--ink); margin-top: 6px; }
 .chart { margin: 2px 0 6px; }
 .chart-row { margin-bottom: 9px; }
 .chart-row-top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--sans); }
@@ -1420,7 +1429,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v96</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v97</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2617,7 +2626,16 @@ async function irA_panel(){
     const p=await api("/analitica?dias=30");
     const k=p.kpis;
     const kbox=(l,v,s,warn)=>`<div class="kpi-box ${warn?'warn':''}"><div class="kpi-label">${l}</div><div class="kpi-val">${v}</div><div class="kpi-sub">${s||''}</div></div>`;
-    let html=`<div class="section-label">Hoy</div>
+    let html="";
+    if(p.insights&&p.insights.length){
+      html+=`<div class="section-label">Lo que deberías saber</div>`+
+        p.insights.map(ins=>`<button class="insight-card ${ins.severidad==="importante"?"alta":""}" onclick="${ins.accion&&ins.accion.handler?ins.accion.handler+'()':''}">
+          <div class="insight-titulo">${esc(ins.titulo)}</div>
+          <div class="insight-detalle">${esc(ins.detalle)}</div>
+          ${ins.accion&&ins.accion.label?`<div class="insight-accion">${esc(ins.accion.label)} →</div>`:""}
+        </button>`).join("");
+    }
+    html+=`<div class="section-label">Hoy</div>
       <div class="home-kpis panel-kpis">
         ${kbox("Facturación", eur0(k.facturacion_hoy)+" €","")}
         ${kbox("Coste vendido", eur0(k.coste_vendido)+" €","")}

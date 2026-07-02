@@ -3,6 +3,7 @@
 
 const store = require("./data-store");
 const costing = require("./costing");
+const insights = require("./insights");
 const { categoriaDe } = require("./clasificador");
 const { estadoStock } = require("./umbral");
 
@@ -165,6 +166,7 @@ function descuadreInventario(dias = 30) {
 function panel(dias = 30) {
   return {
     dias,
+    insights: insights.generar(dias),
     kpis: kpis(),
     valor_almacen_categoria: valorAlmacenPorCategoria(),
     mermas_por_dia: mermasPorDia(14),

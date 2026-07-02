@@ -55,6 +55,12 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* CRÍTICO · desactiva el "auto-inflado" de fuente de Chrome/Samsung en Android.
+   Sin esto, el navegador agranda por su cuenta títulos como los de las tarjetas
+   de inicio (dashcard-name) y los recorta dentro de la tarjeta. Con 100% el
+   texto respeta SIEMPRE el tamaño en px del sistema de diseño. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body, .dashcard-name, .saludo-hola, .cc-kpi, .cc-score { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* App anclada a la pantalla visible: position:fixed (arriba) + altura 100dvh.
    Fijo arriba ⇒ el documento no puede arrastrarse; altura = pantalla visible
    real ⇒ el pie queda dentro. Así NINGÚN navegador móvil (Samsung/Chrome)
@@ -1512,7 +1518,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v106</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v107</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>

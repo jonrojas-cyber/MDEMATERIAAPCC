@@ -118,19 +118,25 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("login + inicio: dashboard de 4 tarjetas sin scroll y cero errores de JS", async ({ page }) => {
+test("login + inicio: 4 tarjetas con el título completo (sin recorte) y cero errores de JS", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   // 4 bloques grandes (2×2); el primero es ALERTAS.
   await expect(page.locator(".dashcard")).toHaveCount(4);
   await expect(page.locator(".dashcard").first()).toContainText(/ALERTAS/);
-  // El dashboard cabe sin scroll (no hay desbordamiento vertical).
-  const noScroll = await page.evaluate(() => {
-    const s = document.getElementById("screen-home");
-    return s.scrollHeight <= s.clientHeight + 2;
+  // Ninguna tarjeta recorta su título: el nombre queda DENTRO de su tarjeta
+  // (regresión del bug donde la rejilla se aplastaba y cortaba los títulos).
+  const clipped = await page.evaluate(() => {
+    const cards = Array.from(document.querySelectorAll(".dashcard"));
+    return cards.filter((c) => {
+      const name = c.querySelector(".dashcard-name");
+      if (!name) return true;
+      const cr = c.getBoundingClientRect(), nr = name.getBoundingClientRect();
+      return nr.top < cr.top - 1 || nr.bottom > cr.bottom + 1; // sobresale del recuadro
+    }).length;
   });
-  expect(noScroll).toBeTruthy();
+  expect(clipped, "ningún título debe salirse de su tarjeta").toBe(0);
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 

@@ -1019,15 +1019,17 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 22px; color: var(--ink); }
 .cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
 
-/* ── INICIO = DASHBOARD de 6 tarjetas grandes, TODO visible sin scroll ── */
-#screen-home { overflow: hidden; display: flex; flex-direction: column; }
-#screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* ── INICIO · dashboard de tarjetas. Hace SCROLL si no cabe (p. ej. cuando se
+   muestran Apertura y Cierre a la vez): antes se aplastaba la rejilla y los
+   títulos se recortaban. Ahora cada tarjeta tiene altura mínima y NUNCA recorta. */
+#screen-home { overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+#screen-home > #home-content { display: flex; flex-direction: column; }
 .home-head { flex: 0 0 auto; padding: 2px 2px 12px; }
-.dash { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 10px; min-height: 0; }
+.dash { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(104px, auto); gap: 10px; }
 .dashcard { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 7px; text-align: left;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px; cursor: pointer; overflow: hidden; min-height: 0; }
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px 15px; cursor: pointer; overflow: visible; min-height: 104px; }
 .dashcard:hover { border-color: var(--ink); }
-.dashcard-name { font-family: var(--sans); font-size: 19px; font-weight: 700; letter-spacing: .04em; line-height: 1.05; }
+.dashcard-name { font-family: var(--sans); font-size: 18px; font-weight: 700; letter-spacing: .03em; line-height: 1.1; overflow-wrap: anywhere; }
 .dashcard-sub { font-family: var(--sans); font-size: 10.5px; color: var(--muted); line-height: 1.35; }
 .dashcard-badge { position: absolute; top: 12px; right: 12px; min-width: 22px; text-align: center; font-size: 12px; font-weight: 700;
   color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
@@ -1518,7 +1520,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v107</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v108</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>

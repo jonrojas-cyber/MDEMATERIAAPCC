@@ -375,6 +375,9 @@ test("panel del propietario: KPIs, balance y descuadre de inventario sin errores
   await expect(page.locator(".section-label", { hasText: /Hoy/ }).first()).toBeVisible();
   await expect(page.locator(".section-label", { hasText: /Descuadre de inventario/ })).toBeVisible();
   await expect(page.locator(".kpi-box").first()).toBeVisible();
+  // El panel carga la capa de inteligencia sin romper (haya o no insights).
+  const insights = await page.evaluate(async () => (await api("/analitica?dias=30")).insights);
+  expect(Array.isArray(insights)).toBe(true);
   expect(errors).toEqual([]);
 });
 

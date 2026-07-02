@@ -190,9 +190,18 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
   await page.evaluate(() => goHome());
   await page.waitForSelector(".dash");
   await page.evaluate(() => irA_materias());
-  // Almacén de 3 niveles: macro → subcategoría → producto → ficha.
-  await page.locator(".alm-macro").first().click();
-  await page.locator(".alm-sub:not(.alm-sub-empty)").first().click();
+  await page.waitForSelector(".alm-macro");
+  // Almacén de 3 niveles: macro → subcategoría → producto → ficha. Navegamos por
+  // el árbol usando el estado cargado (determinista, sin depender de la animación).
+  const { macro, sub } = await page.evaluate(() => {
+    const mc = window._almArbol.macros.find((m) => m.total > 0) || window._almArbol.macros[0];
+    const s = (mc.subcategorias || []).find((x) => x.total > 0);
+    return { macro: mc.macro, sub: s ? s.subcategoria : null };
+  });
+  await page.evaluate((m) => irA_almMacro(encodeURIComponent(m)), macro);
+  await expect(page.locator(".alm-sub:not(.alm-sub-empty)").first()).toBeVisible();
+  await page.evaluate((a) => irA_almSub(encodeURIComponent(a.macro), encodeURIComponent(a.sub)), { macro, sub });
+  await page.waitForSelector(".alm-row");
   await page.locator(".alm-row").first().click();
   await expect(page.locator(".ficha-overlay")).toBeVisible();
   await expect(page.locator(".ficha-name")).toBeVisible();

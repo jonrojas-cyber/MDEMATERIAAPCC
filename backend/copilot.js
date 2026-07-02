@@ -13,7 +13,17 @@ function generar(ctx) {
   const out = [];
   const push = (severidad, texto, handler) => out.push({ id: nid(), severidad, texto, accion: handler ? { handler } : null });
 
-  const { costeAbrir, beneficio, tesoreria, deuda, salud, capitalParado, objetivos, periodoLabel } = ctx;
+  const { costeAbrir, beneficio, tesoreria, deuda, salud, capitalParado, objetivos, periodoLabel, runwayForecast, anomalias } = ctx;
+
+  // 0) Inteligencia temporal (forecast + anomalías): lo más "predictivo" primero.
+  if (runwayForecast && runwayForecast.en_riesgo && runwayForecast.dias_hasta_cero != null) {
+    const d = runwayForecast.dias_hasta_cero;
+    push("importante", `Al ritmo actual te quedarás sin caja en ${d} día${d === 1 ? "" : "s"} (aprox. ${runwayForecast.fecha_estimada}). Ajusta pagos o ingresos.`, "irA_timeline");
+  }
+  if (Array.isArray(anomalias)) {
+    const critica = anomalias.find((a) => a.preocupante && a.severidad !== "baja");
+    if (critica) push("importante", `${critica.explicacion} (${critica.label}). ${critica.accion}`, "irA_timeline");
+  }
 
   // 1) Cuánto cuesta abrir y cuánto hay que vender para cubrirlo con margen.
   if (costeAbrir && costeAbrir.prorrateo && costeAbrir.prorrateo.diario > 0) {

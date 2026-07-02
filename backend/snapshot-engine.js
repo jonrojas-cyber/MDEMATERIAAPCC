@@ -13,6 +13,7 @@
 const store = require("./data-store");
 const periods = require("./periods");
 const financials = require("./financials");
+const fixedCosts = require("./fixed-costs");
 const health = require("./business-health");
 const treasury = require("./treasury");
 const debtsMod = require("./debts");
@@ -57,17 +58,24 @@ function construirSnapshot(now = Date.now(), localId = "principal") {
     deuda_total: deuda.deuda_total,
     cobros_pendientes: patr.cobros_pendientes,
     pagos_pendientes: patr.pagos_pendientes,
-    // Día
+    // Día (hechos diarios; los agregados semanal/mensual/anual los deriva el
+    // FinancialTimelineEngine desde esta serie — no se denormalizan por fila).
     ventas_dia: benDia.ventas,
     beneficio_dia: benDia.beneficio_operativo,
     coste_laboral_dia: benDia.coste_laboral,
-    coste_materia_dia: benDia.coste_materia,
+    coste_materia_dia: benDia.coste_materia,      // food cost del día
+    fixed_cost_dia: fixedCosts.totales(now).diario,
+    variable_cost_dia: eur(financials.variablesEnRango(rHoy)),
+    margen_dia: benDia.margen_operativo_pct,
     merma_dia: eur(financials.mermaEnRango(rHoy)),
     // Liquidez / supervivencia
     liquidez: liq.liquidez_inmediata,
     coste_medio_diario: eur(costeDiario),
     runway: runway,
     stock_critico: stockCritico,
+    // Metadatos AI-ready
+    updated_at: new Date(now).toISOString(),
+    forecast_reference: null, // reservado para el modelo de previsión (ML futuro)
   };
 }
 

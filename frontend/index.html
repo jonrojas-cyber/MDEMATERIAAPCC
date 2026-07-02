@@ -1019,18 +1019,25 @@ input, select { font-family: inherit; font-size: 13px; }
   font-size: 22px; color: var(--ink); }
 .cat-desc, .cat-top, .cat-idx, .cat-code, .cat-arrow, .cat-alert { display: none; }
 
-/* ── INICIO · dashboard de tarjetas. Hace SCROLL si no cabe (p. ej. cuando se
-   muestran Apertura y Cierre a la vez): antes se aplastaba la rejilla y los
-   títulos se recortaban. Ahora cada tarjeta tiene altura mínima y NUNCA recorta. */
-#screen-home { overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
-#screen-home > #home-content { display: flex; flex-direction: column; }
-.home-head { flex: 0 0 auto; padding: 2px 2px 12px; }
-.dash { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(104px, auto); gap: 10px; }
-.dashcard { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 7px; text-align: left;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px 15px; cursor: pointer; overflow: visible; min-height: 104px; }
+/* ── INICIO · dashboard de tarjetas · TODO visible SIN scroll ──────────────
+   Las tarjetas llenan el alto disponible y su texto se ajusta al tamaño REAL
+   de la tarjeta (container queries): si la rejilla se comprime (p. ej. con
+   Apertura y Cierre a la vez), el título encoge para caber. Nunca se recorta
+   y nunca hace falta scroll. */
+#screen-home { overflow: hidden; display: flex; flex-direction: column; }
+#screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.home-head { flex: 0 0 auto; padding: 2px 2px 10px; }
+.dash { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 10px; min-height: 0; }
+.dashcard { position: relative; container-type: size; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; cursor: pointer; overflow: hidden; min-height: 0; }
 .dashcard:hover { border-color: var(--ink); }
-.dashcard-name { font-family: var(--sans); font-size: 18px; font-weight: 700; letter-spacing: .03em; line-height: 1.1; overflow-wrap: anywhere; }
-.dashcard-sub { font-family: var(--sans); font-size: 10.5px; color: var(--muted); line-height: 1.35; }
+/* Tamaño del título en función del ALTO real de la tarjeta (24% de su altura),
+   acotado entre 14 y 19px. En tarjetas altas llega a 19px; si la rejilla se
+   comprime, encoge hasta 14px para que SIEMPRE quepa sin recorte ni scroll. */
+.dashcard-name { font-family: var(--sans); font-weight: 700; letter-spacing: .03em; line-height: 1.08;
+  font-size: clamp(14px, 24cqb, 19px); overflow-wrap: anywhere; }
+.dashcard-sub { font-family: var(--sans); color: var(--muted); line-height: 1.3;
+  font-size: clamp(9px, 13cqb, 10.5px); }
 .dashcard-badge { position: absolute; top: 12px; right: 12px; min-width: 22px; text-align: center; font-size: 12px; font-weight: 700;
   color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .dashcard-badge.rojo { color: #fff; background: #b5462a; border-color: #b5462a; }
@@ -1039,7 +1046,18 @@ input, select { font-family: inherit; font-size: 13px; }
 .dash-informes:hover { color: var(--ink); border-color: var(--ink); }
 /* Entrada del propietario: mismo lenguaje que los demás botones, solo con más peso */
 .dash-informes.dash-owner { color: var(--ink); border-color: var(--ink); font-weight: 700; margin-top: 12px; }
-@media (max-height: 560px) { .dashcard-name { font-size: 16px; } .dashcard-sub { font-size: 9.5px; } }
+/* Pantallas bajas: compacta lo de arriba (saludo, frase, rutinas) para dejar
+   alto a las tarjetas. El título de la tarjeta ya se auto-ajusta con cqb, así que
+   NO fijamos su tamaño aquí (dejamos que encoja/crezca según el hueco real). */
+@media (max-height: 820px) {
+  .saludo-frase { display: none; }
+  .saludo { margin-bottom: 10px; padding-bottom: 10px; }
+  .apertura-card { padding: 10px 13px; margin-bottom: 9px; }
+}
+@media (max-height: 620px) {
+  .saludo-bien { display: none; }
+  .home-efimera { display: none; }
+}
 /* Saludo + frase del día (Courier, como todo el sistema) */
 .saludo { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .saludo-hola { font-family: var(--sans); font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); line-height: 1.15; }
@@ -1520,7 +1538,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v108</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v109</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>

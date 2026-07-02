@@ -1380,7 +1380,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v91</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v92</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1701,6 +1701,23 @@ const APERTURA_PASOS=[
   { k:"playlist",       ico:"🎵", t:"Pon tu playlist favorita para arrancar" },
   { k:"abrir",          ico:"🔓", t:"8:00 · Abre puertas al público", sub:"Todo listo para que nuestros invitados disfruten de nuestro buen trabajo. ¡Que empiece la función!" },
 ];
+// ── CIERRE DEL LOCAL · qué revisar antes de cerrar ──────────────────────────
+const CIERRE_PASOS=[
+  { k:"mermas",       ico:"🗑️", t:"Registra las mermas del día", sub:"Lo que se ha tirado, con su motivo", go:"irA_ajustes" },
+  { k:"temp_cierre",  ico:"🌡️", t:"Temperaturas de neveras (cierre)", go:"irA_temperaturas" },
+  { k:"stock_manana", ico:"📋", t:"Revisa qué falta para mañana", sub:"Compras y producción del día siguiente", go:"irA_prevision" },
+  { k:"limpieza_c",   ico:"🧽", t:"Limpieza de cierre", sub:"Barra, máquinas, suelo y mesas" },
+  { k:"guardar",      ico:"❄️", t:"Guarda producto en frío y tápalo" },
+  { k:"caja",         ico:"💶", t:"Cuadra la caja y cierre de TPV" },
+  { k:"terraza_c",    ico:"⛱️", t:"Recoge la terraza" },
+  { k:"basura",       ico:"♻️", t:"Saca la basura y el reciclaje" },
+  { k:"apagar",       ico:"🔌", t:"Apaga máquinas, luces y música" },
+  { k:"cerrar",       ico:"🔒", t:"Cierra puertas", sub:"Buen trabajo hoy. Mañana, más." },
+];
+const RUTINAS={
+  apertura:{ titulo:"Apertura del local", pasos:APERTURA_PASOS, hecho:"🎬 Todo listo. Que empiece la función." },
+  cierre:{ titulo:"Cierre del local", pasos:CIERRE_PASOS, hecho:"🌙 Local cerrado. Buen trabajo, descansa." },
+};
 // Cada pantalla interna lleva su título serif (misma línea que la home).
 function setInner(html) {
   el("inner-content").innerHTML =
@@ -2087,10 +2104,14 @@ function dashboardHTML(d, esAdmin) {
 // INICIO MINIMAL — solo marca + categorías.
 async function loadHome() {
   try {
-    const [d, dec, aper] = await Promise.all([api("/inicio"), api("/decisiones").catch(() => null), api("/apertura").catch(() => ({pasos:{}}))]);
+    const [d, dec, aper, cier] = await Promise.all([api("/inicio"), api("/decisiones").catch(() => null), api("/apertura").catch(() => ({pasos:{}})), api("/apertura?rutina=cierre").catch(() => ({pasos:{}}))]);
     const u = getUser();
     const aperHechos = Object.keys((aper&&aper.pasos)||{}).length, aperTotal = APERTURA_PASOS.length;
     const aperCompleta = aperHechos >= aperTotal;
+    const cierHechos = Object.keys((cier&&cier.pasos)||{}).length, cierTotal = CIERRE_PASOS.length;
+    const cierCompleta = cierHechos >= cierTotal;
+    // El cierre aparece por la tarde o si ya se ha empezado.
+    const mostrarCierre = new Date().getHours() >= 15 || cierHechos > 0;
     const esAdmin = u && u.rol === "admin";
     const alerta = d.estado_servicio !== "Servicio en orden";
     const meta = modulosMeta(d);
@@ -2115,6 +2136,11 @@ async function loadHome() {
         <span class="apertura-txt"><b>${aperCompleta?"Local abierto · ¡que empiece la función!":"Apertura del local"}</b><span>${aperCompleta?"Rutina de apertura completada":`Rutina de arranque · ${aperHechos}/${aperTotal} hecho`}</span></span>
         <span class="apertura-arrow">›</span>
       </button>
+      ${mostrarCierre?`<button class="apertura-card${cierCompleta?" ok":""}" onclick="irA_cierre()">
+        <span class="apertura-ico">${cierCompleta?"🌙":"🌇"}</span>
+        <span class="apertura-txt"><b>${cierCompleta?"Local cerrado · buen trabajo":"Cierre del local"}</b><span>${cierCompleta?"Rutina de cierre completada":`Antes de cerrar · ${cierHechos}/${cierTotal} hecho`}</span></span>
+        <span class="apertura-arrow">›</span>
+      </button>`:""}
       <div class="home-head">
         <div class="home-sys">Hoy en m de materia</div>
         ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
@@ -2138,24 +2164,28 @@ async function loadHome() {
 // Se mantiene el nombre como alias por compatibilidad con enlaces antiguos.
 function irA_resumen(){ return irA_analisis(); }
 
-// ── APERTURA DEL LOCAL · rutina guiada de arranque ─────────────────────────
-async function irA_apertura(){
-  openSection("apertura","Apertura del local");
+// ── RUTINAS DEL DÍA · apertura y cierre (mismo motor) ──────────────────────
+async function irA_rutina(rutina){
+  const r=RUTINAS[rutina]?rutina:"apertura";
+  window._rutina=r;
+  openSection("rutina-"+r, RUTINAS[r].titulo);
   setInner(`<div class="empty">Cargando…</div>`);
   try{
-    const aper=await api("/apertura").catch(()=>({pasos:{}}));
-    window._aperPasos=(aper&&aper.pasos)||{};
-    renderApertura();
+    const d=await api("/apertura?rutina="+r).catch(()=>({pasos:{}}));
+    window._aperPasos=(d&&d.pasos)||{};
+    renderRutina();
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
-function renderApertura(){
-  const u=getUser(), pasos=window._aperPasos||{};
-  const hechos=APERTURA_PASOS.filter(p=>pasos[p.k]).length, total=APERTURA_PASOS.length;
+function irA_apertura(){ return irA_rutina("apertura"); }
+function irA_cierre(){ return irA_rutina("cierre"); }
+function renderRutina(){
+  const u=getUser(), r=window._rutina||"apertura", cfg=RUTINAS[r], PASOS=cfg.pasos, pasos=window._aperPasos||{};
+  const hechos=PASOS.filter(p=>pasos[p.k]).length, total=PASOS.length;
   const pct=Math.round(hechos/total*100);
-  let html=`${saludoHTML(u)}
-    <div class="section-label">Rutina de apertura · ${hechos}/${total}</div>
+  let html=`${r==="apertura"?saludoHTML(u):""}
+    <div class="section-label">Rutina de ${r==="apertura"?"apertura":"cierre"} · ${hechos}/${total}</div>
     <div style="height:6px;background:var(--olive-light);border-radius:3px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:var(--ink);transition:width .3s;"></div></div>`;
-  html+=APERTURA_PASOS.map(p=>{
+  html+=PASOS.map(p=>{
     const done=!!pasos[p.k];
     const quien=(done&&pasos[p.k].responsable)?` · ${esc(pasos[p.k].responsable)}`:"";
     const go=p.go?`<button class="apstep-go" onclick="event.stopPropagation();aperAbrir('${p.go}')">Abrir →</button>`:"";
@@ -2167,22 +2197,25 @@ function renderApertura(){
       ${go}
     </div>`;
   }).join("");
-  if(hechos>=total) html+=`<div class="todo-clear" style="margin-top:16px;font-size:15px;">🎬 Todo listo. Que empiece la función.</div>`;
+  if(hechos>=total) html+=`<div class="todo-clear" style="margin-top:16px;font-size:15px;">${cfg.hecho}</div>`;
   setInner(html);
 }
-// Abre una tarea de la apertura recordando que "volver" debe regresar aquí.
+// Compat: algunas llamadas antiguas usan renderApertura.
+function renderApertura(){ return renderRutina(); }
+// Abre una tarea de la rutina recordando que "volver" debe regresar a ELLA.
 function aperAbrir(fn){
-  window._backOverride = irA_apertura;
+  const r=window._rutina||"apertura";
+  window._backOverride = ()=>irA_rutina(r);
   if (typeof window[fn] === "function") window[fn]();
 }
 async function toggleApertura(k, hecho){
-  const u=getUser();
+  const u=getUser(), r=window._rutina||"apertura";
   window._aperPasos=window._aperPasos||{};
   if(hecho){ window._aperPasos[k]={hecho:true,responsable:(u&&u.nombre)||""}; }
   else { delete window._aperPasos[k]; }
-  renderApertura();
-  try{ await api("/apertura/toggle",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({step:k,hecho:!!hecho,responsable:(u&&u.nombre)||""})}); }
-  catch(e){ irA_apertura(); }
+  renderRutina();
+  try{ await api("/apertura/toggle",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({step:k,hecho:!!hecho,responsable:(u&&u.nombre)||"",rutina:r})}); }
+  catch(e){ irA_rutina(r); }
 }
 
 // ── RECETARIO DE CAFÉ · calibración por tipo ───────────────────────────────

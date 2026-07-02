@@ -20,6 +20,9 @@ acceptance instruments extracted here — decide.
    full ownership, continuous refactoring, self-audit, autonomous decisions.
 4. [World-Class Software Directive](./WORLD_CLASS_SOFTWARE_DIRECTIVE.md) — benchmark
    against the best software on earth, zero visual debt, design for confidence.
+5. [No-Compromise Implementation Mode](./NO_COMPROMISE_IMPLEMENTATION_MODE.md) —
+   Permanent Autonomous Engineering Mode (ACTIVE), 50k-customer architecture,
+   multi-expert design review, AI-ready entities.
 
 They share one belief: **the responsibility is not to satisfy requests, but to
 continuously build the best possible version of Control M.**
@@ -51,6 +54,13 @@ Every important screen must answer its main question in ≤5 seconds:
 | Purchasing | "What should I buy?" |
 | Treasury | "How much money do I have?" |
 | Debt | "What do I owe?" |
+
+## Acceptance Instrument 3 — AI-Ready Entities (data gate)
+
+Every new entity must, by construction: store useful **history**, preserve
+**relationships** (foreign ids), maintain **timestamps** (`creado_en` + updated),
+track **ownership** (who / `local_id`), and be shaped to allow future **prediction,
+anomaly detection and recommendations** — even before any AI is built.
 
 ## Operating Loop for Every PRD
 

@@ -1,0 +1,8 @@
+[
+  { "id": "tgt-ventas", "tipo": "ventas", "label": "Ventas", "periodo": "mes", "valor": 22000, "unidad": "eur", "activo": true },
+  { "id": "tgt-foodcost", "tipo": "food_cost", "label": "Food cost", "periodo": "mes", "valor": 30, "unidad": "pct", "activo": true },
+  { "id": "tgt-laboral", "tipo": "coste_laboral", "label": "Coste laboral", "periodo": "mes", "valor": 30, "unidad": "pct", "activo": true },
+  { "id": "tgt-merma", "tipo": "merma", "label": "Merma", "periodo": "mes", "valor": 2, "unidad": "pct", "activo": true },
+  { "id": "tgt-ticket", "tipo": "ticket_medio", "label": "Ticket medio", "periodo": "mes", "valor": 6.5, "unidad": "eur", "activo": true },
+  { "id": "tgt-reserva", "tipo": "reserva_caja", "label": "Reserva de caja", "periodo": "anio", "valor": 15000, "unidad": "eur", "activo": true }
+]

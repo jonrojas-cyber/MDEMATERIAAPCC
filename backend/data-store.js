@@ -45,6 +45,17 @@ const ENTITIES = [
   "recetario_cafe", // recetas de calibración por tipo de café (dosis, molienda, tiempo)
   "apertura", // checklist de apertura del local, por día (rutina de arranque)
   "inventarios", // recuentos físicos vs teórico (descuadre de almacén)
+  // ── Centro de Control (capa financiera / negocio, solo admin) ──────────────
+  "fixed_costs", // costes fijos (alquiler, luz, gestoría…) con periodicidad y prorrateo
+  "variable_costs", // gastos variables puntuales no ligados a una recepción
+  "debts", // deudas (préstamos, leasing, renting, tarjetas, deuda fiscal…)
+  "assets", // activos (cafetera, neveras, TPV, mobiliario…) y su valor
+  "financial_accounts", // cuentas de dinero (caja, banco) — liquidez
+  "treasury_movements", // movimientos de tesorería (cobros/pagos previstos o hechos)
+  "business_targets", // objetivos configurables (ventas, food cost, coste laboral…)
+  "staff_finance", // datos económicos del equipo (coste/hora, jornada, estado)
+  "financial_snapshots", // fotos financieras periódicas (base para la "máquina del tiempo")
+  "executive_notes", // notas del propietario en el Centro de Control
 ];
 
 const cache = {};

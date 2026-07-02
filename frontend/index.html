@@ -1076,6 +1076,67 @@ input, select { font-family: inherit; font-size: 13px; }
 .insight-titulo { font-size: 13px; font-weight: 700; line-height: 1.25; }
 .insight-detalle { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
 .insight-accion { font-size: 10.5px; font-weight: 700; color: var(--ink); margin-top: 6px; }
+
+/* ═══ CENTRO DE CONTROL · sala de mando del propietario (monocromo premium) ═══ */
+.dash-centro { display: flex; align-items: center; gap: 4px; flex-direction: column; align-items: flex-start;
+  width: 100%; text-align: left; background: var(--ink); color: var(--cream); border: none; border-radius: 14px;
+  padding: 18px 18px; margin-top: 4px; cursor: pointer; position: relative; }
+.dash-centro-k { font-size: 15px; font-weight: 800; letter-spacing: .08em; }
+.dash-centro-t { font-size: 11.5px; opacity: .8; margin-top: 2px; }
+.dash-centro-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 24px; opacity: .7; }
+.cc-filtro { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.cc-chip { font-size: 11px; padding: 5px 11px; border-radius: 20px; border: 1px solid var(--line);
+  background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.cc-chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); font-weight: 700; }
+.cc-custom { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.cc-custom input { font-size: 12px; }
+.cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cc-card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+  text-align: left; width: 100%; display: block; cursor: default; }
+button.cc-card { cursor: pointer; }
+button.cc-card:hover { border-color: var(--ink); }
+.cc-wide { grid-column: 1 / -1; margin-top: 10px; }
+.cc-label { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.cc-kpi { font-size: 26px; font-weight: 800; line-height: 1.05; margin-top: 4px; letter-spacing: -.01em; }
+.cc-kpi.cc-big { font-size: 34px; }
+.cc-kpi.cc-ok { font-size: 20px; }
+.cc-score { font-size: 40px; font-weight: 800; line-height: 1; margin-top: 2px; }
+.cc-score-max { font-size: 14px; font-weight: 600; color: var(--muted); }
+.cc-mini { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.cc-mini.cc-accent { color: var(--ink); font-weight: 700; }
+.cc-delta { display: inline-block; font-size: 10px; font-weight: 700; margin-top: 5px; }
+.cc-delta.up { color: var(--ink); }
+.cc-delta.down { color: var(--muted); }
+.cc-hero { grid-column: 1 / -1; display: flex; gap: 16px; align-items: stretch; }
+.cc-hero-left { flex: 0 0 42%; }
+.cc-hero-right { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; border-left: 1px solid var(--line); padding-left: 14px; }
+.cc-hero-single { grid-column: 1 / -1; }
+.cc-reason { font-size: 11px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.cc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; background: var(--muted); }
+.cc-dot-bien { background: var(--ink); }
+.cc-dot-regular { background: var(--line); }
+.cc-dot-mal { background: #b5462a; }
+.cc-dot-neutro { background: var(--olive-light); }
+.cc-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(180,174,155,.35); }
+.cc-line:last-child { border-bottom: none; }
+.cc-line.cc-total { font-weight: 800; border-top: 2px solid var(--ink); border-bottom: none; margin-top: 4px; padding-top: 8px; }
+.cc-obj { margin-top: 10px; }
+.cc-obj-top { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 600; }
+.cc-obj-val { color: var(--muted); }
+.cc-obj-track { height: 8px; background: var(--olive-light); border-radius: 5px; overflow: hidden; margin-top: 4px; }
+.cc-obj-fill { height: 100%; background: var(--ink); border-radius: 5px; }
+.cc-obj-fill.cc-fill-mal { background: #b5462a; }
+.cc-obj-fill.cc-fill-neutro { background: var(--muted); }
+.cc-insight { display: block; width: 100%; text-align: left; background: var(--cream); border: 1px solid var(--line);
+  border-left: 3px solid var(--muted); border-radius: 9px; padding: 10px 12px; margin-top: 7px; font-size: 12px; cursor: pointer; }
+.cc-insight.importante { border-left-color: var(--ink); font-weight: 600; }
+.cc-links { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.cc-cal-nav { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 10px; gap: 8px; }
+.cc-cal { display: flex; flex-direction: column; gap: 8px; }
+.cc-cal-dia { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.cc-cal-cab { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.cc-cal-ev { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; padding: 3px 0; }
+.cc-cal-vacio { font-size: 11px; color: var(--olive-light); }
 .chart { margin: 2px 0 6px; }
 .chart-row { margin-bottom: 9px; }
 .chart-row-top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--sans); }
@@ -1429,7 +1490,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v97</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v98</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2202,7 +2263,12 @@ async function loadHome() {
           <span class="dashcard-sub">${c.sub}</span>
         </button>`).join("")}
       </div>
-      ${esAdmin ? `<button class="dash-informes" onclick="irA_panel()" style="border-color:var(--ink);color:var(--ink);font-weight:700;">Panel del propietario · dónde está mi dinero →</button>
+      ${esAdmin ? `<button class="dash-centro" onclick="irA_centroControl()">
+        <span class="dash-centro-k">CENTRO DE CONTROL</span>
+        <span class="dash-centro-t">El estado de toda la empresa en 30 segundos</span>
+        <span class="dash-centro-arrow">›</span>
+      </button>
+      <button class="dash-informes" onclick="irA_panel()">Panel del propietario · dónde está mi dinero →</button>
       <button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
@@ -2673,6 +2739,544 @@ async function irA_panel(){
       (p.compras_proveedor.length? svgBarsH(p.compras_proveedor,{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Sin recepciones registradas.</div>`);
     setInner(html);
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CENTRO DE CONTROL · Sistema Operativo del Negocio (solo admin)
+// La primera pantalla que abre el propietario cada mañana: el estado de toda la
+// empresa en 30 segundos. Todo el dinero viene del backend (costing + financials).
+// ═══════════════════════════════════════════════════════════════════════════
+const CC_PRESETS=[["hoy","Hoy"],["ayer","Ayer"],["semana","Esta semana"],["semana_anterior","Semana anterior"],["mes","Este mes"],["mes_anterior","Mes anterior"],["anio","Año actual"],["anio_anterior","Año anterior"],["personalizado","Personalizado"]];
+function ccEur(n){ return eur0(n)+" €"; }
+function ccVolver(){ window._backOverride=()=>irA_centroControl(window._ccPreset); }
+function ccDelta(d){
+  if(!d||d.pct==null) return "";
+  const up=(d.abs||0)>=0;
+  return `<span class="cc-delta ${up?'up':'down'}">${up?'▲':'▼'} ${up?'+':'−'}${Math.abs(d.pct)}% vs anterior</span>`;
+}
+function ccEstadoDot(estado){ return `<span class="cc-dot cc-dot-${estado||'neutro'}"></span>`; }
+
+async function irA_centroControl(preset, custom){
+  if(preset) window._ccPreset=preset;
+  if(!window._ccPreset) window._ccPreset="hoy";
+  if(custom) window._ccCustom=custom; else if(preset!=="personalizado") window._ccCustom=null;
+  openSection("centro-control","Centro de control");
+  window._backOverride=null;
+  setInner(`<div class="empty" style="padding:40px 0;">Leyendo el estado de la empresa…</div>`);
+  try{
+    let q="/executive-dashboard?preset="+encodeURIComponent(window._ccPreset);
+    if(window._ccPreset==="personalizado" && window._ccCustom) q+=`&desde=${window._ccCustom.desde}&hasta=${window._ccCustom.hasta}`;
+    const d=await api(q);
+    window._ccData=d;
+    setInner(ccRender(d));
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+function ccFiltroHTML(){
+  const chips=CC_PRESETS.map(([k,l])=>`<button class="cc-chip${k===window._ccPreset?' on':''}" onclick="ccElegirPreset('${k}')">${l}</button>`).join("");
+  const custom=window._ccPreset==="personalizado"
+    ? `<div class="cc-custom"><input type="date" id="cc-desde"><span>→</span><input type="date" id="cc-hasta"><button class="btn-primary" onclick="ccAplicarCustom()">Aplicar</button></div>`:"";
+  return `<div class="cc-filtro">${chips}</div>${custom}`;
+}
+function ccElegirPreset(k){ if(k==="personalizado"){ window._ccPreset="personalizado"; setInner(ccRender(window._ccData||{})); } else irA_centroControl(k); }
+function ccAplicarCustom(){
+  const desde=el("cc-desde")&&el("cc-desde").value, hasta=el("cc-hasta")&&el("cc-hasta").value;
+  if(!desde||!hasta){ alert("Elige las dos fechas."); return; }
+  irA_centroControl("personalizado",{desde,hasta});
+}
+
+function ccRender(d){
+  if(!d||!d.periodo) return ccFiltroHTML()+`<div class="empty">Sin datos.</div>`;
+  const s=d.salud||{}, v=d.valor_empresa||{}, b=d.beneficio||{}, ca=d.coste_abrir||{}, t=d.tesoreria||{}, de=d.deuda||{}, eq=d.equipo||{}, cp=d.capital_parado||{}, obj=d.objetivos||[], cop=d.copiloto||[];
+  // Salud
+  const razones=(s.razones||[]).slice(0,5).map(r=>`<div class="cc-reason">${ccEstadoDot(r.estado)}${esc(r.texto)}</div>`).join("");
+  const deltaS=s.delta!=null&&s.delta!==0?`<span class="cc-delta ${s.delta>=0?'up':'down'}">${s.delta>=0?'▲ +':'▼ −'}${Math.abs(s.delta)} vs anterior</span>`:"";
+  const saludCard=`<button class="cc-card cc-hero" onclick="irA_salud()">
+    <div class="cc-hero-left"><div class="cc-label">Salud del negocio</div>
+      <div class="cc-score">${s.score!=null?s.score:'—'}<span class="cc-score-max">/100</span></div>${deltaS}</div>
+    <div class="cc-hero-right">${razones}</div></button>`;
+  // Beneficio
+  const benCard=`<button class="cc-card" onclick="irA_beneficio()">
+    <div class="cc-label">Beneficio real · ${esc(d.periodo.label)}</div>
+    <div class="cc-kpi">${ccEur(b.beneficio_operativo)}</div>
+    ${ccDelta(b.vs_anterior&&b.vs_anterior.beneficio)}
+    <div class="cc-mini">Ventas ${ccEur(b.ventas)} · Materia ${ccEur(b.coste_materia)} · Personal ${ccEur(b.coste_laboral)} · Fijos ${ccEur(b.gastos_fijos)}</div></button>`;
+  // Coste de abrir
+  const objMargen=(obj.find(o=>o.tipo==='food_cost'));
+  const ventaNec=ca.prorrateo&&ca.prorrateo.diario>0?ca.prorrateo.diario/((objMargen?1-objMargen.objetivo/100:0.65)||0.65):0;
+  const costeCard=`<button class="cc-card" onclick="irA_costeAbrir()">
+    <div class="cc-label">Coste de abrir la persiana · ${esc(d.periodo.label)}</div>
+    <div class="cc-kpi">${ccEur(ca.total)}</div>
+    <div class="cc-mini">Al día ${ccEur(ca.prorrateo&&ca.prorrateo.diario)} · semana ${ccEur(ca.prorrateo&&ca.prorrateo.semanal)} · mes ${ccEur(ca.prorrateo&&ca.prorrateo.mensual)}</div>
+    <div class="cc-mini cc-accent">Necesitas vender ${ccEur(ventaNec)}/día para cubrirlo con margen</div></button>`;
+  // Valor empresa
+  const valorCard=`<button class="cc-card" onclick="irA_valorEmpresa()">
+    <div class="cc-label">Valor de la empresa</div>
+    <div class="cc-kpi">${ccEur(v.patrimonio_neto)}</div>
+    <div class="cc-mini">Almacén ${ccEur(v.valor_almacen)} · Producción ${ccEur(v.valor_produccion)} · Activos ${ccEur(v.valor_activos)} − Deuda ${ccEur(v.deuda_pendiente)}</div></button>`;
+  // Tesorería
+  const runway=t.dias_supervivencia;
+  const tesCard=`<button class="cc-card" onclick="irA_tesoreria()">
+    <div class="cc-label">Tesorería</div>
+    <div class="cc-kpi">${ccEur(t.liquidez_inmediata)}</div>
+    <div class="cc-mini">${runway!=null?`<b>${runway} días de supervivencia</b> sin ingresos`:"Añade tus cuentas para ver los días de supervivencia"}</div>
+    <div class="cc-mini">Caja ${ccEur(t.caja)} · Banco ${ccEur(t.banco)}</div></button>`;
+  // Deuda
+  const deudaCard=`<button class="cc-card" onclick="irA_deuda()">
+    <div class="cc-label">Deuda</div>
+    ${de.deuda_total>0?`<div class="cc-kpi">${ccEur(de.deuda_total)}</div><div class="cc-mini">Cuota mensual ${ccEur(de.cuota_mensual_total)} · ${de.num_deudas} deuda(s)</div>`
+      :`<div class="cc-kpi cc-ok">Sin deuda</div><div class="cc-mini">Añade préstamos, leasing o deuda fiscal si los tienes.</div>`}</button>`;
+  // Equipo
+  const equipoCard=`<button class="cc-card" onclick="irA_equipo()">
+    <div class="cc-label">Equipo</div>
+    <div class="cc-kpi">${eq.total_empleados}<span class="cc-score-max"> personas</span></div>
+    <div class="cc-mini">${eq.faltan_datos?"Añade el coste del equipo para ver el coste laboral":`Coste ${esc(d.periodo.label.toLowerCase())} ${ccEur(eq.coste_periodo)} · día ${ccEur(eq.coste_diario)}`}</div></button>`;
+  // Capital parado
+  const capCard=`<button class="cc-card" onclick="irA_capitalParado()">
+    <div class="cc-label">Capital parado</div>
+    <div class="cc-kpi">${ccEur(cp.valor_total)}</div>
+    <div class="cc-mini">Sin rotación ${ccEur(cp.sin_rotacion_eur)} · a caducar ${ccEur(cp.en_caducidad_eur)}${cp.dias_medios_stock!=null?` · ${cp.dias_medios_stock} días de stock`:""}</div></button>`;
+  // Objetivos (mini barras)
+  const objCard=`<button class="cc-card cc-wide" onclick="irA_objetivos()">
+    <div class="cc-label">Objetivos</div>
+    ${obj.length?obj.slice(0,4).map(o=>ccObjBar(o)).join(""):`<div class="cc-mini">Añade objetivos para medir el avance real del negocio.</div>`}</button>`;
+  // Copiloto
+  const copCard=`<div class="cc-card cc-wide">
+    <div class="cc-label">Copiloto</div>
+    ${cop.length?cop.map(c=>`<button class="cc-insight ${c.severidad}" onclick="${c.accion&&c.accion.handler?c.accion.handler+'()':''}">${esc(c.texto)}</button>`).join(""):`<div class="cc-mini">Todo en orden. El copiloto avisará cuando haya algo que decidir.</div>`}</div>`;
+
+  return `${ccFiltroHTML()}
+    <div class="cc-grid">
+      ${saludCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${capCard}
+    </div>
+    ${objCard}
+    ${copCard}
+    <div class="cc-links">
+      <button class="dash-informes" onclick="irA_costesFijos()">Costes fijos →</button>
+      <button class="dash-informes" onclick="irA_deuda()">Deuda →</button>
+      <button class="dash-informes" onclick="irA_activos()">Activos →</button>
+      <button class="dash-informes" onclick="irA_objetivos()">Objetivos →</button>
+      <button class="dash-informes" onclick="irA_tesoreria()">Tesorería →</button>
+      <button class="dash-informes" onclick="irA_calendarioEmpresa()">Calendario de empresa →</button>
+      <button class="dash-informes" onclick="irA_maquinaTiempo()">¿Cómo estaba mi empresa? →</button>
+    </div>`;
+}
+function ccObjBar(o){
+  const pct=o.progreso_pct!=null?o.progreso_pct:0;
+  const val=o.unidad==='pct'?`${o.real!=null?o.real:'—'}% / ${o.objetivo}%`:`${o.real!=null?eur0(o.real):'—'} / ${eur0(o.objetivo)}${o.unidad==='eur'?' €':''}`;
+  const estado=o.cumple==null?'neutro':(o.cumple?'bien':'mal');
+  return `<div class="cc-obj"><div class="cc-obj-top"><span>${esc(o.label)}</span><span class="cc-obj-val">${val}</span></div>
+    <div class="cc-obj-track"><div class="cc-obj-fill cc-fill-${estado}" style="width:${Math.min(100,pct)}%"></div></div></div>`;
+}
+
+// ── Detalle: Coste de abrir la persiana ────────────────────────────────────
+function irA_costeAbrir(){
+  ccVolver(); openSection("cc-coste","Coste de abrir la persiana");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const ca=d.coste_abrir||{}; const pr=ca.prorrateo||{};
+  const cats=(ca.por_categoria||[]).map(c=>`<div class="cc-line"><span>${esc(c.label)}</span><b>${ccEur(c.value)}/mes</b></div>`).join("")||`<div class="cc-mini">Añade tus costes fijos.</div>`;
+  setInner(`<div class="section-label">Cuánto cuesta existir</div>
+    <div class="cc-card"><div class="cc-mini">Prorrateo de todos los costes fijos activos</div>
+      <div class="cc-line"><span>Al día</span><b>${ccEur(pr.diario)}</b></div>
+      <div class="cc-line"><span>A la semana</span><b>${ccEur(pr.semanal)}</b></div>
+      <div class="cc-line"><span>Al mes</span><b>${ccEur(pr.mensual)}</b></div>
+      <div class="cc-line"><span>Al año</span><b>${ccEur(pr.anual)}</b></div></div>
+    <div class="section-label">Por categoría</div><div class="cc-card">${cats}</div>
+    <div class="cc-card"><div class="cc-line"><span>Personal (${esc(d.periodo.label)})</span><b>${ccEur(ca.personal)}</b></div>
+      <div class="cc-line"><span>Fijos (${esc(d.periodo.label)})</span><b>${ccEur(ca.fijos)}</b></div>
+      <div class="cc-line"><span>Total del periodo</span><b>${ccEur(ca.total)}</b></div></div>
+    <div class="card-actions"><button class="btn-primary" onclick="irA_costesFijos()">Editar costes fijos</button></div>`);
+}
+// ── Detalle: Valor de la empresa ───────────────────────────────────────────
+function irA_valorEmpresa(){
+  ccVolver(); openSection("cc-valor","Valor de la empresa");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const v=d.valor_empresa||{};
+  const linea=(l,val,neg)=>`<div class="cc-line"><span>${l}</span><b>${neg?'−':''}${ccEur(val)}</b></div>`;
+  setInner(`<div class="cc-card cc-hero-single"><div class="cc-label">Patrimonio neto</div><div class="cc-kpi cc-big">${ccEur(v.patrimonio_neto)}</div></div>
+    <div class="section-label">Lo que suma</div><div class="cc-card">
+      ${linea("Caja",v.caja)}${linea("Banco",v.banco)}${linea("Valor de almacén",v.valor_almacen)}${linea("Producción terminada",v.valor_produccion)}${linea("Activos",v.valor_activos)}${linea("Cobros pendientes",v.cobros_pendientes)}</div>
+    <div class="section-label">Lo que resta</div><div class="cc-card">
+      ${linea("Deuda pendiente",v.deuda_pendiente,true)}${linea("Pagos pendientes",v.pagos_pendientes,true)}</div>
+    <div class="card-actions"><button class="btn-ghost" onclick="irA_tesoreria()">Cuentas y tesorería</button><button class="btn-ghost" onclick="irA_activos()">Activos</button><button class="btn-ghost" onclick="irA_deuda()">Deuda</button></div>`);
+}
+// ── Detalle: Beneficio real ────────────────────────────────────────────────
+function irA_beneficio(){
+  ccVolver(); openSection("cc-beneficio","Beneficio real");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const b=d.beneficio||{};
+  const linea=(l,val,neg)=>`<div class="cc-line"><span>${l}</span><b>${neg?'−':''}${ccEur(val)}</b></div>`;
+  setInner(`<div class="cc-card cc-hero-single"><div class="cc-label">Beneficio operativo · ${esc(d.periodo.label)}</div><div class="cc-kpi cc-big">${ccEur(b.beneficio_operativo)}</div>${ccDelta(b.vs_anterior&&b.vs_anterior.beneficio)}</div>
+    <div class="cc-card">${linea("Ventas",b.ventas)}${linea("− Coste de materia",b.coste_materia,true)}${linea("− Coste laboral",b.coste_laboral,true)}${linea("− Gastos variables",b.gastos_variables,true)}${linea("− Gastos fijos",b.gastos_fijos,true)}
+      <div class="cc-line cc-total"><span>Beneficio operativo</span><b>${ccEur(b.beneficio_operativo)}</b></div>
+      ${linea("− Intereses (estimación)",b.intereses_estimados,true)}
+      <div class="cc-line cc-total"><span>Beneficio neto estimado</span><b>${ccEur(b.beneficio_neto_estimado)}</b></div></div>
+    <div class="cc-card"><div class="cc-mini">Food cost ${b.food_cost_pct!=null?b.food_cost_pct+'%':'—'} · Coste laboral ${b.coste_laboral_pct!=null?b.coste_laboral_pct+'%':'—'} · Margen operativo ${b.margen_operativo_pct!=null?b.margen_operativo_pct+'%':'—'}</div>
+      ${b.proyeccion_mes!=null?`<div class="cc-mini cc-accent">Proyección a fin de mes: ${ccEur(b.proyeccion_mes)}</div>`:""}</div>`);
+}
+// ── Detalle: Equipo ────────────────────────────────────────────────────────
+function irA_equipo(){
+  ccVolver(); openSection("cc-equipo","Equipo");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const eq=d.equipo||{};
+  const roster=(eq.equipo||[]).map(e=>`<div class="cc-line"><span>${esc(e.nombre||e.usuario_key||"—")} · ${esc(e.rol||"")}</span><b>${e.sin_datos?'sin coste':ccEur((Number(e.coste_hora)||0)*(Number(e.horas_semana)||0)/7)+'/día'}</b></div>`).join("")||`<div class="cc-mini">Aún no hay equipo registrado.</div>`;
+  setInner(`<div class="cc-grid">
+      <div class="cc-card"><div class="cc-label">Personas</div><div class="cc-kpi">${eq.total_empleados}</div><div class="cc-mini">Trabajando ${eq.trabajando} · libres ${eq.libres} · vacaciones ${eq.vacaciones} · bajas ${eq.bajas}</div></div>
+      <div class="cc-card"><div class="cc-label">Coste laboral</div><div class="cc-kpi">${ccEur(eq.coste_mes)}<span class="cc-score-max">/mes</span></div><div class="cc-mini">Día ${ccEur(eq.coste_diario)} · semana ${ccEur(eq.coste_semana)} · año ${ccEur(eq.coste_anio)}</div></div></div>
+    ${eq.faltan_datos?`<div class="cc-card"><div class="cc-mini">Añade el coste por hora y la jornada de cada persona para calcular el coste laboral real, ventas por empleado y productividad.</div></div>`:""}
+    <div class="section-label">Equipo</div><div class="cc-card">${roster}</div>`);
+}
+// ── Detalle: Capital parado ────────────────────────────────────────────────
+function irA_capitalParado(){
+  ccVolver(); openSection("cc-capital","Capital parado");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const cp=d.capital_parado||{};
+  const cats=(cp.por_categoria||[]).map(c=>`<div class="cc-line"><span>${esc(c.label)}</span><b>${ccEur(c.value)}</b></div>`).join("");
+  setInner(`<div class="cc-card cc-hero-single"><div class="cc-label">Dinero inmovilizado en almacén</div><div class="cc-kpi cc-big">${ccEur(cp.valor_total)}</div></div>
+    <div class="cc-grid">
+      <div class="cc-card"><div class="cc-label">Dinero en frío</div><div class="cc-kpi">${ccEur(cp.dinero_frio)}</div></div>
+      <div class="cc-card"><div class="cc-label">Dinero en seco</div><div class="cc-kpi">${ccEur(cp.dinero_seco)}</div></div>
+      <div class="cc-card"><div class="cc-label">Dinero en bebidas</div><div class="cc-kpi">${ccEur(cp.dinero_bebidas)}</div></div>
+      <div class="cc-card"><div class="cc-label">Dinero en limpieza</div><div class="cc-kpi">${ccEur(cp.dinero_limpieza)}</div></div></div>
+    <div class="cc-card">
+      <div class="cc-line"><span>Sin rotación suficiente</span><b>${ccEur(cp.sin_rotacion_eur)} · ${cp.sin_rotacion_items} items</b></div>
+      <div class="cc-line"><span>A punto de caducar</span><b>${ccEur(cp.en_caducidad_eur)}</b></div>
+      <div class="cc-line"><span>Perdido por merma (30 días)</span><b>${ccEur(cp.merma_30d_eur)}</b></div>
+      <div class="cc-line"><span>Rotación</span><b>${cp.rotacion!=null?cp.rotacion+'×':'—'}</b></div>
+      <div class="cc-line"><span>Días medios de stock</span><b>${cp.dias_medios_stock!=null?cp.dias_medios_stock:'—'}</b></div></div>
+    <div class="section-label">Por categoría</div><div class="cc-card">${cats||'<div class="cc-mini">Sin datos.</div>'}</div>`);
+}
+// ── Detalle: Salud del negocio ─────────────────────────────────────────────
+function irA_salud(){
+  ccVolver(); openSection("cc-salud","Salud del negocio");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const s=d.salud||{};
+  const señales=(s.señales||[]).map(x=>`<div class="cc-line">${ccEstadoDot(x.estado)}<span>${esc(x.texto)}</span><b>${x.score}</b></div>`).join("");
+  setInner(`<div class="cc-card cc-hero-single"><div class="cc-label">Salud del negocio</div><div class="cc-kpi cc-big">${s.score!=null?s.score:'—'}<span class="cc-score-max">/100</span></div>${s.delta!=null&&s.delta!==0?`<div class="cc-mini">${s.delta>=0?'+':'−'}${Math.abs(s.delta)} vs periodo anterior</div>`:""}</div>
+    <div class="section-label">Qué mira la nota</div><div class="cc-card">${señales}</div>`);
+}
+
+// ── COSTES FIJOS · CRUD ────────────────────────────────────────────────────
+async function irA_costesFijos(){
+  ccVolver(); openSection("cc-fijos","Costes fijos");
+  try{
+    const [d,meta]=await Promise.all([api("/fixed-costs"),api("/fixed-costs/meta").catch(()=>({categorias:[],periodicidades:[]}))]);
+    window._ccFcMeta=meta; window._ccFcList=d.costes||[];
+    const PER={daily:"al día",weekly:"a la semana",monthly:"al mes",quarterly:"al trimestre",yearly:"al año",one_time:"puntual"};
+    const filas=d.costes.map(f=>`<div class="card"><div class="card-name">${esc(f.name)} <span class="tag-ink">${esc(f.category||'Otros')}</span></div>
+      <div class="card-meta">${eur0(f.amount)} € ${PER[f.periodicity]||f.periodicity} · ${eur0(f.prorrateo.diario)} €/día · ${eur0(f.prorrateo.mensual)} €/mes${f.active===false?' · <b>inactivo</b>':''}</div>
+      <div class="card-actions"><button class="btn-ghost" onclick='ccFcForm(${JSON.stringify(f.id)})'>Editar</button><button class="btn-ghost" onclick='ccFcBorrar(${JSON.stringify(f.id)})'>Quitar</button></div></div>`).join("");
+    setInner(`<div class="cc-card"><div class="cc-label">Coste de existir</div>
+        <div class="cc-mini">Al día ${ccEur(d.totales.diario)} · semana ${ccEur(d.totales.semanal)} · mes ${ccEur(d.totales.mensual)} · año ${ccEur(d.totales.anual)}</div></div>
+      <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccFcForm()">Añadir coste fijo</button></div>
+      ${d.costes.length?filas:`<div class="empty">Añade tus costes fijos para calcular cuánto cuesta abrir cada día.</div>`}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function ccFcForm(id){
+  const meta=window._ccFcMeta||{categorias:[],periodicidades:[]};
+  // Si edita, buscamos el registro ya cargado en la lista.
+  let reg={name:"",category:"Otros",amount:"",periodicity:"monthly",payment_day:"",vat:"",provider:"",notes:"",is_direct_debit:true,active:true};
+  if(id){ const fromList=(window._ccFcList||[]).find(x=>x.id===id); if(fromList) reg=fromList; }
+  window._ccFcEdit=id||null;
+  const cats=meta.categorias.map(c=>`<option ${c===reg.category?'selected':''}>${esc(c)}</option>`).join("");
+  const PER=[["daily","Diario"],["weekly","Semanal"],["monthly","Mensual"],["quarterly","Trimestral"],["yearly","Anual"],["one_time","Puntual"]];
+  const pers=PER.map(([k,l])=>`<option value="${k}" ${k===reg.periodicity?'selected':''}>${l}</option>`).join("");
+  setInner(`<div class="section-label">${id?'Editar coste':'Nuevo coste fijo'}</div>
+    <div class="card">
+      <div class="field"><label>Nombre</label><input id="fc-name" value="${esc(reg.name||'')}" style="width:100%"></div>
+      <div class="field"><label>Categoría</label><select id="fc-cat" style="width:100%">${cats}</select></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:110px;"><label>Importe (€)</label><input id="fc-amount" type="number" step="0.01" value="${reg.amount||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:110px;"><label>Periodicidad</label><select id="fc-per" style="width:100%">${pers}</select></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:90px;"><label>IVA (%)</label><input id="fc-vat" type="number" step="1" value="${reg.vat||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:90px;"><label>Día de pago</label><input id="fc-day" type="number" min="1" max="31" value="${reg.payment_day||''}" style="width:100%"></div>
+      </div>
+      <div class="field"><label>Proveedor (opcional)</label><input id="fc-prov" value="${esc(reg.provider||'')}" style="width:100%"></div>
+      <div class="field"><label>Notas</label><input id="fc-notes" value="${esc(reg.notes||'')}" style="width:100%"></div>
+      <div class="field"><label><input id="fc-dd" type="checkbox" ${reg.is_direct_debit?'checked':''}> Domiciliado</label> &nbsp; <label><input id="fc-active" type="checkbox" ${reg.active!==false?'checked':''}> Activo</label></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccFcGuardar(this)">${id?'Guardar':'Crear'}</button><button class="btn-ghost" onclick="irA_costesFijos()">Cancelar</button></div>
+    <div id="fc-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccFcGuardar(btn){
+  const body={name:el("fc-name").value.trim(),category:el("fc-cat").value,amount:el("fc-amount").value,periodicity:el("fc-per").value,vat:el("fc-vat").value,payment_day:el("fc-day").value,provider:el("fc-prov").value,notes:el("fc-notes").value,is_direct_debit:el("fc-dd").checked,active:el("fc-active").checked};
+  if(!body.name){ el("fc-msg").textContent="Indica el nombre."; return; }
+  if(btn) btn.disabled=true;
+  try{
+    if(window._ccFcEdit) await api("/fixed-costs/"+window._ccFcEdit,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    else await api("/fixed-costs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_costesFijos();
+  }catch(e){ el("fc-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+async function ccFcBorrar(id){ if(!confirm("¿Quitar este coste fijo?")) return; try{ await api("/fixed-costs/"+id,{method:"DELETE"}); irA_costesFijos(); }catch(e){ alert(e.message); } }
+
+// ── DEUDA · CRUD ───────────────────────────────────────────────────────────
+async function irA_deuda(){
+  ccVolver(); openSection("cc-deuda","Deuda");
+  try{
+    const [d,meta]=await Promise.all([api("/debts"),api("/debts/meta").catch(()=>({tipos:[]}))]);
+    window._ccDebtMeta=meta; window._ccDebtList=d.todas||[];
+    const fmt=t=>t?new Date(t).toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"}):"—";
+    const filas=(d.deudas||[]).map(x=>`<div class="card"><div class="card-name">${esc(x.name)} <span class="tag-ink">${esc(x.tipo_label)}</span></div>
+      <div class="card-meta">Pendiente <b>${eur0(x.outstanding_amount)} €</b> · cuota ${eur0(x.monthly_payment)} €/mes · ${x.cuotas_restantes!=null?x.cuotas_restantes+' cuotas':'—'} · próx. ${fmt(x.proximo_vencimiento)}</div>
+      <div class="card-actions"><button class="btn-ghost" onclick='ccDebtForm(${JSON.stringify(x.id)})'>Editar</button><button class="btn-ghost" onclick='ccDebtBorrar(${JSON.stringify(x.id)})'>Quitar</button></div></div>`).join("");
+    setInner(`<div class="cc-card"><div class="cc-label">Deuda total</div><div class="cc-kpi">${ccEur(d.deuda_total)}</div>
+        <div class="cc-mini">Cuota mensual ${ccEur(d.cuota_mensual_total)} · intereses estimados ${ccEur(d.intereses_estimados)} · ${d.num_deudas} deuda(s)</div></div>
+      <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccDebtForm()">Añadir deuda</button></div>
+      ${(d.deudas&&d.deudas.length)?filas:`<div class="empty">Aún no hay deudas registradas.</div>`}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function ccDebtForm(id){
+  const meta=window._ccDebtMeta||{tipos:[]};
+  let reg={name:"",lender:"",type:"loan",initial_amount:"",outstanding_amount:"",interest_rate:"",monthly_payment:"",start_date:"",end_date:"",payment_day:"",notes:""};
+  if(id){ const f=(window._ccDebtList||[]).find(x=>x.id===id); if(f) reg=f; }
+  window._ccDebtEdit=id||null;
+  const tipos=meta.tipos.map(t=>`<option value="${t.value}" ${t.value===reg.type?'selected':''}>${esc(t.label)}</option>`).join("");
+  setInner(`<div class="section-label">${id?'Editar deuda':'Nueva deuda'}</div>
+    <div class="card">
+      <div class="field"><label>Nombre</label><input id="dt-name" value="${esc(reg.name||'')}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:120px;"><label>Tipo</label><select id="dt-type" style="width:100%">${tipos}</select></div>
+        <div class="field" style="flex:1;min-width:120px;"><label>Acreedor</label><input id="dt-lender" value="${esc(reg.lender||'')}" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:100px;"><label>Importe inicial</label><input id="dt-ini" type="number" step="0.01" value="${reg.initial_amount||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:100px;"><label>Pendiente</label><input id="dt-out" type="number" step="0.01" value="${reg.outstanding_amount||''}" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:90px;"><label>Cuota/mes</label><input id="dt-cuota" type="number" step="0.01" value="${reg.monthly_payment||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:90px;"><label>Interés %</label><input id="dt-int" type="number" step="0.01" value="${reg.interest_rate||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:80px;"><label>Día pago</label><input id="dt-day" type="number" min="1" max="31" value="${reg.payment_day||''}" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:120px;"><label>Inicio</label><input id="dt-start" type="date" value="${reg.start_date?String(reg.start_date).slice(0,10):''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:120px;"><label>Fin estimado</label><input id="dt-end" type="date" value="${reg.end_date?String(reg.end_date).slice(0,10):''}" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccDebtGuardar(this)">${id?'Guardar':'Crear'}</button><button class="btn-ghost" onclick="irA_deuda()">Cancelar</button></div>
+    <div id="dt-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccDebtGuardar(btn){
+  const body={name:el("dt-name").value.trim(),type:el("dt-type").value,lender:el("dt-lender").value,initial_amount:el("dt-ini").value,outstanding_amount:el("dt-out").value,monthly_payment:el("dt-cuota").value,interest_rate:el("dt-int").value,payment_day:el("dt-day").value,start_date:el("dt-start").value,end_date:el("dt-end").value};
+  if(!body.name){ el("dt-msg").textContent="Indica el nombre."; return; }
+  if(btn) btn.disabled=true;
+  try{
+    if(window._ccDebtEdit) await api("/debts/"+window._ccDebtEdit,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    else await api("/debts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_deuda();
+  }catch(e){ el("dt-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+async function ccDebtBorrar(id){ if(!confirm("¿Quitar esta deuda?")) return; try{ await api("/debts/"+id,{method:"DELETE"}); irA_deuda(); }catch(e){ alert(e.message); } }
+
+// ── ACTIVOS · CRUD ─────────────────────────────────────────────────────────
+async function irA_activos(){
+  ccVolver(); openSection("cc-activos","Activos");
+  try{
+    const [d,meta]=await Promise.all([api("/assets"),api("/assets/meta").catch(()=>({categorias:[]}))]);
+    window._ccAssetMeta=meta; window._ccAssetList=d.activos||[];
+    const filas=(d.activos||[]).map(a=>`<div class="card"><div class="card-name">${esc(a.name)} <span class="tag-ink">${esc(a.category||'Otros')}</span>${a.garantia_por_vencer?' <span class="tag-ink">garantía por vencer</span>':''}</div>
+      <div class="card-meta">Valor ${eur0(a.valor_actual)} €${a.purchase_price?` · compra ${eur0(a.purchase_price)} €`:''}</div>
+      <div class="card-actions"><button class="btn-ghost" onclick='ccAssetForm(${JSON.stringify(a.id)})'>Editar</button><button class="btn-ghost" onclick='ccAssetBorrar(${JSON.stringify(a.id)})'>Quitar</button></div></div>`).join("");
+    setInner(`<div class="cc-card"><div class="cc-label">Valor total de activos</div><div class="cc-kpi">${ccEur(d.valor_total)}</div>
+        <div class="cc-mini">${d.num_activos} activos · ${d.garantias_por_vencer} garantía(s) por vencer</div></div>
+      <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccAssetForm()">Añadir activo</button></div>
+      ${(d.activos&&d.activos.length)?filas:`<div class="empty">Aún no hay activos registrados. Añade cafetera, neveras, TPV, mobiliario…</div>`}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function ccAssetForm(id){
+  const meta=window._ccAssetMeta||{categorias:[]};
+  let reg={name:"",category:"Otros",purchase_date:"",purchase_price:"",current_value:"",useful_life_years:"",warranty_end_date:"",provider:"",notes:""};
+  if(id){ const f=(window._ccAssetList||[]).find(x=>x.id===id); if(f) reg=f; }
+  window._ccAssetEdit=id||null;
+  const cats=meta.categorias.map(c=>`<option ${c===reg.category?'selected':''}>${esc(c)}</option>`).join("");
+  setInner(`<div class="section-label">${id?'Editar activo':'Nuevo activo'}</div>
+    <div class="card">
+      <div class="field"><label>Nombre</label><input id="as-name" value="${esc(reg.name||'')}" style="width:100%"></div>
+      <div class="field"><label>Categoría</label><select id="as-cat" style="width:100%">${cats}</select></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:100px;"><label>Precio compra</label><input id="as-price" type="number" step="0.01" value="${reg.purchase_price||''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:100px;"><label>Valor actual</label><input id="as-value" type="number" step="0.01" value="${reg.current_value||''}" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:120px;"><label>Fecha compra</label><input id="as-date" type="date" value="${reg.purchase_date?String(reg.purchase_date).slice(0,10):''}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:120px;"><label>Fin garantía</label><input id="as-war" type="date" value="${reg.warranty_end_date?String(reg.warranty_end_date).slice(0,10):''}" style="width:100%"></div>
+      </div>
+      <div class="field"><label>Vida útil (años, para amortizar)</label><input id="as-life" type="number" step="1" value="${reg.useful_life_years||''}" style="width:120px"></div>
+      <div class="field"><label>Proveedor</label><input id="as-prov" value="${esc(reg.provider||'')}" style="width:100%"></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccAssetGuardar(this)">${id?'Guardar':'Crear'}</button><button class="btn-ghost" onclick="irA_activos()">Cancelar</button></div>
+    <div id="as-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccAssetGuardar(btn){
+  const body={name:el("as-name").value.trim(),category:el("as-cat").value,purchase_price:el("as-price").value,current_value:el("as-value").value,purchase_date:el("as-date").value,warranty_end_date:el("as-war").value,useful_life_years:el("as-life").value,depreciation_method:el("as-life").value?"linear":"",provider:el("as-prov").value};
+  if(!body.name){ el("as-msg").textContent="Indica el nombre."; return; }
+  if(btn) btn.disabled=true;
+  try{
+    if(window._ccAssetEdit) await api("/assets/"+window._ccAssetEdit,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    else await api("/assets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_activos();
+  }catch(e){ el("as-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+async function ccAssetBorrar(id){ if(!confirm("¿Quitar este activo?")) return; try{ await api("/assets/"+id,{method:"DELETE"}); irA_activos(); }catch(e){ alert(e.message); } }
+
+// ── OBJETIVOS · CRUD ───────────────────────────────────────────────────────
+async function irA_objetivos(){
+  ccVolver(); openSection("cc-objetivos","Objetivos");
+  try{
+    const d=await api("/targets");
+    window._ccTgtList=d.crudos||[];
+    const filas=(d.objetivos||[]).map(o=>ccObjBar(o)).join("");
+    const admin=(d.crudos||[]).map(o=>`<div class="cc-line"><span>${esc(o.label||o.tipo)} · ${esc(o.periodo)}</span><b>${eur0(o.valor)}${o.unidad==='pct'?'%':(o.unidad==='eur'?' €':'')}</b> <button class="btn-ghost" style="padding:2px 8px" onclick='ccTgtForm(${JSON.stringify(o.id)})'>Editar</button><button class="btn-ghost" style="padding:2px 8px" onclick='ccTgtBorrar(${JSON.stringify(o.id)})'>×</button></div>`).join("");
+    setInner(`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="ccTgtForm()">Añadir objetivo</button></div>
+      ${(d.objetivos&&d.objetivos.length)?`<div class="cc-card">${filas}</div>`:`<div class="empty">Añade objetivos para medir el avance real del negocio.</div>`}
+      <div class="section-label">Configurar</div><div class="cc-card">${admin||'<div class="cc-mini">Sin objetivos.</div>'}</div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function ccTgtForm(id){
+  const TIPOS=[["ventas","Ventas","eur"],["beneficio","Beneficio","eur"],["food_cost","Food cost","pct"],["coste_laboral","Coste laboral","pct"],["merma","Merma","pct"],["ticket_medio","Ticket medio","eur"],["clientes","Clientes","num"],["reserva_caja","Reserva de caja","eur"]];
+  let reg={tipo:"ventas",label:"",periodo:"mes",valor:"",unidad:"eur"};
+  if(id){ const f=(window._ccTgtList||[]).find(x=>x.id===id); if(f) reg=f; }
+  window._ccTgtEdit=id||null;
+  const tipos=TIPOS.map(([k,l])=>`<option value="${k}" data-u="${TIPOS.find(t=>t[0]===k)[2]}" ${k===reg.tipo?'selected':''}>${l}</option>`).join("");
+  const PER=[["dia","Diario"],["semana","Semanal"],["mes","Mensual"],["anio","Anual"]];
+  const pers=PER.map(([k,l])=>`<option value="${k}" ${k===reg.periodo?'selected':''}>${l}</option>`).join("");
+  setInner(`<div class="section-label">${id?'Editar objetivo':'Nuevo objetivo'}</div>
+    <div class="card">
+      <div class="field"><label>Tipo</label><select id="tg-tipo" style="width:100%">${tipos}</select></div>
+      <div class="field"><label>Etiqueta (opcional)</label><input id="tg-label" value="${esc(reg.label||'')}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:110px;"><label>Periodo</label><select id="tg-per" style="width:100%">${pers}</select></div>
+        <div class="field" style="flex:1;min-width:110px;"><label>Valor objetivo</label><input id="tg-valor" type="number" step="0.01" value="${reg.valor||''}" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccTgtGuardar(this)">${id?'Guardar':'Crear'}</button><button class="btn-ghost" onclick="irA_objetivos()">Cancelar</button></div>
+    <div id="tg-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccTgtGuardar(btn){
+  const sel=el("tg-tipo"); const unidad=sel.options[sel.selectedIndex].getAttribute("data-u")||"eur";
+  const body={tipo:sel.value,label:el("tg-label").value.trim()||sel.options[sel.selectedIndex].text,periodo:el("tg-per").value,valor:el("tg-valor").value,unidad};
+  if(!body.valor){ el("tg-msg").textContent="Indica el valor objetivo."; return; }
+  if(btn) btn.disabled=true;
+  try{
+    if(window._ccTgtEdit) await api("/targets/"+window._ccTgtEdit,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    else await api("/targets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_objetivos();
+  }catch(e){ el("tg-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+async function ccTgtBorrar(id){ if(!confirm("¿Quitar este objetivo?")) return; try{ await api("/targets/"+id,{method:"DELETE"}); irA_objetivos(); }catch(e){ alert(e.message); } }
+
+// ── TESORERÍA · cuentas + movimientos ──────────────────────────────────────
+async function irA_tesoreria(){
+  ccVolver(); openSection("cc-tesoreria","Tesorería");
+  try{
+    const d=await api("/treasury");
+    window._ccCuentas=d.cuentas||[];
+    const fmt=t=>t?new Date(t).toLocaleDateString("es-ES",{day:"2-digit",month:"short"}):"—";
+    const cuentas=(d.cuentas||[]).map(c=>`<div class="cc-line"><span>${esc(c.name)} · ${c.type==='caja'?'Caja':'Banco'}</span><b>${eur0(c.balance)} €</b> <button class="btn-ghost" style="padding:2px 8px" onclick='ccAccForm(${JSON.stringify(c.id)})'>Editar</button><button class="btn-ghost" style="padding:2px 8px" onclick='ccAccBorrar(${JSON.stringify(c.id)})'>×</button></div>`).join("")||`<div class="cc-mini">Añade tus cuentas (caja y banco) para ver liquidez y días de supervivencia.</div>`;
+    const pagos=(d.proximos_pagos||[]).map(p=>`<div class="cc-line"><span>${fmt(p.fecha)} · ${esc(p.concepto)}</span><b>−${eur0(p.importe)} €</b></div>`).join("")||`<div class="cc-mini">Sin pagos próximos.</div>`;
+    const cobros=(d.proximos_cobros||[]).map(p=>`<div class="cc-line"><span>${fmt(p.fecha)} · ${esc(p.concepto)}</span><b>+${eur0(p.importe)} €</b></div>`).join("")||`<div class="cc-mini">Sin cobros próximos.</div>`;
+    setInner(`<div class="cc-card"><div class="cc-label">Liquidez inmediata</div><div class="cc-kpi">${ccEur(d.liquidez_inmediata)}</div>
+        <div class="cc-mini">${d.dias_supervivencia!=null?`<b>${d.dias_supervivencia} días de supervivencia</b> · coste medio ${ccEur(d.coste_medio_diario)}/día`:"Añade cuentas para calcular los días de supervivencia."}</div></div>
+      <div class="cc-card"><div class="cc-line"><span>IVA pendiente</span><b>${ccEur(d.iva_pendiente)}</b></div><div class="cc-line"><span>IRPF pendiente</span><b>${ccEur(d.irpf_pendiente)}</b></div><div class="cc-line"><span>Seguridad Social</span><b>${ccEur(d.ss_pendiente)}</b></div></div>
+      <div class="section-label">Cuentas</div>
+      <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="ccAccForm()">Añadir cuenta</button> <button class="btn-ghost" onclick="ccMovForm()">Registrar cobro/pago</button></div>
+      <div class="cc-card">${cuentas}</div>
+      <div class="section-label">Próximos pagos</div><div class="cc-card">${pagos}</div>
+      <div class="section-label">Próximos cobros</div><div class="cc-card">${cobros}</div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function ccAccForm(id){
+  let reg={name:"",type:"banco",balance:""};
+  if(id){ const f=(window._ccCuentas||[]).find(x=>x.id===id); if(f) reg=f; }
+  window._ccAccEdit=id||null;
+  setInner(`<div class="section-label">${id?'Editar cuenta':'Nueva cuenta'}</div>
+    <div class="card">
+      <div class="field"><label>Nombre</label><input id="ac-name" value="${esc(reg.name||'')}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;">
+        <div class="field" style="flex:1"><label>Tipo</label><select id="ac-type" style="width:100%"><option value="banco" ${reg.type!=='caja'?'selected':''}>Banco</option><option value="caja" ${reg.type==='caja'?'selected':''}>Caja</option></select></div>
+        <div class="field" style="flex:1"><label>Saldo (€)</label><input id="ac-bal" type="number" step="0.01" value="${reg.balance||''}" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccAccGuardar(this)">${id?'Guardar':'Crear'}</button><button class="btn-ghost" onclick="irA_tesoreria()">Cancelar</button></div>
+    <div id="ac-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccAccGuardar(btn){
+  const body={name:el("ac-name").value.trim(),type:el("ac-type").value,balance:el("ac-bal").value};
+  if(!body.name){ el("ac-msg").textContent="Indica el nombre."; return; }
+  if(btn) btn.disabled=true;
+  try{
+    if(window._ccAccEdit) await api("/treasury/cuenta/"+window._ccAccEdit,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    else await api("/treasury/cuenta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_tesoreria();
+  }catch(e){ el("ac-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+async function ccAccBorrar(id){ if(!confirm("¿Quitar esta cuenta?")) return; try{ await api("/treasury/cuenta/"+id,{method:"DELETE"}); irA_tesoreria(); }catch(e){ alert(e.message); } }
+function ccMovForm(){
+  setInner(`<div class="section-label">Registrar cobro o pago previsto</div>
+    <div class="card">
+      <div class="field"><label>Tipo</label><select id="mv-type" style="width:100%"><option value="pago">Pago</option><option value="cobro">Cobro</option></select></div>
+      <div class="field"><label>Concepto</label><input id="mv-con" style="width:100%"></div>
+      <div style="display:flex;gap:10px;">
+        <div class="field" style="flex:1"><label>Importe (€)</label><input id="mv-imp" type="number" step="0.01" style="width:100%"></div>
+        <div class="field" style="flex:1"><label>Fecha</label><input id="mv-fecha" type="date" style="width:100%"></div>
+      </div>
+      <div class="field"><label>Categoría (opcional: iva, irpf, seguridad_social…)</label><input id="mv-cat" style="width:100%"></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="ccMovGuardar(this)">Registrar</button><button class="btn-ghost" onclick="irA_tesoreria()">Cancelar</button></div>
+    <div id="mv-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function ccMovGuardar(btn){
+  const body={tipo:el("mv-type").value,concepto:el("mv-con").value.trim(),importe:el("mv-imp").value,fecha:el("mv-fecha").value,categoria:el("mv-cat").value.trim()};
+  if(!(Number(body.importe)>0)){ el("mv-msg").textContent="Indica un importe válido."; return; }
+  if(btn) btn.disabled=true;
+  try{ await api("/treasury/movimiento",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); irA_tesoreria(); }
+  catch(e){ el("mv-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+
+// ── CALENDARIO DE EMPRESA · semana (lunes→domingo) ─────────────────────────
+async function irA_calendarioEmpresa(off){
+  ccVolver(); openSection("cc-calendario","Calendario de empresa");
+  window._ccCalOff=(off!=null)?off:(window._ccCalOff||0);
+  try{
+    const d=await api("/business-calendar?offset="+window._ccCalOff);
+    const ICO={produccion:"🏭",pedido:"📦",recepcion:"📥",appcc:"🌡️",caducidad:"⏳",pago:"↓",cobro:"↑",vacaciones:"🏖️",baja:"🚑"};
+    const dias=d.dias.map(dd=>`<div class="cc-cal-dia"><div class="cc-cal-cab">${dd.nombre} · ${dd.fecha.slice(8)}/${dd.fecha.slice(5,7)}</div>
+      ${dd.eventos.length?dd.eventos.map(e=>`<div class="cc-cal-ev cc-ev-${e.tipo}"><span>${esc(e.titulo)}${e.detalle?' · '+esc(e.detalle):''}</span>${e.importe!=null?`<b>${e.tipo==='cobro'?'+':(e.tipo==='pago'?'−':'')}${eur0(e.importe)} €</b>`:''}</div>`).join(""):`<div class="cc-cal-vacio">—</div>`}</div>`).join("");
+    setInner(`<div class="cc-cal-nav"><button class="btn-ghost" onclick="irA_calendarioEmpresa(${window._ccCalOff-1})">← Semana anterior</button>
+        <span>${d.inicio} → ${d.fin}</span>
+        <button class="btn-ghost" onclick="irA_calendarioEmpresa(${window._ccCalOff+1})">Semana siguiente →</button></div>
+      <div class="cc-cal">${dias}</div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// ── MÁQUINA DEL TIEMPO · ¿cómo estaba mi empresa? ──────────────────────────
+function irA_maquinaTiempo(){
+  ccVolver(); openSection("cc-tiempo","¿Cómo estaba mi empresa?");
+  setInner(`<div class="section-label">Elige una fecha</div>
+    <div class="card"><div class="field"><label>Fecha</label><input id="tm-date" type="date" style="width:100%"></div>
+      <div class="card-actions"><button class="btn-primary" onclick="ccTmConsultar(this)">Ver estado</button></div></div>
+    <div id="tm-out"></div>`);
+}
+async function ccTmConsultar(btn){
+  const date=el("tm-date")&&el("tm-date").value;
+  if(!date){ alert("Elige una fecha."); return; }
+  if(btn) btn.disabled=true;
+  try{
+    const d=await api("/business-time-machine?date="+date);
+    const linea=(l,v)=>`<div class="cc-line"><span>${l}</span><b>${v}</b></div>`;
+    el("tm-out").innerHTML=`<div class="section-label">Estado a ${date}</div><div class="cc-card">
+      ${linea("Ventas del año hasta la fecha",ccEur(d.ventas_anio_hasta_fecha))}
+      ${linea("Valor de almacén"+(d.valor_almacen_estimado?" (estimado)":""),ccEur(d.valor_almacen))}
+      ${linea("Deuda activa",ccEur(d.deuda_activa))}
+      ${linea("Coste fijo mensual",ccEur(d.coste_fijo_mensual))}
+      ${linea("Valor de activos",ccEur(d.valor_activos))}
+      ${linea("Empleados activos",d.empleados_activos)}
+      ${linea("Beneficio estimado del año",ccEur(d.beneficio_estimado_anio))}</div>
+      <div class="cc-mini" style="margin-top:8px;">${esc(d.nota||'')}</div>`;
+  }catch(e){ el("tm-out").innerHTML=`<div class="err">${e.message}</div>`; }
+  finally{ if(btn) btn.disabled=false; }
 }
 
 // ── PREVISIÓN DE DEMANDA · por día de la semana ────────────────────────────

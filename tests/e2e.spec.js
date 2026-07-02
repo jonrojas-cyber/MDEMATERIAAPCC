@@ -472,3 +472,74 @@ test("acceso por teclado: Enter abre una tarjeta", async ({ page }) => {
   // La primera tarjeta es "ALERTAS" → abre la bandeja de tareas.
   await expect(page.locator(".screen-head")).toContainText(/tareas/i);
 });
+
+// ═══ CENTRO DE CONTROL · Sistema Operativo del Negocio (solo admin) ═══
+test("centro de control: el admin abre la sala de mando con todos los bloques", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await expect(page.locator(".dash-centro")).toBeVisible();
+  await page.evaluate(() => irA_centroControl("mes"));
+  await expect(page.locator(".cc-grid")).toBeVisible();
+  await expect(page.locator(".cc-score").first()).toBeVisible(); // salud del negocio
+  // Bloques clave presentes.
+  await expect(page.locator(".cc-label", { hasText: /Beneficio real/ })).toBeVisible();
+  await expect(page.locator(".cc-label", { hasText: /Coste de abrir la persiana/ })).toBeVisible();
+  await expect(page.locator(".cc-label", { hasText: /Valor de la empresa/ })).toBeVisible();
+  await expect(page.locator(".cc-label", { hasText: /Tesorería/ })).toBeVisible();
+  await expect(page.locator(".cc-chip", { hasText: /Esta semana/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("centro de control: el trabajador NO puede leer los datos financieros", async ({ request }) => {
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const headers = { Authorization: "Bearer " + lara.token };
+  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health"]) {
+    const r = await request.get(path, { headers });
+    expect(r.status(), path + " debe estar prohibido para el equipo").toBe(403);
+  }
+});
+
+test("centro de control: el filtro de tiempo cambia el periodo (semana empieza lunes)", async ({ page }) => {
+  await login(page);
+  await page.evaluate(() => irA_centroControl("semana"));
+  await expect(page.locator(".cc-chip.on", { hasText: /Esta semana/ })).toBeVisible();
+  const inicioSemanaEsLunes = await page.evaluate(() => {
+    const d = new Date(window._ccData.periodo.desde);
+    return d.getDay(); // 1 = lunes
+  });
+  expect(inicioSemanaEsLunes).toBe(1);
+  // Cambiar a "Este mes" recarga con otro periodo.
+  await page.evaluate(() => irA_centroControl("mes"));
+  const label = await page.evaluate(() => window._ccData.periodo.label);
+  expect(label).toMatch(/mes/i);
+});
+
+test("centro de control: crear y borrar un coste fijo desde la interfaz", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_costesFijos());
+  await expect(page.locator("button", { hasText: /Añadir coste fijo/ })).toBeVisible();
+  await page.evaluate(() => ccFcForm());
+  await page.fill("#fc-name", "Prueba control M");
+  await page.fill("#fc-amount", "99");
+  await page.evaluate(() => ccFcGuardar());
+  await expect(page.locator(".card-name", { hasText: /Prueba control M/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("centro de control: crear una deuda desde la interfaz y verla en el resumen", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_deuda());
+  await expect(page.locator("button", { hasText: /Añadir deuda/ })).toBeVisible();
+  await page.evaluate(() => ccDebtForm());
+  await page.fill("#dt-name", "Préstamo prueba");
+  await page.fill("#dt-out", "5000");
+  await page.fill("#dt-cuota", "200");
+  await page.evaluate(() => ccDebtGuardar());
+  await expect(page.locator(".card-name", { hasText: /Préstamo prueba/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});

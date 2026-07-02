@@ -167,6 +167,20 @@ app.use("/api/reportes", require("./routes/reportes"));
 app.use("/api/ventas", require("./routes/ventas"));
 app.use("/api/avisos", require("./routes/avisos"));
 
+// ── Centro de Control · capa financiera / negocio (solo admin) ─────────────────
+// Todos estos segmentos quedan FUERA de EQUIPO_ALLOWED en auth.js, por lo que el
+// middleware `requerido` ya bloquea a los no-admin; cada ruta lo reafirma además.
+app.use("/api/executive-dashboard", require("./routes/executive-dashboard"));
+app.use("/api/financials", require("./routes/financials"));
+app.use("/api/fixed-costs", require("./routes/fixed-costs"));
+app.use("/api/debts", require("./routes/debts"));
+app.use("/api/assets", require("./routes/assets"));
+app.use("/api/treasury", require("./routes/treasury"));
+app.use("/api/targets", require("./routes/targets"));
+app.use("/api/business-health", require("./routes/business-health"));
+app.use("/api/business-calendar", require("./routes/business-calendar"));
+app.use("/api/business-time-machine", require("./routes/business-time-machine"));
+
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última
 // versión (evita que móviles como Samsung/Chrome sirvan una copia vieja).

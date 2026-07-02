@@ -36,8 +36,22 @@
   /* Marco oliva (barra superior e inferior) */
   --olivebar: #3E4534;
   --oliveink: #E7E4D7;
-  /* Tipografía */
-  --sans:  'Courier New', 'Courier Prime', monospace;
+  /* Tipografía · fuente ÚNICA de marca (Courier). Todo hereda de aquí; ningún
+     módulo debe declarar otra familia. --sans es el alias histórico de la marca. */
+  --font: 'Courier New', 'Courier Prime', monospace;
+  --sans:  var(--font); /* alias histórico → misma fuente de marca (no duplicar) */
+  /* ── Sistema proporcional · tokens de forma y ritmo (usar en TODA pantalla) ──
+     La pantalla principal es la referencia: tarjeta-celda cuadrada de keyline.
+     Radio 0 = ritmo de tarjeta cuadrada; los botones llevan un 3px sutil aparte. */
+  --r-card: 0px;      /* tarjetas y celdas: cuadradas, como la home */
+  --r-pill: 3px;      /* chips / toggles: casi cuadrados (familia de los botones) */
+  --pad-card: 16px 18px;   /* padding interno canónico de tarjeta */
+  --gap-grid: 10px;        /* separación de rejilla de tarjetas */
+  /* Jerarquía de KPIs (números de titular, en fuente de marca) */
+  --kpi-lg: 34px;
+  --kpi-md: 26px;
+  --kpi-sm: 20px;
+  --track: #CFCABB;        /* fondo de barras de progreso (olive-light) */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,7 +73,7 @@ body {
   overscroll-behavior: none;
   background: var(--cream);
   color: var(--ink);
-  font-family: 'Courier New', 'Courier Prime', monospace;
+  font-family: var(--font);
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   display: flex;
@@ -1053,12 +1067,16 @@ input, select { font-family: inherit; font-size: 13px; }
   border: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer;
   user-select: none; transition: background .12s, color .12s, border-color .12s; }
 .alerg-chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+/* Ancho de contenido de pantallas internas = misma disciplina que la home
+   (capado y centrado a 1080px). Evita tarjetas estiradas en tablet/escritorio;
+   en móvil ocupa todo el ancho igual que antes. */
+#inner-content { max-width: 1080px; margin: 0 auto; width: 100%; }
 /* Submenús como rejilla cuadrada que LLENA la pantalla (sin scroll), como la portada */
 #screen-inner.submenu { overflow: hidden; display: flex; flex-direction: column; }
 #screen-inner.submenu > #inner-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .submenu-grid { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 11px; min-height: 0; }
 .subtile { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 6px; text-align: left;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px; cursor: pointer; min-height: 0;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px; cursor: pointer; min-height: 0;
   transition: border-color .12s; }
 .subtile:hover { border-color: var(--ink); }
 .subtile-name { font-family: var(--sans); font-size: 17px; font-weight: 700; letter-spacing: .03em; line-height: 1.05; text-transform: uppercase; }
@@ -1080,25 +1098,29 @@ input, select { font-family: inherit; font-size: 13px; }
 .insight-accion { font-size: 10.5px; font-weight: 700; color: var(--ink); margin-top: 6px; }
 
 /* ═══ CENTRO DE CONTROL · sala de mando del propietario (monocromo premium) ═══ */
-.cc-filtro { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.cc-chip { font-size: 11px; padding: 5px 11px; border-radius: 20px; border: 1px solid var(--line);
+/* ── CENTRO DE CONTROL · mismo ritmo de tarjeta-celda cuadrada que la home ──
+   Keyline, esquinas cuadradas, tipografía de marca. Nada de estética SaaS. */
+.cc-filtro { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.cc-chip { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 12px;
+  border-radius: var(--r-pill); border: 1px solid var(--line);
   background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .cc-chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); font-weight: 700; }
 .cc-custom { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .cc-custom input { font-size: 12px; }
-.cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.cc-card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+.cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-grid); }
+.cc-card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px 18px;
   text-align: left; width: 100%; display: block; cursor: default; }
-button.cc-card { cursor: pointer; }
+button.cc-card { cursor: pointer; transition: border-color .12s, background .12s; }
 button.cc-card:hover { border-color: var(--ink); }
-.cc-wide { grid-column: 1 / -1; margin-top: 10px; }
-.cc-label { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-.cc-kpi { font-size: 26px; font-weight: 800; line-height: 1.05; margin-top: 4px; letter-spacing: -.01em; }
-.cc-kpi.cc-big { font-size: 34px; }
-.cc-kpi.cc-ok { font-size: 20px; }
-.cc-score { font-size: 40px; font-weight: 800; line-height: 1; margin-top: 2px; }
-.cc-score-max { font-size: 14px; font-weight: 600; color: var(--muted); }
-.cc-mini { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.cc-wide { grid-column: 1 / -1; margin-top: var(--gap-grid); }
+.cc-label { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.cc-kpi { font-size: var(--kpi-md); font-weight: 700; line-height: 1.05; margin-top: 6px; letter-spacing: 0;
+  font-variant-numeric: tabular-nums; }
+.cc-kpi.cc-big { font-size: var(--kpi-lg); }
+.cc-kpi.cc-ok { font-size: var(--kpi-sm); }
+.cc-score { font-size: 40px; font-weight: 700; line-height: 1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.cc-score-max { font-size: 13px; font-weight: 700; color: var(--muted); }
+.cc-mini { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.55; }
 .cc-mini.cc-accent { color: var(--ink); font-weight: 700; }
 .cc-delta { display: inline-block; font-size: 10px; font-weight: 700; margin-top: 5px; }
 .cc-delta.up { color: var(--ink); }
@@ -1119,31 +1141,31 @@ button.cc-card:hover { border-color: var(--ink); }
 .cc-obj { margin-top: 10px; }
 .cc-obj-top { display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 600; }
 .cc-obj-val { color: var(--muted); }
-.cc-obj-track { height: 8px; background: var(--olive-light); border-radius: 5px; overflow: hidden; margin-top: 4px; }
-.cc-obj-fill { height: 100%; background: var(--ink); border-radius: 5px; }
+.cc-obj-track { height: 7px; background: var(--track); border-radius: var(--r-pill); overflow: hidden; margin-top: 5px; }
+.cc-obj-fill { height: 100%; background: var(--ink); border-radius: var(--r-pill); }
 .cc-obj-fill.cc-fill-mal { background: #b5462a; }
 .cc-obj-fill.cc-fill-neutro { background: var(--muted); }
 .cc-insight { display: block; width: 100%; text-align: left; background: var(--cream); border: 1px solid var(--line);
-  border-left: 3px solid var(--muted); border-radius: 9px; padding: 10px 12px; margin-top: 7px; font-size: 12px; cursor: pointer; }
-.cc-insight.importante { border-left-color: var(--ink); font-weight: 600; }
+  border-left: 3px solid var(--muted); border-radius: var(--r-card); padding: 11px 13px; margin-top: 7px; font-size: 12px; cursor: pointer; }
+.cc-insight.importante { border-left-color: var(--ink); font-weight: 700; }
 .cc-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-.cc-link { background: none; border: 1px solid var(--line); border-radius: 10px; font-family: var(--sans);
-  font-size: 12px; color: var(--muted); padding: 11px; cursor: pointer; text-align: left; }
+.cc-link { background: none; border: 1px solid var(--line); border-radius: var(--r-card); font-family: var(--font);
+  font-size: 11px; letter-spacing: .04em; color: var(--muted); padding: 12px; cursor: pointer; text-align: left; }
 .cc-link:hover { color: var(--ink); border-color: var(--ink); }
 .cc-link-wide { grid-column: 1 / -1; }
 .cc-cal-nav { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 10px; gap: 8px; }
 .cc-cal { display: flex; flex-direction: column; gap: 8px; }
-.cc-cal-dia { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.cc-cal-dia { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); padding: 11px 13px; }
 .cc-cal-cab { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
 .cc-cal-ev { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; padding: 3px 0; }
 .cc-cal-vacio { font-size: 11px; color: var(--olive-light); }
 .chart { margin: 2px 0 6px; }
 .chart-row { margin-bottom: 9px; }
-.chart-row-top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--sans); }
-.chart-lbl { font-size: 11px; color: var(--ink); font-weight: 600; }
+.chart-row-top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font); }
+.chart-lbl { font-size: 11px; color: var(--ink); font-weight: 700; }
 .chart-val { font-size: 11px; color: var(--muted); font-weight: 700; }
-.chart-track { height: 9px; background: var(--olive-light); border-radius: 5px; overflow: hidden; margin-top: 3px; }
-.chart-bar { height: 100%; background: var(--ink); border-radius: 5px; }
+.chart-track { height: 8px; background: var(--track); border-radius: var(--r-pill); overflow: hidden; margin-top: 3px; }
+.chart-bar { height: 100%; background: var(--ink); border-radius: var(--r-pill); }
 .chart-xlabels { display: flex; justify-content: space-between; font-family: var(--sans); font-size: 8px; color: var(--muted); margin-top: 2px; }
 .chart-xlabels span { flex: 1; text-align: center; }
 .cats { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; gap: 10px; max-width: 1080px; width: 100%; }
@@ -1490,7 +1512,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v105</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v106</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1529,10 +1551,10 @@ let _loginKey = null;
 function mostrarLogin() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
-    <div style="min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;">
+    <div style="min-height:100vh;background:var(--ink);display:flex;align-items:center;justify-content:center;font-family:var(--font);padding:24px;">
       <div style="text-align:center;color:var(--cream);">
         <span class="mark" style="color:var(--cream);justify-content:center;gap:5px;"><i style="height:30px;width:3px;"></i><i style="height:30px;width:3px;"></i><i style="height:30px;width:3px;"></i></span>
-        <div style="font-family:var(--sans);font-size:30px;font-weight:700;line-height:1;margin-top:18px;letter-spacing:.01em;">m de materia</div>
+        <div style="font-family:var(--font);font-size:30px;font-weight:700;line-height:1;margin-top:18px;letter-spacing:.01em;">m de materia</div>
         <div style="font-size:9px;letter-spacing:0.24em;text-transform:uppercase;color:#555040;margin-top:8px;margin-bottom:52px;">Control de producción</div>
         <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:#555040;margin-bottom:18px;">¿Quién prepara hoy?</div>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">

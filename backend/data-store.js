@@ -56,6 +56,7 @@ const ENTITIES = [
   "staff_finance", // datos económicos del equipo (coste/hora, jornada, estado)
   "financial_snapshots", // fotos financieras periódicas (base para la "máquina del tiempo")
   "executive_notes", // notas del propietario en el Centro de Control
+  "business_health_config", // pesos configurables de la Salud del Negocio (no hardcodeados)
 ];
 
 const cache = {};

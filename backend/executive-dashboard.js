@@ -123,9 +123,10 @@ function construir(preset = "hoy", opts = {}) {
     },
   };
 
-  // Inteligencia temporal: forecast de caja y anomalías sobre la serie histórica.
+  // Inteligencia temporal: forecast de caja/salud y anomalías sobre la serie.
   const runwayForecast = forecast.runwayCaja();
   const anomalias = anomaly.detectar();
+  const saludForecast = forecast.proyectar("salud", 30);
 
   // Copiloto (a partir del contexto ya calculado, incluida la inteligencia temporal).
   const copiloto = copilot.generar({
@@ -151,7 +152,7 @@ function construir(preset = "hoy", opts = {}) {
     activos,
     objetivos,
     tendencia: snapshotEngine.tendencia(now),      // serie histórica (semana/mes) desde los snapshots
-    inteligencia: { runway_forecast: runwayForecast, anomalias },
+    inteligencia: { runway_forecast: runwayForecast, anomalias, salud_forecast: saludForecast },
     copiloto,
   };
 }

@@ -37,7 +37,11 @@ function construirSnapshot(now = Date.now(), localId = "principal") {
   const costeDiario = financials.costeMedioDiario(now);
   const liq = treasury.liquidez();
   const runway = treasury.runway(liq.liquidez_inmediata, costeDiario);
-  const salud = health.calcular(rSemana, now, { costeMedioDiario: costeDiario }).score;
+  const saludObj = health.calcular(rSemana, now, { costeMedioDiario: costeDiario });
+  const salud = saludObj.score;
+  // Evolución por categoría: {financial: 72, cash_flow: 55, ...} para el histórico.
+  const saludCategorias = {};
+  (saludObj.categorias || []).forEach((c) => { if (c.score != null) saludCategorias[c.clave] = c.score; });
   const materias = store.readAll("materias");
   const stockCritico = materias.filter((m) => estadoStock(m) !== "correcto").length;
   const deuda = debtsMod.resumen(now);
@@ -49,6 +53,7 @@ function construirSnapshot(now = Date.now(), localId = "principal") {
     creado_en: new Date(now).toISOString(),
     // Salud y valor
     salud: salud,
+    salud_categorias: saludCategorias, // evolución por categoría (AI-ready)
     patrimonio_neto: patr.patrimonio_neto,
     caja: patr.caja,
     banco: patr.banco,

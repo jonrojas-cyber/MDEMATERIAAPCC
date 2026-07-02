@@ -1015,6 +1015,8 @@ input, select { font-family: inherit; font-size: 13px; }
 .dash-informes { flex: 0 0 auto; margin-top: 10px; width: 100%; background: none; border: 1px solid var(--line);
   border-radius: 10px; font-family: var(--sans); font-size: 12px; color: var(--muted); padding: 11px; cursor: pointer; }
 .dash-informes:hover { color: var(--ink); border-color: var(--ink); }
+/* Entrada del propietario: mismo lenguaje que los demás botones, solo con más peso */
+.dash-informes.dash-owner { color: var(--ink); border-color: var(--ink); font-weight: 700; margin-top: 12px; }
 @media (max-height: 560px) { .dashcard-name { font-size: 16px; } .dashcard-sub { font-size: 9.5px; } }
 /* Saludo + frase del día (Courier, como todo el sistema) */
 .saludo { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -1078,12 +1080,6 @@ input, select { font-family: inherit; font-size: 13px; }
 .insight-accion { font-size: 10.5px; font-weight: 700; color: var(--ink); margin-top: 6px; }
 
 /* ═══ CENTRO DE CONTROL · sala de mando del propietario (monocromo premium) ═══ */
-.dash-centro { display: flex; align-items: center; gap: 4px; flex-direction: column; align-items: flex-start;
-  width: 100%; text-align: left; background: var(--ink); color: var(--cream); border: none; border-radius: 14px;
-  padding: 18px 18px; margin-top: 4px; cursor: pointer; position: relative; }
-.dash-centro-k { font-size: 15px; font-weight: 800; letter-spacing: .08em; }
-.dash-centro-t { font-size: 11.5px; opacity: .8; margin-top: 2px; }
-.dash-centro-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 24px; opacity: .7; }
 .cc-filtro { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .cc-chip { font-size: 11px; padding: 5px 11px; border-radius: 20px; border: 1px solid var(--line);
   background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
@@ -1130,7 +1126,11 @@ button.cc-card:hover { border-color: var(--ink); }
 .cc-insight { display: block; width: 100%; text-align: left; background: var(--cream); border: 1px solid var(--line);
   border-left: 3px solid var(--muted); border-radius: 9px; padding: 10px 12px; margin-top: 7px; font-size: 12px; cursor: pointer; }
 .cc-insight.importante { border-left-color: var(--ink); font-weight: 600; }
-.cc-links { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.cc-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.cc-link { background: none; border: 1px solid var(--line); border-radius: 10px; font-family: var(--sans);
+  font-size: 12px; color: var(--muted); padding: 11px; cursor: pointer; text-align: left; }
+.cc-link:hover { color: var(--ink); border-color: var(--ink); }
+.cc-link-wide { grid-column: 1 / -1; }
 .cc-cal-nav { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 10px; gap: 8px; }
 .cc-cal { display: flex; flex-direction: column; gap: 8px; }
 .cc-cal-dia { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
@@ -1490,7 +1490,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v98</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v99</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2263,12 +2263,7 @@ async function loadHome() {
           <span class="dashcard-sub">${c.sub}</span>
         </button>`).join("")}
       </div>
-      ${esAdmin ? `<button class="dash-centro" onclick="irA_centroControl()">
-        <span class="dash-centro-k">CENTRO DE CONTROL</span>
-        <span class="dash-centro-t">El estado de toda la empresa en 30 segundos</span>
-        <span class="dash-centro-arrow">›</span>
-      </button>
-      <button class="dash-informes" onclick="irA_panel()">Panel del propietario · dónde está mi dinero →</button>
+      ${esAdmin ? `<button class="dash-informes dash-owner" onclick="irA_centroControl()">Centro de control · el estado de tu negocio →</button>
       <button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
@@ -2686,7 +2681,7 @@ function svgLine(data){
   <div class="chart-xlabels">${data.map((d,i)=>`<span>${i%step===0?esc(d.label):""}</span>`).join("")}</div>`;
 }
 async function irA_panel(){
-  openSection("panel","Panel del propietario");
+  ccVolver(); openSection("panel","Análisis y tendencias");
   setInner(`<div class="empty">Cargando el dinero…</div>`);
   try{
     const p=await api("/analitica?dias=30");
@@ -2746,7 +2741,7 @@ async function irA_panel(){
 // La primera pantalla que abre el propietario cada mañana: el estado de toda la
 // empresa en 30 segundos. Todo el dinero viene del backend (costing + financials).
 // ═══════════════════════════════════════════════════════════════════════════
-const CC_PRESETS=[["hoy","Hoy"],["ayer","Ayer"],["semana","Esta semana"],["semana_anterior","Semana anterior"],["mes","Este mes"],["mes_anterior","Mes anterior"],["anio","Año actual"],["anio_anterior","Año anterior"],["personalizado","Personalizado"]];
+const CC_PRESETS=[["hoy","Hoy"],["semana","Semana"],["mes","Mes"],["anio","Año"],["personalizado","Personalizado"]];
 function ccEur(n){ return eur0(n)+" €"; }
 function ccVolver(){ window._backOverride=()=>irA_centroControl(window._ccPreset); }
 function ccDelta(d){
@@ -2851,14 +2846,13 @@ function ccRender(d){
     </div>
     ${objCard}
     ${copCard}
+    <div class="section-label" style="margin-top:16px;">Más detalle</div>
     <div class="cc-links">
-      <button class="dash-informes" onclick="irA_costesFijos()">Costes fijos →</button>
-      <button class="dash-informes" onclick="irA_deuda()">Deuda →</button>
-      <button class="dash-informes" onclick="irA_activos()">Activos →</button>
-      <button class="dash-informes" onclick="irA_objetivos()">Objetivos →</button>
-      <button class="dash-informes" onclick="irA_tesoreria()">Tesorería →</button>
-      <button class="dash-informes" onclick="irA_calendarioEmpresa()">Calendario de empresa →</button>
-      <button class="dash-informes" onclick="irA_maquinaTiempo()">¿Cómo estaba mi empresa? →</button>
+      <button class="cc-link" onclick="irA_panel()">Análisis y tendencias</button>
+      <button class="cc-link" onclick="irA_costesFijos()">Costes fijos</button>
+      <button class="cc-link" onclick="irA_activos()">Activos</button>
+      <button class="cc-link" onclick="irA_calendarioEmpresa()">Calendario</button>
+      <button class="cc-link cc-link-wide" onclick="irA_maquinaTiempo()">¿Cómo estaba mi empresa?</button>
     </div>`;
 }
 function ccObjBar(o){

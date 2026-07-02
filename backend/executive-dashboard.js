@@ -20,11 +20,18 @@ function delta(actual, anterior) {
 }
 
 // Valores reales por objetivo, cada uno en el periodo que le corresponde.
-function actualesObjetivos(now) {
+// Memoiza beneficio por periodo: muchos objetivos comparten "mes", así se escanea
+// ventas una sola vez por periodo distinto en lugar de una vez por objetivo.
+function actualesObjetivos(now, benCache = {}) {
   const out = {};
+  const benDe = (periodo) => {
+    const r = periods.rango(periodo || "mes", now);
+    const key = periodo || "mes";
+    if (!benCache[key]) benCache[key] = { r, ben: financials.beneficio(r, now) };
+    return benCache[key];
+  };
   targets.lista().forEach((t) => {
-    const r = periods.rango(t.periodo || "mes", now);
-    const ben = financials.beneficio(r, now);
+    const { r, ben } = benDe(t.periodo || "mes");
     switch (t.tipo) {
       case "ventas": out.ventas = ben.ventas; break;
       case "beneficio": out.beneficio = ben.beneficio_operativo; break;
@@ -45,7 +52,8 @@ function construir(preset = "hoy", opts = {}) {
   const res = periods.resolver(preset, { now, desde: opts.desde, hasta: opts.hasta });
   const r = res.actual;
 
-  // Bloques financieros.
+  // Bloques financieros. Se calculan UNA vez y se reparten a quien los necesita
+  // (salud, objetivos) para no volver a escanear ventas por cada consumidor.
   const beneficioActual = financials.beneficio(r, now);
   const beneficioAnterior = financials.beneficio(res.anterior, now);
   const costeAbrir = financials.costeDeAbrir(r, now);
@@ -56,17 +64,20 @@ function construir(preset = "hoy", opts = {}) {
   const equipo = staff.resumen(r, now);
   const capitalParado = inventoryCapital.calcular(now);
   const activos = assetsMod.resumen(now);
-  const saludBloque = health.calcularConComparativo(r, res.anterior, now);
+  const saludBloque = health.calcularConComparativo(r, res.anterior, now, { beneficio: beneficioActual, beneficioAnterior, costeMedioDiario: costeDiario });
 
-  // Proyección de beneficio del mes en curso (ritmo actual).
+  // Proyección de beneficio del mes en curso (ritmo actual). Reutilizamos este
+  // beneficio del mes como caché para los objetivos con periodo "mes".
   const rMes = periods.rango("mes", now);
   const benMes = financials.beneficio(rMes, now);
   const diasTranscurridos = Math.max(1, (now - rMes.desde) / periods.DAY);
   const diasDelMes = 365 / 12;
   beneficioActual.proyeccion_mes = eur(benMes.beneficio_operativo * (diasDelMes / diasTranscurridos));
 
-  // Objetivos con progreso.
-  const objetivos = targets.evaluar(actualesObjetivos(now));
+  // Objetivos con progreso (beneficio memoizado por periodo; "mes" ya calculado).
+  const benCache = { mes: { r: rMes, ben: benMes } };
+  if (r.preset && !benCache[r.preset]) benCache[r.preset] = { r, ben: beneficioActual };
+  const objetivos = targets.evaluar(actualesObjetivos(now, benCache));
 
   // Beneficio con comparativo.
   const beneficio = {

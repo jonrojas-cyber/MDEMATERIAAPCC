@@ -1011,6 +1011,12 @@ input, select { font-family: inherit; font-size: 13px; }
 /* Pastilla de "atención" monocroma (sin rojo/ámbar): tinta sobre papel */
 .tag-ink { display: inline-block; background: var(--ink); color: var(--cream); font-size: 9.5px; font-weight: 700;
   letter-spacing: .04em; padding: 1px 7px; border-radius: 20px; vertical-align: middle; }
+/* Selector de alérgenos: chips monocromos que se rellenan al activarse */
+.alerg-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.alerg-chip { display: inline-block; font-size: 10.5px; padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer;
+  user-select: none; transition: background .12s, color .12s, border-color .12s; }
+.alerg-chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
 /* Submenús como rejilla cuadrada que LLENA la pantalla (sin scroll), como la portada */
 #screen-inner.submenu { overflow: hidden; display: flex; flex-direction: column; }
 #screen-inner.submenu > #inner-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -1380,7 +1386,7 @@ input, select { font-family: inherit; font-size: 13px; }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v92</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v93</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -4488,11 +4494,16 @@ async function irA_carta(){
       const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
       const sugiere=(p.precio_recomendado>0 && Math.abs(p.precio_recomendado-p.precio_venta)>=0.05)
         ? `<div style="font-size:10px;color:var(--olive);margin-top:4px;">PVP recomendado para ${Math.round(p.margen_objetivo*100)}% de margen: <b>${p.precio_recomendado.toFixed(2)} €</b></div>`:"";
+      const alerg=(p.alergenos&&p.alergenos.length)
+        ? `<div style="font-size:10px;color:var(--muted);margin-top:6px;">Alérgenos: ${p.alergenos.map(a=>esc(a)).join(" · ")}</div>`:"";
+      const meta2=[p.version?`Versión ${esc(p.version)}`:"",p.vida_util_horas?`Vida útil ${p.vida_util_horas} h`:""].filter(Boolean).join(" · ");
+      const metaLine=meta2?`<div style="font-size:10px;color:var(--muted);margin-top:4px;">${meta2}</div>`:"";
+      const foto=p.foto_url?`<img src="${p.foto_url}" style="width:100%;max-width:180px;border-radius:8px;border:1px solid var(--line);margin-top:8px;">`:"";
       return card(
         `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:var(--muted);">(estimado)</span>':""}`,
         `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
         `<button class="btn-ghost" onclick="formReceta('${p.id}')">Editar</button><button class="btn-ghost" onclick="borrarReceta('${p.id}')">Quitar</button>`,
-        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+sugiere
+        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+sugiere+alerg+metaLine+foto
       );
     }, "No hay productos en la carta.");
     setInner(cab+resumen+items);
@@ -4504,9 +4515,13 @@ function redondearPvp(n){ return n>0?Math.ceil(n*20)/20:0; }
 async function formReceta(id){
   const mats=await api("/materias");
   window._cartaMats=mats;
-  let p={nombre:"",categoria:"",descripcion:"",precio_venta:0,margen_objetivo:0.7,ingredientes:[]};
-  if(id){ try{ const det=await api("/carta/"+id); p={nombre:det.nombre,categoria:det.categoria||"",descripcion:det.descripcion||"",precio_venta:det.precio_venta||0,margen_objetivo:det.margen_objetivo||0.7,ingredientes:(det.ingredientes||[]).map(i=>({materia_id:i.materia_id,cantidad:i.cantidad}))}; }catch(e){ alert(e.message); return; } }
+  let listaAlerg=[]; try{ listaAlerg=await api("/carta/alergenos"); }catch(_){ listaAlerg=[]; }
+  let p={nombre:"",categoria:"",descripcion:"",precio_venta:0,margen_objetivo:0.7,ingredientes:[],alergenos:[],version:"",vida_util_horas:"",foto_url:null};
+  if(id){ try{ const det=await api("/carta/"+id); p={nombre:det.nombre,categoria:det.categoria||"",descripcion:det.descripcion||"",precio_venta:det.precio_venta||0,margen_objetivo:det.margen_objetivo||0.7,ingredientes:(det.ingredientes||[]).map(i=>({materia_id:i.materia_id,cantidad:i.cantidad})),alergenos:det.alergenos||[],version:det.version||"",vida_util_horas:det.vida_util_horas!=null?det.vida_util_horas:"",foto_url:det.foto_url||null}; }catch(e){ alert(e.message); return; } }
   window._recetaEditId=id||null;
+  window._recetaFoto=p.foto_url||null;
+  const seleccionados=new Set(p.alergenos||[]);
+  const chipsAlerg=listaAlerg.map(a=>`<span class="alerg-chip${seleccionados.has(a)?" on":""}" data-alerg="${esc(a)}" onclick="this.classList.toggle('on')">${esc(a)}</span>`).join("");
   const filas=(p.ingredientes.length?p.ingredientes:[{materia_id:"",cantidad:0}]).map((i)=>filaIngredienteHTML(i)).join("");
   setInner(`
     <div class="section-label">${id?"Editar receta":"Nueva receta"}</div>
@@ -4519,6 +4534,19 @@ async function formReceta(id){
       <div class="card-name">Ingredientes (escandallo)</div>
       <div id="rc-ings">${filas}</div>
       <div class="card-actions"><button class="btn-ghost" onclick="addIngrediente()">Añadir ingrediente</button></div>
+    </div>
+    <div class="card">
+      <div class="card-name">Ficha profesional</div>
+      <div class="field"><label>Alérgenos declarados (Reglamento UE 1169/2011)</label>
+        <div id="rc-alergenos" class="alerg-wrap">${chipsAlerg}</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:120px;"><label>Versión</label><input id="rc-version" value="${esc(p.version||"")}" placeholder="p. ej. v2 · verano" style="width:100%;"></div>
+        <div class="field" style="flex:1;min-width:120px;"><label>Vida útil (horas)</label><input id="rc-vida" type="number" step="1" min="0" value="${p.vida_util_horas!==""&&p.vida_util_horas!=null?p.vida_util_horas:""}" placeholder="horas" style="width:100%;"></div>
+      </div>
+      <div class="field"><label>Foto del emplatado</label>
+        <input type="file" accept="image/*" onchange="cargarFotoReceta(this)" style="font-size:11px;">
+        <div id="rc-foto-prev" style="margin-top:8px;">${p.foto_url?`<img src="${p.foto_url}" style="max-width:140px;border-radius:8px;border:1px solid var(--line);">`:""}</div>
+      </div>
     </div>
     <div class="card">
       <div class="card-name">Precio y margen</div>
@@ -4578,6 +4606,18 @@ function recalcReceta(){
 }
 function usarPvp(){ if(window._recetaRecom>0){ el("rc-precio").value=window._recetaRecom; recalcReceta(); } }
 
+async function cargarFotoReceta(input){
+  const file=input.files&&input.files[0]; if(!file) return;
+  const prev=el("rc-foto-prev");
+  try{
+    window._recetaFoto=await reducirImagen(file,1400,0.7);
+    if(prev) prev.innerHTML=`<img src="${window._recetaFoto}" style="max-width:140px;border-radius:8px;border:1px solid var(--line);">`;
+  }catch(e){ if(prev) prev.textContent="No se pudo cargar la foto."; }
+}
+function recogerAlergenos(){
+  return [...document.querySelectorAll("#rc-alergenos .alerg-chip.on")].map(c=>c.getAttribute("data-alerg"));
+}
+
 function recogerIngredientes(){
   return [...document.querySelectorAll(".rc-row")].map(row=>({
     materia_id:row.querySelector(".rc-mat").value,
@@ -4594,6 +4634,10 @@ async function guardarReceta(btn){
     precio_venta:Number(el("rc-precio").value)||0,
     margen_objetivo:Number(el("rc-margen").value)||70,
     ingredientes:recogerIngredientes(),
+    alergenos:recogerAlergenos(),
+    version:el("rc-version")?el("rc-version").value.trim():"",
+    vida_util_horas:el("rc-vida")&&el("rc-vida").value!==""?Number(el("rc-vida").value)||0:"",
+    foto_url:window._recetaFoto||null,
   };
   if(!body.nombre){ if(msg) msg.textContent="Revísalo antes de continuar: indica el nombre de la receta."; return; }
   if(btn){btn.disabled=true;}

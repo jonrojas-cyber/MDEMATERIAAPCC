@@ -62,6 +62,10 @@ function escandallar(producto, materias) {
     margen_objetivo: Math.round(margenObjetivo * 1000) / 1000,
     precio_recomendado: precioRecomendado,
     coste_estimado: costeEstimado || producto.cantidades_estimadas === true,
+    alergenos: producto.alergenos || [],
+    version: producto.version || "",
+    foto_url: producto.foto_url || null,
+    vida_util_horas: producto.vida_util_horas != null ? producto.vida_util_horas : null,
     ingredientes: desglose,
   };
 }
@@ -87,6 +91,13 @@ router.get("/", (req, res) => {
     productos: items.sort((a, b) => b.margen_bruto - a.margen_bruto),
   });
 });
+
+// Los 14 alérgenos de declaración obligatoria (Reglamento UE 1169/2011).
+const ALERGENOS = [
+  "Gluten", "Crustáceos", "Huevos", "Pescado", "Cacahuetes", "Soja", "Lácteos",
+  "Frutos de cáscara", "Apio", "Mostaza", "Sésamo", "Sulfitos", "Altramuces", "Moluscos",
+];
+router.get("/alergenos", (req, res) => res.json(ALERGENOS));
 
 // GET /api/carta/:id — escandallo detallado de un producto.
 router.get("/:id", (req, res) => {
@@ -121,6 +132,11 @@ function camposDe(body) {
       .map((i) => ({ materia_id: String(i.materia_id || ""), cantidad: Number(i.cantidad) || 0 }))
       .filter((i) => i.materia_id && i.cantidad > 0);
   }
+  // Ficha profesional: alérgenos (obligación legal), versión, foto y vida útil.
+  if (Array.isArray(body.alergenos)) c.alergenos = body.alergenos.map((a) => String(a)).filter(Boolean);
+  if (body.version != null) c.version = String(body.version).trim();
+  if (body.foto_url != null) c.foto_url = String(body.foto_url);
+  if (body.vida_util_horas != null && body.vida_util_horas !== "") c.vida_util_horas = Number(body.vida_util_horas) || 0;
   if (body.activo != null) c.activo = !!body.activo;
   return c;
 }

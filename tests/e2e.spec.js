@@ -494,7 +494,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
 test("centro de control: el trabajador NO puede leer los datos financieros", async ({ request }) => {
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const headers = { Authorization: "Bearer " + lara.token };
-  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline"]) {
+  for (const path of ["/api/executive-dashboard", "/api/financials", "/api/fixed-costs", "/api/debts", "/api/treasury", "/api/business-health", "/api/executive-dashboard/timeline", "/api/business-health/config"]) {
     const r = await request.get(path, { headers });
     expect(r.status(), path + " debe estar prohibido para el equipo").toBe(403);
   }
@@ -604,5 +604,32 @@ test("timeline: la pantalla Línea temporal se abre con el selector de métricas
   await login(page);
   await page.evaluate(() => irA_timeline());
   await expect(page.locator(".cc-chip", { hasText: /Valor de la empresa/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+// PRD 003 — Business Health Engine: categorías, riesgos, forecast y pesos configurables.
+test("salud: el endpoint trae categorías, riesgos, forecast y pesos configurables", async ({ page }) => {
+  await login(page);
+  const h = await page.evaluate(async () => await api("/business-health?preset=semana"));
+  expect(Array.isArray(h.categorias)).toBe(true);
+  expect(h.categorias.length).toBeGreaterThanOrEqual(8);
+  expect(Array.isArray(h.riesgos)).toBe(true);
+  expect(h.forecast).toBeTruthy();
+  const cfg = await page.evaluate(async () => await api("/business-health/config"));
+  expect(cfg.pesos).toBeTruthy();
+  expect(cfg.default).toBeTruthy();
+  // Cambiar un peso y recuperarlo.
+  const put = await page.evaluate(async () => await api("/business-health/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pesos: { risk: 2.5 } }) }));
+  expect(put.ok).toBe(true);
+  expect(put.pesos.risk).toBe(2.5);
+});
+
+test("salud: la pantalla muestra la salud por categoría", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_centroControl("mes"));
+  await page.evaluate(() => irA_salud());
+  await expect(page.locator(".section-label", { hasText: /Salud por categoría/ })).toBeVisible();
   expect(errors).toEqual([]);
 });

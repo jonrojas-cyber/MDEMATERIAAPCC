@@ -1490,7 +1490,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v102</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v103</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2896,10 +2896,49 @@ function irA_capitalParado(){
 function irA_salud(){
   ccVolver(); openSection("cc-salud","Salud del negocio");
   const d=window._ccData; if(!d){ irA_centroControl(); return; }
-  const s=d.salud||{};
-  const señales=(s.señales||[]).map(x=>`<div class="cc-line">${ccEstadoDot(x.estado)}<span>${esc(x.texto)}</span><b>${x.score}</b></div>`).join("");
-  setInner(`<div class="cc-card cc-hero-single"><div class="cc-label">Salud del negocio</div><div class="cc-kpi cc-big">${s.score!=null?s.score:'—'}<span class="cc-score-max">/100</span></div>${s.delta!=null&&s.delta!==0?`<div class="cc-mini">${s.delta>=0?'+':'−'}${Math.abs(s.delta)} vs periodo anterior</div>`:""}</div>
+  const s=d.salud||{}; const fc=(d.inteligencia&&d.inteligencia.salud_forecast)||{};
+  // Categorías con barra (las que tienen score; las neutras se listan aparte).
+  const cats=(s.categorias||[]).filter(c=>c.score!=null);
+  const neutras=(s.categorias||[]).filter(c=>c.score==null&&c.peso>0);
+  const catBar=c=>{ const est=c.estado==='bien'?'bien':(c.estado==='regular'?'neutro':'mal');
+    return `<div class="cc-obj"><div class="cc-obj-top"><span>${esc(c.label)}</span><span class="cc-obj-val">${c.score}/100 · peso ${c.peso}</span></div>
+      <div class="cc-obj-track"><div class="cc-obj-fill cc-fill-${est}" style="width:${c.score}%"></div></div></div>`; };
+  const delta=s.delta!=null&&s.delta!==0?`<div class="cc-mini">${s.delta>=0?'▲ +':'▼ −'}${Math.abs(s.delta)} vs periodo anterior${s.mayor_deterioro?` · peor: ${esc(s.mayor_deterioro.label)}`:''}${s.mayor_mejora?` · mejor: ${esc(s.mayor_mejora.label)}`:''}</div>`:"";
+  const fcLine=(fc&&fc.disponible)?`<div class="cc-mini cc-accent">Previsión a 30 días: ${Math.round(fc.valor_horizonte)}/100 (confianza ${fc.confianza!=null?Math.round(fc.confianza*100):'—'}%)</div>`:"";
+  const riesgos=(s.riesgos&&s.riesgos.length)?`<div class="section-label">Riesgos priorizados</div>`+
+    s.riesgos.map(r=>`<div class="cc-card"><div class="cc-line"><span>${ccEstadoDot(r.nivel==='alto'?'mal':(r.nivel==='medio'?'neutro':'bien'))}${esc(r.explicacion)}</span><b>${r.nivel}</b></div>
+      <div class="cc-mini">${esc(r.accion)} · probabilidad ${Math.round(r.probabilidad*100)}% · impacto ${Math.round(r.impacto*100)}%</div></div>`).join(""):"";
+  const señales=(s.señales||[]).filter(x=>x.real).map(x=>`<div class="cc-line">${ccEstadoDot(x.estado)}<span>${esc(x.texto)}</span><b>${x.score}</b></div>`).join("");
+  const neutrasTxt=neutras.length?`<div class="cc-mini" style="margin-top:6px;">Sin datos aún: ${neutras.map(c=>esc(c.label)).join(", ")}.</div>`:"";
+  setInner(`<div class="cc-card cc-hero-single"><div class="cc-label">Salud del negocio</div>
+      <div class="cc-kpi cc-big">${s.score!=null?s.score:'—'}<span class="cc-score-max">/100</span></div>${delta}${fcLine}</div>
+    <div class="section-label">Salud por categoría</div>
+    <div class="cc-card">${cats.length?cats.map(catBar).join(""):'<div class="cc-mini">Aún no hay datos suficientes por categoría.</div>'}${neutrasTxt}
+      <div class="cc-mini" style="margin-top:8px;"><button class="btn-ghost" style="padding:2px 8px" onclick="irA_saludPesos()">Ajustar pesos</button></div></div>
+    ${riesgos}
     <div class="section-label">Qué mira la nota</div><div class="cc-card">${señales}</div>`);
+}
+// Ajuste de los pesos de cada categoría (nunca hardcodeados).
+async function irA_saludPesos(){
+  ccVolver(); window._backOverride=()=>irA_salud(); openSection("cc-salud-pesos","Pesos de la salud");
+  try{
+    const d=await api("/business-health/config");
+    const filas=Object.keys(d.default).map(k=>`<div class="field"><label>${esc(d.categorias[k]||k)}</label>
+      <input id="pw-${k}" type="number" step="0.1" min="0" max="10" value="${d.pesos[k]!=null?d.pesos[k]:d.default[k]}" style="width:100px"></div>`).join("");
+    setInner(`<div class="cc-mini" style="margin-bottom:8px;">Ajusta cuánto pesa cada categoría en la nota global (0–10). Ninguna métrica debe dominar.</div>
+      <div class="card">${filas}</div>
+      <div class="card-actions"><button class="btn-primary" onclick="guardarSaludPesos(this)">Guardar pesos</button><button class="btn-ghost" onclick="irA_salud()">Cancelar</button></div>
+      <div id="pw-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+    window._pwKeys=Object.keys(d.default);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+async function guardarSaludPesos(btn){
+  const pesos={}; (window._pwKeys||[]).forEach(k=>{ const el2=el("pw-"+k); if(el2) pesos[k]=Number(el2.value)||0; });
+  if(btn) btn.disabled=true;
+  try{ await api("/business-health/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({pesos})});
+    // Recargar el dashboard para recalcular con los nuevos pesos.
+    window._ccData=await api("/executive-dashboard?preset="+(window._ccPreset||"mes")); irA_salud();
+  }catch(e){ el("pw-msg").textContent=e.message; if(btn) btn.disabled=false; }
 }
 
 // ── COSTES FIJOS · CRUD ────────────────────────────────────────────────────

@@ -65,10 +65,16 @@ function generar(ctx) {
     push(d >= 30 ? "info" : "importante", `Tu liquidez permite operar ${d} día${d === 1 ? "" : "s"} sin ingresos.`, "irA_tesoreria");
   }
 
-  // 7) Salud del negocio si está baja.
-  if (salud && salud.score != null && salud.score < 55) {
-    const peor = (salud.razones || []).find((r) => r.estado === "mal");
-    push("importante", `La salud del negocio está en ${salud.score}/100${peor ? `: ${peor.texto.toLowerCase()}.` : "."}`, "irA_salud");
+  // 7) Salud del negocio: explica una CAÍDA (causa + acción) o un nivel bajo.
+  if (salud && salud.score != null) {
+    if (salud.delta != null && salud.delta <= -3) {
+      const causa = salud.mayor_deterioro ? ` La causa principal: ${salud.mayor_deterioro.label} (${salud.mayor_deterioro.delta}).` : "";
+      const riesgo = (salud.riesgos && salud.riesgos[0]) ? ` ${salud.riesgos[0].accion}` : "";
+      push("importante", `La salud del negocio bajó ${Math.abs(salud.delta)} puntos, hasta ${salud.score}/100.${causa}${riesgo}`, "irA_salud");
+    } else if (salud.score < 55) {
+      const peor = (salud.razones || []).find((r) => r.estado === "mal");
+      push("importante", `La salud del negocio está en ${salud.score}/100${peor ? `: ${peor.texto.toLowerCase()}.` : "."}`, "irA_salud");
+    }
   }
 
   const orden = { importante: 0, info: 1 };

@@ -13,7 +13,7 @@ function generar(ctx) {
   const out = [];
   const push = (severidad, texto, handler) => out.push({ id: nid(), severidad, texto, accion: handler ? { handler } : null });
 
-  const { costeAbrir, beneficio, tesoreria, deuda, salud, capitalParado, objetivos, periodoLabel, runwayForecast, anomalias, breakEven, ahorroFijos } = ctx;
+  const { costeAbrir, beneficio, tesoreria, deuda, salud, capitalParado, objetivos, periodoLabel, runwayForecast, anomalias, breakEven, ahorroFijos, deudaInteligencia } = ctx;
 
   // 0) Inteligencia temporal (forecast + anomalías): lo más "predictivo" primero.
   if (runwayForecast && runwayForecast.en_riesgo && runwayForecast.dias_hasta_cero != null) {
@@ -67,9 +67,17 @@ function generar(ctx) {
     push(p >= 0 ? "info" : "importante", `Con el ritmo actual cerrarás el mes con ${eur0(p)} € de beneficio.`, "irA_beneficio");
   }
 
-  // 5) Deuda.
-  if (deuda && deuda.deuda_total > 0) {
+  // 5) Deuda: recomendación de financiación (refinanciar/reducir) o resumen.
+  if (deudaInteligencia && deudaInteligencia.analitica && deudaInteligencia.analitica.alertas.length) {
+    const top = deudaInteligencia.analitica.alertas[0];
+    const ahorro = top.ahorro_anual ? ` Ahorro estimado: ${eur0(top.ahorro_anual)} €/año.` : "";
+    push(top.severidad === "importante" ? "importante" : "info", `${top.detalle}${ahorro}`, "irA_deuda");
+  } else if (deuda && deuda.deuda_total > 0) {
     push("info", `Tu deuda pendiente es de ${eur0(deuda.deuda_total)} € y este mes pagarás ${eur0(deuda.cuota_mensual_total)} €.`, "irA_deuda");
+  }
+  // 5b) Capacidad de financiación disponible (cuando la hay y es relevante).
+  if (deudaInteligencia && deudaInteligencia.capacidad && deudaInteligencia.capacidad.deuda_adicional_segura > 500) {
+    push("info", `Podrías asumir con seguridad hasta ${eur0(deudaInteligencia.capacidad.deuda_adicional_segura)} € de financiación adicional sin tensar la caja.`, "irA_deuda");
   }
 
   // 6) Runway.

@@ -44,6 +44,7 @@ const ENTITIES = [
   "stock_movements", // libro de movimientos de stock (el stock no cambia sin movimiento)
   "recetario_cafe", // recetas de calibración por tipo de café (dosis, molienda, tiempo)
   "apertura", // checklist de apertura del local, por día (rutina de arranque)
+  "inventarios", // recuentos físicos vs teórico (descuadre de almacén)
 ];
 
 const cache = {};

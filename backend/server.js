@@ -155,6 +155,7 @@ app.use("/api/apertura", require("./routes/apertura"));
 app.use("/api/prevision", require("./routes/prevision"));
 app.use("/api/analitica", require("./routes/analitica"));
 app.use("/api/ajustes", require("./routes/ajustes"));
+app.use("/api/inventario", require("./routes/inventario"));
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/compras-productos", require("./routes/compras-productos"));
 app.use("/api/recepciones", require("./routes/recepciones"));

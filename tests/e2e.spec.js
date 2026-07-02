@@ -353,6 +353,20 @@ test("almacén: jerarquía de 3 niveles, búsqueda global y semáforo de stock",
   expect(errors).toEqual([]);
 });
 
+test("inventario: recuento físico calcula descuadre en vivo", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_inventario());
+  await expect(page.locator(".inv-row").first()).toBeVisible();
+  // Cuenta la primera materia por debajo del teórico → descuadre negativo.
+  const teo = await page.locator(".inv-row").first().getAttribute("data-teo");
+  await page.locator(".inv-row .inv-fisico").first().fill(String(Math.max(0, Number(teo) - 5)));
+  await expect(page.locator(".inv-row").first()).toHaveClass(/inv-desc/);
+  await expect(page.locator("#inv-resumen")).toContainText(/descuadre/i);
+  expect(errors).toEqual([]);
+});
+
 test("recepción: campos de lote/caducidad y tres estados", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

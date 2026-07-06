@@ -1538,7 +1538,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v109</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v110</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -4808,10 +4808,35 @@ async function procesarFotoAlbaran(dataUrl){
   if(hint) hint.textContent="Leyendo el albarán…";
   try{
     const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
-    if(r.proveedor_id) el("rcp-prov").value=r.proveedor_id;
+    // El proveedor puede haberse creado al vuelo: asegúralo como opción y selecciónalo.
+    if(r.proveedor_id){
+      const sel=el("rcp-prov");
+      if(sel){
+        if(!Array.from(sel.options).some(o=>o.value===r.proveedor_id)){
+          const o=document.createElement("option"); o.value=r.proveedor_id;
+          o.textContent=(r.proveedor_nombre||r.proveedor||"Proveedor")+(r.proveedor_creado?" (nuevo)":"");
+          sel.appendChild(o);
+        }
+        sel.value=r.proveedor_id;
+      }
+    }
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
-    if(hint) hint.innerHTML=`Leído: <b>${esc(r.proveedor||"proveedor ?")}</b> · total ${(r.importe_total||0).toFixed(2)} €${r.proveedor_id?"":' · <span style="color:var(--ink);font-weight:700">elige el proveedor</span>'}`;
+    if(hint){
+      const nProd=(r.materias_creadas||[]).length;
+      const partes=[`Leído: <b>${esc(r.proveedor_nombre||r.proveedor||"proveedor ?")}</b>`];
+      if(r.proveedor_creado) partes.push('<span style="font-weight:700">proveedor creado ✓</span>');
+      if(nProd) partes.push(`<span style="font-weight:700">${nProd} producto${nProd===1?"":"s"} nuevo${nProd===1?"":"s"} en el almacén ✓</span>`);
+      partes.push(`total ${(r.importe_total||0).toFixed(2)} €`);
+      if(!r.proveedor_id) partes.push('<span style="color:var(--ink);font-weight:700">elige el proveedor</span>');
+      hint.innerHTML=partes.join(" · ");
+    }
     window._avisosPrecio=r.avisos_precio||[];
+    // Materias recién creadas: añádelas al catálogo local para que aparezcan
+    // seleccionadas en el desplegable de cada línea (no como "no cargar").
+    if(r.materias_creadas&&r.materias_creadas.length){
+      window._mat=window._mat||[];
+      r.materias_creadas.forEach(m=>{ if(!window._mat.some(x=>x.id===m.id)) window._mat.push({id:m.id,nombre:m.nombre,unidad:m.unidad,macro:m.macro,subcategoria:m.subcategoria}); });
+    }
     renderLineasAlbaran(r.lineas||[]);
     // Cotejo: comparar con el pedido del proveedor y los precios habituales.
     window._pedidoId=null;
@@ -5068,7 +5093,7 @@ function renderLineasAlbaran(lineas){
         ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/${esc(uded||"ud")}`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
         : `<span class="alb-precio" style="font-size:10px;color:#b8b3a3;min-width:96px;text-align:right;flex:0 0 auto;">sin precio</span>`;
       return `<div class="alb-row" data-pu="${pu!=null?pu:""}" data-imp="${imp!=null?imp:""}" data-cantalb="${cantAlb!=null?cantAlb:""}" data-uded="${esc(uded)}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${esc(l.descripcion||"")}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
+      <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${esc(l.descripcion||"")}${l.materia_creada?' <span class="tag-ink" style="font-size:8px;">nuevo</span>':""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
       <input class="alb-cant" type="number" inputmode="decimal" step="0.01" value="${l.cantidad!=null?l.cantidad:""}" title="Cantidad que entra al almacén, en ${esc(uDest||"la unidad de la materia")}" style="width:70px;font-size:11px;">
       <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>

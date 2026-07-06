@@ -27,7 +27,11 @@ function disponible() {
 const ESQUEMA = {
   type: "object",
   properties: {
-    proveedor: { type: "string", description: "Nombre del proveedor/emisor del albarán" },
+    proveedor: { type: "string", description: "Nombre comercial/fiscal del proveedor o emisor del albarán" },
+    proveedor_cif: { type: "string", description: "CIF/NIF del proveedor si aparece (p. ej. B12345678). Si no, cadena vacía." },
+    proveedor_telefono: { type: "string", description: "Teléfono del proveedor si aparece. Si no, cadena vacía." },
+    proveedor_email: { type: "string", description: "Email del proveedor si aparece. Si no, cadena vacía." },
+    proveedor_direccion: { type: "string", description: "Dirección/domicilio fiscal del proveedor si aparece. Si no, cadena vacía." },
     fecha: { type: "string", description: "Fecha del albarán en formato YYYY-MM-DD si es legible, si no cadena vacía" },
     importe_total: { type: "number", description: "Importe total del albarán en euros" },
     lineas: {
@@ -100,7 +104,9 @@ async function extraerAlbaran(base64, mediaType) {
               type: "text",
               text:
                 "Esto es la foto de un albarán de un proveedor de hostelería. " +
-                "Extrae el proveedor, la fecha, el importe total y las líneas de producto " +
+                "Extrae los datos del PROVEEDOR/emisor de la cabecera del albarán: nombre, " +
+                "CIF/NIF, teléfono, email y dirección (los que aparezcan; si alguno no se ve, cadena vacía). " +
+                "Extrae también la fecha, el importe total y las líneas de producto " +
                 "(descripción, cantidad, UNIDAD de medida, precio unitario e importe). " +
                 "La UNIDAD es clave: cópiala tal cual aparece (kg, g, L, ml, ud, caja, saco, bandeja, docena…). " +
                 "Si la línea indica un formato con peso/volumen (p. ej. 'saco 25 kg', 'garrafa 5 L', 'caja 12 ud'), " +

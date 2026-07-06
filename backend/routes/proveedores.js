@@ -45,7 +45,7 @@ router.get("/:id", (req, res) => {
 function camposDe(body) {
   const c = {};
   const str = (k) => { if (body[k] != null) c[k] = String(body[k]).trim(); };
-  ["nombre", "contacto", "telefono", "email", "direccion", "categoria", "estado", "notas", "foto_url"].forEach(str);
+  ["nombre", "contacto", "telefono", "email", "direccion", "cif", "categoria", "estado", "notas", "foto_url"].forEach(str);
   if (body.dias_reparto != null && Array.isArray(body.dias_reparto)) c.dias_reparto = body.dias_reparto;
   if (body.whatsapp != null) c.whatsapp = String(body.whatsapp).trim();
   if (c.categoria && !CATEGORIAS.includes(c.categoria)) c.categoria = "Otros";
@@ -64,6 +64,7 @@ router.post("/", jsonGrande, (req, res) => {
     telefono: datos.telefono || "",
     email: datos.email || "",
     direccion: datos.direccion || "",
+    cif: datos.cif || "",
     categoria: datos.categoria || "Otros",
     estado: datos.estado || "Activo",
     notas: datos.notas || "",

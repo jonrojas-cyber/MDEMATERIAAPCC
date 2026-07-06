@@ -2,6 +2,8 @@ const express = require("express");
 const store = require("../data-store");
 const ocr = require("../ocr");
 const { convertir } = require("../unidades");
+const intake = require("../albaran-intake");
+const { esLineaProducto, normNombre, buscarProveedor, crearProveedorDesdeOCR, crearMateriaDesdeLinea } = intake;
 
 const router = express.Router();
 
@@ -124,22 +126,42 @@ router.post("/escanear", jsonGrande, async (req, res) => {
     // empeorar la lectura). El emparejado con la materia se hace aquí.
     const datos = await ocr.extraerAlbaran(base64, media_type);
 
-    // Intentar emparejar el proveedor por nombre con los existentes.
+    // Emparejar el proveedor (por CIF o por nombre). Si no existe, se crea al
+    // vuelo con los datos de la cabecera del albarán: no hay que meterlo a mano.
     const proveedores = store.readAll("proveedores");
-    const norm = (s) => String(s || "").toLowerCase().trim();
-    const match = proveedores.find((p) => norm(p.nombre) && norm(datos.proveedor).includes(norm(p.nombre)));
+    let proveedor = buscarProveedor(datos, proveedores);
+    let proveedorCreado = false;
+    if (!proveedor && String(datos.proveedor || "").trim()) {
+      proveedor = crearProveedorDesdeOCR(datos);
+      proveedorCreado = true;
+    }
+    const provId = proveedor ? proveedor.id : null;
 
     // Productos de compra de ese proveedor (para comparar precio con el pactado).
-    const provId = match ? match.id : null;
     const comprasProd = provId
       ? store.readAll("compras_productos").filter((p) => p.proveedor_id === provId)
       : [];
 
     // Emparejar cada línea con una materia del almacén por solapamiento de
-    // palabras (más listo que "contiene"): "Tomate triturado lata" ↔ "Tomate trabajado M".
+    // palabras. Si no existe y la línea es un producto real, se da de alta
+    // automáticamente en su categoría correcta (macro→sub) del almacén.
     const avisos_precio = [];
+    const materias_creadas = [];
+    const nuevasPorNombre = new Map(); // dedup dentro del mismo albarán
     const lineas = (datos.lineas || []).map((l) => {
-      const m = mejorMateriaPorPalabras(l.descripcion, materias);
+      let m = mejorMateriaPorPalabras(l.descripcion, materias);
+      let creada = false;
+      if (!m && esLineaProducto(l.descripcion)) {
+        const clave = normNombre(l.descripcion);
+        m = nuevasPorNombre.get(clave);
+        if (!m) {
+          m = crearMateriaDesdeLinea(l, provId);
+          materias.push(m);                 // disponible para las siguientes líneas
+          nuevasPorNombre.set(clave, m);
+          materias_creadas.push({ id: m.id, nombre: m.nombre, macro: m.macro, subcategoria: m.subcategoria, unidad: m.unidad });
+          creada = true;
+        }
+      }
       // Convertir la cantidad del albarán (kg, L, caja…) a la unidad de consumo
       // de la materia (g, ml, ud). Así lo que entra al almacén ya está en la
       // unidad correcta. Se guarda también lo leído para poder revisarlo.
@@ -156,6 +178,7 @@ router.post("/escanear", jsonGrande, async (req, res) => {
         importe: l.importe,
         materia_id: m ? m.id : null,
         materia_unidad: m ? m.unidad : null,
+        materia_creada: creada,                // alta automática en el almacén
       };
       // Comparación con el precio pactado del producto de compra (si lo hay).
       const cp = mejorMateriaPorPalabras(l.descripcion, comprasProd);
@@ -182,7 +205,18 @@ router.post("/escanear", jsonGrande, async (req, res) => {
       return linea;
     });
 
-    res.json({ ...datos, lineas, proveedor_id: provId, avisos_precio });
+    // Persistir las altas automáticas (proveedor y/o materias).
+    if (proveedorCreado || materias_creadas.length) await store.flush();
+
+    res.json({
+      ...datos,
+      lineas,
+      proveedor_id: provId,
+      proveedor_nombre: proveedor ? proveedor.nombre : (datos.proveedor || ""),
+      proveedor_creado: proveedorCreado,
+      materias_creadas,
+      avisos_precio,
+    });
   } catch (e) {
     if (e.code === "OCR_NO_CONFIG") {
       return res.status(503).json({ error: "OCR no configurado. Adjunta la foto y rellena a mano.", code: "OCR_NO_CONFIG" });

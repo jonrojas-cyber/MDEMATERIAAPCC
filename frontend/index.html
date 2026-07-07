@@ -1538,7 +1538,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v110</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v111</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1546,6 +1546,11 @@ button.cc-card:hover { border-color: var(--ink); }
 <script>
 const API = "/api";
 let currentSection = "home";
+// Pila de navegación: cada vez que se entra en un detalle se apila cómo VOLVER a
+// la pantalla anterior. Así "atrás" regresa al sitio real (no al menú principal).
+let _backStack = [];
+function navInto(restore){ if (typeof restore === "function") _backStack.push(restore); }
+function navReset(){ _backStack = []; }
 
 // Accesibilidad: Enter/Espacio activan los elementos role="button" (tarjetas,
 // filas) igual que un clic, para navegación por teclado.
@@ -1718,6 +1723,7 @@ async function cambiarMiPin() {
 // ── NAVEGACIÓN ────────────────────────────────────────
 function goHome() {
   window._backOverride = null; // al ir a inicio se olvida cualquier "volver a…"
+  navReset();
   currentSection = "home";
   document.getElementById("topbar-section").textContent = "Control total";
   document.getElementById("topbar-back").classList.remove("visible");
@@ -1738,6 +1744,12 @@ function goBack() {
   // ESA lista, no a donde vive la tarea.
   if (window._backOverride) {
     const f = window._backOverride; window._backOverride = null;
+    return f();
+  }
+  // Pila de navegación: vuelve a la pantalla anterior real (detalle → lista →
+  // subcategoría → …) en vez de saltar al menú.
+  if (_backStack.length) {
+    const f = _backStack.pop();
     return f();
   }
   const s = currentSection;
@@ -2563,6 +2575,7 @@ async function irA_categoria(cat) {
   if (cat === "control") return irA_tareas();      // compat: "control" → Tareas
   const c = CATS[cat];
   if (!c) return;
+  navReset(); // entrar a un submenú es una raíz nueva: se olvida la pila anterior
   openSection("cat-"+cat, c.name);
   el("screen-inner").classList.add("submenu"); // rejilla cuadrada que llena, sin scroll
   try {
@@ -3827,6 +3840,7 @@ function almBadge(crit,ped){
 
 // NIVEL 1 — macrocategorías (pantalla principal minimalista) + búsqueda global.
 async function irA_materias(){
+  navReset(); // raíz del almacén: la pila de "atrás" empieza limpia aquí
   openSection("materias","Almacén");
   try{
     const data=await api("/materias/arbol");
@@ -3866,7 +3880,8 @@ async function almBuscarGlobal(q){
 }
 
 // NIVEL 2 — subcategorías de una macrocategoría.
-async function irA_almMacro(macroEnc){
+async function irA_almMacro(macroEnc, fromBack){
+  if(!fromBack) navInto(()=>irA_materias());
   const macro=decodeURIComponent(macroEnc);
   openSection("alm-macro","Almacén · "+macro);
   try{
@@ -3884,7 +3899,8 @@ async function irA_almMacro(macroEnc){
 }
 
 // NIVEL 3 — productos de una subcategoría: buscador + filtros + semáforo.
-async function irA_almSub(macroEnc, subEnc){
+async function irA_almSub(macroEnc, subEnc, fromBack){
+  if(!fromBack) navInto(()=>irA_almMacro(macroEnc, true));
   const macro=decodeURIComponent(macroEnc), sub=decodeURIComponent(subEnc);
   openSection("alm-sub","Almacén · "+sub);
   try{
@@ -3945,6 +3961,7 @@ function onMacroChange(){
 }
 
 async function formProducto(id, macroEnc, subEnc){
+  navInto(()=>irA_materias()); // "atrás" desde el formulario vuelve al almacén
   openSection("prod-form", id?"Editar producto":"Nuevo producto");
   setInner(`<div class="empty">Cargando…</div>`);
   try{
@@ -4163,6 +4180,7 @@ async function regAjuste(){
 // ── PROVEEDORES ───────────────────────────────────────
 const PROV_EST_COLOR={ "Activo":"var(--olive)", "Pausado":"var(--muted)", "Sustituido":"var(--alert)" };
 async function irA_proveedores(){
+  navReset(); // raíz de Proveedores
   openSection("proveedores","Proveedores");
   try{
     const [provs,meta]=await Promise.all([api("/proveedores"),api("/proveedores/meta")]);
@@ -4190,6 +4208,7 @@ async function irA_proveedores(){
 
 // Formulario crear/editar proveedor. Si se pasa id, carga el proveedor para editar.
 async function formProveedor(id){
+  navInto(()=>irA_proveedores()); // "atrás" desde el formulario vuelve a la lista
   const meta=window._provMeta||{categorias:["Otros"],estados:["Activo","Pausado","Sustituido"]};
   let p={nombre:"",contacto:"",telefono:"",email:"",direccion:"",categoria:"",estado:"Activo",notas:"",foto_url:null};
   if(id){ try{ p=await api("/proveedores/"+id); }catch(e){ alert(e.message); return; } }
@@ -4268,6 +4287,7 @@ async function guardarProveedor(btn){
 // ── PRODUCTOS POR PROVEEDOR ───────────────────────────
 const eur4=(n)=>Number(n||0).toFixed(2);
 async function irA_productosProveedor(provId){
+  navInto(()=>irA_proveedores()); // "atrás" vuelve a la lista de proveedores
   openSection("prov-productos","Productos del proveedor");
   try{
     const [prov,prods,meta]=await Promise.all([
@@ -4472,6 +4492,7 @@ async function guardarCambioPrecio(btn){
 
 // ── PEDIDOS ───────────────────────────────────────────
 async function irA_pedidos(pre){
+  navReset(); // raíz de Pedidos
   openSection("pedidos","Pedidos");
   try{
     const [provs,mats,peds,sug]=await Promise.all([api("/proveedores"),api("/materias"),api("/pedidos"),api("/pedidos/sugerencias").catch(()=>[])]);
@@ -4501,18 +4522,12 @@ async function irA_pedidos(pre){
         <div id="ped-lineas"></div>
         <div class="card-actions"><button class="btn-primary" onclick="crearPedido()">Crear pedido</button></div>
       </div>`;
-    html+=section("Pedidos realizados",peds,p=>{
-      const prov=provs.find(x=>x.id===p.proveedor_id);
-      const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="enviarPedidoWA('${p.id}')">Enviar por WhatsApp</button>`:"";
-      const recibir=(p.estado!=="recibido")?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
-      return card(
-        `${esc(p.codigo)} — ${esc(p.proveedor_nombre)}`,
-        `${esc(p.estado)} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
-        recibir+wa,
-        `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `${esc(l.nombre)}: ${l.cantidad} ${esc(l.unidad||"")} × ${pu.toFixed(4)} €/${esc(l.unidad||"ud")} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("<br>")}</div>`
-      );
-    },"Aún no hay pedidos.");
+    window._pedsAll=peds;
+    html+=`<div class="section-label">Pedidos realizados</div>
+      <input id="ped-buscar" class="mat-q" placeholder="Buscar por proveedor o artículo…" oninput="filtrarPedidos(this.value)">
+      <div id="ped-lista"></div>`;
     setInner(html);
+    renderPedidosLista(peds);
     // Si venimos del aviso "Pedir a X": proveedor preseleccionado y cantidades
     // sugeridas ya puestas. El usuario solo revisa y confirma.
     if(pre&&pre.proveedor_id){
@@ -4526,6 +4541,35 @@ async function irA_pedidos(pre){
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
+// Tarjeta de un pedido realizado (misma info que antes, reutilizable por el buscador).
+function pedidoCard(p){
+  const provs=window._provPed||[];
+  const prov=provs.find(x=>x.id===p.proveedor_id);
+  const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="enviarPedidoWA('${p.id}')">Enviar por WhatsApp</button>`:"";
+  const recibir=(p.estado!=="recibido")?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
+  return card(
+    `${esc(p.codigo)} — ${esc(p.proveedor_nombre)}`,
+    `${esc(p.estado)} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
+    recibir+wa,
+    `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `${esc(l.nombre)}: ${l.cantidad} ${esc(l.unidad||"")} × ${pu.toFixed(4)} €/${esc(l.unidad||"ud")} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("<br>")}</div>`
+  );
+}
+function renderPedidosLista(list){
+  const c=el("ped-lista"); if(!c) return;
+  c.innerHTML=(list&&list.length)?list.map(pedidoCard).join(""):`<div class="empty">Ningún pedido coincide con la búsqueda.</div>`;
+}
+// Buscador de pedidos por proveedor o por artículo (nombre de producto de una línea).
+function filtrarPedidos(q){
+  const s=(q||"").toLowerCase().trim();
+  const all=window._pedsAll||[];
+  if(!s) return renderPedidosLista(all);
+  const f=all.filter(p=>
+    (p.proveedor_nombre||"").toLowerCase().includes(s) ||
+    (p.codigo||"").toLowerCase().includes(s) ||
+    (p.lineas||[]).some(l=>(l.nombre||"").toLowerCase().includes(s))
+  );
+  renderPedidosLista(f);
+}
 function renderPedidoLineas(){
   const provId=el("ped-prov").value, cont=el("ped-lineas"); if(!cont) return;
   if(!provId){cont.innerHTML="";return;}
@@ -4669,6 +4713,7 @@ async function irA_recepcion(pre){
 }
 // Abre la recepción ya enfocada en un pedido concreto (proveedor preseleccionado).
 function recibirPedido(pedidoId, proveedorId, codigo){
+  navInto(()=>irA_pedidos()); // "atrás" desde recepción vuelve a Pedidos
   irA_recepcion({ pedido_id:pedidoId, proveedor_id:proveedorId, pedido_codigo:codigo });
 }
 // Desde una sugerencia por proveedor: abre el pedido con proveedor y cantidades puestas.
@@ -4836,6 +4881,9 @@ async function procesarFotoAlbaran(dataUrl){
     if(r.materias_creadas&&r.materias_creadas.length){
       window._mat=window._mat||[];
       r.materias_creadas.forEach(m=>{ if(!window._mat.some(x=>x.id===m.id)) window._mat.push({id:m.id,nombre:m.nombre,unidad:m.unidad,macro:m.macro,subcategoria:m.subcategoria}); });
+      // Carga la taxonomía (macro→sub) para poder mostrar y CORREGIR la categoría
+      // de cada producto nuevo en la propia revisión del albarán.
+      if(!window._taxonomia){ try{ const a=await api("/materias/arbol"); window._taxonomia=a.taxonomia; }catch(_){} }
     }
     renderLineasAlbaran(r.lineas||[]);
     // Cotejo: comparar con el pedido del proveedor y los precios habituales.
@@ -5092,6 +5140,9 @@ function renderLineasAlbaran(lineas){
       const precioTxt=(pu!=null||imp!=null)
         ? `<span class="alb-precio" style="font-size:10px;color:#555040;min-width:96px;text-align:right;flex:0 0 auto;">${pu!=null?`${eur4(pu)} €/${esc(uded||"ud")}`:""}${pu!=null&&imp!=null?" · ":""}${imp!=null?`<b>${imp.toFixed(2)} €</b>`:""}</span>`
         : `<span class="alb-precio" style="font-size:10px;color:#b8b3a3;min-width:96px;text-align:right;flex:0 0 auto;">sin precio</span>`;
+      // Producto NUEVO: muestra en qué categoría se ha dado de alta y deja corregirla.
+      const mm=(window._mat||[]).find(x=>x.id===l.materia_id);
+      const catSel=(l.materia_creada&&mm)?`<div style="width:100%;font-size:9px;margin-top:2px;color:#6a6555;display:flex;align-items:center;gap:5px;">Categoría: ${catSelectAlbaran(l.materia_id,mm.macro,mm.subcategoria)}</div>`:"";
       return `<div class="alb-row" data-pu="${pu!=null?pu:""}" data-imp="${imp!=null?imp:""}" data-cantalb="${cantAlb!=null?cantAlb:""}" data-uded="${esc(uded)}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
       <span class="alb-desc" style="font-size:10px;color:#888070;flex:1;min-width:80px;">${esc(l.descripcion||"")}${l.materia_creada?' <span class="tag-ink" style="font-size:8px;">nuevo</span>':""}${l.precio_alerta?` <span style="color:var(--alert);font-weight:700" title="Pactado ${eur4(l.precio_pactado)} €">⚠ ${l.precio_dif_pct>0?"+":""}${l.precio_dif_pct}%</span>`:""}</span>
       <select class="alb-mat" onchange="actualizarUni(this)" style="font-size:11px;max-width:140px;">${opts(l.materia_id)}</select>
@@ -5099,8 +5150,28 @@ function renderLineasAlbaran(lineas){
       <span class="alb-uni" style="font-size:10px;color:#888070;min-width:24px;">${unidadDe(l.materia_id)}</span>
       ${precioTxt}
       ${conv}
+      ${catSel}
     </div>`;
     }).join("");
+}
+// Desplegable "Macro › Sub" para corregir la categoría de un producto recién creado.
+function catSelectAlbaran(materiaId, curMacro, curSub){
+  const tax=window._taxonomia; if(!tax) return `<b>${esc(curMacro||"")} › ${esc(curSub||"")}</b>`;
+  let opts="";
+  Object.keys(tax).forEach(macro=>{ (tax[macro]||[]).forEach(sub=>{
+    const val=macro+"|||"+sub;
+    const seld=(macro===curMacro&&sub===curSub)?"selected":"";
+    opts+=`<option value="${esc(val)}" ${seld}>${esc(macro)} › ${esc(sub)}</option>`;
+  }); });
+  return `<select onchange="cambiarCategoriaMateria('${materiaId}',this.value)" style="font-size:9px;max-width:180px;">${opts}</select>`;
+}
+async function cambiarCategoriaMateria(id,val){
+  const i=String(val).indexOf("|||"); if(i<0) return;
+  const macro=val.slice(0,i), sub=val.slice(i+3);
+  try{
+    await api("/materias/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({macro,subcategoria:sub})});
+    const m=(window._mat||[]).find(x=>x.id===id); if(m){ m.macro=macro; m.subcategoria=sub; }
+  }catch(e){ alert("No se pudo cambiar la categoría: "+e.message); }
 }
 function recogerLineasAlbaran(){
   return [...document.querySelectorAll(".alb-row")].map(row=>{

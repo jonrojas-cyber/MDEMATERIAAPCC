@@ -692,3 +692,36 @@ test("costes fijos OS: la pantalla muestra coste de existir y punto de equilibri
   await expect(page.locator(".cc-label", { hasText: /Punto de equilibrio · hoy/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+// Navegación: "atrás" regresa al nivel anterior real (no al menú principal).
+test("navegación: atrás vuelve al nivel anterior del almacén, no al inicio", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_materias());
+  await page.locator(".alm-macro").first().click();
+  await expect(page.locator("#topbar-section")).toHaveText(/Almacén ·/);
+  await page.locator(".alm-sub:not(.alm-sub-empty)").first().click();
+  await expect(page.locator("#alm-subq")).toBeVisible();
+  // Atrás desde la subcategoría → vuelve a la macro (lista de subcategorías).
+  await page.click("#topbar-back");
+  await expect(page.locator(".alm-sublist")).toBeVisible();
+  // Atrás desde la macro → vuelve al almacén (nivel 1), no al inicio.
+  await page.click("#topbar-back");
+  await expect(page.locator(".alm-macro").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+// Pedidos: buscador por proveedor o artículo.
+test("pedidos: el buscador filtra la lista de pedidos", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_pedidos());
+  await expect(page.locator("#ped-buscar")).toBeVisible();
+  // Un término imposible deja la lista sin resultados (nodo vacío visible).
+  await page.fill("#ped-buscar", "zzz_no_existe_zzz");
+  await expect(page.locator("#ped-lista .empty")).toBeVisible();
+  await page.fill("#ped-buscar", "");
+  expect(errors).toEqual([]);
+});

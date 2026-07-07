@@ -205,8 +205,17 @@ router.post("/escanear", jsonGrande, async (req, res) => {
       return linea;
     });
 
-    // Persistir las altas automáticas (proveedor y/o materias).
-    if (proveedorCreado || materias_creadas.length) await store.flush();
+    // Vincula YA (al escanear, sin esperar a aceptar) los artículos de las líneas
+    // al catálogo del proveedor, para que aparezcan como "sus artículos" en Pedidos.
+    let provVinculado = false;
+    if (proveedor) {
+      const set = new Set(proveedor.productos_asociados || []);
+      lineas.forEach((l) => { if (l.materia_id && !set.has(l.materia_id)) { set.add(l.materia_id); provVinculado = true; } });
+      if (provVinculado) store.update("proveedores", proveedor.id, { productos_asociados: Array.from(set) });
+    }
+
+    // Persistir las altas automáticas (proveedor, materias y/o vínculos).
+    if (proveedorCreado || materias_creadas.length || provVinculado) await store.flush();
 
     res.json({
       ...datos,

@@ -1508,6 +1508,34 @@ button.cc-card:hover { border-color: var(--ink); }
 }
 .cam-shot:active { transform: scale(.94); }
 .cam-shot:disabled { opacity: .5; }
+
+/* ── PEDIDO · filas de artículo legibles y con aire (buenas para TPV táctil) ── */
+.ped-row { display: flex; gap: 10px; align-items: center; padding: 11px 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.ped-row:last-child { border-bottom: none; }
+.ped-row .ped-name { font-size: 14px; font-weight: 700; flex: 1; min-width: 130px; letter-spacing: .01em; }
+.ped-row input { font-size: 15px; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--cream); color: var(--ink); }
+.ped-row .ped-cant { width: 84px; text-align: center; }
+.ped-row .ped-precio { width: 96px; text-align: right; }
+.ped-row .ped-u { font-size: 11px; color: var(--muted); min-width: 26px; }
+
+/* ── MODO TPV · elementos más grandes para pantalla táctil de mostrador ── */
+body.tpv .ped-row { padding: 14px 8px; }
+body.tpv .ped-row .ped-name { font-size: 16px; }
+body.tpv .ped-row input { font-size: 17px; padding: 12px 12px; }
+body.tpv .mat-q { font-size: 16px; padding: 13px 14px; }
+body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px; }
+
+/* Teclado numérico en pantalla (solo modo TPV). */
+#tpv-keypad { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 1200;
+  display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(320px, 92vw);
+  background: var(--paper); border: 1px solid var(--ink); border-radius: 12px; padding: 12px;
+  box-shadow: 0 10px 30px rgba(17,16,9,.28); }
+#tpv-keypad.on { display: grid; }
+#tpv-keypad button { font-family: var(--font); font-size: 22px; font-weight: 700; padding: 14px 0;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--cream); color: var(--ink); cursor: pointer; }
+#tpv-keypad button:active { background: var(--ink); color: var(--cream); }
+#tpv-keypad button.kp-ok { grid-column: 1 / -1; background: var(--ink); color: var(--cream); border-color: var(--ink); letter-spacing: .1em; text-transform: uppercase; font-size: 14px; }
+#tpv-keypad .kp-wide { grid-column: span 1; }
 </style>
 </head>
 <body>
@@ -1538,7 +1566,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v112</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v113</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -4585,12 +4613,12 @@ function renderPedidoLineas(){
   const soloProv=mats.length>0;
   if(!mats.length) mats=window._matPed||[]; // sin catálogo aún: muestra todo
   mats=mats.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||""));
-  const rows=mats.map(m=>`<div class="ped-row" data-mat="${m.id}" data-nombre="${esc((m.nombre||"").toLowerCase())}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-      <span style="font-size:11px;flex:1;min-width:90px;">${esc(m.nombre)}</span>
-      <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" style="width:62px;font-size:11px;">
-      <span style="font-size:10px;color:#888070;">${esc(m.unidad||"")}</span>
-      <input class="ped-precio" type="number" inputmode="decimal" step="0.0001" value="${m.coste_medio}" style="width:74px;font-size:11px;" title="Precio esperado por ${esc(m.unidad||"ud")}">
-      <span style="font-size:10px;color:#888070;">€/${esc(m.unidad||"ud")}</span>
+  const rows=mats.map(m=>`<div class="ped-row" data-mat="${m.id}" data-nombre="${esc((m.nombre||"").toLowerCase())}">
+      <span class="ped-name">${esc(m.nombre)}</span>
+      <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0">
+      <span class="ped-u">${esc(m.unidad||"")}</span>
+      <input class="ped-precio" type="number" inputmode="decimal" step="0.0001" value="${m.coste_medio}" title="Precio esperado por ${esc(m.unidad||"ud")}">
+      <span class="ped-u">€/${esc(m.unidad||"ud")}</span>
     </div>`).join("");
   cont.innerHTML=`<div class="section-label" style="margin-top:8px;">${soloProv?`Artículos de este proveedor · ${mats.length}`:"Productos (pon cantidad a los que pidas)"}</div>
     <input id="ped-artq" class="mat-q" placeholder="Buscar artículo de este proveedor…" oninput="buscarArticuloPedido(this.value)" style="margin:6px 0;">
@@ -5851,6 +5879,65 @@ function entrarApp() {
   document.body.innerHTML = APP_SHELL;
   renderUserChips();
   loadHome();
+  initTPV();
+}
+
+// ── MODO TPV (mostrador táctil) · detección + teclado numérico en pantalla ──
+// En el TPV no siempre hay teclado físico: al tocar un campo numérico aparece un
+// teclado en pantalla. Se puede forzar con ?tpv=1 (o desactivar con ?tpv=0).
+function detectarTPV(){
+  try{
+    const params=new URLSearchParams(location.search);
+    if(params.get("tpv")==="1") localStorage.setItem("cm_tpv","1");
+    if(params.get("tpv")==="0") localStorage.setItem("cm_tpv","0");
+    const g=localStorage.getItem("cm_tpv");
+    if(g==="1") return true;
+    if(g==="0") return false;
+    // Auto: pantalla táctil grande (mostrador/tablet), no un móvil.
+    const tactil=(navigator.maxTouchPoints||0)>0 || ("ontouchstart" in window);
+    const menor=Math.min(screen.width||9999, screen.height||9999);
+    return tactil && menor>=768;
+  }catch(_){ return false; }
+}
+let _tpv=false, _kpWired=false, _kpTarget=null;
+function initTPV(){
+  _tpv=detectarTPV();
+  document.body.classList.toggle("tpv", _tpv);
+  if(_tpv) montarKeypad();
+}
+function esCampoNumerico(x){ return x && x.tagName==="INPUT" && x.type==="number"; }
+function montarKeypad(){
+  let kp=document.getElementById("tpv-keypad");
+  if(!kp){
+    kp=document.createElement("div"); kp.id="tpv-keypad";
+    const keys=["1","2","3","4","5","6","7","8","9",".","0","←"];
+    kp.innerHTML=keys.map(k=>`<button type="button" data-k="${k}">${k}</button>`).join("")+`<button type="button" class="kp-ok" data-k="ok">Hecho</button>`;
+    kp.addEventListener("mousedown",(e)=>e.preventDefault()); // no robar el foco del campo
+    kp.addEventListener("click",(e)=>{ const b=e.target.closest("button"); if(b) kpPulsar(b.dataset.k); });
+    document.body.appendChild(kp);
+  }
+  if(!_kpWired){
+    document.addEventListener("focusin",(e)=>{
+      if(!_tpv) return;
+      if(esCampoNumerico(e.target)){ _kpTarget=e.target; try{e.target.setAttribute("inputmode","none");}catch(_){}
+        const k=document.getElementById("tpv-keypad"); if(k) k.classList.add("on"); }
+    });
+    document.addEventListener("focusout",()=>{
+      setTimeout(()=>{ if(!esCampoNumerico(document.activeElement)){ const k=document.getElementById("tpv-keypad"); if(k) k.classList.remove("on"); _kpTarget=null; } },60);
+    });
+    _kpWired=true;
+  }
+}
+function kpPulsar(k){
+  const inp=_kpTarget; if(!inp) return;
+  if(k==="ok"){ const kp=document.getElementById("tpv-keypad"); if(kp) kp.classList.remove("on"); inp.blur(); _kpTarget=null; return; }
+  let v=String(inp.value||"");
+  if(k==="←") v=v.slice(0,-1);
+  else if(k===".") { if(!v.includes(".")) v=v+"."; }
+  else v=v+k;
+  inp.value=v;
+  inp.dispatchEvent(new Event("input",{bubbles:true}));
+  inp.dispatchEvent(new Event("change",{bubbles:true}));
 }
 
 async function arrancar() {

@@ -735,3 +735,29 @@ test("pedidos: el buscador filtra la lista de pedidos", async ({ page }) => {
   await page.fill("#ped-buscar", "");
   expect(errors).toEqual([]);
 });
+
+// Modo TPV: al forzar ?tpv=1 aparece el teclado numérico y escribe en el campo.
+test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?tpv=1");
+  await page.waitForSelector("#ubtn-Moni", { timeout: 30_000 });
+  await page.click("#ubtn-Moni");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".dash", { timeout: 15_000 });
+  expect(await page.evaluate(() => document.body.classList.contains("tpv"))).toBe(true);
+  await page.evaluate(() => irA_pedidos());
+  await page.selectOption("#ped-prov", { index: 1 });
+  const cant = page.locator(".ped-row .ped-cant").first();
+  await cant.click();
+  await expect(page.locator("#tpv-keypad.on")).toBeVisible();
+  await page.locator('#tpv-keypad button[data-k="5"]').click();
+  await page.locator('#tpv-keypad button[data-k="0"]').click();
+  await expect(cant).toHaveValue("50");
+  await page.locator('#tpv-keypad button[data-k="←"]').click();
+  await expect(cant).toHaveValue("5");
+  await page.locator('#tpv-keypad button.kp-ok').click();
+  await expect(page.locator("#tpv-keypad.on")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

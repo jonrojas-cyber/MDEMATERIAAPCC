@@ -1,0 +1,34 @@
+[
+  {
+    "id": "cat-ambar",
+    "bebida_id": "beb-ambar",
+    "persona": "Jon",
+    "fecha": "2026-07-07T10:00:00.000Z",
+    "acidez": 8,
+    "dulzor": 4,
+    "amargor": 4,
+    "aromatica": 8,
+    "carbonatacion": 8,
+    "persistencia": 8,
+    "salivacion": 9,
+    "drinkability": 9,
+    "observaciones": "Seca, floral, invita al siguiente sorbo.",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  },
+  {
+    "id": "cat-blanco",
+    "bebida_id": "beb-blanco",
+    "persona": "Mónica",
+    "fecha": "2026-07-07T10:00:00.000Z",
+    "acidez": 8,
+    "dulzor": 4,
+    "amargor": 3,
+    "aromatica": 8,
+    "carbonatacion": 8,
+    "persistencia": 8,
+    "salivacion": 9,
+    "drinkability": 9,
+    "observaciones": "Verde, muy fresca, larga.",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  }
+]

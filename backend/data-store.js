@@ -58,6 +58,12 @@ const ENTITIES = [
   "executive_notes", // notas del propietario en el Centro de Control
   "business_health_config", // pesos configurables de la Salud del Negocio (no hardcodeados)
   "business_config", // perfil operativo (horario de apertura, ticket medio, inflación) — singleton
+  // ── MBDS · Materia Beverage Design System (laboratorio de I+D de bebidas) ──
+  "mbds_ingredientes", // biblioteca sensorial: cada ingrediente y su función
+  "mbds_cordiales",    // cordiales (base sensorial) con proceso y parámetros
+  "mbds_bebidas",      // bebidas finales (alcohólica / 0.0) con validación Materia
+  "mbds_catas",        // catas: puntuación sensorial por bebida
+  "mbds_lotes",        // control de producción por lote
 ];
 
 const cache = {};

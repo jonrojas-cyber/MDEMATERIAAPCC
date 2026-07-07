@@ -1509,6 +1509,15 @@ button.cc-card:hover { border-color: var(--ink); }
 .cam-shot:active { transform: scale(.94); }
 .cam-shot:disabled { opacity: .5; }
 
+/* ── MBDS · laboratorio de bebidas ── */
+.mbds-apta { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; padding: 4px 9px; border: 1px solid var(--line); white-space: nowrap; align-self: center; }
+.mbds-apta.ok { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+.mbds-apta.no { color: #b5462a; border-color: #b5462a; }
+.mbds-apta.pend { color: var(--muted); }
+.mbds-ing-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.mbds-ing-row select { flex: 1; min-width: 120px; font-size: 12px; }
+.mbds-ing-row input { width: 84px; font-size: 12px; }
+
 /* ── PEDIDO · filas de artículo legibles y con aire (buenas para TPV táctil) ── */
 .ped-row { display: flex; gap: 10px; align-items: center; padding: 11px 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .ped-row:last-child { border-bottom: none; }
@@ -1566,7 +1575,7 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v113</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v114</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2291,6 +2300,7 @@ async function loadHome() {
           <span class="dashcard-sub">${c.sub}</span>
         </button>`).join("")}
       </div>
+      <button class="dash-informes" onclick="irA_mbds()">Laboratorio de bebidas · MBDS →</button>
       ${esAdmin ? `<button class="dash-informes dash-owner" onclick="irA_centroControl()">Centro de control · el estado de tu negocio →</button>
       <button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
   } catch(e) {
@@ -2302,6 +2312,314 @@ async function loadHome() {
 // "Resumen del día" se fusionó con Análisis (una sola pantalla de números).
 // Se mantiene el nombre como alias por compatibilidad con enlaces antiguos.
 function irA_resumen(){ return irA_analisis(); }
+
+// ════════════════════════════════════════════════════════════════════════════
+// MBDS · MATERIA BEVERAGE DESIGN SYSTEM · laboratorio de bebidas
+// ════════════════════════════════════════════════════════════════════════════
+function mbdsEsAdmin(){ const u=getUser(); return u && u.rol==="admin"; }
+function mbdsAptaBadge(v){
+  if(!v) return "";
+  if(v.apta) return `<span class="mbds-apta ok">Materia apta ✓</span>`;
+  if(v.fallos_tecnicos) return `<span class="mbds-apta no">Revisar · ${v.fallos.length} parámetro${v.fallos.length===1?"":"s"}</span>`;
+  return `<span class="mbds-apta pend">Pendiente de cata</span>`;
+}
+function mbdsNum(x,d){ return (x==null||x==="")?"—":(typeof x==="number"?(d!=null?x.toFixed(d):x):x); }
+
+async function irA_mbds(){
+  navReset(); openSection("mbds","Laboratorio · MBDS");
+  try{
+    const bebidas=await api("/mbds/bebidas");
+    const admin=mbdsEsAdmin();
+    const aptas=bebidas.filter(b=>b.validacion&&b.validacion.apta).length;
+    const cards=bebidas.map(b=>`<button class="cc-card" onclick="verBebidaMBDS('${b.id}')" style="margin-bottom:10px;">
+        <div class="cc-label">${esc(b.familia||"")} · ${b.version==="0.0"?"0.0":"Alcohólica"}</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+          <div class="cc-kpi" style="font-size:22px;">${esc(b.nombre)}</div>${mbdsAptaBadge(b.validacion)}
+        </div>
+        <div class="cc-mini">ABV ${mbdsNum(b.calc&&b.calc.abv,1)} % · °Brix ${mbdsNum(b.calc&&b.calc.brix,1)} · pH ${mbdsNum(b.calc&&b.calc.ph,2)} · CO₂ ${mbdsNum(b.calc&&b.calc.co2,1)} g/L${admin&&b.calc&&b.calc.margen_pct!=null?` · margen ${b.calc.margen_pct}%`:""}</div>
+      </button>`).join("");
+    setInner(`
+      <div class="cc-card cc-hero-single"><div class="cc-label">Laboratorio de bebidas</div>
+        <div class="cc-kpi cc-big">${aptas}/${bebidas.length}</div>
+        <div class="cc-mini">bebidas Materia apta · estándar pH 3.18 · °Brix 8.1 · ABV 7.5 % · sal 0.10 %</div></div>
+      <div class="cc-links" style="margin-bottom:12px;">
+        <button class="cc-link" onclick="irA_mbdsBiblioteca()">Biblioteca sensorial</button>
+        <button class="cc-link" onclick="irA_mbdsCordiales()">Cordiales</button>
+        ${admin?`<button class="cc-link cc-link-wide" onclick="formBebidaMBDS()">+ Nueva bebida</button>`:""}
+      </div>
+      <div class="section-label">Bebidas</div>
+      ${bebidas.length?cards:`<div class="empty">Aún no hay bebidas. ${admin?"Crea la primera.":""}</div>`}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+async function verBebidaMBDS(id){
+  navInto(()=>irA_mbds()); openSection("mbds-beb","Bebida");
+  try{
+    const [b,ings]=await Promise.all([api("/mbds/bebidas/"+id),api("/mbds/ingredientes").catch(()=>[])]);
+    window._mbdsBeb=b; window._mbdsIng=ings;
+    const admin=mbdsEsAdmin(); const c=b.calc||{}, v=b.validacion||{};
+    const param=(l,val,u)=>`<div class="cc-card" style="padding:10px 12px;"><div class="cc-label">${l}</div><div class="cc-kpi" style="font-size:20px;">${mbdsNum(val, l==="pH"?2:1)}${u?`<span style="font-size:11px;color:var(--muted)"> ${u}</span>`:""}</div></div>`;
+    const paramsGrid=`<div class="cc-grid">
+      ${param("ABV",c.abv,"% vol")}${param("°Brix",c.brix,"")}
+      ${param("pH",c.ph,"")}${param("CO₂",c.co2,"g/L")}
+      ${param("Sal",c.salinidad,"%")}${param("Volumen",c.volumen_total,"ml")}
+    </div>`;
+    // Validación (checks)
+    const chk=(v.checks||[]).map(k=>`<div class="cc-line"><span>${k.ok===true?"✓":k.ok===false?"✗":"·"} ${esc(k.label)} <span style="color:var(--muted)">(${k.rango})</span></span><b style="${k.ok===false?"color:#b5462a":""}">${mbdsNum(k.valor, k.clave==="ph"?2:1)}</b></div>`).join("");
+    const corr=(b.correccion||[]).map(x=>`<div class="cc-mini" style="margin-top:6px;"><b>${esc(x.problema)}:</b> ${x.acciones.map(esc).join(" · ")}</div>`).join("");
+    // Economía (solo dirección)
+    const eco=admin?`<div class="section-label">Economía</div>
+      <div class="cc-card">
+        <div class="cc-line"><span>Coste por servicio</span><b>${ccEur(c.coste_por_servicio)}</b></div>
+        <div class="cc-line"><span>PVP</span><b>${ccEur(c.pvp)} ${c.pvp_recomendado?`<span style="color:var(--muted);font-weight:400">(rec. ${ccEur(c.pvp_recomendado)})</span>`:""}</b></div>
+        <div class="cc-line"><span>Food cost</span><b>${c.food_cost_pct!=null?c.food_cost_pct+" %":"—"}</b></div>
+        <div class="cc-line"><span>Margen</span><b>${c.margen_pct!=null?c.margen_pct+" %":"—"}</b></div>
+        <div class="cc-line"><span>Servicios por lote</span><b>${c.servicios||"—"}</b></div>
+      </div>`:"";
+    // Escandallo / receta
+    const receta=`<div class="section-label">Receta</div><div class="cc-card">
+        <div class="cc-line"><span>Cordial · ${esc(b.cordial_nombre||"—")}</span><b>${mbdsNum(b.cordial_ml,0)} ml</b></div>
+        ${(b.componentes||[]).map(cp=>{ const ing=(b.calc&&b.calc.partes||[]).find(p=>p.nombre); return `<div class="cc-line"><span>${esc(mbdsIngNombre(cp.ingrediente_id))}</span><b>${mbdsNum(cp.ml,0)} ml</b></div>`; }).join("")}
+      </div>`;
+    const proceso=`<div class="section-label">Proceso · carbonatación completa</div><div class="cc-card">
+        <div class="cc-mini">CO₂ objetivo ${mbdsNum(b.co2,1)} g/L · presión ${esc(b.presion||"—")} · ${esc(b.temperatura||"—")} · ${esc(b.tiempo_carbo||"—")} · envase ${esc(b.envase||"—")}</div>
+        <div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="mbdsCronometro()">Cronómetro</button></div>
+      </div>`;
+    const catas=`<div class="section-label">Catas</div>
+      <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="formCataMBDS('${b.id}')">Registrar cata</button></div>
+      <div class="cc-card">${(b.catas||[]).length?(b.catas).map(k=>`<div class="cc-line"><span>${new Date(k.fecha).toLocaleDateString("es-ES")} · ${esc(k.persona||"")}</span><b>drink ${k.drinkability} · dulzor ${k.dulzor}</b></div>`).join(""):`<div class="cc-mini">Sin catas todavía.</div>`}</div>`;
+    const lotes=`<div class="section-label">Producción · lotes</div>
+      <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="formLoteMBDS('${b.id}')">Registrar lote</button></div>
+      <div class="cc-card">${(b.lotes||[]).length?(b.lotes).map(l=>`<div class="cc-line"><span>${esc(l.numero_lote)} · ${new Date(l.fecha).toLocaleDateString("es-ES")} · ${esc(l.operario||"")}</span><b>${esc(l.resultado||"")}</b></div>`).join(""):`<div class="cc-mini">Sin lotes registrados.</div>`}</div>`;
+    setInner(`
+      <div class="cc-card cc-hero-single"><div class="cc-label">${esc(b.familia||"")} · ${b.version==="0.0"?"Versión 0.0":"Versión alcohólica"}</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;">
+          <div class="cc-kpi cc-big">${esc(b.nombre)}</div>${mbdsAptaBadge(v)}</div></div>
+      <div class="section-label">Parámetros técnicos</div>${paramsGrid}
+      <div class="section-label">Validación Materia</div><div class="cc-card">${chk}${corr?`<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px;"><div class="cc-label">Corrección propuesta</div>${corr}</div>`:""}</div>
+      ${receta}${proceso}${eco}${catas}${lotes}
+      ${admin?`<div class="card-actions" style="margin-top:12px;"><button class="btn-ghost" onclick="formBebidaMBDS('${b.id}')">Editar bebida</button></div>`:""}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function mbdsIngNombre(id){ const l=window._mbdsIng||[]; const i=l.find(x=>x.id===id); return i?i.nombre:id; }
+
+// Cronómetro simple para el modo trabajador.
+let _cronoT=null,_cronoS=0;
+function mbdsCronometro(){
+  setInner(`<div class="section-label">Cronómetro</div>
+    <div class="cc-card" style="text-align:center;"><div id="crono-disp" class="cc-kpi cc-big" style="font-variant-numeric:tabular-nums;">00:00</div>
+      <div class="card-actions" style="justify-content:center;margin-top:10px;">
+        <button class="btn-primary" onclick="cronoStart()">Iniciar</button>
+        <button class="btn-ghost" onclick="cronoStop()">Parar</button>
+        <button class="btn-ghost" onclick="cronoReset()">Reiniciar</button>
+      </div></div>
+    <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="goBack()">Volver</button></div>`);
+}
+function cronoRender(){ const m=String(Math.floor(_cronoS/60)).padStart(2,"0"),s=String(_cronoS%60).padStart(2,"0"); const d=el("crono-disp"); if(d)d.textContent=`${m}:${s}`; }
+function cronoStart(){ if(_cronoT)return; _cronoT=setInterval(()=>{_cronoS++;cronoRender();},1000); }
+function cronoStop(){ if(_cronoT){clearInterval(_cronoT);_cronoT=null;} }
+function cronoReset(){ cronoStop(); _cronoS=0; cronoRender(); }
+
+async function irA_mbdsCordiales(){
+  navInto(()=>irA_mbds()); openSection("mbds-cor","Cordiales");
+  try{
+    const [cors,ings]=await Promise.all([api("/mbds/cordiales"),api("/mbds/ingredientes")]);
+    window._mbdsIng=ings; const admin=mbdsEsAdmin();
+    const cards=cors.map(c=>{ const k=c.calc||{}; return `<div class="card"><div class="card-name">${esc(c.nombre)} <span class="tag-ink">${esc(c.familia||"")}</span></div>
+      <div class="card-meta">°Brix ${mbdsNum(k.brix,1)} · pH ${mbdsNum(k.ph,2)} · rend. ${mbdsNum(k.rendimiento_ml,0)} ml${admin&&k.coste_por_litro!=null?` · ${eur4(k.coste_por_litro)} €/L`:""}${k.perfil_acido?` · ácidos ${k.perfil_acido.malico}/${k.perfil_acido.citrico}/${k.perfil_acido.tartarico}`:""}</div>
+      <div class="card-meta" style="margin-top:4px;">${esc(c.descripcion||"")}</div>
+      ${admin?`<div class="card-actions"><button class="btn-ghost" onclick="formCordialMBDS('${c.id}')">Editar</button></div>`:""}</div>`; }).join("");
+    setInner(`${admin?`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formCordialMBDS()">+ Nuevo cordial</button></div>`:""}${cors.length?cards:`<div class="empty">Aún no hay cordiales.</div>`}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+async function irA_mbdsBiblioteca(){
+  navInto(()=>irA_mbds()); openSection("mbds-bib","Biblioteca sensorial");
+  try{
+    const ings=await api("/mbds/ingredientes"); window._mbdsIng=ings; const admin=mbdsEsAdmin();
+    const grupos={};
+    ings.forEach(i=>{ const f=i.funcion_sensorial||"Otros"; (grupos[f]=grupos[f]||[]).push(i); });
+    const html=Object.keys(grupos).sort().map(f=>`<div class="section-label">${esc(f)}</div><div class="cc-card">${grupos[f].map(i=>`<div class="cc-line"><span><b>${esc(i.nombre)}</b> <span style="color:var(--muted)">${esc(i.categoria||"")}</span><br><span class="cc-mini">${esc(i.notas_sensoriales||"")}</span></span><span class="cc-mini" style="text-align:right;">${i.abv?`${i.abv}% · `:""}${i.brix?`${i.brix}°Bx · `:""}${i.ph?`pH ${i.ph}`:""}${admin&&i.coste?`<br>${eur4(i.coste)} €/kg`:""}</span></div>`).join("")}</div>`).join("");
+    setInner(`${admin?`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formIngredienteMBDS()">+ Nuevo ingrediente</button></div>`:""}<div class="cc-mini" style="margin-bottom:10px;">Cada ingrediente tiene una FUNCIÓN sensorial, no solo un nombre.</div>${html||`<div class="empty">Biblioteca vacía.</div>`}`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+// ── Cata ─────────────────────────────────────────────────────────────────────
+function formCataMBDS(bebidaId){
+  const campos=[["acidez","Acidez"],["dulzor","Dulzor"],["amargor","Amargor"],["aromatica","Aromática"],["carbonatacion","Carbonatación"],["persistencia","Persistencia"],["salivacion","Salivación"],["drinkability","Drinkability"]];
+  setInner(`<div class="section-label">Registrar cata</div>
+    <div class="card">
+      <div class="field"><label>Persona</label><input id="cata-persona" value="${esc((getUser()||{}).nombre||"")}" style="width:100%"></div>
+      ${campos.map(([k,l])=>`<div class="field"><label>${l} (1–10)</label><input id="cata-${k}" type="number" min="0" max="10" step="1" style="width:100%"></div>`).join("")}
+      <div class="field"><label>Observaciones</label><input id="cata-obs" style="width:100%"></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="guardarCataMBDS('${bebidaId}',this)">Guardar cata</button><button class="btn-ghost" onclick="verBebidaMBDS('${bebidaId}')">Cancelar</button></div>
+    <div id="cata-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function guardarCataMBDS(bebidaId,btn){
+  const g=(k)=>Number(el("cata-"+k).value)||0;
+  const body={bebida_id:bebidaId,persona:el("cata-persona").value.trim(),acidez:g("acidez"),dulzor:g("dulzor"),amargor:g("amargor"),aromatica:g("aromatica"),carbonatacion:g("carbonatacion"),persistencia:g("persistencia"),salivacion:g("salivacion"),drinkability:g("drinkability"),observaciones:el("cata-obs").value.trim()};
+  if(btn)btn.disabled=true;
+  try{ await api("/mbds/catas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); verBebidaMBDS(bebidaId); }
+  catch(e){ el("cata-msg").textContent=e.message; if(btn)btn.disabled=false; }
+}
+
+// ── Lote de producción ───────────────────────────────────────────────────────
+function formLoteMBDS(bebidaId){
+  setInner(`<div class="section-label">Registrar lote de producción</div>
+    <div class="card">
+      <div class="field"><label>Operario</label><input id="lote-op" value="${esc((getUser()||{}).nombre||"")}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:100px;"><label>Nº lote (auto si vacío)</label><input id="lote-num" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:90px;"><label>CO₂ (g/L)</label><input id="lote-co2" type="number" step="0.1" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:90px;"><label>Temperatura</label><input id="lote-temp" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:90px;"><label>Presión</label><input id="lote-pres" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:80px;"><label>Merma %</label><input id="lote-merma" type="number" step="0.1" style="width:100%"></div>
+      </div>
+      <div class="field"><label>Resultado</label><select id="lote-res" style="width:100%"><option>OK</option><option>OK con incidencia</option><option>Descartado</option></select></div>
+      <div class="field"><label>Observaciones</label><input id="lote-obs" style="width:100%"></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="guardarLoteMBDS('${bebidaId}',this)">Guardar lote</button><button class="btn-ghost" onclick="verBebidaMBDS('${bebidaId}')">Cancelar</button></div>
+    <div id="lote-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+}
+async function guardarLoteMBDS(bebidaId,btn){
+  const body={bebida_id:bebidaId,operario:el("lote-op").value.trim(),numero_lote:el("lote-num").value.trim(),co2:Number(el("lote-co2").value)||0,temperatura:el("lote-temp").value.trim(),presion:el("lote-pres").value.trim(),merma_pct:Number(el("lote-merma").value)||0,resultado:el("lote-res").value,observaciones:el("lote-obs").value.trim()};
+  if(btn)btn.disabled=true;
+  try{ await api("/mbds/lotes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); verBebidaMBDS(bebidaId); }
+  catch(e){ el("lote-msg").textContent=e.message; if(btn)btn.disabled=false; }
+}
+
+// ── Admin: ingrediente de la biblioteca ──────────────────────────────────────
+async function formIngredienteMBDS(id){
+  navInto(()=>irA_mbdsBiblioteca()); openSection("mbds-ing-form", id?"Editar ingrediente":"Nuevo ingrediente");
+  let r={nombre:"",categoria:"Otro",funcion_sensorial:"",coste:"",abv:"",brix:"",ph:"",notas_sensoriales:"",proveedor:"",vida_util_dias:""};
+  try{ const meta=await api("/mbds/meta"); window._mbdsMeta=meta;
+    if(id){ const l=await api("/mbds/ingredientes"); const f=l.find(x=>x.id===id); if(f) r=f; window._mbdsIngEdit=id; } else window._mbdsIngEdit=null;
+    const cats=(meta.categorias_ingrediente||[]).map(c=>`<option ${c===r.categoria?"selected":""}>${esc(c)}</option>`).join("");
+    const funs=(meta.funciones_sensoriales||[]).map(c=>`<option ${c===r.funcion_sensorial?"selected":""}>${esc(c)}</option>`).join("");
+    setInner(`<div class="card">
+      <div class="field"><label>Nombre</label><input id="ig-nombre" value="${esc(r.nombre||"")}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:120px;"><label>Categoría</label><select id="ig-cat" style="width:100%">${cats}</select></div>
+        <div class="field" style="flex:1;min-width:120px;"><label>Función sensorial</label><select id="ig-fun" style="width:100%"><option value=""></option>${funs}</select></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:80px;"><label>Coste €/kg-L</label><input id="ig-coste" type="number" step="0.01" value="${r.coste||""}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:70px;"><label>ABV %</label><input id="ig-abv" type="number" step="0.1" value="${r.abv||""}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:70px;"><label>°Brix</label><input id="ig-brix" type="number" step="0.1" value="${r.brix||""}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:70px;"><label>pH</label><input id="ig-ph" type="number" step="0.01" value="${r.ph||""}" style="width:100%"></div>
+      </div>
+      <div class="field"><label>Función / notas sensoriales</label><input id="ig-notas" value="${esc(r.notas_sensoriales||"")}" style="width:100%"></div>
+      <div class="field"><label>Proveedor</label><input id="ig-prov" value="${esc(r.proveedor||"")}" style="width:100%"></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="guardarIngredienteMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbdsBiblioteca()">Cancelar</button></div>
+    <div id="ig-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+async function guardarIngredienteMBDS(btn){
+  const body={nombre:el("ig-nombre").value.trim(),categoria:el("ig-cat").value,funcion_sensorial:el("ig-fun").value,coste:el("ig-coste").value,abv:el("ig-abv").value,brix:el("ig-brix").value,ph:el("ig-ph").value,notas_sensoriales:el("ig-notas").value,proveedor:el("ig-prov").value};
+  if(!body.nombre){ el("ig-msg").textContent="Indica el nombre."; return; }
+  if(btn)btn.disabled=true;
+  try{ const id=window._mbdsIngEdit; if(id) await api("/mbds/ingredientes/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); else await api("/mbds/ingredientes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); irA_mbdsBiblioteca(); }
+  catch(e){ el("ig-msg").textContent=e.message; if(btn)btn.disabled=false; }
+}
+
+// Filas de ingredientes reutilizables (para cordial y bebida).
+function mbdsOptIng(sel){ return `<option value="">— ingrediente —</option>`+(window._mbdsIng||[]).map(i=>`<option value="${i.id}" ${i.id===sel?"selected":""}>${esc(i.nombre)}</option>`).join(""); }
+function mbdsAddRow(contId,cls,unidad){ const c=el(contId); if(!c)return; const div=document.createElement("div"); div.className="mbds-ing-row"; div.innerHTML=`<select class="${cls}-ing">${mbdsOptIng()}</select><input class="${cls}-cant" type="number" step="0.01" placeholder="0"><span class="cc-mini">${unidad}</span><button class="btn-ghost" style="padding:4px 8px" onclick="this.parentNode.remove()">×</button>`; c.appendChild(div); }
+
+// ── Admin: cordial ───────────────────────────────────────────────────────────
+async function formCordialMBDS(id){
+  navInto(()=>irA_mbdsCordiales()); openSection("mbds-cor-form", id?"Editar cordial":"Nuevo cordial");
+  let r={nombre:"",familia:"",descripcion:"",ingredientes:[],rendimiento_ml:"",merma_pct:"",metodo:"",temperatura:"",tiempo:"",filtrado:""};
+  try{
+    const ings=await api("/mbds/ingredientes"); window._mbdsIng=ings;
+    if(id){ const c=await api("/mbds/cordiales/"+id); r=c; window._mbdsCorEdit=id; } else window._mbdsCorEdit=null;
+    const rows=(r.ingredientes||[]).map(x=>`<div class="mbds-ing-row"><select class="cor-ing">${mbdsOptIng(x.ingrediente_id)}</select><input class="cor-cant" type="number" step="0.01" value="${x.cantidad||""}"><span class="cc-mini">g/ml</span><button class="btn-ghost" style="padding:4px 8px" onclick="this.parentNode.remove()">×</button></div>`).join("");
+    setInner(`<div class="card">
+      <div class="field"><label>Nombre</label><input id="cor-nombre" value="${esc(r.nombre||"")}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:100px;"><label>Familia</label><input id="cor-fam" value="${esc(r.familia||"")}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:100px;"><label>Rendimiento (ml)</label><input id="cor-rend" type="number" value="${r.rendimiento_ml||""}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:80px;"><label>Merma %</label><input id="cor-merma" type="number" step="0.1" value="${r.merma_pct||""}" style="width:100%"></div>
+      </div>
+      <div class="field"><label>Descripción</label><input id="cor-desc" value="${esc(r.descripcion||"")}" style="width:100%"></div>
+      <div class="section-label" style="margin-top:6px;">Ingredientes</div>
+      <div id="cor-ings">${rows}</div>
+      <div class="card-actions" style="margin-top:6px;"><button class="btn-ghost" onclick="mbdsAddRow('cor-ings','cor','g/ml')">+ Añadir ingrediente</button></div>
+      <div class="field"><label>Método</label><input id="cor-metodo" value="${esc(r.metodo||"")}" style="width:100%"></div>
+    </div>
+    <div class="card-actions"><button class="btn-primary" onclick="guardarCordialMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbdsCordiales()">Cancelar</button></div>
+    <div id="cor-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function mbdsRecogerIngs(cls){ return [...document.querySelectorAll("."+cls+"-ing")].map(sel=>{ const row=sel.parentNode; const cant=Number(row.querySelector("."+cls+"-cant").value)||0; return {ingrediente_id:sel.value,cantidad:cant}; }).filter(x=>x.ingrediente_id&&x.cantidad>0); }
+async function guardarCordialMBDS(btn){
+  const body={nombre:el("cor-nombre").value.trim(),familia:el("cor-fam").value.trim(),descripcion:el("cor-desc").value.trim(),rendimiento_ml:el("cor-rend").value,merma_pct:el("cor-merma").value,metodo:el("cor-metodo").value.trim(),ingredientes:mbdsRecogerIngs("cor")};
+  if(!body.nombre){ el("cor-msg").textContent="Indica el nombre."; return; }
+  if(btn)btn.disabled=true;
+  try{ const id=window._mbdsCorEdit; if(id) await api("/mbds/cordiales/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); else await api("/mbds/cordiales",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); irA_mbdsCordiales(); }
+  catch(e){ el("cor-msg").textContent=e.message; if(btn)btn.disabled=false; }
+}
+
+// ── Admin: bebida (con cálculo en vivo) ──────────────────────────────────────
+async function formBebidaMBDS(id){
+  navInto(()=>irA_mbds()); openSection("mbds-beb-form", id?"Editar bebida":"Nueva bebida");
+  let r={nombre:"",familia:"",version:"alcoholica",cordial_id:"",cordial_ml:"",componentes:[],volumen_total:"1000",co2:"5.8",pvp:"",presion:"",temperatura:"",tiempo_carbo:"",envase:""};
+  try{
+    const [ings,cors]=await Promise.all([api("/mbds/ingredientes"),api("/mbds/cordiales")]); window._mbdsIng=ings;
+    if(id){ const b=await api("/mbds/bebidas/"+id); r=b; window._mbdsBebEdit=id; } else window._mbdsBebEdit=null;
+    const corOpts=`<option value="">— cordial —</option>`+cors.map(c=>`<option value="${c.id}" ${c.id===r.cordial_id?"selected":""}>${esc(c.nombre)}</option>`).join("");
+    const compRows=(r.componentes||[]).map(x=>`<div class="mbds-ing-row"><select class="comp-ing">${mbdsOptIng(x.ingrediente_id)}</select><input class="comp-cant" type="number" step="1" value="${x.ml||""}"><span class="cc-mini">ml</span><button class="btn-ghost" style="padding:4px 8px" onclick="this.parentNode.remove()">×</button></div>`).join("");
+    setInner(`<div class="card">
+      <div class="field"><label>Nombre</label><input id="beb-nombre" value="${esc(r.nombre||"")}" style="width:100%"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:100px;"><label>Familia</label><input id="beb-fam" value="${esc(r.familia||"")}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:100px;"><label>Versión</label><select id="beb-ver" style="width:100%"><option value="alcoholica" ${r.version!=="0.0"?"selected":""}>Alcohólica</option><option value="0.0" ${r.version==="0.0"?"selected":""}>0.0</option></select></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:2;min-width:140px;"><label>Cordial</label><select id="beb-cor" style="width:100%">${corOpts}</select></div>
+        <div class="field" style="flex:1;min-width:90px;"><label>Cordial (ml)</label><input id="beb-corml" type="number" value="${r.cordial_ml||""}" style="width:100%"></div>
+      </div>
+      <div class="section-label" style="margin-top:6px;">Componentes (base alcohólica, vino, agua…)</div>
+      <div id="beb-comps">${compRows}</div>
+      <div class="card-actions" style="margin-top:6px;"><button class="btn-ghost" onclick="mbdsAddRow('beb-comps','comp','ml')">+ Añadir componente</button></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:90px;"><label>Volumen (ml)</label><input id="beb-vol" type="number" value="${r.volumen_total||""}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:80px;"><label>CO₂ (g/L)</label><input id="beb-co2" type="number" step="0.1" value="${r.co2||"5.8"}" style="width:100%"></div>
+        <div class="field" style="flex:1;min-width:80px;"><label>PVP (€)</label><input id="beb-pvp" type="number" step="0.1" value="${r.pvp||""}" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="card-actions"><button class="btn-ghost" onclick="calcularBebidaMBDS()">Calcular y validar</button></div>
+    <div id="beb-calc"></div>
+    <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="guardarBebidaMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbds()">Cancelar</button></div>
+    <div id="beb-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function mbdsBebBody(){
+  return {nombre:el("beb-nombre").value.trim(),familia:el("beb-fam").value.trim(),version:el("beb-ver").value,cordial_id:el("beb-cor").value,cordial_ml:el("beb-corml").value,volumen_total:el("beb-vol").value,co2:el("beb-co2").value,pvp:el("beb-pvp").value,componentes:[...document.querySelectorAll(".comp-ing")].map(s=>({ingrediente_id:s.value,ml:Number(s.parentNode.querySelector(".comp-cant").value)||0})).filter(x=>x.ingrediente_id&&x.ml>0)};
+}
+async function calcularBebidaMBDS(){
+  const out=el("beb-calc"); if(out) out.innerHTML=`<div class="cc-mini">Calculando…</div>`;
+  try{
+    const e=await api("/mbds/calcular",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(mbdsBebBody())});
+    const c=e.calc||{}, v=e.validacion||{};
+    const chk=(v.checks||[]).map(k=>`<div class="cc-line"><span>${k.ok===true?"✓":k.ok===false?"✗":"·"} ${esc(k.label)} <span style="color:var(--muted)">(${k.rango})</span></span><b style="${k.ok===false?"color:#b5462a":""}">${mbdsNum(k.valor,k.clave==="ph"?2:1)}</b></div>`).join("");
+    const corr=(e.correccion||[]).map(x=>`<div class="cc-mini"><b>${esc(x.problema)}:</b> ${x.acciones.map(esc).join(" · ")}</div>`).join("");
+    out.innerHTML=`<div class="cc-card" style="margin-top:8px;"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="cc-label">Resultado</div>${mbdsAptaBadge(v)}</div>
+      <div class="cc-mini">ABV ${mbdsNum(c.abv,1)}% · °Brix ${mbdsNum(c.brix,1)} · pH ${mbdsNum(c.ph,2)} · sal ${mbdsNum(c.salinidad,2)}% · coste/serv ${ccEur(c.coste_por_servicio)} · margen ${c.margen_pct!=null?c.margen_pct+"%":"—"}</div>
+      <div style="margin-top:6px;">${chk}</div>${corr?`<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px;">${corr}</div>`:""}</div>`;
+  }catch(e){ if(out) out.innerHTML=`<div class="err">${e.message}</div>`; }
+}
+async function guardarBebidaMBDS(btn){
+  const body=mbdsBebBody();
+  if(!body.nombre){ el("beb-msg").textContent="Indica el nombre."; return; }
+  if(btn)btn.disabled=true;
+  try{ const id=window._mbdsBebEdit; let saved; if(id) saved=await api("/mbds/bebidas/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); else saved=await api("/mbds/bebidas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); verBebidaMBDS(saved.id); }
+  catch(e){ el("beb-msg").textContent=e.message; if(btn)btn.disabled=false; }
+}
 
 // ── RUTINAS DEL DÍA · apertura y cierre (mismo motor) ──────────────────────
 async function irA_rutina(rutina){

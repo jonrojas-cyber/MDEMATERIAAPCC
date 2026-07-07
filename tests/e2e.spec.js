@@ -761,3 +761,58 @@ test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async
   await expect(page.locator("#tpv-keypad.on")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+// MBDS · el laboratorio de bebidas: endpoint compone parámetros y validación;
+// la pantalla muestra las bebidas y su veredicto Materia; el trabajador no ve costes.
+test("MBDS: endpoint calcula parámetros y validación de las bebidas", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Moni", { timeout: 30_000 });
+  await page.click("#ubtn-Moni");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".dash", { timeout: 15_000 });
+  const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
+  expect(Array.isArray(bebidas)).toBe(true);
+  const ambar = bebidas.find((b) => b.nombre === "Ámbar");
+  expect(ambar).toBeTruthy();
+  expect(typeof ambar.calc.abv).toBe("number");
+  expect(typeof ambar.calc.ph).toBe("number");
+  expect(ambar.validacion).toBeTruthy();
+  expect(Array.isArray(ambar.validacion.checks)).toBe(true);
+  expect(typeof ambar.calc.margen_pct).toBe("number"); // dirección ve economía
+});
+
+test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Moni", { timeout: 30_000 });
+  await page.click("#ubtn-Moni");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".dash", { timeout: 15_000 });
+  await page.evaluate(() => irA_mbds());
+  await expect(page.locator(".cc-label", { hasText: /Laboratorio de bebidas/ })).toBeVisible();
+  await expect(page.locator(".cc-card", { hasText: /Ámbar/ }).first()).toBeVisible();
+  // Abrir la bebida y ver la validación Materia.
+  await page.locator(".cc-card", { hasText: /Ámbar/ }).first().click();
+  await expect(page.locator(".section-label", { hasText: /Validación Materia/ })).toBeVisible();
+  await expect(page.locator(".section-label", { hasText: /Parámetros técnicos/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("MBDS: el trabajador NO recibe datos económicos de las bebidas", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara", { timeout: 30_000 });
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".dash", { timeout: 15_000 });
+  const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
+  expect(Array.isArray(bebidas)).toBe(true);
+  const ambar = bebidas.find((b) => b.nombre === "Ámbar");
+  expect(ambar).toBeTruthy();
+  expect(ambar.calc.margen_pct).toBeUndefined();   // sin economía
+  expect(ambar.calc.coste_por_servicio).toBeUndefined();
+  expect(typeof ambar.calc.abv).toBe("number");     // pero sí parámetros técnicos
+});

@@ -52,6 +52,7 @@ const EQUIPO_ALLOWED = new Set([
   "lotes",
   "revisiones",
   "ajustes",
+  "mbds", // laboratorio de bebidas: el equipo ve receta/proceso/lote (sin costes)
   "materias",
   "recetas",
   "carta",

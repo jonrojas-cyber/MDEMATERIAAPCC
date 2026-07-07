@@ -1,0 +1,132 @@
+[
+  {
+    "id": "cor-ambar",
+    "nombre": "Cordial Ámbar",
+    "familia": "Ámbar",
+    "descripcion": "Albaricoque, osmanthus y azafrán. Fruta de hueso, retronasal floral y profundidad especiada.",
+    "ingredientes": [
+      {
+        "ingrediente_id": "ing-alb",
+        "cantidad": 500
+      },
+      {
+        "ingrediente_id": "ing-osm",
+        "cantidad": 6
+      },
+      {
+        "ingrediente_id": "ing-aza",
+        "cantidad": 0.3
+      },
+      {
+        "ingrediente_id": "ing-azu",
+        "cantidad": 240
+      },
+      {
+        "ingrediente_id": "ing-mal",
+        "cantidad": 42
+      },
+      {
+        "ingrediente_id": "ing-cit",
+        "cantidad": 17.5
+      },
+      {
+        "ingrediente_id": "ing-tar",
+        "cantidad": 10.5
+      },
+      {
+        "ingrediente_id": "ing-sal",
+        "cantidad": 6
+      },
+      {
+        "ingrediente_id": "ing-agua",
+        "cantidad": 170
+      }
+    ],
+    "rendimiento_ml": 900,
+    "metodo": "Maceración en frío 24 h, prensado y filtrado fino.",
+    "temperatura": "4 ºC",
+    "tiempo": "24 h",
+    "filtrado": "Filtro 5 µm",
+    "vida_util_dias": 21,
+    "merma_pct": 8,
+    "objetivo_sensorial": {
+      "impacto": 8,
+      "volumen": 7,
+      "acidez": 8,
+      "amargor": 4,
+      "aromatica": 8,
+      "persistencia": 8,
+      "salivacion": 9,
+      "drinkability": 9
+    },
+    "origen": "seed",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  },
+  {
+    "id": "cor-blanco",
+    "nombre": "Cordial Blanco",
+    "familia": "Blanco",
+    "descripcion": "Manzana Granny Smith, pepino, verbena y té blanco. Verde, fresco, seco y largo.",
+    "ingredientes": [
+      {
+        "ingrediente_id": "ing-man",
+        "cantidad": 450
+      },
+      {
+        "ingrediente_id": "ing-pep",
+        "cantidad": 200
+      },
+      {
+        "ingrediente_id": "ing-ver",
+        "cantidad": 5
+      },
+      {
+        "ingrediente_id": "ing-teb",
+        "cantidad": 4
+      },
+      {
+        "ingrediente_id": "ing-azu",
+        "cantidad": 230
+      },
+      {
+        "ingrediente_id": "ing-mal",
+        "cantidad": 42
+      },
+      {
+        "ingrediente_id": "ing-cit",
+        "cantidad": 17.5
+      },
+      {
+        "ingrediente_id": "ing-tar",
+        "cantidad": 10.5
+      },
+      {
+        "ingrediente_id": "ing-sal",
+        "cantidad": 6
+      },
+      {
+        "ingrediente_id": "ing-agua",
+        "cantidad": 160
+      }
+    ],
+    "rendimiento_ml": 900,
+    "metodo": "Maceración en frío 24 h, prensado y filtrado fino.",
+    "temperatura": "4 ºC",
+    "tiempo": "24 h",
+    "filtrado": "Filtro 5 µm",
+    "vida_util_dias": 21,
+    "merma_pct": 8,
+    "objetivo_sensorial": {
+      "impacto": 8,
+      "volumen": 7,
+      "acidez": 8,
+      "amargor": 3,
+      "aromatica": 8,
+      "persistencia": 8,
+      "salivacion": 9,
+      "drinkability": 9
+    },
+    "origen": "seed",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  }
+]

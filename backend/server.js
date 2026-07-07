@@ -166,6 +166,7 @@ app.use("/api/carta", require("./routes/carta"));
 app.use("/api/reportes", require("./routes/reportes"));
 app.use("/api/ventas", require("./routes/ventas"));
 app.use("/api/avisos", require("./routes/avisos"));
+app.use("/api/mbds", require("./routes/mbds")); // laboratorio de bebidas (MBDS)
 
 // ── Centro de Control · capa financiera / negocio (solo admin) ─────────────────
 // Todos estos segmentos quedan FUERA de EQUIPO_ALLOWED en auth.js, por lo que el

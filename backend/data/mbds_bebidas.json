@@ -1,0 +1,118 @@
+[
+  {
+    "id": "beb-ambar",
+    "nombre": "Ámbar",
+    "familia": "Ámbar",
+    "version": "alcoholica",
+    "cordial_id": "cor-ambar",
+    "cordial_ml": 180,
+    "cordial_abv": 0,
+    "componentes": [
+      {
+        "ingrediente_id": "ing-aperol",
+        "ml": 100
+      },
+      {
+        "ingrediente_id": "ing-esp",
+        "ml": 550
+      },
+      {
+        "ingrediente_id": "ing-agua",
+        "ml": 170
+      }
+    ],
+    "volumen_total": 1000,
+    "co2": 5.8,
+    "presion": "2.5 bar",
+    "temperatura": "3 ºC",
+    "tiempo_carbo": "24 h en frío",
+    "envase": "Botella 750 ml",
+    "servicio_ml": 200,
+    "pvp": 12,
+    "origen": "seed",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  },
+  {
+    "id": "beb-ambar00",
+    "nombre": "Ámbar 0.0",
+    "familia": "Ámbar",
+    "version": "0.0",
+    "cordial_id": "cor-ambar",
+    "cordial_ml": 260,
+    "cordial_abv": 0,
+    "componentes": [
+      {
+        "ingrediente_id": "ing-agua",
+        "ml": 740
+      }
+    ],
+    "volumen_total": 1000,
+    "co2": 5.8,
+    "presion": "2.5 bar",
+    "temperatura": "3 ºC",
+    "tiempo_carbo": "24 h en frío",
+    "envase": "Botella 750 ml",
+    "servicio_ml": 200,
+    "pvp": 8,
+    "origen": "seed",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  },
+  {
+    "id": "beb-blanco",
+    "nombre": "Blanco",
+    "familia": "Blanco",
+    "version": "alcoholica",
+    "cordial_id": "cor-blanco",
+    "cordial_ml": 220,
+    "cordial_abv": 0,
+    "componentes": [
+      {
+        "ingrediente_id": "ing-sauco",
+        "ml": 60
+      },
+      {
+        "ingrediente_id": "ing-esp",
+        "ml": 550
+      },
+      {
+        "ingrediente_id": "ing-agua",
+        "ml": 170
+      }
+    ],
+    "volumen_total": 1000,
+    "co2": 5.8,
+    "presion": "2.5 bar",
+    "temperatura": "3 ºC",
+    "tiempo_carbo": "24 h en frío",
+    "envase": "Botella 750 ml",
+    "servicio_ml": 200,
+    "pvp": 12,
+    "origen": "seed",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  },
+  {
+    "id": "beb-blanco00",
+    "nombre": "Blanco 0.0",
+    "familia": "Blanco",
+    "version": "0.0",
+    "cordial_id": "cor-blanco",
+    "cordial_ml": 260,
+    "cordial_abv": 0,
+    "componentes": [
+      {
+        "ingrediente_id": "ing-agua",
+        "ml": 740
+      }
+    ],
+    "volumen_total": 1000,
+    "co2": 5.8,
+    "presion": "2.5 bar",
+    "temperatura": "3 ºC",
+    "tiempo_carbo": "24 h en frío",
+    "envase": "Botella 750 ml",
+    "servicio_ml": 200,
+    "pvp": 8,
+    "origen": "seed",
+    "creado_en": "2026-07-07T10:00:00.000Z"
+  }
+]

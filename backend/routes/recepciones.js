@@ -302,22 +302,37 @@ router.post("/", jsonGrande, async (req, res) => {
   res.status(201).json(recepcion);
 });
 
-// Carga al almacén las líneas con materia asignada (una sola vez). Devuelve lo aplicado.
+// Carga al almacén las líneas con materia asignada (una sola vez). Además, vincula
+// cada artículo recibido al catálogo del proveedor (productos_asociados) y guarda
+// su precio de compra, para que en Pedidos aparezcan "los artículos de ese
+// proveedor" con precio. Devuelve lo aplicado.
 function aplicarStock(recepcion) {
   const aplicado = [];
   if (!recepcion.stock_aplicado && Array.isArray(recepcion.lineas)) {
     const materias = store.readAll("materias");
+    const proveedor = recepcion.proveedor_id ? store.findById("proveedores", recepcion.proveedor_id) : null;
+    const asociados = proveedor ? new Set(proveedor.productos_asociados || []) : null;
+    let provTocado = false;
     recepcion.lineas.forEach((l) => {
       const cant = Number(l.cantidad);
       if (l.materia_id && Number.isFinite(cant) && cant > 0) {
         const m = materias.find((x) => x.id === l.materia_id);
         if (m) {
           m.disponibilidad_actual = Math.round((m.disponibilidad_actual + cant) * 100) / 100;
+          // Precio de compra de este proveedor (si la línea lo trae).
+          const pu = Number(l.precio_unitario);
+          if (Number.isFinite(pu) && pu > 0) m.precio_compra = Math.round(pu * 10000) / 10000;
+          // Vincula el artículo al catálogo del proveedor.
+          if (proveedor) {
+            if (!m.proveedor_id) m.proveedor_id = proveedor.id;
+            if (!asociados.has(m.id)) { asociados.add(m.id); provTocado = true; }
+          }
           aplicado.push({ materia_id: m.id, nombre: m.nombre, cantidad: cant, unidad: m.unidad });
         }
       }
     });
     if (aplicado.length) store.writeAll("materias", materias);
+    if (proveedor && provTocado) store.update("proveedores", proveedor.id, { productos_asociados: Array.from(asociados) });
   }
   return aplicado;
 }

@@ -718,8 +718,18 @@ test("pedidos: el buscador filtra la lista de pedidos", async ({ page }) => {
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_pedidos());
+  // Buscador general de artículo (proveedor + precio).
+  await expect(page.locator("#ped-cat-q")).toBeVisible();
+  await page.fill("#ped-cat-q", "matcha");
+  await expect(page.locator("#ped-cat-res .card").first()).toBeVisible();
+  await expect(page.locator("#ped-cat-res .card-meta").first()).toContainText(/Proveedor:/);
+  await page.fill("#ped-cat-q", "");
+  // Al elegir un proveedor: aparecen sus artículos con su buscador.
+  await page.selectOption("#ped-prov", { index: 1 });
+  await expect(page.locator("#ped-artq")).toBeVisible();
+  await expect(page.locator("#ped-artlist")).toBeVisible();
+  // Buscador de la lista de pedidos realizados.
   await expect(page.locator("#ped-buscar")).toBeVisible();
-  // Un término imposible deja la lista sin resultados (nodo vacío visible).
   await page.fill("#ped-buscar", "zzz_no_existe_zzz");
   await expect(page.locator("#ped-lista .empty")).toBeVisible();
   await page.fill("#ped-buscar", "");

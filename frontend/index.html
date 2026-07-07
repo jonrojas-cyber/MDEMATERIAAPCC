@@ -1538,7 +1538,7 @@ button.cc-card:hover { border-color: var(--ink); }
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v111</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v112</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -4510,7 +4510,11 @@ async function irA_pedidos(pre){
           </div>`;
         }).join("");
     }
-    let html=sugHtml+`
+    let html=`
+      <div class="section-label">Buscar artículo · proveedor y precio</div>
+      <input id="ped-cat-q" class="mat-q" placeholder="Escribe un artículo y te digo proveedor y precio…" oninput="buscarArticuloGlobal(this.value)">
+      <div id="ped-cat-res"></div>`
+      +sugHtml+`
       <div class="section-label">Nuevo pedido</div>
       <div class="card">
         <div class="field"><label>Proveedor</label>
@@ -4575,16 +4579,47 @@ function renderPedidoLineas(){
   if(!provId){cont.innerHTML="";return;}
   const prov=(window._provPed||[]).find(p=>p.id===provId);
   const aso=(prov&&prov.productos_asociados)||[];
-  let mats=(window._matPed||[]).filter(m=>aso.includes(m.id));
-  if(!mats.length) mats=window._matPed||[];
-  cont.innerHTML=`<div class="section-label" style="margin-top:8px;">Productos (pon cantidad a los que pidas)</div>`+
-    mats.map(m=>`<div class="ped-row" data-mat="${m.id}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-      <span style="font-size:11px;flex:1;min-width:90px;">${m.nombre}</span>
+  // Artículos de ESTE proveedor: por vínculo directo (proveedor_id) o por catálogo
+  // (productos_asociados). Así aparecen también los creados al escanear un albarán.
+  let mats=(window._matPed||[]).filter(m=> m.proveedor_id===provId || aso.includes(m.id));
+  const soloProv=mats.length>0;
+  if(!mats.length) mats=window._matPed||[]; // sin catálogo aún: muestra todo
+  mats=mats.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||""));
+  const rows=mats.map(m=>`<div class="ped-row" data-mat="${m.id}" data-nombre="${esc((m.nombre||"").toLowerCase())}" style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+      <span style="font-size:11px;flex:1;min-width:90px;">${esc(m.nombre)}</span>
       <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" style="width:62px;font-size:11px;">
-      <span style="font-size:10px;color:#888070;">${m.unidad}</span>
-      <input class="ped-precio" type="number" inputmode="decimal" step="0.0001" value="${m.coste_medio}" style="width:74px;font-size:11px;" title="Precio esperado por ${m.unidad}">
-      <span style="font-size:10px;color:#888070;">€/${m.unidad}</span>
+      <span style="font-size:10px;color:#888070;">${esc(m.unidad||"")}</span>
+      <input class="ped-precio" type="number" inputmode="decimal" step="0.0001" value="${m.coste_medio}" style="width:74px;font-size:11px;" title="Precio esperado por ${esc(m.unidad||"ud")}">
+      <span style="font-size:10px;color:#888070;">€/${esc(m.unidad||"ud")}</span>
     </div>`).join("");
+  cont.innerHTML=`<div class="section-label" style="margin-top:8px;">${soloProv?`Artículos de este proveedor · ${mats.length}`:"Productos (pon cantidad a los que pidas)"}</div>
+    <input id="ped-artq" class="mat-q" placeholder="Buscar artículo de este proveedor…" oninput="buscarArticuloPedido(this.value)" style="margin:6px 0;">
+    <div id="ped-artlist">${rows}</div>`;
+}
+// Buscador RÁPIDO dentro de los artículos del proveedor (oculta/muestra filas,
+// así no se pierde la cantidad ya escrita).
+function buscarArticuloPedido(q){
+  const s=(q||"").toLowerCase().trim();
+  document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{
+    r.style.display=(!s||(r.dataset.nombre||"").includes(s))?"":"none";
+  });
+}
+// Buscador GENERAL de artículos: dado un nombre, dice de qué proveedor es y su precio.
+function buscarArticuloGlobal(q){
+  const s=(q||"").toLowerCase().trim(); const out=el("ped-cat-res"); if(!out) return;
+  if(!s){ out.innerHTML=""; return; }
+  const items=(window._matPed||[]).filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40);
+  out.innerHTML=items.length?items.map(m=>`<div class="card">
+      <div class="card-name">${esc(m.nombre)}</div>
+      <div class="card-meta">Proveedor: <b>${esc(m.proveedor_nombre||"— sin asignar —")}</b> · ${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"ud")} · stock ${m.disponibilidad_actual} ${esc(m.unidad||"")}</div>
+      ${m.proveedor_id?`<div class="card-actions"><button class="btn-ghost" onclick="pedirDeProveedor('${m.proveedor_id}','${m.id}')">Pedir a este proveedor</button></div>`:""}
+    </div>`).join(""):`<div class="empty">Ningún artículo coincide.</div>`;
+}
+// Desde un resultado de la búsqueda general: selecciona el proveedor y enfoca el artículo.
+function pedirDeProveedor(provId, matId){
+  const sel=el("ped-prov"); if(sel){ sel.value=provId; renderPedidoLineas(); }
+  const res=el("ped-cat-res"); if(res) res.innerHTML=""; const q=el("ped-cat-q"); if(q) q.value="";
+  setTimeout(()=>{ const row=document.querySelector(`#ped-artlist .ped-row[data-mat="${matId}"]`); if(row){ row.scrollIntoView({block:"center"}); const inp=row.querySelector(".ped-cant"); if(inp) inp.focus(); } },60);
 }
 
 async function crearPedido(){

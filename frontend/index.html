@@ -1575,7 +1575,7 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v114</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v115</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -5026,6 +5026,7 @@ function renderAvisos(cot){
 // ── RECEPCIÓN ────────────────────────────────────────
 async function irA_recepcion(pre){
   openSection("recepcion","Recepción");
+  window._albHojas=[]; window._albFoto=null; // empieza sin hojas de albarán acumuladas
   try{
     const [provs,recs,mats]=await Promise.all([api("/proveedores"),api("/recepciones"),api("/materias")]);
     window._mat=mats;
@@ -5172,7 +5173,7 @@ async function nuevaRcp(){
   if(!bloqueaDoble("recepcion")) return;
   try{
     await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    window._albFoto=null; window._pedidoId=null; window._rcpProdFoto=null;
+    window._albFoto=null; window._albHojas=[]; window._pedidoId=null; window._rcpProdFoto=null;
     irA_recepcion();
   }catch(e){alert(e.message);}
   finally{ liberaDoble("recepcion"); }
@@ -5220,20 +5221,66 @@ async function escanearAlbaran(input){
     // lea bien. El editor recorta/endereza y deja la imagen final ligera.
     const dataUrl=await reducirImagen(file,2400,0.85);
     const doc=await abrirEditorDoc(dataUrl);
-    if(doc) await procesarFotoAlbaran(doc);
+    if(doc) agregarHojaAlbaran(doc);
   }catch(e){ if(hint) hint.textContent="No se pudo leer: "+e.message; }
   input.value=""; // permite re-elegir la misma foto
 }
 
-// Lógica compartida: guarda la foto, muestra preview, OCR, cotejo y avisos.
-// La usan tanto el selector de archivo como la cámara en vivo.
-async function procesarFotoAlbaran(dataUrl){
+// Un albarán puede tener VARIAS HOJAS: se van acumulando fotos y se leen todas
+// juntas como un solo albarán. Cada foto ya viene enderezada por el editor.
+function agregarHojaAlbaran(dataUrl){
+  window._albHojas=window._albHojas||[];
+  window._albHojas.push(dataUrl);
+  window._albFoto=window._albHojas[0]; // la 1ª hoja es la foto representativa
+  renderHojasAlbaran();
+}
+function quitarHojaAlbaran(i){
+  if(!window._albHojas) return;
+  window._albHojas.splice(i,1);
+  window._albFoto=window._albHojas[0]||null;
+  renderHojasAlbaran();
+}
+function renderHojasAlbaran(){
+  const prev=el("alb-preview"); if(!prev) return;
+  const hojas=window._albHojas||[];
   const hint=el("ocr-hint");
-  window._albFoto=dataUrl;
-  const prev=el("alb-preview"); if(prev) prev.innerHTML=`<img src="${dataUrl}" style="max-width:100%;border-radius:6px;margin-top:8px;">`;
-  if(hint) hint.textContent="Leyendo el albarán…";
+  if(!hojas.length){ prev.innerHTML=""; if(hint) hint.textContent="Haz la foto del albarán: ajustas las esquinas, se endereza y se lee solo. Si tiene varias hojas, añádelas todas."; return; }
+  const thumbs=hojas.map((h,i)=>`<div style="position:relative;display:inline-block;margin:4px 6px 4px 0;">
+      <img src="${h}" style="height:76px;border:1px solid var(--line);border-radius:4px;">
+      <span style="position:absolute;top:-6px;left:-6px;background:var(--ink);color:var(--cream);font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${i+1}</span>
+      <button class="btn-ghost" style="position:absolute;top:-8px;right:-8px;padding:0;width:18px;height:18px;font-size:11px;line-height:1;border-radius:50%;" onclick="quitarHojaAlbaran(${i})">×</button>
+    </div>`).join("");
+  prev.innerHTML=`<div class="cc-mini" style="margin-top:8px;">${hojas.length} hoja${hojas.length===1?"":"s"} de este albarán</div>
+    <div style="display:flex;flex-wrap:wrap;margin-top:4px;">${thumbs}</div>
+    <div class="card-actions" style="margin-top:8px;">
+      <button class="btn-primary" onclick="leerAlbaranHojas()">Leer albarán (${hojas.length} hoja${hojas.length===1?"":"s"})</button>
+      <button class="btn-ghost" onclick="document.getElementById('alb-file-cam').click()">+ Añadir hoja</button>
+      <button class="btn-ghost" onclick="document.getElementById('alb-file-gal').click()">Galería</button>
+    </div>`;
+  if(hint) hint.textContent=`${hojas.length} hoja${hojas.length===1?"":"s"} lista${hojas.length===1?"":"s"}. Añade más si el albarán tiene más páginas, o pulsa “Leer albarán”.`;
+}
+
+// Lee TODAS las hojas acumuladas como un único albarán y aplica el resultado.
+async function leerAlbaranHojas(){
+  const hojas=window._albHojas||[];
+  if(!hojas.length){ return; }
+  const hint=el("ocr-hint"); if(hint) hint.textContent=hojas.length>1?`Leyendo el albarán (${hojas.length} hojas)…`:"Leyendo el albarán…";
   try{
-    const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl,media_type:"image/jpeg"})});
+    const r=await api("/recepciones/escanear",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagenes:hojas,media_type:"image/jpeg"})});
+    await aplicarResultadoAlbaran(r);
+  }catch(e){
+    if(/no configurado|503/i.test(e.message)){
+      if(hint) hint.innerHTML="Lectura automática no activada. La foto queda adjunta; rellena proveedor e importe a mano y registra.";
+    }else{
+      if(hint) hint.textContent="No se pudo leer: "+e.message;
+    }
+  }
+}
+
+// Aplica el resultado del OCR (proveedor, importe, líneas, cotejo) a la recepción.
+async function aplicarResultadoAlbaran(r){
+  const hint=el("ocr-hint");
+  try{
     // El proveedor puede haberse creado al vuelo: asegúralo como opción y selecciónalo.
     if(r.proveedor_id){
       const sel=el("rcp-prov");
@@ -5346,7 +5393,7 @@ async function capturarFoto(){
       }
     }
     cerrarCamara();
-    if(dataUrl){ const doc=await abrirEditorDoc(dataUrl); if(doc) procesarFotoAlbaran(doc); }
+    if(dataUrl){ const doc=await abrirEditorDoc(dataUrl); if(doc) agregarHojaAlbaran(doc); }
     else alert("No se pudo capturar la foto. Prueba con “Elegir de la galería”.");
   }catch(e){ cerrarCamara(); alert("No se pudo capturar: "+e.message); }
 }

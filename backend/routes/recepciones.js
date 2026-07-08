@@ -116,15 +116,20 @@ router.get("/:id", (req, res) => {
 // Escanea un albarán: recibe la imagen y devuelve los datos extraídos (sin guardar).
 // El usuario los confirma y luego llama a POST / para registrar la recepción.
 router.post("/escanear", jsonGrande, async (req, res) => {
-  const { imagen, media_type } = req.body || {};
-  if (!imagen) return res.status(400).json({ error: "Envía la imagen del albarán (base64)" });
-  const base64 = String(imagen).replace(/^data:[^,]+,/, ""); // admite data URL
+  const { imagen, imagenes, media_type } = req.body || {};
+  // Admite una sola foto (imagen) o VARIAS HOJAS del mismo albarán (imagenes[]).
+  const limpiar = (x) => String(x || "").replace(/^data:[^,]+,/, "");
+  const fotos = (Array.isArray(imagenes) && imagenes.length ? imagenes : (imagen ? [imagen] : [])).map(limpiar).filter(Boolean);
+  if (!fotos.length) return res.status(400).json({ error: "Envía la imagen del albarán (base64)" });
 
   try {
     const materias = store.readAll("materias");
     // El OCR solo LEE el albarán (no se le carga con el catálogo, para no
-    // empeorar la lectura). El emparejado con la materia se hace aquí.
-    const datos = await ocr.extraerAlbaran(base64, media_type);
+    // empeorar la lectura). El emparejado con la materia se hace aquí. Con varias
+    // hojas, se combinan en un único albarán (un proveedor, todas las líneas).
+    const datos = fotos.length > 1
+      ? await ocr.extraerAlbaranMulti(fotos, media_type)
+      : await ocr.extraerAlbaran(fotos[0], media_type);
 
     // Emparejar el proveedor (por CIF o por nombre). Si no existe, se crea al
     // vuelo con los datos de la cabecera del albarán: no hay que meterlo a mano.

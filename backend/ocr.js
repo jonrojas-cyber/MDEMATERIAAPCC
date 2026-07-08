@@ -133,4 +133,56 @@ async function extraerAlbaran(base64, mediaType) {
   return datos;
 }
 
-module.exports = { disponible, extraerAlbaran };
+// Extrae los datos de un albarán de VARIAS HOJAS a partir de N imágenes. Las manda
+// todas en una sola petición para que el modelo entienda que son el mismo albarán:
+// combina todas las líneas, un único proveedor/cabecera y el importe total (el de
+// la última hoja / el gran total). Evita duplicar cabeceras repetidas.
+async function extraerAlbaranMulti(imagenes, mediaType) {
+  if (!disponible()) {
+    const err = new Error("OCR no configurado (define ANTHROPIC_API_KEY)");
+    err.code = "OCR_NO_CONFIG";
+    throw err;
+  }
+  const fotos = (imagenes || []).filter(Boolean);
+  if (fotos.length <= 1) return extraerAlbaran(fotos[0], mediaType);
+
+  const client = new Anthropic({ timeout: 90000, maxRetries: 1 });
+  const content = [];
+  fotos.forEach((b64, i) => {
+    content.push({ type: "text", text: `— Hoja ${i + 1} de ${fotos.length} —` });
+    content.push({ type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: b64 } });
+  });
+  content.push({
+    type: "text",
+    text:
+      `Estas ${fotos.length} fotos son las HOJAS de un MISMO albarán de un proveedor de hostelería. ` +
+      "Trátalas como un solo documento: extrae UNA cabecera de proveedor (nombre, CIF, teléfono, email, dirección; " +
+      "normalmente en la primera hoja), la fecha, el importe total (el gran total, normalmente en la última hoja) y " +
+      "COMBINA en una única lista TODAS las líneas de producto de todas las hojas (descripción, cantidad, UNIDAD de " +
+      "medida, precio unitario e importe). No dupliques líneas ni repitas la cabecera. La UNIDAD es clave: cópiala tal " +
+      "cual (kg, g, L, ml, ud, caja, saco, bandeja, docena…). Importes en euros con punto decimal. Si un dato no es " +
+      "legible, deja cadena vacía o 0. Responde ÚNICAMENTE con el objeto JSON, sin texto adicional ni markdown.",
+  });
+
+  let response;
+  try {
+    response = await client.messages.create({
+      model: MODELO,
+      max_tokens: 4000,
+      output_config: { format: { type: "json_schema", schema: ESQUEMA } },
+      messages: [{ role: "user", content }],
+    });
+  } catch (e) {
+    const msg = e && e.message ? e.message : "";
+    if (/timeout|ETIMEDOUT|ECONNRESET|aborted/i.test(msg)) {
+      throw new Error("El lector tardó demasiado con varias hojas. Prueba con menos hojas o fotos más nítidas.");
+    }
+    throw new Error("El lector no respondió: " + (msg || "error de conexión"));
+  }
+  const texto = (response.content || []).find((b) => b.type === "text");
+  const datos = texto ? parseJsonTolerante(texto.text) : null;
+  if (!datos) throw new Error("No se pudo leer el albarán");
+  return datos;
+}
+
+module.exports = { disponible, extraerAlbaran, extraerAlbaranMulti };

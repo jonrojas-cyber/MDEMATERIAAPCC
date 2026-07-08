@@ -801,6 +801,25 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   expect(errors).toEqual([]);
 });
 
+// Albarán de varias hojas: se acumulan fotos y se leen como un solo albarán.
+test("recepción: se pueden acumular varias hojas de un mismo albarán", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_recepcion());
+  await page.waitForSelector("#alb-preview", { state: "attached" });
+  const img = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+  await page.evaluate((d) => { agregarHojaAlbaran(d); agregarHojaAlbaran(d); }, img);
+  // Dos miniaturas y el botón de leer con el recuento correcto.
+  await expect(page.locator("#alb-preview img")).toHaveCount(2);
+  await expect(page.locator("#alb-preview .btn-primary", { hasText: /Leer albarán \(2 hojas\)/ })).toBeVisible();
+  // Quitar una hoja deja una y actualiza el botón.
+  await page.evaluate(() => quitarHojaAlbaran(0));
+  await expect(page.locator("#alb-preview img")).toHaveCount(1);
+  await expect(page.locator("#alb-preview .btn-primary", { hasText: /Leer albarán \(1 hoja\)/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("MBDS: el trabajador NO recibe datos económicos de las bebidas", async ({ page }) => {
   await page.goto("/");
   await page.waitForSelector("#ubtn-Lara", { timeout: 30_000 });

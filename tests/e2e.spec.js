@@ -801,6 +801,23 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   expect(errors).toEqual([]);
 });
 
+// Módulo Limonadas: la página estática se sirve y se abre embebida en la app.
+test("limonadas: la página del módulo se sirve y se abre desde el laboratorio", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // La página estática responde con su propio contenido (no el de la app).
+  const r = await page.request.get("/limonadas.html");
+  expect(r.ok()).toBeTruthy();
+  const html = await r.text();
+  expect(html).toContain("limonadas — producción");
+  // Y se abre embebida desde el hub del laboratorio.
+  await login(page);
+  await page.evaluate(() => irA_limonadas());
+  const frame = page.locator('iframe[src^="/limonadas.html"]');
+  await expect(frame).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 // Albarán de varias hojas: se acumulan fotos y se leen como un solo albarán.
 test("recepción: se pueden acumular varias hojas de un mismo albarán", async ({ page }) => {
   const errors = [];

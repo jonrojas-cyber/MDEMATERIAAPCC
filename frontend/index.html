@@ -1575,7 +1575,7 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v115</span></footer>
+<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v116</span></footer>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -2345,6 +2345,7 @@ async function irA_mbds(){
       <div class="cc-links" style="margin-bottom:12px;">
         <button class="cc-link" onclick="irA_mbdsBiblioteca()">Biblioteca sensorial</button>
         <button class="cc-link" onclick="irA_mbdsCordiales()">Cordiales</button>
+        <button class="cc-link cc-link-wide" onclick="irA_limonadas()">Módulo Limonadas · producción →</button>
         ${admin?`<button class="cc-link cc-link-wide" onclick="formBebidaMBDS()">+ Nueva bebida</button>`:""}
       </div>
       <div class="section-label">Bebidas</div>
@@ -2402,6 +2403,15 @@ async function verBebidaMBDS(id){
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
 function mbdsIngNombre(id){ const l=window._mbdsIng||[]; const i=l.find(x=>x.id===id); return i?i.nombre:id; }
+
+// Módulo Limonadas · calculadora de producción (página estática autónoma) embebida
+// dentro de Control M: conserva su propio diseño y el botón "atrás" de la app.
+function irA_limonadas(){
+  navInto(()=>irA_mbds());
+  openSection("limonadas","Limonadas");
+  el("inner-content").innerHTML=`<iframe src="/limonadas.html?ts=${Date.now()}" title="Módulo Limonadas · producción" style="width:100%;height:calc(100dvh - 168px);min-height:420px;border:1px solid var(--line);background:#ece2d0;"></iframe>
+    <div class="cc-mini" style="margin-top:8px;">Calculadora de lote · carbonatación · plan. Cálculo en vivo, no guarda datos.</div>`;
+}
 
 // Cronómetro simple para el modo trabajador.
 let _cronoT=null,_cronoS=0;

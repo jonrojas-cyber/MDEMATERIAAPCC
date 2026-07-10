@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>control m · módulo limonadas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --crema:#ece2d0;--oliva:#4a5a2e;
+    --oliva-70:rgba(74,90,46,.70);--oliva-40:rgba(74,90,46,.38);
+    --oliva-15:rgba(74,90,46,.15);--oliva-08:rgba(74,90,46,.07);
+    --serif:'Fraunces',Georgia,serif;--mono:'Courier Prime','Courier New',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{-webkit-font-smoothing:antialiased;}
+  body{background:var(--crema);color:var(--oliva);font-family:var(--serif);font-weight:300;line-height:1.55;letter-spacing:.01em;}
+  .page{max-width:820px;margin:0 auto;padding:56px 48px 100px;}
+  .mono{font-family:var(--mono);font-weight:400;letter-spacing:0;}
+  .mark{font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:.5em;padding-left:.5em;}
+  header{border-bottom:1px solid var(--oliva-40);padding-bottom:28px;margin-bottom:8px;}
+  .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--oliva-70);margin:22px 0 14px;}
+  h1{font-family:var(--serif);font-style:italic;font-weight:300;font-size:40px;line-height:1.04;margin-bottom:14px;}
+  .lede{font-size:16px;max-width:58ch;}
+
+  /* nav */
+  nav{display:flex;gap:6px;margin:24px 0 0;flex-wrap:wrap;}
+  nav button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--oliva-70);background:transparent;border:1px solid var(--oliva-40);padding:9px 16px;cursor:pointer;transition:.15s;}
+  nav button:hover{background:var(--oliva-08);}
+  nav button.active{background:var(--oliva);color:var(--crema);border-color:var(--oliva);}
+
+  .panel{display:none;margin-top:40px;}
+  .panel.active{display:block;}
+
+  h2{font-family:var(--serif);font-style:italic;font-weight:300;font-size:26px;margin-bottom:6px;}
+  h2 + .sub{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--oliva-70);margin-bottom:24px;}
+  h3{font-family:var(--mono);font-weight:700;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;margin:34px 0 12px;color:var(--oliva);}
+  p{margin-bottom:14px;font-size:15.5px;max-width:64ch;}
+  strong{font-weight:500;}
+
+  /* calculator inputs */
+  .calc-in{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:10px 0 8px;}
+  .field{border:1px solid var(--oliva-40);padding:16px 18px;background:var(--oliva-08);}
+  .field label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--oliva-70);margin-bottom:10px;}
+  .field .row{display:flex;align-items:baseline;gap:8px;}
+  .field input{font-family:var(--mono);font-weight:700;font-size:28px;color:var(--oliva);background:transparent;border:none;border-bottom:2px solid var(--oliva-40);width:110px;padding:2px 0;}
+  .field input:focus{outline:none;border-bottom-color:var(--oliva);}
+  .field .unit{font-family:var(--mono);font-size:13px;color:var(--oliva-70);}
+  .field .roman{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--oliva);margin-bottom:2px;}
+  .presets{display:flex;gap:6px;margin:2px 0 24px;flex-wrap:wrap;}
+  .presets button{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--oliva-70);background:transparent;border:1px solid var(--oliva-15);padding:6px 12px;cursor:pointer;}
+  .presets button:hover{border-color:var(--oliva-40);background:var(--oliva-08);}
+
+  .total-strip{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--oliva-40);border-bottom:1px solid var(--oliva-40);padding:16px 4px;margin:8px 0 0;flex-wrap:wrap;gap:8px;}
+  .total-strip .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--oliva-70);}
+  .total-strip .val{font-family:var(--mono);font-weight:700;font-size:22px;color:var(--oliva);}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0 0;font-size:14px;}
+  th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--oliva-15);vertical-align:baseline;}
+  thead th{border-bottom:1px solid var(--oliva-40);font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--oliva-70);font-weight:400;}
+  td.q{font-family:var(--mono);font-weight:700;color:var(--oliva);white-space:nowrap;font-size:14px;}
+  td.n small{display:block;font-style:italic;color:var(--oliva-70);font-size:12.5px;margin-top:1px;}
+  tbody tr:hover{background:var(--oliva-08);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+
+  .card{border:1px solid var(--oliva-40);padding:0;margin-top:14px;}
+  .card .ch{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:12px 16px;border-bottom:1px solid var(--oliva-15);background:var(--oliva-08);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .card .ch .roman{font-family:var(--serif);font-style:italic;font-size:15px;text-transform:none;letter-spacing:0;}
+  .card table{margin:0;}
+  .card th,.card td{padding:10px 16px;}
+
+  ol.st{list-style:none;counter-reset:t;margin-top:6px;}
+  ol.st li{counter-increment:t;position:relative;padding:0 0 14px 34px;font-size:15px;max-width:66ch;}
+  ol.st li::before{content:counter(t);position:absolute;left:0;top:0;font-family:var(--mono);font-weight:700;font-size:12px;color:var(--oliva-40);}
+  ol.st li:last-child{padding-bottom:0;}
+  ol.st li strong{font-weight:500;}
+
+  .spec{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;border:1px solid var(--oliva-40);padding:18px 20px;margin:16px 0;background:var(--oliva-08);}
+  .spec dt{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--oliva-70);}
+  .spec dd{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--oliva);}
+
+  .warn{border-left:2px solid var(--oliva);padding:2px 0 2px 20px;margin:16px 0;}
+  .warn p{font-style:italic;font-size:14.5px;color:var(--oliva);margin:0;}
+
+  .approx{font-family:var(--mono);font-size:10.5px;color:var(--oliva-40);letter-spacing:.03em;margin-top:12px;}
+
+  .embed{border:1px dashed var(--oliva-40);padding:16px 20px;margin-top:40px;background:var(--oliva-08);}
+  .embed p{font-size:13.5px;color:var(--oliva-70);margin:0;}
+  .embed strong{color:var(--oliva);}
+
+  footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--oliva-40);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  footer .tag{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--oliva-70);}
+
+  @media(max-width:660px){
+    .page{padding:40px 20px 70px;}h1{font-size:32px;}
+    .calc-in,.grid2{grid-template-columns:1fr;}
+    .field input{font-size:24px;width:90px;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="mark">III</div>
+    <div class="kicker">control m · producción · módulo bebidas frías</div>
+    <h1>limonadas — producción</h1>
+    <p class="lede">metes los litros finales que necesitas y el módulo te da las recetas escaladas, las extracciones a preparar, el proceso de carbonatación de la II y el calendario de producción.</p>
+    <nav>
+      <button class="active" onclick="tab('calc',this)">calculadora</button>
+      <button onclick="tab('carb',this)">carbonatación · ii</button>
+      <button onclick="tab('plan',this)">plan de producción</button>
+    </nav>
+  </header>
+
+  <!-- ============ CALCULADORA ============ -->
+  <div id="calc" class="panel active">
+    <h2>calculadora de lote</h2>
+    <p class="sub">litros de bebida terminada · por línea</p>
+
+    <div class="calc-in">
+      <div class="field">
+        <div class="roman">i · esencia</div>
+        <label>litros a producir</label>
+        <div class="row"><input id="l1" type="number" min="0" step="1" value="10" oninput="calc()"><span class="unit">L</span></div>
+      </div>
+      <div class="field">
+        <div class="roman">ii · casa</div>
+        <label>litros a producir</label>
+        <div class="row"><input id="l2" type="number" min="0" step="1" value="20" oninput="calc()"><span class="unit">L</span></div>
+      </div>
+    </div>
+    <div class="presets">
+      <button onclick="preset(10,20)">semana tipo · 10 + 20</button>
+      <button onclick="preset(40,80)">mes tipo · 40 + 80</button>
+      <button onclick="preset(0,20)">solo un barril ii · 20</button>
+      <button onclick="preset(20,0)">solo un barril i · 20</button>
+    </div>
+
+    <div class="total-strip">
+      <span class="lbl">total líquido final</span>
+      <span class="val" id="total">30 L</span>
+    </div>
+
+    <div class="grid2" style="margin-top:34px;">
+      <div class="card">
+        <div class="ch"><span>receta terminada</span><span class="roman">i · esencia</span></div>
+        <table><tbody id="rec1"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="ch"><span>receta terminada</span><span class="roman">ii · casa</span></div>
+        <table><tbody id="rec2"></tbody></table>
+      </div>
+    </div>
+
+    <h3>extracciones a preparar · lista de la compra</h3>
+    <p style="font-size:14px;color:var(--oliva-70);">Cantidades de cada «madre» necesarias para este lote, con la materia prima que hay que comprar. Rendimientos aproximados; afinar con la báscula.</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>extracción</th><th>a preparar</th><th>materia prima</th></tr></thead>
+        <tbody id="extract"></tbody>
+      </table>
+    </div>
+    <p class="approx" id="waternote"></p>
+  </div>
+
+  <!-- ============ CARBONATACIÓN ============ -->
+  <div id="carb" class="panel">
+    <h2>carbonatación en barril · línea ii</h2>
+    <p class="sub">co₂ fino — el gas suma con el mentol sobre la sensación de frío</p>
+
+    <p>La II se carbonata; la I se decide aparte. El objetivo <strong>no es un refresco</strong>: es una burbuja fina, «agua con gas» elegante, que aporta el pinchazo trigeminal de frescura y refuerza el frío del mentol. Se hace por <strong>carbonatación forzada en frío</strong>, con línea de CO₂ (distinta de tus barriles nitro).</p>
+
+    <dl class="spec">
+      <dt>temperatura</dt><dd>1–3 °C · imprescindible carbonatar en frío</dd>
+      <dt>objetivo</dt><dd>~2,0–2,5 volúmenes de CO₂ · burbuja fina</dd>
+      <dt>presión</dt><dd>~0,8–0,9 bar · ~11–13 psi a 2–3 °C</dd>
+      <dt>método</dt><dd>lento / paciente (preserva aroma)</dd>
+    </dl>
+
+    <h3>proceso · paso a paso</h3>
+    <ol class="st">
+      <li><strong>Enfriar el líquido a 1–3 °C antes de nada.</strong> El CO₂ solo se disuelve bien en frío; en tibio, ni entra ni se mantiene. Este paso no es negociable.</li>
+      <li><strong>Aromatizar antes de carbonatar.</strong> Mentol, jengibre y hierbabuena ya dentro y en frío. Nunca carbonatar y luego aromatizar.</li>
+      <li><strong>Llenar el barril</strong> dejando un poco de cámara de aire arriba.</li>
+      <li><strong>Purgar el oxígeno.</strong> Presurizar con CO₂ y ventear 2–3 veces para expulsar el aire de la cámara. Esto además protege el aroma de la oxidación — clave para el citral y la menta.</li>
+      <li><strong>Conectar el CO₂ a presión de servicio</strong> (~0,8–0,9 bar / 11–13 psi a 2–3 °C). Para una burbuja más suave, bajar; más viva, subir un punto.</li>
+      <li><strong>Método paciente (recomendado):</strong> dejar el barril conectado a esa presión, en frío, <strong>24–48 h</strong>. El CO₂ se equilibra solo, sin agitar, sin espuma, sin arrastrar aroma. Constante y replicable.</li>
+      <li><strong>Método rápido (solo si hay prisa):</strong> subir a ~2 bar / 30 psi y mecer el barril frío unos minutos hasta oír que deja de tragar gas; luego venteo y bajar a presión de servicio. Más rápido, pero agita y puede arrastrar volátiles — menos fino.</li>
+      <li><strong>Servir a presión de servicio, siempre en frío.</strong> Un barril templado pierde gas y hace espuma. El enlatado al momento se hace con vertido suave para no perder carbonatación.</li>
+    </ol>
+
+    <div class="warn"><p>El CO₂ baja el pH ~0,1 al formar ácido carbónico. Ya está compensado en la mezcla de ácidos del recetario — no reajustar por esto. Solo tenerlo presente si mides pH tras carbonatar.</p></div>
+
+    <h3>por qué el método paciente</h3>
+    <p>Agitar disuelve gas rápido pero también <strong>arrastra los volátiles</strong> y forma espuma que se lleva parte del aroma. Como la II vive de su capa aromática delicada (mentol, carvona), la carbonatación lenta protege justo lo que la hace especial. Encaja además con el ciclo semanal: cargas el barril, lo dejas 24–48 h en cámara, y está listo para su semana de servicio.</p>
+    <div class="warn"><p>Vigilar la subida de micro-gotas de aceite aromático durante la vida del barril (riesgo de barril del §QC). Un filtrado fino del aroma antes de cargar lo minimiza. La carbonatación ayuda a mantener la mezcla homogénea, pero revisar el barril periódicamente.</p></div>
+  </div>
+
+  <!-- ============ PLAN ============ -->
+  <div id="plan" class="panel">
+    <h2>plan de producción y conservación</h2>
+    <p class="sub">producir en grande una vez · congelar los relojes · girar barriles cada semana</p>
+
+    <p>La idea es desacoplar los relojes: el congelador <strong>pausa el reloj de sabor</strong>. Se produce el grueso una vez al mes, se aparca congelado con el reloj parado, y solo el barril que se descongela cada semana empieza a correr. Es la misma lógica de «separar para estabilizar», aplicada al tiempo — y es el molde de la futura producción centralizada.</p>
+
+    <h3>ciclo mensual · un día grande</h3>
+    <table>
+      <thead><tr><th>se produce y congela en porciones</th><th>por qué aguanta</th></tr></thead>
+      <tbody>
+        <tr><td class="q">concentrado madre</td><td class="n">ácidos + sal + azúcar. Mejor como concentrado (ahorra congelador; diluir al montar). Estable meses.</td></tr>
+        <tr><td class="q">oleosaccharum de limón · E1</td><td class="n">el citral no se degrada congelado. Congelar pausa su reloj corto.</td></tr>
+        <tr><td class="q">zumo de jengibre · E2</td><td class="n">pierde punta en 1–2 días fresco; congelado, meses.</td></tr>
+        <tr><td class="q">solución de mentol · E4</td><td class="n">alcohólica y estable — ni congelador necesita. A la estantería.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>semanal · fresco, sí o sí</h3>
+    <table>
+      <thead><tr><th>se hace cada semana</th><th>por qué</th></tr></thead>
+      <tbody>
+        <tr><td class="q">infusión de hierbabuena · E3</td><td class="n">barata, 2 h en frío, y fresca es muy superior a congelada. El único input verdaderamente semanal.</td></tr>
+        <tr><td class="q">montaje + carga de barriles</td><td class="n">descongelar porciones de la semana, montar a dianas, clarificar, cargar y carbonatar la II.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>los dos relojes · no confundirlos</h3>
+    <table>
+      <thead><tr><th>reloj</th><th>manda</th><th>ventana</th></tr></thead>
+      <tbody>
+        <tr><td class="q">seguridad</td><td class="n">el pH 3,2 (por debajo de 4,6). Frío y sellado.</td><td class="q">semanas</td></tr>
+        <tr><td class="q">sabor · línea ii</td><td class="n">jengibre y mentol, estables en ácido.</td><td class="q">la más larga</td></tr>
+        <tr><td class="q">sabor · línea i</td><td class="n">el citral se degrada en ácido — marca la ventana corta.</td><td class="q">la más corta</td></tr>
+      </tbody>
+    </table>
+    <p>Es seguro mucho tiempo; la ventana la decides <strong>por sabor, no por miedo</strong>. Y no es una sola: la II probablemente gira en semanas y la I en pocos días. Dos productos, dos vidas útiles.</p>
+
+    <h3>tres reglas de congelado</h3>
+    <ol class="st">
+      <li><strong>Porción = un barril.</strong> Congela en la cantidad exacta de una carga semanal. Cada descongelación arranca el reloj.</li>
+      <li><strong>No recongelar</strong> lo ya descongelado.</li>
+      <li><strong>Etiqueta y fecha todo</strong> — componente, lote, fecha. Es lo que hace el sistema replicable sin ti, y lo que lo prepara para producción central.</li>
+    </ol>
+
+    <h3>validar antes de fijar el mes</h3>
+    <p>Que el mes congelado no toque el sabor es estimación, no dato. <strong>Prueba de congelado:</strong> congela una porción de oleo y una de jengibre; a las 2 y 4 semanas, descongela y cata contra una recién hecha. Si no hay caída, el mes queda validado con vuestro paladar. Igual con la curva de caída del barril en servicio: catar a día 1, 4, 7, 10, 14 y anotar cuándo el aroma deja de gustaros.</p>
+  </div>
+
+  <div class="embed">
+    <p><strong>Para meterlo en Control M:</strong> este archivo es autónomo (HTML + CSS + JS, sin librerías). Pégalo como una ruta/pestaña nueva en tu <span class="mono">server.js</span> igual que los demás módulos, o sírvelo como página estática. La calculadora funciona en el navegador, sin backend. No guarda datos — es cálculo en vivo.</p>
+  </div>
+
+  <footer>
+    <span class="tag">control m · módulo limonadas</span>
+    <span class="tag">v0.1 · cálculo en vivo · dosis a titrar en cata</span>
+  </footer>
+
+</div>
+
+<script>
+  // ---- constantes por litro de bebida terminada ----
+  const L1 = {citric:3.9, malic:2.0, lactic:0.6, salt:0.45, sugar:55, oleo:35};
+  const L2 = {citric:3.7, malic:1.9, lactic:0.6, salt:0.45, sugar:45, ginger:20, mint:50, menthol:0.75, oleo:10};
+
+  function fmt(n, dec){
+    if(!isFinite(n)) n=0;
+    let v = n.toFixed(dec===undefined?1:dec);
+    v = v.replace('.', ',');
+    return v;
+  }
+  function g(v){ return v>=1000 ? fmt(v/1000,2)+' kg' : fmt(v,1)+' g'; }
+  function ml(v){ return v>=1000 ? fmt(v/1000,2)+' L' : fmt(v,0)+' ml'; }
+
+  function tab(id, btn){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+  function preset(a,b){ document.getElementById('l1').value=a; document.getElementById('l2').value=b; calc(); }
+
+  function rowsRecipe(L, liters, isTwo){
+    let r='';
+    const add=(q,n,s)=> r+=`<tr><td class="q">${q}</td><td class="n">${n}${s?`<small>${s}</small>`:''}</td></tr>`;
+    add(g(L.citric*liters),'ácido cítrico');
+    add(g(L.malic*liters),'ácido málico');
+    add(g(L.lactic*liters),'ácido láctico','≈'+fmt(L.lactic*liters*1.15,1).replace(',','.')+' g si líquido 80%');
+    add(g(L.salt*liters),'sal marina fina');
+    add(g(L.sugar*liters),'azúcar','ajustar a '+(isTwo?'6,0':'7,0')+' °Bx');
+    add(ml(L.oleo*liters),'oleosaccharum de limón (E1)', isTwo?'estructura, subordinado':'aroma · al final, en frío');
+    if(isTwo){
+      add(ml(L.ginger*liters),'zumo de jengibre clarificado (E2)','titrar el calor');
+      add(ml(L.mint*liters),'infusión de hierbabuena (E3)','titrar el aroma');
+      add(ml(L.menthol*liters),'solución de mentol (E4)','titrar desde casi cero');
+    }
+    add('enrasar','agua remineralizada','hasta '+fmt(liters,0).replace(',','.')+' L final');
+    return r;
+  }
+
+  function calc(){
+    const l1 = Math.max(0, parseFloat(document.getElementById('l1').value)||0);
+    const l2 = Math.max(0, parseFloat(document.getElementById('l2').value)||0);
+
+    document.getElementById('total').textContent = fmt(l1+l2,0).replace(',','.')+' L';
+    document.getElementById('rec1').innerHTML = rowsRecipe(L1,l1,false);
+    document.getElementById('rec2').innerHTML = rowsRecipe(L2,l2,true);
+
+    // extracciones
+    const oleoMl = L1.oleo*l1 + L2.oleo*l2;
+    const gingerMl = L2.ginger*l2;
+    const mintMl = L2.mint*l2;
+    const menthMl = L2.menthol*l2;
+
+    const oleoSugar = oleoMl;            // ~1:1 rendimiento aprox
+    const oleoPeel  = oleoMl*100/180;    // ratio piel:azúcar
+    const gingerRoot= gingerMl*2;        // rendimiento zumo ~50%
+    const mintLeaf  = mintMl*0.04;       // 40 g/L de infusión
+    const menthMg   = menthMl*10;        // stock 10 mg/ml
+    const gelatin   = 2.5*(gingerMl+mintMl)/1000;
+
+    let e='';
+    const erow=(name,prep,raw)=> e+=`<tr><td class="q">${name}</td><td class="q">${prep}</td><td class="n">${raw}</td></tr>`;
+    erow('oleosaccharum · E1', ml(oleoMl), 'piel de limón '+g(oleoPeel)+' · azúcar '+g(oleoSugar));
+    if(l2>0){
+      erow('zumo jengibre · E2', ml(gingerMl), 'jengibre fresco '+g(gingerRoot));
+      erow('infusión menta · E3', ml(mintMl), 'hierbabuena '+g(mintLeaf)+' · agua '+ml(mintMl));
+      erow('solución mentol · E4', ml(menthMl), 'mentol '+fmt(menthMg,0).replace(',','.')+' mg (del stock 10 mg/ml)');
+      erow('gelatina · E5', g(gelatin), 'para clarificar E2 + E3');
+    }
+    document.getElementById('extract').innerHTML = e;
+
+    document.getElementById('waternote').textContent =
+      'agua = enrasar a volumen final tras añadir todo. la I es referencia (7,0 °Bx); la II va más seca (6,0 °Bx). dosis de aroma = puntos de partida, se cierran en cata.';
+  }
+  calc();
+</script>
+</body>
+</html>

@@ -801,20 +801,24 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   expect(errors).toEqual([]);
 });
 
-// Módulo Limonadas: la página estática se sirve y se abre embebida en la app.
-test("limonadas: la página del módulo se sirve y se abre desde el laboratorio", async ({ page }) => {
+// Módulo Limonadas: asistente paso a paso (nativo, sin scroll) que calcula la receta.
+test("limonadas: el asistente paso a paso calcula receta y extracciones", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  // La página estática responde con su propio contenido (no el de la app).
-  const r = await page.request.get("/limonadas.html");
-  expect(r.ok()).toBeTruthy();
-  const html = await r.text();
-  expect(html).toContain("limonadas — producción");
-  // Y se abre embebida desde el hub del laboratorio.
   await login(page);
   await page.evaluate(() => irA_limonadas());
-  const frame = page.locator('iframe[src^="/limonadas.html"]');
-  await expect(frame).toBeVisible();
+  // Paso 1: selección de tipo (tres tarjetas).
+  await expect(page.locator("#lim .lim-tipo")).toHaveCount(3);
+  // Elegir II · Casa y meter 20 L.
+  await page.evaluate(() => limSetTipo("ii"));
+  await expect(page.locator("#lim-l2")).toBeVisible();
+  await page.evaluate(() => { el("lim-l2").value = "20"; limLeerLitros(); });
+  // Paso Receta: aparece la tabla técnica con los ácidos.
+  await page.evaluate(() => limGo(1));
+  await expect(page.locator("#lim .lim-tab")).toContainText(/ácido cítrico/);
+  // Paso Extracciones: aparece el jengibre de la II.
+  await page.evaluate(() => limGo(1));
+  await expect(page.locator("#lim .lim-tab")).toContainText(/jengibre/i);
   expect(errors).toEqual([]);
 });
 

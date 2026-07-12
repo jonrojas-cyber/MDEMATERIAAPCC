@@ -23,10 +23,10 @@
      para lo crítico. cream/ink invierten su rol respecto al tema claro previo. */
   --cream: #3E433C;   /* fondo: olivo apagado y suave (menos intensidad) */
   --paper: #474C44;   /* celdas / tarjetas: un punto más claras */
-  --ink:   #ECEAE3;   /* texto principal = crema (antes tinta) */
+  --ink:   #F5F4EF;   /* texto principal = blanco cálido (máxima lectura) */
   --olive: #A7B96E;   /* acento vivo sage (activo / selección / relleno) */
   --olive-light: #565C51;  /* superficies/entradas oscuras, tracks */
-  --muted: #D3D6CC;   /* secundario muy legible sobre olivo (contraste alto) */
+  --muted: #DFE1D8;   /* secundario casi blanco · alta intensidad de lectura */
   --warn:  #ECEAE3;   /* jerarquía por peso, sin color (= texto) */
   --ok:    #ECEAE3;
   --alert: #C4342B;   /* rojo La Marzocco · solo criticidad */
@@ -82,10 +82,13 @@ body {
   color: var(--ink);
   font-family: var(--font);
   font-size: 14px;
+  font-weight: 700;   /* toda la interfaz en negrita para máxima legibilidad */
   -webkit-font-smoothing: antialiased;
   display: flex;
   flex-direction: column;
 }
+/* refuerzo: botones e inputs también en negrita (heredan de body pero lo fijamos) */
+button, input, select, textarea { font-weight: 700; }
 
 button { font-family: inherit; cursor: pointer; }
 input, select { font-family: inherit; font-size: 13px; }
@@ -729,27 +732,27 @@ input, select { font-family: inherit; font-size: 13px; }
 
 /* Topbar con marca */
 .topbar-logo { display:flex; align-items:center; gap:10px; color:var(--cream); }
-.brandword { font-family:var(--sans); font-size:18px; font-weight:400; letter-spacing:.01em; }
+.brandword { font-family:var(--sans); font-size:18px; font-weight:700; letter-spacing:.01em; }
 
 /* Home: marca y categorías */
 .home-brand { text-align:center; padding:34px 0 8px; color:var(--ink); }
 .home-brand .mark { color:var(--olive); gap:4px; }
 .home-brand .mark i { width:2.5px; height:26px; }
-.home-brand h1 { font-family:var(--sans); font-size:46px; font-weight:300; margin-top:18px; letter-spacing:0; line-height:1; }
+.home-brand h1 { font-family:var(--sans); font-size:46px; font-weight:700; margin-top:18px; letter-spacing:0; line-height:1; }
 .home-brand .tag { font-size:9px; letter-spacing:.28em; text-transform:lowercase; color:var(--muted); margin-top:12px; }
 .home-status { text-align:center; font-size:11px; color:var(--muted); letter-spacing:.04em; margin:6px 0 34px; }
-.home-status b { color:var(--alert); font-weight:400; }
+.home-status b { color:var(--alert); font-weight:700; }
 
 .cats { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; max-width:780px; margin:0 auto; }
 .cat { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:30px 28px; cursor:pointer; transition:transform .14s, box-shadow .14s; position:relative; min-height:158px; display:flex; flex-direction:column; justify-content:flex-end; }
 .cat:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(17,16,9,.08); }
-.cat-name { font-family:var(--sans); font-size:30px; font-weight:300; line-height:1; text-transform:lowercase; }
+.cat-name { font-family:var(--sans); font-size:30px; font-weight:700; line-height:1; text-transform:lowercase; }
 .cat-desc { font-size:10.5px; color:var(--muted); margin-top:11px; line-height:1.6; letter-spacing:.02em; }
 .cat-alert { position:absolute; top:22px; right:22px; min-width:22px; text-align:center; font-size:10px; background:var(--alert); color:#fff; border-radius:999px; padding:3px 9px; letter-spacing:.04em; }
 .cat-arrow { position:absolute; top:24px; left:28px; color:var(--line); font-size:18px; }
 
 /* Lista de módulos dentro de una categoría */
-.cat-title { font-family:var(--sans); font-size:30px; font-weight:300; margin-bottom:20px; letter-spacing:.01em; text-transform:lowercase; }
+.cat-title { font-family:var(--sans); font-size:30px; font-weight:700; margin-bottom:20px; letter-spacing:.01em; text-transform:lowercase; }
 .modrow { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:17px 20px; margin-bottom:10px; cursor:pointer; display:flex; align-items:center; gap:14px; transition:border-color .12s, transform .12s; }
 .modrow:hover { border-color:var(--olive); transform:translateX(3px); }
 .modrow .mnum { font-size:9px; letter-spacing:.14em; color:var(--muted); width:22px; }
@@ -769,7 +772,7 @@ input, select { font-family: inherit; font-size: 13px; }
 .screen-head {
   font-family: var(--sans);
   font-size: 32px;
-  font-weight: 300;
+  font-weight:700;
   letter-spacing: .005em;
   line-height: 1;
   margin: 4px 0 28px;
@@ -958,7 +961,7 @@ input, select { font-family: inherit; font-size: 13px; }
 .topbar-center { flex: 0 0 auto; }
 .topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
 .topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 15px;
-  font-weight: 400; letter-spacing: .2em; text-transform: lowercase; color: var(--oliveink);
+  font-weight:700; letter-spacing: .2em; text-transform: lowercase; color: var(--oliveink);
   cursor: pointer; transition: opacity .15s ease; }
 .topbar .brandword:hover { opacity: .7; }
 .topbar .brandword:focus-visible { outline: 1px solid var(--oliveink); outline-offset: 3px; border-radius: 2px; }
@@ -1054,7 +1057,7 @@ input, select { font-family: inherit; font-size: 13px; }
 .dash-tools { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
 .dash-tools.solo { grid-template-columns: 1fr; }
 .dash-tool { background: none; border: 1px solid var(--line); border-radius: 10px;
-  font-family: var(--sans); font-size: 11px; letter-spacing: .02em; color: var(--muted);
+  font-family: var(--sans); font-size: 11px; letter-spacing: .02em; color: var(--ink);
   padding: 10px 8px; cursor: pointer; text-align: center; line-height: 1.25;
   display: flex; align-items: center; justify-content: center; min-height: 46px; }
 .dash-tool:hover { color: var(--ink); border-color: var(--ink); }
@@ -1088,7 +1091,7 @@ input, select { font-family: inherit; font-size: 13px; }
 .apertura-ico { display: none; }
 .apertura-txt { display: flex; flex-direction: column; gap: 3px; flex: 1; font-family: var(--sans); }
 .apertura-txt b { font-size: 13px; font-weight: 700; letter-spacing: .01em; }
-.apertura-txt span { font-size: 10.5px; letter-spacing: .04em; opacity: .8; }
+.apertura-txt span { font-size: 10.5px; letter-spacing: .04em; opacity: 1; color: var(--ink); }
 .apertura-arrow { font-size: 18px; opacity: .6; }
 /* Pasos de apertura */
 .apstep { display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
@@ -2438,7 +2441,7 @@ async function verBebidaMBDS(id){
     const eco=admin?`<div class="section-label">Economía</div>
       <div class="cc-card">
         <div class="cc-line"><span>Coste por servicio</span><b>${ccEur(c.coste_por_servicio)}</b></div>
-        <div class="cc-line"><span>PVP</span><b>${ccEur(c.pvp)} ${c.pvp_recomendado?`<span style="color:var(--muted);font-weight:400">(rec. ${ccEur(c.pvp_recomendado)})</span>`:""}</b></div>
+        <div class="cc-line"><span>PVP</span><b>${ccEur(c.pvp)} ${c.pvp_recomendado?`<span style="color:var(--muted);font-weight:700">(rec. ${ccEur(c.pvp_recomendado)})</span>`:""}</b></div>
         <div class="cc-line"><span>Food cost</span><b>${c.food_cost_pct!=null?c.food_cost_pct+" %":"—"}</b></div>
         <div class="cc-line"><span>Margen</span><b>${c.margen_pct!=null?c.margen_pct+" %":"—"}</b></div>
         <div class="cc-line"><span>Servicios por lote</span><b>${c.servicios||"—"}</b></div>

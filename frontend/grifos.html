@@ -117,21 +117,28 @@
           overflow: hidden;
         }
 
-        /* ─── IMAGOTIPO · tres líneas en keyline (estilo Aesop) ───────
-           El emblema de tres columnas dibujado a hilo fino, plano, sin
-           relieve ni degradado. Vive detrás del contenido (z-index 0). */
+        /* ─── IMAGOTIPO · tres columnas estampadas en hueco ───────────
+           Sin contorno: tres barras en verde más oscuro que el fondo, con
+           puntas redondeadas, hundidas en la superficie (deboss) mediante
+           sombra interior. Se leen como un sello grabado, sobrio, detrás
+           del contenido (z-index 0; las pantallas van a 1). */
         .brandmark {
           position: absolute; inset: 0; z-index: 0;
           display: flex; align-items: center; justify-content: center;
-          gap: clamp(22px, 3.2vw, 46px);
+          gap: clamp(24px, 3.4vw, 50px);
           pointer-events: none; overflow: hidden;
         }
         .brandmark i {
           display: block;
-          width: clamp(26px, 3.4vw, 46px);
+          width: clamp(28px, 3.6vw, 48px);
           height: clamp(180px, 42vh, 440px);
-          background: transparent;
-          border: 1px solid var(--line);
+          border-radius: clamp(14px, 1.9vw, 24px);
+          background: #202821;   /* verde más oscuro que el olivo del fondo */
+          box-shadow:
+            inset 0 3px 6px rgba(0,0,0,.55),
+            inset 0 8px 14px rgba(0,0,0,.28),
+            inset 0 -2px 3px rgba(236,234,227,.045),
+            0 1px 0 rgba(236,234,227,.05);
         }
         /* imagotipo pequeño de firma en la esquina, sobre el contenido */
         .sigmark {

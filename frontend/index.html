@@ -26,13 +26,13 @@
   --ink:   #ECEAE3;   /* texto principal = crema (antes tinta) */
   --olive: #A7B96E;   /* acento vivo sage (activo / selección / relleno) */
   --olive-light: #565C51;  /* superficies/entradas oscuras, tracks */
-  --muted: #C4C7BC;   /* secundario legible sobre olivo (contraste alto) */
+  --muted: #D3D6CC;   /* secundario muy legible sobre olivo (contraste alto) */
   --warn:  #ECEAE3;   /* jerarquía por peso, sin color (= texto) */
   --ok:    #ECEAE3;
   --alert: #C4342B;   /* rojo La Marzocco · solo criticidad */
   --gold:  #A7B96E;   /* secundario colapsado al acento sage */
   /* Líneas y sombra */
-  --line:  rgba(236,234,227,0.24);   /* keyline a hilo sobre olivo */
+  --line:  rgba(236,234,227,0.32);   /* keyline a hilo sobre olivo */
   --shadow: none;
   /* Marco oliva (barra superior e inferior) = mismo olivo plano */
   --olivebar: #383D36;
@@ -161,27 +161,9 @@ input, select { font-family: inherit; font-size: 13px; }
   background: var(--cream);   /* olivo plano bajo las pantallas */
 }
 
-/* ── IMAGOTIPO · tres columnas estampadas en hueco (línea grifos) ──────
-   Verde más oscuro que el fondo, puntas redondeadas, hundidas por sombra
-   interior (deboss), sin contorno. Marca de agua sobria detrás de las
-   pantallas (z-index 0; el contenido va a 1). */
-.brandmark {
-  position: absolute; inset: 0; z-index: 0;
-  display: flex; align-items: center; justify-content: center;
-  gap: clamp(20px, 3vw, 44px);
-  pointer-events: none; overflow: hidden;
-}
-.brandmark i {
-  display: block;
-  width: clamp(22px, 3vw, 42px);
-  height: clamp(150px, 40vh, 380px);
-  border-radius: clamp(12px, 1.7vw, 22px);
-  background: #343A31;   /* verde algo más oscuro que el fondo (deboss) */
-  box-shadow:
-    inset 0 3px 6px rgba(0,0,0,.55),
-    inset 0 8px 14px rgba(0,0,0,.26),
-    inset 0 -2px 3px rgba(236,234,227,.04);
-}
+/* Sin marca de agua tras las pantallas: app seria, cero ruido visual, máxima
+   legibilidad del dato. El imagotipo vive solo en la barra superior y el login. */
+.brandmark { display: none; }
 
 .screen {
   position: absolute;
@@ -1092,7 +1074,7 @@ input, select { font-family: inherit; font-size: 13px; }
 .apertura-card { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left; border: 1px solid var(--line);
   border-radius: var(--r-card); padding: 13px 15px; margin-bottom: 14px; background: var(--paper); color: var(--ink); cursor: pointer; }
 .apertura-card.ok { background: transparent; color: var(--muted); border-color: var(--line); }
-.apertura-ico { font-size: 20px; line-height: 1; }
+.apertura-ico { display: none; }
 .apertura-txt { display: flex; flex-direction: column; gap: 3px; flex: 1; font-family: var(--sans); }
 .apertura-txt b { font-size: 13px; font-weight: 700; letter-spacing: .01em; }
 .apertura-txt span { font-size: 10.5px; letter-spacing: .04em; opacity: .8; }

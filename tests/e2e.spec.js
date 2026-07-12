@@ -14,7 +14,7 @@ async function login(page) {
   for (const d of "3333") {
     await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   }
-  await page.waitForSelector(".dash", { timeout: 15_000 });
+  await page.waitForSelector(".home-ask", { timeout: 15_000 });
 }
 
 test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
@@ -118,28 +118,24 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("login + inicio: 4 tarjetas con el título completo (sin recorte) y cero errores de JS", async ({ page }) => {
+test("inicio: cerebro de decisiones · una pregunta y una pila priorizada", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // 4 bloques grandes (2×2); el primero es ALERTAS.
-  await expect(page.locator(".dashcard")).toHaveCount(4);
-  await expect(page.locator(".dashcard").first()).toContainText(/ALERTAS/);
-  // El inicio NO hace scroll (todo visible) y ningún título se sale de su
-  // tarjeta (regresión del bug donde la rejilla se aplastaba y recortaba los
-  // títulos). El título se autoajusta al alto de la tarjeta (container queries).
-  const r = await page.evaluate(() => {
-    const s = document.getElementById("screen-home");
-    const clipped = Array.from(document.querySelectorAll(".dashcard")).filter((c) => {
-      const name = c.querySelector(".dashcard-name");
-      if (!name) return true;
-      const cr = c.getBoundingClientRect(), nr = name.getBoundingClientRect();
-      return nr.top < cr.top - 1 || nr.bottom > cr.bottom + 1;
-    }).length;
-    return { scroll: s.scrollHeight > s.clientHeight + 2, clipped };
-  });
-  expect(r.scroll, "el inicio no debe hacer scroll").toBeFalsy();
-  expect(r.clipped, "ningún título debe salirse de su tarjeta").toBe(0);
+  // El inicio responde UNA pregunta.
+  await expect(page.locator(".home-ask")).toHaveText(/qué hago ahora/i);
+  // O hay decisiones priorizadas (pila) o el estado ideal "todo en orden".
+  const filas = await page.locator(".drow").count();
+  if (filas > 0) {
+    // Cada decisión lleva su filete de estado (color semántico) y su verbo.
+    await expect(page.locator(".drow").first().locator(".drail")).toBeVisible();
+    await expect(page.locator(".drow").first().locator(".dkind")).toBeVisible();
+  } else {
+    await expect(page.locator(".home-clear")).toBeVisible();
+  }
+  // La rutina y los dominios viven debajo, en silencio.
+  await expect(page.locator(".home-routine")).toBeVisible();
+  await expect(page.locator(".home-nav button").first()).toBeVisible();
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 
@@ -147,8 +143,8 @@ test("tareas: bandeja única con prioridad y acción directa", async ({ page }) 
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // Abrir Tareas desde la tarjeta ALERTAS.
-  await page.locator(".dashcard").first().click();
+  // La bandeja completa de Tareas (el mismo cerebro que alimenta el inicio).
+  await page.evaluate(() => irA_tareas());
   await expect(page.locator(".screen-head")).toContainText(/tareas/i);
   await expect(page.locator(".tareas-cuenta")).toContainText(/cr[ií]ticas/i);
   // Hay tareas con botón de acción directa (verbo imperativo).
@@ -197,7 +193,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
-  await page.waitForSelector(".dash");
+  await page.waitForSelector(".home-ask");
   await page.evaluate(() => irA_materias());
   await page.waitForSelector(".alm-macro");
   // Almacén de 3 niveles: macro → subcategoría → producto → ficha. Navegamos por
@@ -235,9 +231,9 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
   await expect(page.locator("#topbar-section")).toHaveText(/materia/i);
   await expect(page.locator("#topbar-back")).toBeVisible();
 
-  // "Volver" otra vez debe llevar al inicio (áreas visibles, sin botón volver).
+  // "Volver" otra vez debe llevar al inicio (la pregunta visible, sin botón volver).
   await page.click("#topbar-back");
-  await expect(page.locator(".dashcard").first()).toBeVisible();
+  await expect(page.locator(".home-ask")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
   expect(errors).toEqual([]);
@@ -264,7 +260,7 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el logotipo de texto → inicio.
   await page.click(".topbar .brandword");
-  await expect(page.locator(".dashcard").first()).toBeVisible();
+  await expect(page.locator(".home-ask")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
@@ -474,12 +470,13 @@ test("escáner de documento: endereza y devuelve una imagen procesada", async ({
   expect(errors).toEqual([]);
 });
 
-test("acceso por teclado: Enter abre una tarjeta", async ({ page }) => {
+test("acceso por teclado: Enter abre un dominio desde el inicio", async ({ page }) => {
   await login(page);
-  await page.locator(".dashcard").first().focus();
+  // El primer dominio de la navegación silenciosa es Producción.
+  await page.locator(".home-nav button").first().focus();
   await page.keyboard.press("Enter");
-  // La primera tarjeta es "ALERTAS" → abre la bandeja de tareas.
-  await expect(page.locator(".screen-head")).toContainText(/tareas/i);
+  // Se abre una sección (aparece el botón volver).
+  await expect(page.locator("#topbar-back")).toBeVisible();
 });
 
 // ═══ CENTRO DE CONTROL · Sistema Operativo del Negocio (solo admin) ═══
@@ -487,7 +484,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  await expect(page.locator(".dash-owner")).toBeVisible();
+  await expect(page.locator(".home-nav button", { hasText: /Negocio/i })).toBeVisible();
   await page.evaluate(() => irA_centroControl("mes"));
   await expect(page.locator(".cc-grid")).toBeVisible();
   await expect(page.locator(".cc-score").first()).toBeVisible(); // salud del negocio
@@ -745,7 +742,7 @@ test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".dash", { timeout: 15_000 });
+  await page.waitForSelector(".home-ask", { timeout: 15_000 });
   expect(await page.evaluate(() => document.body.classList.contains("tpv"))).toBe(true);
   await page.evaluate(() => irA_pedidos());
   await page.selectOption("#ped-prov", { index: 1 });
@@ -770,7 +767,7 @@ test("MBDS: endpoint calcula parámetros y validación de las bebidas", async ({
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".dash", { timeout: 15_000 });
+  await page.waitForSelector(".home-ask", { timeout: 15_000 });
   const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
   expect(Array.isArray(bebidas)).toBe(true);
   const ambar = bebidas.find((b) => b.nombre === "Ámbar");
@@ -790,7 +787,7 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".dash", { timeout: 15_000 });
+  await page.waitForSelector(".home-ask", { timeout: 15_000 });
   await page.evaluate(() => irA_mbds());
   await expect(page.locator(".cc-label", { hasText: /Laboratorio de bebidas/ })).toBeVisible();
   await expect(page.locator(".cc-card", { hasText: /Ámbar/ }).first()).toBeVisible();
@@ -847,7 +844,7 @@ test("MBDS: el trabajador NO recibe datos económicos de las bebidas", async ({ 
   await page.click("#ubtn-Lara");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".dash", { timeout: 15_000 });
+  await page.waitForSelector(".home-ask", { timeout: 15_000 });
   const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
   expect(Array.isArray(bebidas)).toBe(true);
   const ambar = bebidas.find((b) => b.nombre === "Ámbar");

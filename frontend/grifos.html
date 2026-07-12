@@ -13,30 +13,33 @@
            Courier. Un único acento vivo (oliva) para "sirviendo".
         ═══════════════════════════════════════════════════════════ */
         :root {
-          --paper:     #F1EFE9;   /* fondo chrome claro */
-          --cream:     #ECEAE3;   /* crema paneles */
-          --ink:       #2A332B;   /* verde oliva profundo · identidad */
-          --sand:      #2A332B;   /* texto principal = tinta */
-          --sand-mid:  #5b6158;   /* texto medio */
-          --sand-dim:  #82857A;   /* texto tenue (muted) */
-          --amber:     #4a5a2e;   /* acento vivo · sirviendo / selección */
-          --amber-dim: rgba(74,90,46,0.28);
-          --accent:    #2A332B;
-          --line:      rgba(42,51,43,0.26);
-          --line-mid:  rgba(42,51,43,0.48);
-          --red:       #b5462a;
-          --bg:        #F1EFE9;
-          --panel-bg:  #ECEAE3;
-          /* claros para texto sobre la tinta (pantalla báscula) */
+          --paper:     #2A332B;   /* fondo verde oliva en TODA la app */
+          --cream:     #333c34;   /* superficie de panel/carta (un punto más claro) */
+          --ink:       #2A332B;   /* verde oliva profundo · base */
+          --sand:      #ECEAE3;   /* texto principal = crema */
+          --sand-mid:  #c7cabf;   /* texto medio */
+          --sand-dim:  #8f958a;   /* texto tenue */
+          --amber:     #a7b96e;   /* acento vivo · sirviendo / selección (olivo claro) */
+          --amber-dim: rgba(167,185,110,0.16);
+          --accent:    #a7b96e;
+          --line:      rgba(236,234,227,0.16);
+          --line-mid:  rgba(236,234,227,0.30);
+          --red:       #d06a4f;   /* rojo legible sobre olivo */
+          --bg:        #2A332B;
+          --panel-bg:  #333c34;
+          /* texto sobre la tinta (coherente con el resto) */
           --on-ink:      #ECEAE3;
           --on-ink-mid:  #c7cabf;
-          --on-ink-dim:  #969b8d;
+          --on-ink-dim:  #8f958a;
           --font:      "Courier New", Courier, monospace;
         }
 
         html, body {
           width: 100%; height: 100%;
-          background: var(--paper);
+          /* superficie olivo con profundidad: luz cenital suave + viñeta en los bordes */
+          background:
+            radial-gradient(130% 105% at 50% -10%, #34402f 0%, #2c352b 48%, #232b24 100%);
+          background-color: var(--paper);
           color: var(--sand);
           font-family: var(--font);
           font-weight: 700;
@@ -104,8 +107,8 @@
           border-left: 3px solid transparent;
           transition: color .15s, border-color .15s, background .15s;
         }
-        #sidebar button:hover { color: var(--sand-mid); background: rgba(42,51,43,.06); }
-        #sidebar button.active { color: var(--sand); border-left-color: var(--amber); background: rgba(42,51,43,.10); }
+        #sidebar button:hover { color: var(--sand-mid); background: rgba(236,234,227,.06); }
+        #sidebar button.active { color: var(--sand); border-left-color: var(--amber); background: rgba(236,234,227,.10); }
 
         /* ─── MAIN CONTENT ──────────────────────────────────── */
         #main {
@@ -114,18 +117,39 @@
           overflow: hidden;
         }
 
-        /* imagotipo */
-        #main::before {
-          content: "III";
-          position: absolute;
-          top: 20px; right: 24px;
-          font-size: 13px;
-          letter-spacing: 1px;
-          color: var(--sand-dim);
-          pointer-events: none;
-          z-index: 5;
+        /* ─── IMAGOTIPO · marca de agua de tres líneas en relieve ─────
+           El emblema real de tres barras, grabado en la superficie olivo.
+           Barras apenas más claras/oscuras que el fondo + luces y sombras
+           internas: se lee como relieve físico, no como un dibujo plano.
+           Vive detrás del contenido (z-index 0; las pantallas van a 1). */
+        .brandmark {
+          position: absolute; inset: 0; z-index: 0;
+          display: flex; align-items: center; justify-content: center;
+          gap: clamp(20px, 3vw, 40px);
+          pointer-events: none; overflow: hidden;
         }
-        body[data-screen="home"] #main::before { color: var(--on-ink-dim); }
+        .brandmark i {
+          display: block;
+          width: clamp(26px, 3.4vw, 46px);
+          height: clamp(180px, 42vh, 440px);
+          background: linear-gradient(158deg, #333d33 0%, #2b332b 46%, #232b24 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(236,234,227,.09),
+            inset 1px 0 0 rgba(236,234,227,.05),
+            inset -2px 0 4px rgba(0,0,0,.30),
+            inset 0 -3px 7px rgba(0,0,0,.28),
+            0 26px 64px rgba(0,0,0,.32);
+          opacity: .92;
+        }
+        /* imagotipo pequeño de firma en la esquina, sobre el contenido */
+        .sigmark {
+          position: absolute; top: 18px; right: 22px;
+          display: flex; gap: 3px; z-index: 5; pointer-events: none;
+        }
+        .sigmark i {
+          width: 3px; height: 15px; background: var(--sand-dim);
+          box-shadow: inset -1px 0 0 rgba(0,0,0,.3);
+        }
 
         /* screens */
         .screen {
@@ -141,7 +165,7 @@
         /* ─── PANTALLA PRINCIPAL · báscula en VERDE OLIVA ─────── */
         #screen-home {
           gap: 0;
-          background: var(--ink);
+          background: transparent;   /* deja ver la marca de agua grabada */
         }
         #scale-label {
           font-size: 12px; letter-spacing: 5px;
@@ -210,14 +234,14 @@
           max-width: 640px;
         }
         .cat-btn {
-          background: rgba(42,51,43,.05);
+          background: rgba(236,234,227,.05);
           border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); text-transform: uppercase;
           font-size: 13px; letter-spacing: 4px; color: var(--sand-mid);
           padding: 22px 16px;
           transition: all .15s;
         }
-        .cat-btn:hover { background: rgba(42,51,43,.10); color: var(--sand); border-color: var(--sand-dim); }
+        .cat-btn:hover { background: rgba(236,234,227,.10); color: var(--sand); border-color: var(--sand-dim); }
         .cat-btn.selected { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
 
         #leches-amounts {
@@ -228,14 +252,14 @@
           margin-bottom: 16px;
         }
         .amount-btn {
-          background: rgba(42,51,43,.05);
+          background: rgba(236,234,227,.05);
           border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); text-transform: uppercase;
           font-size: 13px; letter-spacing: 2px; color: var(--sand-mid);
           padding: 16px 8px;
           transition: all .15s;
         }
-        .amount-btn:hover { background: rgba(42,51,43,.10); color: var(--sand); border-color: var(--sand-dim); }
+        .amount-btn:hover { background: rgba(236,234,227,.10); color: var(--sand); border-color: var(--sand-dim); }
         .amount-btn.selected { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
 
         /* ─── BOTTOMBAR ─────────────────────────────────────── */
@@ -256,19 +280,21 @@
           font-size: 13px;
           transition: all .15s;
         }
-        .action-btn:hover { background: rgba(42,51,43,.09); color: var(--sand); }
+        .action-btn:hover { background: rgba(236,234,227,.09); color: var(--sand); }
         .action-btn.stop-btn { color: var(--red); border-color: rgba(181,70,42,.5); border-width: 2px; }
         .action-btn.stop-btn:hover { background: rgba(181,70,42,.10); color: var(--red); }
 
         /* ─── PANEL (overlay) ─────────────────────────────────── */
         #panel-overlay {
-          position: fixed; inset: 0; background: rgba(241,239,233,.97);
+          position: fixed; inset: 0; background: rgba(35,43,36,.98);
           z-index: 100; display: none;
           align-items: center; justify-content: center;
         }
         #panel-overlay.open { display: flex; }
         #panel {
-          background: var(--panel-bg);
+          position: relative;
+          background:
+            radial-gradient(130% 105% at 50% -10%, #34402f 0%, #2c352b 48%, #232b24 100%);
           border: none;
           width: 100vw;
           height: 100vh;
@@ -276,6 +302,7 @@
           overflow: hidden;
         }
         #panel-header {
+          position: relative; z-index: 1;
           display: flex; align-items: center; justify-content: space-between;
           padding: 18px 24px;
           border-bottom: 1px solid var(--line);
@@ -289,8 +316,8 @@
           padding: 10px 20px;
           transition: all .15s;
         }
-        #panel-close:hover { background: rgba(42,51,43,.10); }
-        #panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+        #panel-close:hover { background: rgba(236,234,227,.10); }
+        #panel-body { position: relative; z-index: 1; flex: 1; overflow-y: auto; padding: 24px; }
         #panel-body::-webkit-scrollbar { width: 3px; }
         #panel-body::-webkit-scrollbar-track { background: transparent; }
         #panel-body::-webkit-scrollbar-thumb { background: var(--sand-dim); }
@@ -334,18 +361,18 @@
         }
         .stepper { display: flex; align-items: center; gap: 6px; }
         .stepper button {
-          background: rgba(42,51,43,.08); border: 1px solid var(--line-mid);
+          background: rgba(236,234,227,.08); border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); color: var(--sand-mid);
           width: 24px; height: 24px; font-size: 13px; line-height: 1;
           transition: all .1s; text-transform: none;
         }
-        .stepper button:hover { background: rgba(42,51,43,.14); color: var(--sand); }
+        .stepper button:hover { background: rgba(236,234,227,.14); color: var(--sand); }
         .stepper .val { width: 48px; text-align: right; font-size: 13px; letter-spacing: 1px; color: var(--sand); }
         .recipe-total { font-size: 12px; letter-spacing: 3px; color: var(--sand-dim); margin-top: 8px; text-align: right; }
 
         /* ─── STOCK PANEL ─────────────────────────────────── */
         .stock-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .stock-card { background: rgba(42,51,43,.06); border: 1px solid var(--line); padding: 14px 12px; }
+        .stock-card { background: rgba(236,234,227,.06); border: 1px solid var(--line); padding: 14px 12px; }
         .stock-name { font-size: 12px; letter-spacing: 3px; color: var(--sand-mid); margin-bottom: 10px; }
         .stock-bar-wrap { height: 2px; background: var(--line-mid); margin-bottom: 8px; }
         .stock-bar { height: 100%; background: var(--amber); transition: width .3s; }
@@ -357,14 +384,14 @@
         .stock-valve { font-size: 12px; letter-spacing: 2px; color: var(--sand-dim); margin-bottom: 10px; }
         .stock-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
         .stock-btn {
-          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); text-transform: uppercase;
           font-size: 12px; letter-spacing: 1px; color: var(--sand-dim);
           padding: 4px 6px; transition: all .1s;
         }
-        .stock-btn:hover { background: rgba(42,51,43,.10); color: var(--sand); }
+        .stock-btn:hover { background: rgba(236,234,227,.10); color: var(--sand); }
         .stock-input {
-          width: 44px; background: rgba(42,51,43,.05);
+          width: 44px; background: rgba(236,234,227,.05);
           border: 1px solid var(--line-mid); color: var(--sand);
           font-family: var(--font); font-size: 12px; text-align: center;
           padding: 4px; text-transform: uppercase;
@@ -379,22 +406,22 @@
         .config-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         .config-label { font-size: 12px; letter-spacing: 2px; color: var(--sand-dim); width: 100px; flex-shrink: 0; }
         .config-input {
-          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
           color: var(--sand); font-family: var(--font); font-size: 13px;
           padding: 8px 12px; flex: 1; text-transform: uppercase; outline: none;
         }
         .config-input:focus { border-color: var(--sand-dim); }
         .config-btn {
-          background: rgba(42,51,43,.08); border: 1px solid var(--line-mid);
+          background: rgba(236,234,227,.08); border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); text-transform: uppercase;
           font-size: 12px; letter-spacing: 3px; color: var(--sand-mid);
           padding: 8px 16px; transition: all .15s;
         }
-        .config-btn:hover { background: rgba(42,51,43,.12); color: var(--sand); }
+        .config-btn:hover { background: rgba(236,234,227,.12); color: var(--sand); }
         .config-hint { font-size: 11px; letter-spacing: 1px; color: var(--sand-dim); text-transform: none; margin-top: 6px; }
         .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
         .radio-opt {
-          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); text-transform: uppercase;
           font-size: 12px; letter-spacing: 2px; color: var(--sand-dim);
           padding: 7px 12px; transition: all .15s;
@@ -403,7 +430,7 @@
 
         .valve-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
         .valve-btn {
-          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
           cursor: pointer; font-family: var(--font); text-transform: uppercase;
           font-size: 12px; letter-spacing: 2px; color: var(--sand-mid);
           padding: 18px 8px; transition: all .1s; touch-action: none;
@@ -411,7 +438,7 @@
         .valve-btn.pressed { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
 
         #log-area {
-          background: rgba(42,51,43,.06); border: 1px solid var(--line);
+          background: rgba(236,234,227,.06); border: 1px solid var(--line);
           padding: 12px; height: 120px; overflow-y: auto;
           font-size: 12px; letter-spacing: 1px; color: var(--sand-dim);
           line-height: 1.7;
@@ -422,8 +449,9 @@
         /* ─── TOAST ─────────────────────────────────────────── */
         #toast {
           position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%);
-          background: var(--ink); border: 1px solid var(--ink);
+          background: #3b463b; border: 1px solid var(--amber);
           padding: 10px 24px; font-size: 12px; letter-spacing: 3px; color: var(--on-ink);
+          box-shadow: 0 12px 34px rgba(0,0,0,.42);
           z-index: 200; opacity: 0; transition: opacity .3s; pointer-events: none;
         }
         #toast.show { opacity: 1; }
@@ -457,6 +485,8 @@
 
     <!-- MAIN -->
     <div id="main">
+        <div class="brandmark" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="sigmark" aria-hidden="true"><i></i><i></i><i></i></div>
         <div id="status-dot"></div>
 
         <!-- BÁSCULA -->
@@ -504,6 +534,7 @@
 <!-- PANEL OVERLAY -->
 <div id="panel-overlay">
     <div id="panel">
+        <div class="brandmark" aria-hidden="true"><i></i><i></i><i></i></div>
         <div id="panel-header">
             <span id="panel-title"></span>
             <button id="panel-close" onclick="closePanel()">← Volver al Menú</button>

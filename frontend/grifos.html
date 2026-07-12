@@ -24,7 +24,7 @@
           --accent:    #a7b96e;
           --line:      rgba(236,234,227,0.16);
           --line-mid:  rgba(236,234,227,0.30);
-          --red:       #d06a4f;   /* rojo legible sobre olivo */
+          --red:       #C4342B;   /* rojo La Marzocco */
           --bg:        #2A332B;
           --panel-bg:  #333c34;
           /* texto sobre la tinta (coherente con el resto) */
@@ -36,19 +36,16 @@
 
         html, body {
           width: 100%; height: 100%;
-          /* superficie olivo con profundidad: luz cenital suave + viñeta en los bordes */
-          background:
-            radial-gradient(130% 105% at 50% -10%, #34402f 0%, #2c352b 48%, #232b24 100%);
-          background-color: var(--paper);
+          background: var(--paper);   /* olivo plano, sin degradado */
           color: var(--sand);
           font-family: var(--font);
-          font-weight: 700;
-          text-transform: uppercase;
+          font-weight: 400;
+          text-transform: lowercase;
           overflow: hidden;
           -webkit-tap-highlight-color: transparent;
           user-select: none;
         }
-        * { font-weight: 700; }
+        * { font-weight: 400; }
 
         /* ─── LAYOUT SHELL ─────────────────────────────────── */
         #shell {
@@ -77,7 +74,7 @@
         #topbar .top-actions button {
           background: none; border: none; cursor: pointer;
           font-family: var(--font);
-          text-transform: uppercase;
+          text-transform: lowercase;
           font-size: 13px;
           letter-spacing: 3px;
           color: var(--sand-mid);
@@ -94,19 +91,22 @@
           border-right: 1px solid var(--line);
           display: flex;
           flex-direction: column;
-          padding: 28px 0;
-          gap: 4px;
+          padding: 12px 0;
+          gap: 0;
         }
+        /* lista reglada estilo Aesop: hilo fino entre cada entrada */
         #sidebar button {
           background: none; border: none; cursor: pointer;
-          font-family: var(--font); text-transform: uppercase;
+          font-family: var(--font); text-transform: lowercase;
           font-size: 13px; letter-spacing: 3px;
           color: var(--sand-dim);
           text-align: left;
-          padding: 16px 24px;
-          border-left: 3px solid transparent;
+          padding: 18px 24px;
+          border-left: 2px solid transparent;
+          border-bottom: 1px solid var(--line);
           transition: color .15s, border-color .15s, background .15s;
         }
+        #sidebar button:first-child { border-top: 1px solid var(--line); }
         #sidebar button:hover { color: var(--sand-mid); background: rgba(236,234,227,.06); }
         #sidebar button.active { color: var(--sand); border-left-color: var(--amber); background: rgba(236,234,227,.10); }
 
@@ -117,29 +117,21 @@
           overflow: hidden;
         }
 
-        /* ─── IMAGOTIPO · marca de agua de tres líneas en relieve ─────
-           El emblema real de tres barras, grabado en la superficie olivo.
-           Barras apenas más claras/oscuras que el fondo + luces y sombras
-           internas: se lee como relieve físico, no como un dibujo plano.
-           Vive detrás del contenido (z-index 0; las pantallas van a 1). */
+        /* ─── IMAGOTIPO · tres líneas en keyline (estilo Aesop) ───────
+           El emblema de tres columnas dibujado a hilo fino, plano, sin
+           relieve ni degradado. Vive detrás del contenido (z-index 0). */
         .brandmark {
           position: absolute; inset: 0; z-index: 0;
           display: flex; align-items: center; justify-content: center;
-          gap: clamp(20px, 3vw, 40px);
+          gap: clamp(22px, 3.2vw, 46px);
           pointer-events: none; overflow: hidden;
         }
         .brandmark i {
           display: block;
           width: clamp(26px, 3.4vw, 46px);
           height: clamp(180px, 42vh, 440px);
-          background: linear-gradient(158deg, #333d33 0%, #2b332b 46%, #232b24 100%);
-          box-shadow:
-            inset 0 1px 0 rgba(236,234,227,.09),
-            inset 1px 0 0 rgba(236,234,227,.05),
-            inset -2px 0 4px rgba(0,0,0,.30),
-            inset 0 -3px 7px rgba(0,0,0,.28),
-            0 26px 64px rgba(0,0,0,.32);
-          opacity: .92;
+          background: transparent;
+          border: 1px solid var(--line);
         }
         /* imagotipo pequeño de firma en la esquina, sobre el contenido */
         .sigmark {
@@ -147,8 +139,7 @@
           display: flex; gap: 3px; z-index: 5; pointer-events: none;
         }
         .sigmark i {
-          width: 3px; height: 15px; background: var(--sand-dim);
-          box-shadow: inset -1px 0 0 rgba(0,0,0,.3);
+          width: 2px; height: 15px; background: var(--sand-dim);
         }
 
         /* screens */
@@ -172,11 +163,18 @@
           color: var(--on-ink-dim);
           margin-bottom: 8px;
         }
+        .scale-plate {
+          padding: 24px clamp(40px, 9vw, 130px);
+          border-top: 1px solid var(--line);
+          border-bottom: 1px solid var(--line);
+          margin: 6px 0 2px;
+        }
         #scale-weight {
           font-size: clamp(80px, 11vw, 140px);
           letter-spacing: -2px;
           color: var(--on-ink);
           line-height: 1;
+          font-weight: 700;
         }
         #scale-unit {
           font-size: 18px; letter-spacing: 6px;
@@ -219,7 +217,7 @@
           border-bottom: 1px solid var(--line);
           width: 100%; max-width: 640px;
         }
-        #cat-scale-weight { font-size: 36px; letter-spacing: -1px; color: var(--sand); }
+        #cat-scale-weight { font-size: 36px; letter-spacing: -1px; color: var(--sand); font-weight: 700; }
         #cat-scale-unit { font-size: 13px; letter-spacing: 3px; color: var(--sand-mid); }
         #cat-scale-state {
           font-size: 12px; letter-spacing: 3px; color: var(--sand-dim);
@@ -236,7 +234,7 @@
         .cat-btn {
           background: rgba(236,234,227,.05);
           border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           font-size: 13px; letter-spacing: 4px; color: var(--sand-mid);
           padding: 22px 16px;
           transition: all .15s;
@@ -254,7 +252,7 @@
         .amount-btn {
           background: rgba(236,234,227,.05);
           border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           font-size: 13px; letter-spacing: 2px; color: var(--sand-mid);
           padding: 16px 8px;
           transition: all .15s;
@@ -274,7 +272,7 @@
         }
         .action-btn {
           background: none; border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           letter-spacing: 5px; color: var(--sand);
           padding: 0 44px; height: 72px;
           font-size: 13px;
@@ -293,8 +291,7 @@
         #panel-overlay.open { display: flex; }
         #panel {
           position: relative;
-          background:
-            radial-gradient(130% 105% at 50% -10%, #34402f 0%, #2c352b 48%, #232b24 100%);
+          background: var(--paper);   /* olivo plano */
           border: none;
           width: 100vw;
           height: 100vh;
@@ -312,7 +309,7 @@
         #panel-close {
           background: none; border: 1px solid var(--line-mid); cursor: pointer;
           font-family: var(--font); font-size: 13px; letter-spacing: 3px;
-          color: var(--sand); text-transform: uppercase;
+          color: var(--sand); text-transform: lowercase;
           padding: 10px 20px;
           transition: all .15s;
         }
@@ -326,7 +323,7 @@
         .recipe-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
         .recipe-tab {
           background: none; border: none; cursor: pointer;
-          font-family: var(--font); text-transform: uppercase;
+          font-family: var(--font); text-transform: lowercase;
           font-size: 12px; letter-spacing: 3px; color: var(--sand-dim);
           padding: 10px 16px; border-bottom: 1px solid transparent;
           transition: all .15s;
@@ -385,7 +382,7 @@
         .stock-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
         .stock-btn {
           background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           font-size: 12px; letter-spacing: 1px; color: var(--sand-dim);
           padding: 4px 6px; transition: all .1s;
         }
@@ -394,7 +391,7 @@
           width: 44px; background: rgba(236,234,227,.05);
           border: 1px solid var(--line-mid); color: var(--sand);
           font-family: var(--font); font-size: 12px; text-align: center;
-          padding: 4px; text-transform: uppercase;
+          padding: 4px; text-transform: lowercase;
         }
 
         /* ─── CONFIG PANEL ─────────────────────────────────── */
@@ -408,12 +405,12 @@
         .config-input {
           background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
           color: var(--sand); font-family: var(--font); font-size: 13px;
-          padding: 8px 12px; flex: 1; text-transform: uppercase; outline: none;
+          padding: 8px 12px; flex: 1; text-transform: lowercase; outline: none;
         }
         .config-input:focus { border-color: var(--sand-dim); }
         .config-btn {
           background: rgba(236,234,227,.08); border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           font-size: 12px; letter-spacing: 3px; color: var(--sand-mid);
           padding: 8px 16px; transition: all .15s;
         }
@@ -422,7 +419,7 @@
         .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
         .radio-opt {
           background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           font-size: 12px; letter-spacing: 2px; color: var(--sand-dim);
           padding: 7px 12px; transition: all .15s;
         }
@@ -431,7 +428,7 @@
         .valve-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
         .valve-btn {
           background: rgba(236,234,227,.05); border: 1px solid var(--line-mid);
-          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          cursor: pointer; font-family: var(--font); text-transform: lowercase;
           font-size: 12px; letter-spacing: 2px; color: var(--sand-mid);
           padding: 18px 8px; transition: all .1s; touch-action: none;
         }
@@ -491,12 +488,12 @@
 
         <!-- BÁSCULA -->
         <div id="screen-home" class="screen active">
-            <div id="scale-label">PESO EN TIEMPO REAL</div>
-            <div>
+            <div id="scale-label">peso en tiempo real</div>
+            <div class="scale-plate">
                 <span id="scale-weight">—</span>
-                <span id="scale-unit">G</span>
+                <span id="scale-unit">g</span>
             </div>
-            <div id="recipe-name">— SIN RECETA —</div>
+            <div id="recipe-name">— sin receta —</div>
             <div id="recipe-detail"></div>
         </div>
 

@@ -963,14 +963,15 @@ input, select { font-family: inherit; font-size: 13px; }
 .topbar .brandword:hover { opacity: .7; }
 .topbar .brandword:focus-visible { outline: 1px solid var(--oliveink); outline-offset: 3px; border-radius: 2px; }
 /* Imagotipo ||| incrustado (en relieve) en verde sobre la barra oliva. */
-.topbar-center .mark { gap: 8px; cursor: pointer; }
+.topbar-center .mark { gap: 11px; cursor: pointer; }
 .topbar-center .mark i {
-  width: 4.5px; height: 36px; border-radius: 4px;
-  background: #353B2B; /* surco un punto más oscuro que la barra */
+  width: 6px; height: 48px; border-radius: 5px;
+  background: #262B1E; /* surco más oscuro que la barra: mayor profundidad */
   box-shadow:
-    inset 1.2px 1.2px 1.6px rgba(0,0,0,.55),
-    inset -1px -1px 1.2px rgba(231,228,215,.10),
-    0 1px 0 rgba(231,228,215,.14); /* labio de luz al pie (efecto tallado) */
+    inset 2.2px 2.2px 3.5px rgba(0,0,0,.72),
+    inset 4px 4px 7px rgba(0,0,0,.40),
+    inset -1.6px -1.6px 2.4px rgba(231,228,215,.16),
+    0 1.5px 0 rgba(231,228,215,.18); /* labio de luz al pie (efecto tallado hondo) */
 }
 .topbar-section { font-family: 'Courier Prime', monospace; font-size: 12px;
   letter-spacing: .18em; text-transform: lowercase; color: var(--oliveink); flex: 0; }

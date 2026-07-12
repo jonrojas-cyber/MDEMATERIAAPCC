@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Control M · Grifos</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ═══════════════════════════════════════════════════════════
+           PALETA CONTROL M · misma identidad que la app principal:
+           crema/papel de fondo, tinta verde oliva, keyline cuadrada,
+           Courier. Un único acento vivo (oliva) para "sirviendo".
+        ═══════════════════════════════════════════════════════════ */
+        :root {
+          --paper:     #F1EFE9;   /* fondo chrome claro */
+          --cream:     #ECEAE3;   /* crema paneles */
+          --ink:       #2A332B;   /* verde oliva profundo · identidad */
+          --sand:      #2A332B;   /* texto principal = tinta */
+          --sand-mid:  #5b6158;   /* texto medio */
+          --sand-dim:  #82857A;   /* texto tenue (muted) */
+          --amber:     #4a5a2e;   /* acento vivo · sirviendo / selección */
+          --amber-dim: rgba(74,90,46,0.28);
+          --accent:    #2A332B;
+          --line:      rgba(42,51,43,0.26);
+          --line-mid:  rgba(42,51,43,0.48);
+          --red:       #b5462a;
+          --bg:        #F1EFE9;
+          --panel-bg:  #ECEAE3;
+          /* claros para texto sobre la tinta (pantalla báscula) */
+          --on-ink:      #ECEAE3;
+          --on-ink-mid:  #c7cabf;
+          --on-ink-dim:  #969b8d;
+          --font:      "Courier New", Courier, monospace;
+        }
+
+        html, body {
+          width: 100%; height: 100%;
+          background: var(--paper);
+          color: var(--sand);
+          font-family: var(--font);
+          font-weight: 700;
+          text-transform: uppercase;
+          overflow: hidden;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+        }
+        * { font-weight: 700; }
+
+        /* ─── LAYOUT SHELL ─────────────────────────────────── */
+        #shell {
+          display: grid;
+          grid-template-columns: 150px 1fr;
+          grid-template-rows: 60px 1fr 110px;
+          height: 100vh;
+          width: 100vw;
+        }
+
+        /* ─── TOPBAR ──────────────────────────────────────── */
+        #topbar {
+          grid-column: 1 / -1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 28px;
+          border-bottom: 1px solid var(--line);
+        }
+        #topbar .brand {
+          font-size: 12px;
+          letter-spacing: 6px;
+          color: var(--sand-dim);
+        }
+        #topbar .top-actions { display: flex; gap: 28px; }
+        #topbar .top-actions button {
+          background: none; border: none; cursor: pointer;
+          font-family: var(--font);
+          text-transform: uppercase;
+          font-size: 13px;
+          letter-spacing: 3px;
+          color: var(--sand-mid);
+          padding: 6px 0;
+          border-bottom: 1px solid transparent;
+          transition: color .15s, border-color .15s;
+        }
+        #topbar .top-actions button:hover,
+        #topbar .top-actions button.active { color: var(--sand); border-color: var(--sand-mid); }
+
+        /* ─── SIDEBAR ──────────────────────────────────────── */
+        #sidebar {
+          grid-row: 2 / 3;
+          border-right: 1px solid var(--line);
+          display: flex;
+          flex-direction: column;
+          padding: 28px 0;
+          gap: 4px;
+        }
+        #sidebar button {
+          background: none; border: none; cursor: pointer;
+          font-family: var(--font); text-transform: uppercase;
+          font-size: 13px; letter-spacing: 3px;
+          color: var(--sand-dim);
+          text-align: left;
+          padding: 16px 24px;
+          border-left: 3px solid transparent;
+          transition: color .15s, border-color .15s, background .15s;
+        }
+        #sidebar button:hover { color: var(--sand-mid); background: rgba(42,51,43,.06); }
+        #sidebar button.active { color: var(--sand); border-left-color: var(--amber); background: rgba(42,51,43,.10); }
+
+        /* ─── MAIN CONTENT ──────────────────────────────────── */
+        #main {
+          grid-row: 2 / 3;
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* imagotipo */
+        #main::before {
+          content: "III";
+          position: absolute;
+          top: 20px; right: 24px;
+          font-size: 13px;
+          letter-spacing: 1px;
+          color: var(--sand-dim);
+          pointer-events: none;
+          z-index: 5;
+        }
+        body[data-screen="home"] #main::before { color: var(--on-ink-dim); }
+
+        /* screens */
+        .screen {
+          position: absolute; inset: 0;
+          display: none;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          z-index: 1;
+        }
+        .screen.active { display: flex; }
+
+        /* ─── PANTALLA PRINCIPAL · báscula en VERDE OLIVA ─────── */
+        #screen-home {
+          gap: 0;
+          background: var(--ink);
+        }
+        #scale-label {
+          font-size: 12px; letter-spacing: 5px;
+          color: var(--on-ink-dim);
+          margin-bottom: 8px;
+        }
+        #scale-weight {
+          font-size: clamp(80px, 11vw, 140px);
+          letter-spacing: -2px;
+          color: var(--on-ink);
+          line-height: 1;
+        }
+        #scale-unit {
+          font-size: 18px; letter-spacing: 6px;
+          color: var(--on-ink-mid);
+          margin-left: 8px;
+          vertical-align: super;
+        }
+        #recipe-name {
+          font-size: 13px; letter-spacing: 5px;
+          color: var(--on-ink-mid);
+          margin-top: 20px;
+        }
+        #recipe-detail {
+          font-size: 12px; letter-spacing: 3px;
+          color: var(--on-ink-dim);
+          margin-top: 6px;
+        }
+        #status-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--sand-dim);
+          position: absolute; top: 16px; left: 16px;
+          z-index: 6;
+          transition: background .3s;
+        }
+        #status-dot.online { background: var(--amber); }
+        #status-dot.running { background: var(--amber); animation: pulse 0.6s ease-in-out infinite alternate; }
+        @keyframes pulse { from { opacity: .4; } to { opacity: 1; } }
+
+        /* ─── SUBMENÚ CATEGORÍA ──────────────────────────────── */
+        #screen-category { gap: 16px; padding: 32px; }
+        #cat-title {
+          font-size: 12px; letter-spacing: 6px; color: var(--sand-dim);
+          align-self: flex-start; margin-bottom: 8px;
+        }
+        #cat-scale {
+          align-self: flex-start;
+          display: flex; align-items: baseline; gap: 8px;
+          margin-bottom: 28px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--line);
+          width: 100%; max-width: 640px;
+        }
+        #cat-scale-weight { font-size: 36px; letter-spacing: -1px; color: var(--sand); }
+        #cat-scale-unit { font-size: 13px; letter-spacing: 3px; color: var(--sand-mid); }
+        #cat-scale-state {
+          font-size: 12px; letter-spacing: 3px; color: var(--sand-dim);
+          margin-left: auto;
+        }
+        #cat-scale-state.running { color: var(--amber); }
+        #cat-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          width: 100%;
+          max-width: 640px;
+        }
+        .cat-btn {
+          background: rgba(42,51,43,.05);
+          border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          font-size: 13px; letter-spacing: 4px; color: var(--sand-mid);
+          padding: 22px 16px;
+          transition: all .15s;
+        }
+        .cat-btn:hover { background: rgba(42,51,43,.10); color: var(--sand); border-color: var(--sand-dim); }
+        .cat-btn.selected { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+
+        #leches-amounts {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 10px;
+          width: 100%; max-width: 640px;
+          margin-bottom: 16px;
+        }
+        .amount-btn {
+          background: rgba(42,51,43,.05);
+          border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          font-size: 13px; letter-spacing: 2px; color: var(--sand-mid);
+          padding: 16px 8px;
+          transition: all .15s;
+        }
+        .amount-btn:hover { background: rgba(42,51,43,.10); color: var(--sand); border-color: var(--sand-dim); }
+        .amount-btn.selected { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+
+        /* ─── BOTTOMBAR ─────────────────────────────────────── */
+        #bottombar {
+          grid-column: 1 / -1;
+          border-top: 1px solid var(--line);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          padding: 0 28px;
+        }
+        .action-btn {
+          background: none; border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          letter-spacing: 5px; color: var(--sand);
+          padding: 0 44px; height: 72px;
+          font-size: 13px;
+          transition: all .15s;
+        }
+        .action-btn:hover { background: rgba(42,51,43,.09); color: var(--sand); }
+        .action-btn.stop-btn { color: var(--red); border-color: rgba(181,70,42,.5); border-width: 2px; }
+        .action-btn.stop-btn:hover { background: rgba(181,70,42,.10); color: var(--red); }
+
+        /* ─── PANEL (overlay) ─────────────────────────────────── */
+        #panel-overlay {
+          position: fixed; inset: 0; background: rgba(241,239,233,.97);
+          z-index: 100; display: none;
+          align-items: center; justify-content: center;
+        }
+        #panel-overlay.open { display: flex; }
+        #panel {
+          background: var(--panel-bg);
+          border: none;
+          width: 100vw;
+          height: 100vh;
+          display: flex; flex-direction: column;
+          overflow: hidden;
+        }
+        #panel-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 24px;
+          border-bottom: 1px solid var(--line);
+          flex-shrink: 0;
+        }
+        #panel-title { font-size: 13px; letter-spacing: 5px; color: var(--sand-dim); }
+        #panel-close {
+          background: none; border: 1px solid var(--line-mid); cursor: pointer;
+          font-family: var(--font); font-size: 13px; letter-spacing: 3px;
+          color: var(--sand); text-transform: uppercase;
+          padding: 10px 20px;
+          transition: all .15s;
+        }
+        #panel-close:hover { background: rgba(42,51,43,.10); }
+        #panel-body { flex: 1; overflow-y: auto; padding: 24px; }
+        #panel-body::-webkit-scrollbar { width: 3px; }
+        #panel-body::-webkit-scrollbar-track { background: transparent; }
+        #panel-body::-webkit-scrollbar-thumb { background: var(--sand-dim); }
+
+        /* ─── RECETAS PANEL ─────────────────────────────────── */
+        .recipe-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+        .recipe-tab {
+          background: none; border: none; cursor: pointer;
+          font-family: var(--font); text-transform: uppercase;
+          font-size: 12px; letter-spacing: 3px; color: var(--sand-dim);
+          padding: 10px 16px; border-bottom: 1px solid transparent;
+          transition: all .15s;
+        }
+        .recipe-tab:hover { color: var(--sand-mid); }
+        .recipe-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+        .recipe-card {
+          margin-bottom: 28px;
+          padding-bottom: 28px;
+          border-bottom: 1px solid var(--line);
+        }
+        .recipe-card:last-child { border-bottom: none; }
+        .recipe-card-title { font-size: 13px; letter-spacing: 4px; color: var(--sand-mid); margin-bottom: 20px; }
+        .ingredient-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .ingredient-name { width: 80px; font-size: 12px; letter-spacing: 2px; color: var(--sand-dim); flex-shrink: 0; }
+        .ingredient-slider {
+          -webkit-appearance: none; appearance: none;
+          flex: 1; height: 2px;
+          background: linear-gradient(to right, var(--amber) var(--pct,50%), var(--line-mid) var(--pct,50%));
+          outline: none; cursor: pointer;
+        }
+        .ingredient-slider::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 14px; height: 14px; border-radius: 50%;
+          background: var(--amber); border: 2px solid var(--panel-bg);
+          cursor: pointer;
+        }
+        .ingredient-slider::-moz-range-thumb {
+          width: 14px; height: 14px; border-radius: 50%;
+          background: var(--amber); border: 2px solid var(--panel-bg); cursor: pointer;
+        }
+        .stepper { display: flex; align-items: center; gap: 6px; }
+        .stepper button {
+          background: rgba(42,51,43,.08); border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); color: var(--sand-mid);
+          width: 24px; height: 24px; font-size: 13px; line-height: 1;
+          transition: all .1s; text-transform: none;
+        }
+        .stepper button:hover { background: rgba(42,51,43,.14); color: var(--sand); }
+        .stepper .val { width: 48px; text-align: right; font-size: 13px; letter-spacing: 1px; color: var(--sand); }
+        .recipe-total { font-size: 12px; letter-spacing: 3px; color: var(--sand-dim); margin-top: 8px; text-align: right; }
+
+        /* ─── STOCK PANEL ─────────────────────────────────── */
+        .stock-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .stock-card { background: rgba(42,51,43,.06); border: 1px solid var(--line); padding: 14px 12px; }
+        .stock-name { font-size: 12px; letter-spacing: 3px; color: var(--sand-mid); margin-bottom: 10px; }
+        .stock-bar-wrap { height: 2px; background: var(--line-mid); margin-bottom: 8px; }
+        .stock-bar { height: 100%; background: var(--amber); transition: width .3s; }
+        .stock-info {
+          display: flex; justify-content: space-between;
+          font-size: 12px; letter-spacing: 1px; color: var(--sand-dim);
+          margin-bottom: 10px;
+        }
+        .stock-valve { font-size: 12px; letter-spacing: 2px; color: var(--sand-dim); margin-bottom: 10px; }
+        .stock-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+        .stock-btn {
+          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          font-size: 12px; letter-spacing: 1px; color: var(--sand-dim);
+          padding: 4px 6px; transition: all .1s;
+        }
+        .stock-btn:hover { background: rgba(42,51,43,.10); color: var(--sand); }
+        .stock-input {
+          width: 44px; background: rgba(42,51,43,.05);
+          border: 1px solid var(--line-mid); color: var(--sand);
+          font-family: var(--font); font-size: 12px; text-align: center;
+          padding: 4px; text-transform: uppercase;
+        }
+
+        /* ─── CONFIG PANEL ─────────────────────────────────── */
+        .config-section { margin-bottom: 32px; }
+        .config-section-title {
+          font-size: 12px; letter-spacing: 4px; color: var(--sand-dim);
+          margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+        }
+        .config-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .config-label { font-size: 12px; letter-spacing: 2px; color: var(--sand-dim); width: 100px; flex-shrink: 0; }
+        .config-input {
+          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          color: var(--sand); font-family: var(--font); font-size: 13px;
+          padding: 8px 12px; flex: 1; text-transform: uppercase; outline: none;
+        }
+        .config-input:focus { border-color: var(--sand-dim); }
+        .config-btn {
+          background: rgba(42,51,43,.08); border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          font-size: 12px; letter-spacing: 3px; color: var(--sand-mid);
+          padding: 8px 16px; transition: all .15s;
+        }
+        .config-btn:hover { background: rgba(42,51,43,.12); color: var(--sand); }
+        .config-hint { font-size: 11px; letter-spacing: 1px; color: var(--sand-dim); text-transform: none; margin-top: 6px; }
+        .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .radio-opt {
+          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          font-size: 12px; letter-spacing: 2px; color: var(--sand-dim);
+          padding: 7px 12px; transition: all .15s;
+        }
+        .radio-opt.selected { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+
+        .valve-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .valve-btn {
+          background: rgba(42,51,43,.05); border: 1px solid var(--line-mid);
+          cursor: pointer; font-family: var(--font); text-transform: uppercase;
+          font-size: 12px; letter-spacing: 2px; color: var(--sand-mid);
+          padding: 18px 8px; transition: all .1s; touch-action: none;
+        }
+        .valve-btn.pressed { background: var(--amber-dim); color: var(--amber); border-color: var(--amber); }
+
+        #log-area {
+          background: rgba(42,51,43,.06); border: 1px solid var(--line);
+          padding: 12px; height: 120px; overflow-y: auto;
+          font-size: 12px; letter-spacing: 1px; color: var(--sand-dim);
+          line-height: 1.7;
+        }
+        #log-area::-webkit-scrollbar { width: 2px; }
+        #log-area::-webkit-scrollbar-thumb { background: var(--sand-dim); }
+
+        /* ─── TOAST ─────────────────────────────────────────── */
+        #toast {
+          position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%);
+          background: var(--ink); border: 1px solid var(--ink);
+          padding: 10px 24px; font-size: 12px; letter-spacing: 3px; color: var(--on-ink);
+          z-index: 200; opacity: 0; transition: opacity .3s; pointer-events: none;
+        }
+        #toast.show { opacity: 1; }
+
+        .hidden { display: none !important; }
+        .mt8 { margin-top: 8px; }
+    </style>
+</head>
+<body data-screen="home">
+
+<div id="shell">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+        <span class="brand" onclick="selectCat('home')" style="cursor:pointer">C O N T R O L · M · G R I F O S</span>
+        <div class="top-actions">
+            <button onclick="openPanel('recetas')">Recetas</button>
+            <button onclick="openPanel('stock')">Stock</button>
+            <button onclick="openPanel('config')">Config</button>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+        <button data-cat="matcha"    onclick="selectCat('matcha')">Matcha</button>
+        <button data-cat="coldbrew"  onclick="selectCat('coldbrew')">Cold Brew</button>
+        <button data-cat="limonadas" onclick="selectCat('limonadas')">Limonadas</button>
+        <button data-cat="cocteleria" onclick="selectCat('cocteleria')">Coctelería</button>
+        <button data-cat="leches"    onclick="selectCat('leches')">Leches</button>
+    </div>
+
+    <!-- MAIN -->
+    <div id="main">
+        <div id="status-dot"></div>
+
+        <!-- BÁSCULA -->
+        <div id="screen-home" class="screen active">
+            <div id="scale-label">PESO EN TIEMPO REAL</div>
+            <div>
+                <span id="scale-weight">—</span>
+                <span id="scale-unit">G</span>
+            </div>
+            <div id="recipe-name">— SIN RECETA —</div>
+            <div id="recipe-detail"></div>
+        </div>
+
+        <!-- CATEGORÍA -->
+        <div id="screen-category" class="screen">
+            <div id="cat-title"></div>
+            <div id="cat-scale">
+                <span id="cat-scale-weight">—</span>
+                <span id="cat-scale-unit">G</span>
+                <span id="cat-scale-state"></span>
+            </div>
+            <div id="leches-amounts" class="hidden">
+                <button class="amount-btn" onclick="selectAmount(100)">100G</button>
+                <button class="amount-btn" onclick="selectAmount(150)">150G</button>
+                <button class="amount-btn" onclick="selectAmount(200)">200G</button>
+                <button class="amount-btn" onclick="selectAmount(250)">250G</button>
+                <button class="amount-btn" onclick="selectAmount(300)">300G</button>
+            </div>
+            <div id="cat-grid"></div>
+        </div>
+    </div>
+
+    <!-- BOTTOMBAR -->
+    <div id="bottombar">
+        <button class="action-btn" onclick="openPanel('manual')">Manual</button>
+        <button class="action-btn stop-btn" onclick="doStop()">Stop</button>
+        <button class="action-btn" onclick="doTare()">Tara</button>
+    </div>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- PANEL OVERLAY -->
+<div id="panel-overlay">
+    <div id="panel">
+        <div id="panel-header">
+            <span id="panel-title"></span>
+            <button id="panel-close" onclick="closePanel()">← Volver al Menú</button>
+        </div>
+        <div id="panel-body"></div>
+    </div>
+</div>
+
+<script>
+    /* ═══════════════════════════════════════════════════════════
+       STATE
+    ═══════════════════════════════════════════════════════════ */
+    const DEF = {
+      ip: '192.168.4.1',
+      mode: 'dynamic', // dynamic | recipe | start
+      recipes: {
+        matcha: [
+          { name:'Matcha Entera',  ing:[ {t:'Matcha',g:35}, {t:'Entera',g:180} ] },
+          { name:'Matcha Avena',   ing:[ {t:'Matcha',g:35}, {t:'Avena',g:180} ] },
+          { name:'Matcha Soja',    ing:[ {t:'Matcha',g:35}, {t:'Soja',g:180} ] },
+          { name:'Matcha Coco',    ing:[ {t:'Matcha',g:35}, {t:'Coco',g:180} ] },
+        ],
+        coldbrew: [
+          { name:'Cold Brew Entera', ing:[ {t:'Cold Brew',g:120}, {t:'Entera',g:95} ] },
+          { name:'Cold Brew Avena',  ing:[ {t:'Cold Brew',g:120}, {t:'Avena',g:95} ] },
+          { name:'Cold Brew Soja',   ing:[ {t:'Cold Brew',g:120}, {t:'Soja',g:95} ] },
+          { name:'Cold Brew Coco',   ing:[ {t:'Cold Brew',g:120}, {t:'Coco',g:95} ] },
+        ],
+        limonadas: [
+          { name:'Limonada Limón',   ing:[ {t:'Limón',g:250} ] },
+          { name:'Limonada Pomelo',  ing:[ {t:'Pomelo',g:250} ] },
+          { name:'Limonada Naranja', ing:[ {t:'Naranja',g:250} ] },
+        ],
+        cocteleria: [
+          { name:'Espresso Martini', ing:[ {t:'Espresso',g:60}, {t:'Licor',g:80}, {t:'Simple',g:40} ] },
+          { name:'Spritz',           ing:[ {t:'Prosecco',g:90}, {t:'Aperol',g:60}, {t:'Soda',g:30} ] },
+          { name:'Negroni',          ing:[ {t:'Gin',g:30}, {t:'Campari',g:30}, {t:'Vermouth',g:30} ] },
+        ],
+        leches: []
+      },
+      valves: {
+        // Válvulas físicas reales en el Arduino actual (1-5)
+        'Entera': 1, 'Avena': 2, 'Soja': 3, 'Matcha': 4, 'Coco': 5,
+        // Líneas futuras: SIN válvula física asignada todavía.
+        'Cold Brew': null, 'Limón': null, 'Pomelo': null, 'Naranja': null,
+        'Espresso': null, 'Licor': null, 'Simple': null, 'Prosecco': null,
+        'Aperol': null, 'Soda': null, 'Gin': null, 'Campari': null, 'Vermouth': null
+      },
+      stock: {
+        'Matcha':10, 'Cold Brew':10, 'Limón':10, 'Pomelo':10,
+        'Naranja':10, 'Entera':10, 'Avena':10, 'Soja':10, 'Coco':10
+      },
+      stockMax: {
+        'Matcha':10, 'Cold Brew':10, 'Limón':10, 'Pomelo':10,
+        'Naranja':10, 'Entera':10, 'Avena':10, 'Soja':10, 'Coco':10
+      },
+      // Cadencia de lectura de la báscula (ms). Editable en CONFIG.
+      pollGap: 60
+    };
+
+    let ST = loadST();
+
+    function loadST() {
+      try {
+        const s = localStorage.getItem('mmateria_st');
+        if (s) return Object.assign({}, DEF, JSON.parse(s));
+      } catch(e){}
+      return JSON.parse(JSON.stringify(DEF));
+    }
+    function saveST() { localStorage.setItem('mmateria_st', JSON.stringify(ST)); }
+
+    /* ═══════════════════════════════════════════════════════════
+       LECTURA DE BÁSCULA · bucle auto-encadenado en tiempo real.
+       En vez de un intervalo fijo (que dejaba huecos de 250-500 ms y
+       podía servir /status cacheado), se dispara la siguiente lectura
+       en cuanto llega la anterior + un reposo mínimo. Así el peso sigue
+       a la báscula tan rápido como responde el ESP32.
+    ═══════════════════════════════════════════════════════════ */
+    let polling = false;
+    let pollTimer = null;
+    let currentWeight = 0;
+    let statusSeq = 0;
+
+    const POLL_TIMEOUT = 600;   // ms para abortar una lectura colgada (antes 1200)
+
+    function startPolling() { if (polling) return; polling = true; poll(); }
+    function pausePolling() { polling = false; if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+    function resumePolling() { startPolling(); }
+
+    function poll() {
+      if (!polling) return;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), POLL_TIMEOUT);
+      // cache-buster: evita que el navegador sirva una lectura vieja de /status
+      fetch(`http://${ST.ip}/status?_=${++statusSeq}`, { signal: ctrl.signal, cache: 'no-store' })
+        .then(r => r.text())
+        .then(txt => { clearTimeout(t); parseStatus(txt.trim()); setOnline(true); })
+        .catch(() => { clearTimeout(t); setOnline(false); })
+        .finally(() => { if (polling) pollTimer = setTimeout(poll, Math.max(0, ST.pollGap || 60)); });
+    }
+
+    let servingInProgress = false;
+    let lastTarget = 0;
+
+    function parseStatus(txt) {
+      // peso|target|estado|recetaActual|stepIndex|totalSteps|manualMode
+      const parts = txt.split('|');
+      if (!parts.length) return;
+      currentWeight = parseFloat(parts[0]) || 0;
+      lastTarget = parseFloat(parts[1]) || 0;
+      const displayWeight = Math.max(0, currentWeight);
+      const estado = parts[2] || 'idle';
+      const wStr = displayWeight.toFixed(1);
+
+      document.getElementById('scale-weight').textContent = wStr;
+      const catW = document.getElementById('cat-scale-weight');
+      if (catW) catW.textContent = wStr;
+
+      const running = estado !== 'idle';
+      const dot = document.getElementById('status-dot');
+      dot.className = running ? 'running' : 'online';
+
+      const catState = document.getElementById('cat-scale-state');
+      if (catState) {
+        catState.textContent = running ? 'SIRVIENDO' : '';
+        catState.classList.toggle('running', running);
+      }
+
+      if (running) {
+        servingInProgress = true;
+      } else if (servingInProgress && !running) {
+        servingInProgress = false;
+        onRecipeFinished();
+      }
+    }
+
+    function onRecipeFinished() {
+      const real = Math.max(0, currentWeight);
+      const desvio = real - lastTarget;
+      if (lastTarget > 0) {
+        const signo = desvio >= 0 ? '+' : '';
+        addLog(`PESO FINAL ${real.toFixed(1)}G · OBJETIVO ${lastTarget.toFixed(1)}G · DESVÍO ${signo}${desvio.toFixed(1)}G`);
+      }
+      showToast('RECETA COMPLETADA');
+      activeRecipe = null;
+      lechesAmount = null;
+      selectCat('home');
+    }
+
+    function setOnline(on) {
+      const dot = document.getElementById('status-dot');
+      if (!on) { dot.className = ''; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       NAVIGATION / CATEGORIES
+    ═══════════════════════════════════════════════════════════ */
+    let activeScreen = 'home';
+    let activeRecipe = null;
+    let lechesAmount = null;
+
+    const CAT_LABELS = {
+      matcha:    'MATCHA',
+      coldbrew:  'COLD BREW',
+      limonadas: 'LIMONADAS',
+      cocteleria:'COCTELERÍA',
+      leches:    'LECHES'
+    };
+
+    function selectCat(cat) {
+      activeRecipe = null;
+      lechesAmount = null;
+      document.querySelectorAll('#sidebar button').forEach(b =>
+        b.classList.toggle('active', b.dataset.cat === cat));
+
+      if (cat === 'home') {
+        showScreen('home');
+        updateHomeDisplay();
+        return;
+      }
+
+      document.getElementById('cat-title').textContent = CAT_LABELS[cat] || cat;
+
+      const grid  = document.getElementById('cat-grid');
+      const lamts = document.getElementById('leches-amounts');
+      grid.innerHTML = '';
+
+      if (cat === 'leches') {
+        lamts.classList.remove('hidden');
+        lamts.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+        ['Entera','Avena','Soja','Coco'].forEach(m => {
+          const btn = document.createElement('button');
+          btn.className = 'cat-btn';
+          btn.textContent = m;
+          btn.onclick = () => selectLechesMilk(m, btn);
+          grid.appendChild(btn);
+        });
+      } else {
+        lamts.classList.add('hidden');
+        const recs = ST.recipes[cat] || [];
+        recs.forEach((rec) => {
+          const btn = document.createElement('button');
+          btn.className = 'cat-btn';
+          const lbl = rec.ing.map(x => x.t).join(' · ');
+          const shortName = rec.name.split(' ').slice(-1)[0];
+          btn.innerHTML = `<span style="font-size:12px;letter-spacing:4px;display:block;margin-bottom:6px;color:var(--sand)">${shortName}</span><span style="font-size:8px;letter-spacing:1px;color:var(--sand-dim)">${lbl}</span>`;
+          btn.onclick = () => selectRecipe(rec, btn, cat);
+          grid.appendChild(btn);
+        });
+      }
+
+      activeScreen = cat;
+      showScreen('category');
+    }
+
+    function selectRecipe(rec, btn, cat) {
+      document.querySelectorAll('#cat-grid .cat-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const fullRec = { ...rec, cat };
+      doServe(fullRec);
+    }
+
+    function selectAmount(g) {
+      lechesAmount = g;
+      document.querySelectorAll('.amount-btn').forEach(b =>
+        b.classList.toggle('selected', parseInt(b.textContent) === g));
+    }
+
+    function selectLechesMilk(milk, btn) {
+      if (!lechesAmount) { showToast('Selecciona primero cantidad'); return; }
+      document.querySelectorAll('#cat-grid .cat-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const rec = {
+        name: `Leche ${milk} ${lechesAmount}G`,
+        ing: [ { t: milk, g: lechesAmount } ],
+        cat: 'leches'
+      };
+      doServe(rec);
+    }
+
+    function showScreen(id) {
+      const screen = id === 'home' ? 'home' : 'category';
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + screen).classList.add('active');
+      document.body.dataset.screen = screen;
+    }
+
+    function updateHomeDisplay() {
+      const nm = document.getElementById('recipe-name');
+      const dt = document.getElementById('recipe-detail');
+      if (!activeRecipe) {
+        nm.textContent = '— SIN RECETA —';
+        dt.textContent = '';
+      } else {
+        nm.textContent = activeRecipe.name;
+        dt.textContent = activeRecipe.ing.map(x => `${x.t.toUpperCase()} ${x.g}G`).join(' · ');
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       ACTIONS
+    ═══════════════════════════════════════════════════════════ */
+    function doTare() {
+      fetchESP('/tare').then(ok => {
+        showToast(ok ? 'TARA REALIZADA' : 'SIN CONEXIÓN · TARA NO REALIZADA');
+      });
+    }
+
+    function doStop() { fetchESP('/stop').then(() => showToast('STOP ENVIADO')); }
+
+    function doServe(rec) {
+      if (!rec) return;
+      const name = slugify(rec.name);
+
+      let url;
+      if (ST.mode === 'dynamic') {
+        const missing = rec.ing.filter(x => !ST.valves[x.t]);
+        if (missing.length) {
+          showToast('SIN VÁLVULA · ' + missing.map(x => x.t).join(', '));
+          addLog('✕ Bloqueado: falta asignar válvula a ' + missing.map(x => x.t).join(', '));
+          return;
+        }
+        const seq = rec.ing.map(x => `${ST.valves[x.t]}:${Math.round(x.g)}`).join(',');
+        url = `/recipe?name=${name}&seq=${seq}`;
+      } else if (ST.mode === 'recipe') {
+        url = `/recipe?name=${name}`;
+      } else {
+        url = `/start?receta=${name}`;
+      }
+
+      pausePolling();
+      showToast('TARANDO...');
+      fetchESP('/tare').then(tareOk => {
+        if (!tareOk) {
+          showToast('SIN CONEXIÓN · NO SE PUDO TARAR');
+          resumePolling();
+          return;
+        }
+        fetchESP(url).then(ok => {
+          resumePolling();
+          if (ok) {
+            servingInProgress = true;
+            activeRecipe = rec;
+            document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
+            showScreen('home');
+            updateHomeDisplay();
+            showToast('SIRVIENDO · ' + rec.name);
+            rec.ing.forEach(x => {
+              if (ST.stock[x.t] !== undefined) {
+                ST.stock[x.t] = Math.max(0, ST.stock[x.t] - x.g / 1000);
+              }
+            });
+            saveST();
+          }
+        });
+      });
+    }
+
+    function fetchESP(path, timeoutMs = 5000, _isRetry = false) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      return fetch(`http://${ST.ip}${path}`, { signal: ctrl.signal, cache: 'no-store' })
+        .then(r => { clearTimeout(t); addLog('→ ' + path + ' · ' + r.status); return r.ok; })
+        .catch(() => {
+          clearTimeout(t);
+          if (!_isRetry) {
+            addLog('⟳ ' + path + ' · reintentando');
+            return fetchESP(path, timeoutMs, true);
+          }
+          addLog('✕ ' + path + ' · offline');
+          return false;
+        });
+    }
+
+    function slugify(str) {
+      return str.toLowerCase().replace(/\s+/g,'_').replace(/[áàä]/g,'a')
+        .replace(/[éèë]/g,'e').replace(/[íïì]/g,'i').replace(/[óòö]/g,'o')
+        .replace(/[úùü]/g,'u').replace(/ñ/g,'n').replace(/[^a-z0-9_]/g,'');
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PANEL
+    ═══════════════════════════════════════════════════════════ */
+    function openPanel(which) {
+      document.getElementById('panel-overlay').classList.add('open');
+      const body = document.getElementById('panel-body');
+      body.innerHTML = '';
+      if (which === 'recetas') {
+        document.getElementById('panel-title').textContent = 'RECETAS';
+        renderRecetasPanel(body);
+      } else if (which === 'stock') {
+        document.getElementById('panel-title').textContent = 'STOCK';
+        renderStockPanel(body);
+      } else if (which === 'config') {
+        document.getElementById('panel-title').textContent = 'CONFIGURACIÓN';
+        renderConfigPanel(body);
+      } else if (which === 'manual') {
+        document.getElementById('panel-title').textContent = 'MANUAL';
+        renderManualPanel(body);
+      }
+    }
+    function closePanel() { document.getElementById('panel-overlay').classList.remove('open'); }
+
+    /* ─── RECETAS ─────────────────────────────────────────── */
+    const CAT_KEYS = ['matcha','coldbrew','limonadas','cocteleria'];
+    let recTab = 'matcha';
+
+    function renderRecetasPanel(body) {
+      const tabs = document.createElement('div');
+      tabs.className = 'recipe-tabs';
+      CAT_KEYS.forEach(k => {
+        const t = document.createElement('button');
+        t.className = 'recipe-tab' + (k === recTab ? ' active' : '');
+        t.textContent = CAT_LABELS[k] || k;
+        t.onclick = () => { recTab = k; renderRecetasPanel(body); };
+        tabs.appendChild(t);
+      });
+      body.innerHTML = '';
+      body.appendChild(tabs);
+
+      const recs = ST.recipes[recTab] || [];
+      recs.forEach((rec, ri) => {
+        const card = document.createElement('div');
+        card.className = 'recipe-card';
+        const title = document.createElement('div');
+        title.className = 'recipe-card-title';
+        title.textContent = rec.name;
+        card.appendChild(title);
+
+        rec.ing.forEach((ing, ii) => card.appendChild(makeIngRow(ing, ii, ri)));
+
+        const total = document.createElement('div');
+        total.className = 'recipe-total';
+        total.id = `total-${recTab}-${ri}`;
+        recomputeTotal(ri, total, rec.ing);
+        card.appendChild(total);
+        body.appendChild(card);
+      });
+    }
+
+    function makeIngRow(ing, ii, ri) {
+      const row = document.createElement('div');
+      row.className = 'ingredient-row';
+
+      const nm = document.createElement('div');
+      nm.className = 'ingredient-name';
+      nm.textContent = ing.t;
+
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'ingredient-slider';
+      slider.min = 0; slider.max = 500; slider.step = 1;
+      slider.value = ing.g;
+      setSliderPct(slider);
+
+      const stepper = document.createElement('div');
+      stepper.className = 'stepper';
+
+      const minus = document.createElement('button');
+      minus.textContent = '−';
+      const val = document.createElement('span');
+      val.className = 'val';
+      val.textContent = ing.g.toFixed(1) + 'G';
+      const plus = document.createElement('button');
+      plus.textContent = '+';
+
+      function update(newVal) {
+        newVal = Math.max(0, Math.min(500, newVal));
+        ing.g = newVal;
+        slider.value = newVal;
+        setSliderPct(slider);
+        val.textContent = newVal.toFixed(1) + 'G';
+        const totalEl = document.getElementById(`total-${recTab}-${ri}`);
+        if (totalEl) recomputeTotal(ri, totalEl, ST.recipes[recTab][ri].ing);
+        saveST();
+      }
+
+      slider.oninput = () => update(parseFloat(slider.value));
+      minus.onclick = () => update(ing.g - 1);
+      plus.onclick  = () => update(ing.g + 1);
+
+      stepper.appendChild(minus);
+      stepper.appendChild(val);
+      stepper.appendChild(plus);
+
+      row.appendChild(nm);
+      row.appendChild(slider);
+      row.appendChild(stepper);
+      return row;
+    }
+
+    function setSliderPct(slider) {
+      const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+      slider.style.setProperty('--pct', pct + '%');
+    }
+
+    function recomputeTotal(ri, el, ing) {
+      const t = ing.reduce((s, x) => s + x.g, 0);
+      el.textContent = 'TOTAL  ' + t.toFixed(1) + 'G';
+    }
+
+    /* ─── STOCK ─────────────────────────────────────────── */
+    function renderStockPanel(body) {
+      const grid = document.createElement('div');
+      grid.className = 'stock-grid';
+      Object.keys(ST.stock).forEach(tank => {
+        const max = ST.stockMax[tank] || 10;
+        const cur = ST.stock[tank] || 0;
+        const pct = Math.min(100, (cur / max) * 100);
+        const valve = ST.valves[tank];
+        const valveLabel = valve ? `VLV ${valve}` : 'SIN ASIGNAR';
+        const card = document.createElement('div');
+        card.className = 'stock-card';
+        card.innerHTML = `
+          <div class="stock-name">${tank}</div>
+          <div class="stock-bar-wrap"><div class="stock-bar" id="sb-${tank}" style="width:${pct}%"></div></div>
+          <div class="stock-info"><span>${cur.toFixed(2)} KG</span><span>${pct.toFixed(0)}%</span></div>
+          <div class="stock-valve">${valveLabel}</div>
+          <div class="stock-actions">
+            <button class="stock-btn" onclick="adjustStock('${tank}',-0.5)">−0.5</button>
+            <button class="stock-btn" onclick="adjustStock('${tank}',+0.5)">+0.5</button>
+            <button class="stock-btn" onclick="fullStock('${tank}')">FULL</button>
+          </div>
+          <div class="stock-actions mt8">
+            <input class="stock-input" id="si-${tank}" placeholder="KG">
+            <button class="stock-btn" onclick="setStockManual('${tank}')">OK</button>
+          </div>`;
+        grid.appendChild(card);
+      });
+      body.appendChild(grid);
+    }
+
+    function adjustStock(tank, delta) {
+      ST.stock[tank] = Math.max(0, (ST.stock[tank] || 0) + delta);
+      saveST();
+      refreshStockCard(tank);
+    }
+    function fullStock(tank) {
+      ST.stock[tank] = ST.stockMax[tank] || 10;
+      saveST();
+      refreshStockCard(tank);
+    }
+    function setStockManual(tank) {
+      const inp = document.getElementById('si-' + tank);
+      const v = parseFloat(inp.value);
+      if (!isNaN(v)) { ST.stock[tank] = Math.max(0, v); saveST(); refreshStockCard(tank); inp.value=''; }
+    }
+    function refreshStockCard(tank) {
+      const max = ST.stockMax[tank] || 10;
+      const cur = ST.stock[tank] || 0;
+      const pct = Math.min(100, (cur / max) * 100);
+      const bar = document.getElementById('sb-' + tank);
+      if (bar) { bar.style.width = pct + '%'; bar.parentElement.nextElementSibling.children[0].textContent = cur.toFixed(2) + ' KG'; bar.parentElement.nextElementSibling.children[1].textContent = pct.toFixed(0) + '%'; }
+    }
+
+    /* ─── CONFIG ─────────────────────────────────────────── */
+    function renderConfigPanel(body) {
+      body.innerHTML = `
+      <div class="config-section">
+        <div class="config-section-title">ESP32</div>
+        <div class="config-row">
+          <span class="config-label">IP</span>
+          <input class="config-input" id="cfg-ip" value="${ST.ip}">
+          <button class="config-btn" onclick="saveIP()">Guardar</button>
+          <button class="config-btn" onclick="testESP()">Test</button>
+        </div>
+        <div class="config-row">
+          <span class="config-label">Modo</span>
+          <div class="radio-group" id="mode-group">
+            <button class="radio-opt ${ST.mode==='dynamic'?'selected':''}" onclick="setMode('dynamic')">Dynamic</button>
+            <button class="radio-opt ${ST.mode==='recipe'?'selected':''}" onclick="setMode('recipe')">Recipe</button>
+            <button class="radio-opt ${ST.mode==='start'?'selected':''}" onclick="setMode('start')">Start</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">BÁSCULA · VELOCIDAD DE LECTURA</div>
+        <div class="config-row">
+          <span class="config-label">Reposo</span>
+          <div class="radio-group" id="gap-group">
+            <button class="radio-opt ${Number(ST.pollGap)<=0?'selected':''}" onclick="setGap(0)">Máx</button>
+            <button class="radio-opt ${Number(ST.pollGap)===60?'selected':''}" onclick="setGap(60)">Rápida</button>
+            <button class="radio-opt ${Number(ST.pollGap)===150?'selected':''}" onclick="setGap(150)">Normal</button>
+            <button class="radio-opt ${Number(ST.pollGap)>=300?'selected':''}" onclick="setGap(300)">Ahorro</button>
+          </div>
+        </div>
+        <div class="config-hint">Menor reposo = el peso sigue a la báscula más rápido (más peticiones al ESP32). "Máx" lee tan rápido como responde el equipo.</div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">LOG</div>
+        <div id="log-area"></div>
+      </div>`;
+      renderLog();
+    }
+
+    function renderManualPanel(body) {
+      body.innerHTML = `
+      <div class="config-section">
+        <div class="config-section-title">VÁLVULAS · MANTENER PULSADO PARA ABRIR</div>
+        <div class="valve-grid" id="valve-grid">
+          <button class="valve-btn" data-v="1">VLV 1<br>Entera</button>
+          <button class="valve-btn" data-v="2">VLV 2<br>Avena</button>
+          <button class="valve-btn" data-v="3">VLV 3<br>Soja</button>
+          <button class="valve-btn" data-v="4">VLV 4<br>Matcha</button>
+          <button class="valve-btn" data-v="5">VLV 5<br>Coco</button>
+          <button class="valve-btn" data-v="6">VLV 6<br>Sin Asignar</button>
+          <button class="valve-btn" data-v="7">VLV 7<br>Sin Asignar</button>
+          <button class="valve-btn" data-v="8">VLV 8<br>Sin Asignar</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">LOG</div>
+        <div id="log-area"></div>
+      </div>`;
+
+      document.querySelectorAll('.valve-btn').forEach(btn => {
+        const v = btn.dataset.v;
+        const startEvts = ['mousedown','touchstart'];
+        const stopEvts  = ['mouseup','touchend','mouseleave'];
+        startEvts.forEach(ev => btn.addEventListener(ev, () => {
+          btn.classList.add('pressed');
+          fetchESP(`/manualStart?v=${v}`);
+        }));
+        stopEvts.forEach(ev => btn.addEventListener(ev, () => {
+          btn.classList.remove('pressed');
+          fetchESP('/manualStop');
+        }));
+      });
+      renderLog();
+    }
+
+    function saveIP() {
+      const v = document.getElementById('cfg-ip');
+      if (v) { ST.ip = v.value.trim(); saveST(); showToast('IP GUARDADA'); }
+    }
+    function testESP() {
+      fetchESP('/status').then(ok => showToast(ok ? 'CONECTADO' : 'SIN RESPUESTA'));
+    }
+    function setMode(m) {
+      ST.mode = m;
+      saveST();
+      document.querySelectorAll('#mode-group .radio-opt').forEach(b =>
+        b.classList.toggle('selected', b.textContent.toLowerCase() === m));
+    }
+    function setGap(ms) {
+      ST.pollGap = ms;
+      saveST();
+      const map = { 0:'Máx', 60:'Rápida', 150:'Normal', 300:'Ahorro' };
+      document.querySelectorAll('#gap-group .radio-opt').forEach(b =>
+        b.classList.toggle('selected', b.textContent === map[ms]));
+      showToast('LECTURA · ' + (map[ms] || ms + 'MS'));
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LOG
+    ═══════════════════════════════════════════════════════════ */
+    const logLines = [];
+    function addLog(msg) {
+      const t = new Date().toLocaleTimeString('es', { hour12:false });
+      logLines.push(`[${t}]  ${msg}`);
+      if (logLines.length > 60) logLines.shift();
+      renderLog();
+    }
+    function renderLog() {
+      const el = document.getElementById('log-area');
+      if (!el) return;
+      el.innerHTML = logLines.map(l => `<div>${l}</div>`).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════════════════════════ */
+    let toastTimer = null;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       INIT
+    ═══════════════════════════════════════════════════════════ */
+    startPolling();
+</script>
+</body>
+</html>

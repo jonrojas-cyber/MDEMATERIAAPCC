@@ -2323,9 +2323,9 @@ async function loadHome() {
     const importantes = dec ? (decCuenta(dec).importante) : 0;
     const pendPrep = (d.preparar||[]).length, pendPedir = (d.pedir||[]).length;
 
-    // 4 bloques grandes (2×2), sin scroll. ALERTAS primero: lo crítico a la vista.
+    // Bloques operativos grandes, sin scroll. Sin ALERTAS: la rutina de apertura
+    // y cierre ya obliga a revisar todo; menos ruido, más foco en el trabajo.
     const cards = [
-      { name:"ALERTAS",    sub:"Qué hacer ahora",                 go:"irA_tareas()",             badge: criticas||importantes, badgeRojo: criticas>0 },
       { name:"PRODUCCIÓN", sub:"Producir · Recetas · Etiquetas",  go:"irA_preparaciones()",      badge: pendPrep },
       { name:"MATERIA",    sub:"Stock · Compras · Proveedores",   go:"irA_categoria('materia')", badge: pendPedir },
       { name:"APPCC",      sub:"Lotes · Caducidades · Etiquetas", go:"irA_appcc()",              badge: caducados, badgeRojo: caducados>0 },
@@ -2348,7 +2348,7 @@ async function loadHome() {
         ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
       </div>
       <div class="dash">
-        ${cards.map(c=>`<button class="dashcard" onclick="${c.go}">
+        ${cards.map((c,i)=>`<button class="dashcard" onclick="${c.go}"${(cards.length%2===1 && i===cards.length-1)?' style="grid-column:1 / -1;"':''}>
           ${c.badge?`<span class="dashcard-badge${c.badgeRojo?" rojo":""}">${c.badge}</span>`:""}
           <span class="dashcard-name">${c.name}</span>
           <span class="dashcard-sub">${c.sub}</span>

@@ -53,6 +53,14 @@
   --kpi-md: 26px;
   --kpi-sm: 20px;
   --track: #565C51;        /* fondo de barras de progreso (oscuro) */
+  /* ── Color de ESTADO · única gramática cromática, solo con función ──
+     rojo=riesgo · ámbar=atención · azul=info · verde=correcto.
+     Ajustados para leerse como marca (punto/filete) sobre el olivo. */
+  --sev-risk: #E36B5C;
+  --sev-warn: #D9A94A;
+  --sev-info: #86ABC6;
+  --sev-ok:   #7FB98F;
+  --div: rgba(236,234,227,0.14);   /* divisoria fina entre filas del feed */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1035,7 +1043,7 @@ input, select { font-family: inherit; font-size: 13px; }
    de la tarjeta (container queries): si la rejilla se comprime (p. ej. con
    Apertura y Cierre a la vez), el título encoge para caber. Nunca se recorta
    y nunca hace falta scroll. */
-#screen-home { overflow: hidden; display: flex; flex-direction: column; }
+#screen-home { overflow-y: auto; display: flex; flex-direction: column; }
 #screen-home > #home-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .home-head { flex: 0 0 auto; padding: 2px 2px 10px; }
 .dash { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 10px; min-height: 0; }
@@ -1052,6 +1060,60 @@ input, select { font-family: inherit; font-size: 13px; }
 .dashcard-badge { position: absolute; top: 12px; right: 12px; min-width: 22px; text-align: center; font-size: 12px; font-weight: 700;
   color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .dashcard-badge.rojo { color: #fff; background: #C4342B; border-color: #C4342B; }
+/* ═══════════════════════════════════════════════════════════════
+   INICIO · CEREBRO DE DECISIONES · una pantalla, una pregunta.
+   El sistema calcula qué hacer (motor /decisiones) y lo presenta
+   ordenado por urgencia. El color solo dice estado. Mucho silencio.
+   ═══════════════════════════════════════════════════════════════ */
+.home-q { flex: 0 0 auto; padding: 2px 2px 4px; }
+.home-eyebrow { font-family: var(--sans); font-size: 11px; letter-spacing: .08em; text-transform: lowercase; color: var(--muted); }
+.home-ask { font-family: var(--sans); font-size: 23px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); line-height: 1.12; margin-top: 5px; }
+
+.dstack { flex: 0 0 auto; display: flex; flex-direction: column; margin-top: 14px; }
+.drow { --c: var(--muted); display: grid; grid-template-columns: 3px 1fr auto; gap: 14px; align-items: center;
+  width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--div);
+  padding: 16px 2px; cursor: pointer; font: inherit; color: inherit; }
+.dstack .drow:last-child { border-bottom: 0; }
+.drow .drail { align-self: stretch; border-radius: 3px; background: var(--c); }
+.drow .dbody { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.drow .dkind { font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700;
+  color: var(--c); display: flex; align-items: center; gap: 7px; }
+.drow .dkind .ddot { width: 6px; height: 6px; border-radius: 50%; background: var(--c); flex: 0 0 auto; }
+.drow .dwhat { font-family: var(--sans); font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+.drow .dmeta { font-family: var(--sans); font-size: 12px; color: var(--muted); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.drow .dchev { font-family: var(--sans); font-size: 15px; color: var(--muted); }
+.drow:hover .dwhat { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--div); }
+.drow:active { transform: scale(.995); }
+.drow.k-critico    { --c: var(--sev-risk); }
+.drow.k-importante { --c: var(--sev-warn); }
+.drow.k-informativo{ --c: var(--sev-info); }
+.dmore { font-family: var(--sans); font-size: 12px; font-weight: 700; color: var(--muted); background: none; border: 0;
+  padding: 14px 2px 2px; cursor: pointer; text-align: left; }
+.dmore:hover { color: var(--ink); }
+
+/* Estado ideal: silencio. */
+.home-clear { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 8px; text-align: center; }
+.home-clear .hc-mark { font-size: 26px; color: var(--sev-ok); line-height: 1; }
+.home-clear .hc-txt { font-family: var(--sans); font-size: 16px; font-weight: 700; color: var(--ink); }
+.home-clear .hc-sub { font-family: var(--sans); font-size: 12px; color: var(--muted); }
+
+/* Rutina · una barra fina, no un banner. */
+.home-routine { flex: 0 0 auto; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.rrow { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.rrow .rlbl { font-family: var(--sans); font-size: 13px; font-weight: 700; color: var(--ink); flex: 1; text-align: left; }
+.rrow .rlbl span { color: var(--muted); font-weight: 400; }
+.rmeter { width: 78px; height: 4px; border-radius: 100px; background: var(--track); overflow: hidden; flex: 0 0 auto; }
+.rmeter i { display: block; height: 100%; background: var(--sev-ok); border-radius: 100px; }
+.rrow .rfrac { font-family: var(--font); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+
+/* Dominios · navegación silenciosa, no contenido. */
+.home-nav { flex: 0 0 auto; margin-top: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.home-nav button { font-family: var(--sans); font-size: 12.5px; font-weight: 700; color: var(--ink); background: none;
+  border: 1px solid var(--line); border-radius: 11px; padding: 13px 6px; cursor: pointer; text-align: center; line-height: 1.2; }
+.home-nav button:hover { border-color: var(--ink); }
+.home-nav button .nsub { display: block; font-weight: 400; font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: .02em; }
+
 /* Herramientas de gestión: UNA fila compacta y secundaria, separada de las
    tarjetas de trabajo. Antes eran 3 barras grandes apiladas (amontonado). */
 .dash-tools { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
@@ -2123,6 +2185,41 @@ function decAccion(id){
   if(typeof window[h]==="function") return window[h](a.accion.args);
 }
 
+// INICIO · pila de decisiones. Reusa el MISMO cerebro (/decisiones): ordena
+// crítico → importante → informativo y presenta cada decisión con su acción
+// directa (1 clic). Estado ideal = lista vacía → silencio "Todo en orden".
+function homeStackHTML(dec, max){
+  const b = decBuckets(dec);
+  const cls = { critico:"k-critico", importante:"k-importante", informativo:"k-informativo" };
+  const all = [];
+  ["critico","importante","informativo"].forEach(k => (b[k]||[]).forEach(x => all.push({ x, k })));
+  if(!all.length){
+    return `<div class="home-clear"><div class="hc-mark">✓</div>
+      <div class="hc-txt">Todo en orden.</div>
+      <div class="hc-sub">Nada urgente ahora mismo.</div></div>`;
+  }
+  const shown = max ? all.slice(0, max) : all;
+  const rest = all.length - shown.length;
+  let html = `<div class="dstack">`;
+  shown.forEach(({ x, k }) => {
+    const verb = (x.accion && x.accion.label) ? x.accion.label : (k === "critico" ? "revisar" : "ver");
+    const sub = [x.tiempo_min ? `${x.tiempo_min} min` : null, decEstadoTxt(x.estado), x.motivo || x.detalle].filter(Boolean).join(" · ");
+    const act = x.accion ? `decAccion('${x.id}')` : `irA_tareas()`;
+    html += `<button class="drow ${cls[k]}" onclick="${act}">
+      <span class="drail"></span>
+      <span class="dbody">
+        <span class="dkind"><span class="ddot"></span>${esc(verb)}</span>
+        <span class="dwhat">${esc(x.titulo)}</span>
+        ${sub ? `<span class="dmeta">${esc(sub)}</span>` : ""}
+      </span>
+      <span class="dchev">→</span>
+    </button>`;
+  });
+  if(rest > 0) html += `<button class="dmore" onclick="irA_tareas()">+${rest} más en la bandeja →</button>`;
+  html += `</div>`;
+  return html;
+}
+
 // Línea fina de KPIs (datos secundarios, sin protagonismo).
 function kpiStripHTML(k){
   if(!k) return "";
@@ -2328,50 +2425,45 @@ async function loadHome() {
     // El cierre aparece por la tarde o si ya se ha empezado.
     const mostrarCierre = new Date().getHours() >= 15 || cierHechos > 0;
     const esAdmin = u && u.rol === "admin";
-    const alerta = d.estado_servicio !== "Servicio en orden";
-    const meta = modulosMeta(d);
-    const pendCat = ids => ids.reduce((n, id) => n + (meta[id] && meta[id].urgent ? 1 : 0), 0);
     const caducados = d.alertas ? d.alertas.caducados.length : 0;
-    const criticas = dec && dec.resumen ? dec.resumen.criticas : 0;
-    const importantes = dec ? (decCuenta(dec).importante) : 0;
     const pendPrep = (d.preparar||[]).length, pendPedir = (d.pedir||[]).length;
+    const aperPct = aperTotal ? Math.round(aperHechos/aperTotal*100) : 0;
+    const cierPct = cierTotal ? Math.round(cierHechos/cierTotal*100) : 0;
+    const hh = new Date().getHours();
+    const saludo = hh < 12 ? "buenos días" : hh < 20 ? "buenas tardes" : "buenas noches";
+    const nombre = (u && u.nombre) ? u.nombre : "";
+    const hora = new Date().toTimeString().slice(0,5);
+    decIndexar(dec || {});   // permite la acción directa de cada decisión (1 clic)
 
-    // Bloques operativos grandes, sin scroll. Sin ALERTAS: la rutina de apertura
-    // y cierre ya obliga a revisar todo; menos ruido, más foco en el trabajo.
-    const cards = [
-      { name:"PRODUCCIÓN", sub:"Producir · Recetas · Etiquetas",  go:"irA_preparaciones()",      badge: pendPrep },
-      { name:"MATERIA",    sub:"Stock · Compras · Proveedores",   go:"irA_categoria('materia')", badge: pendPedir },
-      { name:"APPCC",      sub:"Lotes · Caducidades · Etiquetas", go:"irA_appcc()",              badge: caducados, badgeRojo: caducados>0 },
-    ];
-
+    // INICIO = cerebro de decisiones. UNA pregunta: ¿qué hago ahora?
+    // El sistema calcula y ordena; la rutina y los dominios quedan debajo, en silencio.
     el("home-content").innerHTML = `
-      ${saludoHTML(u)}
-      <button class="apertura-card${aperCompleta?" ok":""}" onclick="irA_apertura()">
-        <span class="apertura-ico">${aperCompleta?"🎬":"☀️"}</span>
-        <span class="apertura-txt"><b>${aperCompleta?"Local abierto · ¡que empiece la función!":"Apertura del local"}</b><span>${aperCompleta?"Rutina de apertura completada":`Rutina de arranque · ${aperHechos}/${aperTotal} hecho`}</span></span>
-        <span class="apertura-arrow">›</span>
-      </button>
-      ${mostrarCierre?`<button class="apertura-card${cierCompleta?" ok":""}" onclick="irA_cierre()">
-        <span class="apertura-ico">${cierCompleta?"🌙":"🌇"}</span>
-        <span class="apertura-txt"><b>${cierCompleta?"Local cerrado · buen trabajo":"Cierre del local"}</b><span>${cierCompleta?"Rutina de cierre completada":`Antes de cerrar · ${cierHechos}/${cierTotal} hecho`}</span></span>
-        <span class="apertura-arrow">›</span>
-      </button>`:""}
-      <div class="home-head">
-        <div class="home-sys">Hoy en m de materia</div>
-        ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos al reiniciar</div>` : ""}
+      <div class="home-q">
+        <div class="home-eyebrow">${esc(saludo)}${nombre?`, ${esc(nombre)}`:""} · ${hora}</div>
+        <h1 class="home-ask">¿Qué hago ahora?</h1>
       </div>
-      <div class="dash">
-        ${cards.map((c,i)=>`<button class="dashcard" onclick="${c.go}"${(cards.length%2===1 && i===cards.length-1)?' style="grid-column:1 / -1;"':''}>
-          ${c.badge?`<span class="dashcard-badge${c.badgeRojo?" rojo":""}">${c.badge}</span>`:""}
-          <span class="dashcard-name">${c.name}</span>
-          <span class="dashcard-sub">${c.sub}</span>
-        </button>`).join("")}
+      ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos</div>` : ""}
+      ${homeStackHTML(dec || {}, 5)}
+      <div class="home-routine">
+        <button class="rrow" onclick="irA_apertura()">
+          <span class="rlbl">Apertura del local ${aperCompleta?`<span>· lista</span>`:`<span>· faltan ${aperTotal-aperHechos}</span>`}</span>
+          <span class="rmeter"><i style="width:${aperPct}%"></i></span>
+          <span class="rfrac">${aperHechos}/${aperTotal}</span>
+        </button>
+        ${mostrarCierre?`<button class="rrow" onclick="irA_cierre()">
+          <span class="rlbl">Cierre del local ${cierCompleta?`<span>· hecho</span>`:`<span>· faltan ${cierTotal-cierHechos}</span>`}</span>
+          <span class="rmeter"><i style="width:${cierPct}%"></i></span>
+          <span class="rfrac">${cierHechos}/${cierTotal}</span>
+        </button>`:""}
       </div>
-      <div class="dash-tools${esAdmin ? "" : " solo"}">
-        <button class="dash-tool" onclick="irA_mbds()">Laboratorio<br>MBDS</button>
-        ${esAdmin ? `<button class="dash-tool key" onclick="irA_centroControl()">Centro de<br>control</button>
-        <button class="dash-tool" onclick="irA_categoria('informes')">Informes y<br>ajustes</button>` : ""}
-      </div>`;
+      <nav class="home-nav">
+        <button onclick="irA_preparaciones()">Producción<span class="nsub">${pendPrep?`${pendPrep} pendiente${pendPrep>1?"s":""}`:"al día"}</span></button>
+        <button onclick="irA_categoria('materia')">Materia<span class="nsub">${pendPedir?`${pendPedir} por pedir`:"al día"}</span></button>
+        <button onclick="irA_appcc()">APPCC<span class="nsub">${caducados?`${caducados} caducidad${caducados>1?"es":""}`:"sin riesgo"}</span></button>
+        <button onclick="irA_mbds()">Laboratorio<span class="nsub">mbds</span></button>
+        ${esAdmin?`<button onclick="irA_centroControl()">Negocio<span class="nsub">cómo va</span></button>
+        <button onclick="irA_categoria('informes')">Ajustes<span class="nsub">e informes</span></button>`:""}
+      </nav>`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }

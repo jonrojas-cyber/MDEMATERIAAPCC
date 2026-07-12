@@ -1049,10 +1049,20 @@ input, select { font-family: inherit; font-size: 13px; }
 .dashcard-badge { position: absolute; top: 12px; right: 12px; min-width: 22px; text-align: center; font-size: 12px; font-weight: 700;
   color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .dashcard-badge.rojo { color: #fff; background: #C4342B; border-color: #C4342B; }
+/* Herramientas de gestión: UNA fila compacta y secundaria, separada de las
+   tarjetas de trabajo. Antes eran 3 barras grandes apiladas (amontonado). */
+.dash-tools { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.dash-tools.solo { grid-template-columns: 1fr; }
+.dash-tool { background: none; border: 1px solid var(--line); border-radius: 10px;
+  font-family: var(--sans); font-size: 11px; letter-spacing: .02em; color: var(--muted);
+  padding: 10px 8px; cursor: pointer; text-align: center; line-height: 1.25;
+  display: flex; align-items: center; justify-content: center; min-height: 46px; }
+.dash-tool:hover { color: var(--ink); border-color: var(--ink); }
+.dash-tool.key { color: var(--ink); }   /* Centro de control: algo más de peso, sigue fácil de encontrar */
+/* compat: por si queda algún .dash-informes suelto */
 .dash-informes { flex: 0 0 auto; margin-top: 10px; width: 100%; background: none; border: 1px solid var(--line);
   border-radius: 10px; font-family: var(--sans); font-size: 12px; color: var(--muted); padding: 11px; cursor: pointer; }
 .dash-informes:hover { color: var(--ink); border-color: var(--ink); }
-/* Entrada del propietario: mismo lenguaje que los demás botones, solo con más peso */
 .dash-informes.dash-owner { color: var(--ink); border-color: var(--ink); font-weight: 700; margin-top: 12px; }
 /* Pantallas bajas: compacta lo de arriba (saludo, frase, rutinas) para dejar
    alto a las tarjetas. El título de la tarjeta ya se auto-ajusta con cqb, así que
@@ -2354,9 +2364,11 @@ async function loadHome() {
           <span class="dashcard-sub">${c.sub}</span>
         </button>`).join("")}
       </div>
-      <button class="dash-informes" onclick="irA_mbds()">Laboratorio de bebidas · MBDS →</button>
-      ${esAdmin ? `<button class="dash-informes dash-owner" onclick="irA_centroControl()">Centro de control · el estado de tu negocio →</button>
-      <button class="dash-informes" onclick="irA_categoria('informes')">Informes y configuración →</button>` : ""}`;
+      <div class="dash-tools${esAdmin ? "" : " solo"}">
+        <button class="dash-tool" onclick="irA_mbds()">Laboratorio<br>MBDS</button>
+        ${esAdmin ? `<button class="dash-tool key" onclick="irA_centroControl()">Centro de<br>control</button>
+        <button class="dash-tool" onclick="irA_categoria('informes')">Informes y<br>ajustes</button>` : ""}
+      </div>`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }

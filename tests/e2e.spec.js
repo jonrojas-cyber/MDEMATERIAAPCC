@@ -14,7 +14,7 @@ async function login(page) {
   for (const d of "3333") {
     await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   }
-  await page.waitForSelector(".home-ask", { timeout: 15_000 });
+  await page.waitForSelector(".home-hero", { timeout: 15_000 });
 }
 
 test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
@@ -118,24 +118,18 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("inicio: cerebro de decisiones · una pregunta y una pila priorizada", async ({ page }) => {
+test("inicio: portada de marca · imagotipo, rutina y dominios (sin lista de hoy)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // El inicio responde UNA pregunta.
-  await expect(page.locator(".home-ask")).toHaveText(/qué hago ahora/i);
-  // O hay decisiones priorizadas (pila) o el estado ideal "todo en orden".
-  const filas = await page.locator(".drow").count();
-  if (filas > 0) {
-    // Cada decisión lleva su filete de estado (color semántico) y su verbo.
-    await expect(page.locator(".drow").first().locator(".drail")).toBeVisible();
-    await expect(page.locator(".drow").first().locator(".dkind")).toBeVisible();
-  } else {
-    await expect(page.locator(".home-clear")).toBeVisible();
-  }
-  // La rutina y los dominios viven debajo, en silencio.
+  // La portada es el imagotipo en grande; la rutina y los dominios, debajo.
+  await expect(page.locator(".home-hero")).toBeVisible();
   await expect(page.locator(".home-routine")).toBeVisible();
   await expect(page.locator(".home-nav button").first()).toBeVisible();
+  // "Qué hago hoy" ya NO vive en la portada.
+  await expect(page.locator(".drow")).toHaveCount(0);
+  // Ajustes vive arriba a la derecha (admin), no en la navegación de dominios.
+  await expect(page.locator("#topbar-aj")).toBeVisible();
   expect(errors, "no debe haber errores de JS en consola").toEqual([]);
 });
 
@@ -193,7 +187,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
-  await page.waitForSelector(".home-ask");
+  await page.waitForSelector(".home-hero");
   await page.evaluate(() => irA_materias());
   await page.waitForSelector(".alm-macro");
   // Almacén de 3 niveles: macro → subcategoría → producto → ficha. Navegamos por
@@ -233,7 +227,7 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 
   // "Volver" otra vez debe llevar al inicio (la pregunta visible, sin botón volver).
   await page.click("#topbar-back");
-  await expect(page.locator(".home-ask")).toBeVisible();
+  await expect(page.locator(".home-hero")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
   expect(errors).toEqual([]);
@@ -260,7 +254,7 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el logotipo de texto → inicio.
   await page.click(".topbar .brandword");
-  await expect(page.locator(".home-ask")).toBeVisible();
+  await expect(page.locator(".home-hero")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
@@ -742,7 +736,7 @@ test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-ask", { timeout: 15_000 });
+  await page.waitForSelector(".home-hero", { timeout: 15_000 });
   expect(await page.evaluate(() => document.body.classList.contains("tpv"))).toBe(true);
   await page.evaluate(() => irA_pedidos());
   await page.selectOption("#ped-prov", { index: 1 });
@@ -767,7 +761,7 @@ test("MBDS: endpoint calcula parámetros y validación de las bebidas", async ({
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-ask", { timeout: 15_000 });
+  await page.waitForSelector(".home-hero", { timeout: 15_000 });
   const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
   expect(Array.isArray(bebidas)).toBe(true);
   const ambar = bebidas.find((b) => b.nombre === "Ámbar");
@@ -787,7 +781,7 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-ask", { timeout: 15_000 });
+  await page.waitForSelector(".home-hero", { timeout: 15_000 });
   await page.evaluate(() => irA_mbds());
   await expect(page.locator(".cc-label", { hasText: /Laboratorio de bebidas/ })).toBeVisible();
   await expect(page.locator(".cc-card", { hasText: /Ámbar/ }).first()).toBeVisible();
@@ -844,7 +838,7 @@ test("MBDS: el trabajador NO recibe datos económicos de las bebidas", async ({ 
   await page.click("#ubtn-Lara");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-ask", { timeout: 15_000 });
+  await page.waitForSelector(".home-hero", { timeout: 15_000 });
   const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
   expect(Array.isArray(bebidas)).toBe(true);
   const ambar = bebidas.find((b) => b.nombre === "Ámbar");

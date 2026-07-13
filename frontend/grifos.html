@@ -84,6 +84,11 @@
         }
         #topbar .top-actions button:hover,
         #topbar .top-actions button.active { color: var(--sand); border-color: var(--sand-mid); }
+        /* Ajustes = rueda (engranaje), sin palabra; gira al pasar/pulsar. */
+        #topbar .top-actions button.cfg-btn { display: inline-flex; align-items: center; padding: 4px 0; border-bottom: 0; color: var(--sand-mid); }
+        #topbar .top-actions button.cfg-btn:hover { color: var(--sand); border-color: transparent; }
+        #topbar .top-actions button.cfg-btn svg { transition: transform .6s cubic-bezier(.34,1.4,.4,1); }
+        #topbar .top-actions button.cfg-btn:hover svg, #topbar .top-actions button.cfg-btn:active svg { transform: rotate(90deg); }
 
         /* ─── SIDEBAR ──────────────────────────────────────── */
         #sidebar {
@@ -98,8 +103,8 @@
         #sidebar button {
           background: none; border: none; cursor: pointer;
           font-family: var(--font); text-transform: lowercase;
-          font-size: 13px; letter-spacing: 3px;
-          color: var(--sand-dim);
+          font-size: 13.5px; letter-spacing: 3px; font-weight: 700;
+          color: var(--sand);
           text-align: left;
           padding: 18px 24px;
           border-left: 2px solid transparent;
@@ -107,7 +112,7 @@
           transition: color .15s, border-color .15s, background .15s;
         }
         #sidebar button:first-child { border-top: 1px solid var(--line); }
-        #sidebar button:hover { color: var(--sand-mid); background: rgba(236,234,227,.06); }
+        #sidebar button:hover { color: var(--sand); background: rgba(236,234,227,.08); }
         #sidebar button.active { color: var(--sand); border-left-color: var(--amber); background: rgba(236,234,227,.10); }
 
         /* ─── MAIN CONTENT ──────────────────────────────────── */
@@ -474,7 +479,9 @@
         <div class="top-actions">
             <button onclick="openPanel('recetas')">Recetas</button>
             <button onclick="openPanel('stock')">Stock</button>
-            <button onclick="openPanel('config')">Config</button>
+            <button class="cfg-btn" onclick="openPanel('config')" title="Ajustes" aria-label="Ajustes">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
         </div>
     </div>
 
@@ -495,12 +502,11 @@
 
         <!-- BÁSCULA -->
         <div id="screen-home" class="screen active">
-            <div id="scale-label">peso en tiempo real</div>
             <div class="scale-plate">
                 <span id="scale-weight">—</span>
                 <span id="scale-unit">g</span>
             </div>
-            <div id="recipe-name">— sin receta —</div>
+            <div id="recipe-name"></div>
             <div id="recipe-detail"></div>
         </div>
 
@@ -790,7 +796,7 @@
       const nm = document.getElementById('recipe-name');
       const dt = document.getElementById('recipe-detail');
       if (!activeRecipe) {
-        nm.textContent = '— SIN RECETA —';
+        nm.textContent = '';
         dt.textContent = '';
       } else {
         nm.textContent = activeRecipe.name;

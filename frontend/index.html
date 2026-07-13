@@ -1024,6 +1024,28 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   letter-spacing: .16em; text-transform: lowercase; opacity: .95;
   box-shadow: 0 -2px 10px rgba(23,21,15,.14); z-index: 5; position: relative; }
 
+/* ── ACCIONES SUPERIORES · inicio · buscar · ajustes (3 fijas) ── */
+.tb-act { font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  text-transform: lowercase; color: var(--oliveink); background: none; border: 0; padding: 8px 7px;
+  cursor: pointer; opacity: .82; transition: opacity .15s, color .15s; }
+.tb-act:hover, .tb-act.on { color: var(--ink); opacity: 1; }
+.tb-act:focus-visible { outline: 2px solid var(--sev-info); outline-offset: 2px; border-radius: 4px; }
+/* El nombre de sección lo da la cabecera de cada pantalla; en la barra sobra.
+   Se mantiene en el DOM (accesible/tests) pero oculto a la vista. */
+#topbar-section { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── BARRA INFERIOR · 4 dominios fijos (Spotify-like) ── */
+.tabbar { flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--olivebar); border-top: 1px solid var(--line); z-index: 6; position: relative;
+  box-shadow: 0 -2px 12px rgba(0,0,0,.22); }
+.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 9px 4px calc(9px + env(safe-area-inset-bottom, 0px)); background: none; border: 0; cursor: pointer;
+  font-family: var(--sans); font-size: 10.5px; font-weight: 700; letter-spacing: .03em; color: var(--muted);
+  transition: color .15s; }
+.tab .tab-ic { font-size: 18px; line-height: 1; }
+.tab.on { color: var(--ink); }
+.tab:active { transform: scale(.96); }
+
 /* Cabecera del inicio (sin wordmark grande: ya está en la barra). */
 .home-brand { display: none; }
 .home-head { padding: 6px 2px 22px; }
@@ -1146,6 +1168,35 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   border: 1px solid var(--line); border-radius: 11px; padding: 13px 6px; cursor: pointer; text-align: center; line-height: 1.2; }
 .home-nav button:hover { border-color: var(--ink); }
 .home-nav button .nsub { display: block; font-weight: 400; font-size: 10px; color: var(--muted); margin-top: 3px; letter-spacing: .02em; }
+
+/* Pulso del negocio (dueño) · la cifra importante de un vistazo. */
+.pulse { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 4px 0 6px; }
+.pulse .pulse-c { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.pulse .pulse-v { font-size: 19px; color: var(--ink); letter-spacing: -.01em; }
+.pulse .pulse-l { font-size: 10px; letter-spacing: .06em; text-transform: lowercase; color: var(--muted); }
+.pulse .pulse-go { font-family: var(--sans); font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+.pulse:hover { border-color: var(--ink); }
+
+/* Etiqueta de sección en la portada. */
+.home-sec { flex: 0 0 auto; font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: lowercase;
+  color: var(--muted); margin: 12px 2px 2px; }
+
+/* ── BÚSQUEDA GENERAL ── */
+.buscar-input { width: 100%; font-family: var(--sans); font-size: 16px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 13px 16px; margin-bottom: 14px; }
+.buscar-input::placeholder { color: var(--muted); }
+.buscar-input:focus { outline: none; border-color: var(--ink); }
+.buscar-hint { font-family: var(--sans); font-size: 13px; color: var(--muted); padding: 24px 4px; line-height: 1.5; }
+.buscar-grupo { margin-bottom: 20px; }
+.buscar-gh { font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: lowercase; color: var(--muted);
+  padding: 6px 2px; border-bottom: 1px solid var(--div); margin-bottom: 4px; }
+.buscar-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--div); padding: 13px 2px; align-items: baseline; }
+.buscar-row:hover .buscar-nm { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--div); }
+.buscar-nm { font-family: var(--sans); font-size: 15px; font-weight: 700; color: var(--ink); }
+.buscar-dt { grid-column: 1; font-family: var(--sans); font-size: 12px; color: var(--muted); }
+.buscar-pr { grid-column: 2; grid-row: 1 / span 2; font-size: 14px; color: var(--ink); white-space: nowrap; align-self: center; }
 
 /* Herramientas de gestión: UNA fila compacta y secundaria, separada de las
    tarjetas de trabajo. Antes eran 3 barras grandes apiladas (amontonado). */
@@ -1715,11 +1766,12 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
   <div class="topbar-left">
     <button class="topbar-back" id="topbar-back" onclick="goBack()">←</button>
     <span class="brandword" role="button" tabindex="0" title="Ir al inicio" onclick="goHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goHome();}">m de materia</span>
-  </div>
-  <div class="topbar-center"><button class="topbar-inicio" title="Ir al inicio" onclick="goHome()">inicio</button></div>
-  <div class="topbar-right">
     <span class="topbar-section" id="topbar-section"></span>
-    <button class="topbar-aj" id="topbar-aj" onclick="irA_categoria('informes')" title="Ajustes e informes" style="display:none">ajustes</button>
+  </div>
+  <div class="topbar-right">
+    <button class="tb-act" id="tb-inicio" onclick="goHome()" title="Inicio">inicio</button>
+    <button class="tb-act" id="tb-buscar" onclick="irA_buscar()" title="Buscar">buscar</button>
+    <button class="tb-act" id="tb-ajustes" onclick="irA_categoria('informes')" title="Ajustes" style="display:none">ajustes</button>
     <div class="topbar-user" id="topbar-user"></div>
   </div>
 </header>
@@ -1738,7 +1790,13 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 </div>
 
 <!-- FOOTER (marco oliva) -->
-<footer class="botbar"><span>m de materia · sistema rtd 01</span><span>control de producción · v117</span></footer>
+<!-- BARRA INFERIOR · 4 dominios fijos (estilo Spotify) -->
+<nav class="tabbar" id="tabbar" role="navigation" aria-label="Áreas">
+  <button class="tab" data-tab="materia"    onclick="irDominio('materia', () => irA_categoria('materia'))"><span class="tab-ic" aria-hidden="true">▤</span><span class="tab-lb">Materia</span></button>
+  <button class="tab" data-tab="produccion" onclick="irDominio('produccion', () => irA_preparaciones())"><span class="tab-ic" aria-hidden="true">◇</span><span class="tab-lb">Producción</span></button>
+  <button class="tab" data-tab="appcc"       onclick="irDominio('appcc', () => irA_appcc())"><span class="tab-ic" aria-hidden="true">△</span><span class="tab-lb">APPCC</span></button>
+  <button class="tab" data-tab="lab"         onclick="irDominio('lab', () => irA_mbds())"><span class="tab-ic" aria-hidden="true">◉</span><span class="tab-lb">Lab</span></button>
+</nav>
 
 <!-- WIZARD -->
 <div id="wizard-root"></div>
@@ -1906,9 +1964,16 @@ function renderUserChips() {
     <button class="user-chip" onclick="cambiarMiPin()" title="Cambiar PIN" style="margin-right:8px;">${u.nombre}</button>
     <button class="user-chip" onclick="logout()">Salir</button>`;
   // Ajustes arriba a la derecha, solo dueño (visible también en móvil).
-  const aj = document.getElementById("topbar-aj");
+  const aj = document.getElementById("tb-ajustes");
   if (aj) aj.style.display = u.rol === "admin" ? "" : "none";
 }
+
+// Barra inferior de dominios: marca el activo y navega.
+function setTab(name) {
+  document.querySelectorAll("#tabbar .tab").forEach((t) => t.classList.toggle("on", t.dataset.tab === name));
+  document.getElementById("tb-inicio") && document.getElementById("tb-inicio").classList.toggle("on", !name);
+}
+function irDominio(name, fn) { setTab(name); try { fn(); } catch (e) {} }
 
 // Cambio de PIN del usuario en sesión (4 dígitos).
 async function cambiarMiPin() {
@@ -1929,6 +1994,7 @@ function goHome() {
   navReset();
   currentSection = "home";
   document.getElementById("topbar-section").textContent = "";
+  if (typeof setTab === "function") setTab(null);
   document.getElementById("topbar-back").classList.remove("visible");
   document.getElementById("screen-inner").classList.remove("active");
   document.getElementById("screen-inner").classList.add("exit");
@@ -2451,6 +2517,83 @@ async function irA_etiquetas(){
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
 // INICIO MINIMAL — solo marca + categorías.
+// Pulso del negocio (solo dueño): la cifra que importa hoy, un vistazo → Negocio.
+function businessPulseHTML(k) {
+  const cell = (v, l) => `<span class="pulse-c"><span class="pulse-v num">${v}</span><span class="pulse-l">${l}</span></span>`;
+  return `<button class="pulse" onclick="irA_centroControl()">
+    ${cell(k.ventas_hoy != null ? Math.round(k.ventas_hoy) + " €" : "—", "ventas hoy")}
+    ${cell(k.food_cost != null ? k.food_cost + " %" : "—", "food cost")}
+    ${cell(Math.round(k.merma_hoy || 0) + " €", "mermas")}
+    <span class="pulse-go">negocio →</span>
+  </button>`;
+}
+// Lo importante ahora: SOLO riesgo + atención (lo informativo no manda la portada).
+function homeImportantHTML(dec, max) {
+  const b = decBuckets(dec);
+  const cls = { critico: "k-critico", importante: "k-importante" };
+  const all = [];
+  ["critico", "importante"].forEach((k) => (b[k] || []).forEach((x) => all.push({ x, k })));
+  if (!all.length) {
+    return `<div class="home-clear"><div class="hc-mark">✓</div>
+      <div class="hc-txt">Todo en orden.</div>
+      <div class="hc-sub">Nada urgente ahora mismo.</div></div>`;
+  }
+  const shown = max ? all.slice(0, max) : all;
+  const rest = all.length - shown.length;
+  let html = `<div class="dstack">`;
+  shown.forEach(({ x, k }) => {
+    const verb = (x.accion && x.accion.label) ? x.accion.label : (k === "critico" ? "revisar" : "ver");
+    const sub = [x.tiempo_min ? `${x.tiempo_min} min` : null, decEstadoTxt(x.estado), x.motivo || x.detalle].filter(Boolean).join(" · ");
+    const act = x.accion ? `decAccion('${x.id}')` : `irA_tareas()`;
+    html += `<button class="drow ${cls[k]}" onclick="${act}">
+      <span class="drail"></span>
+      <span class="dbody">
+        <span class="dkind"><span class="ddot"></span>${esc(verb)}</span>
+        <span class="dwhat">${esc(x.titulo)}</span>
+        ${sub ? `<span class="dmeta">${esc(sub)}</span>` : ""}
+      </span>
+      <span class="dchev">→</span>
+    </button>`;
+  });
+  if (rest > 0) html += `<button class="dmore" onclick="irA_tareas()">+${rest} más en la bandeja →</button>`;
+  html += `</div>`;
+  return html;
+}
+
+// ── BÚSQUEDA GENERAL · un cuadro para encontrar cualquier cosa ──────────────
+let _buscarT = null;
+async function irA_buscar() {
+  openSection("buscar", "Buscar");
+  if (typeof setTab === "function") setTab(null);
+  setInner(`
+    <input id="buscar-q" class="buscar-input" type="search" enterkeyhint="search" autocomplete="off"
+      placeholder="Busca lo que sea: lima, un proveedor, un café…" oninput="buscarGlobalDebounced(this.value)">
+    <div id="buscar-res"><div class="buscar-hint">Encuentra en materia, almacén, precios, proveedores y laboratorio — todo a la vez.</div></div>`);
+  setTimeout(() => { const i = el("buscar-q"); if (i) i.focus(); }, 80);
+}
+function buscarGlobalDebounced(q) { clearTimeout(_buscarT); _buscarT = setTimeout(() => buscarGlobal(q), 180); }
+async function buscarGlobal(q) {
+  const out = el("buscar-res"); if (!out) return;
+  const s = (q || "").trim();
+  if (s.length < 1) { out.innerHTML = `<div class="buscar-hint">Encuentra en materia, almacén, precios, proveedores y laboratorio — todo a la vez.</div>`; return; }
+  try {
+    const r = await api("/buscar?q=" + encodeURIComponent(s));
+    if (!r.total) { out.innerHTML = `<div class="empty">Nada coincide con "${esc(s)}".</div>`; return; }
+    out.innerHTML = r.grupos.map((g) => `
+      <div class="buscar-grupo">
+        <div class="buscar-gh">${esc(g.titulo)} · ${g.items.length}</div>
+        ${g.items.map((it) => {
+          const arg = it.args == null ? "" : (typeof it.args === "string" ? `'${it.args}'` : it.args);
+          return `<button class="buscar-row" onclick="${it.handler}(${arg})">
+            <span class="buscar-nm">${esc(it.nombre)}</span>
+            <span class="buscar-dt">${esc(it.detalle || "")}</span>
+            ${it.precio ? `<span class="buscar-pr num">${esc(it.precio)}</span>` : ""}
+          </button>`;
+        }).join("")}
+      </div>`).join("");
+  } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+
 async function loadHome() {
   try {
     const [d, dec, aper, cier] = await Promise.all([api("/inicio"), api("/decisiones").catch(() => null), api("/apertura").catch(() => ({pasos:{}})), api("/apertura?rutina=cierre").catch(() => ({pasos:{}}))]);
@@ -2471,13 +2614,18 @@ async function loadHome() {
     const nombre = (u && u.nombre) ? u.nombre : "";
     const hora = new Date().toTimeString().slice(0,5);
     decIndexar(dec || {});   // permite la acción directa de cada decisión (1 clic)
+    const kpis = (dec && dec.kpis) || {};
 
-    // INICIO = cerebro de decisiones. UNA pregunta: ¿qué hago ahora?
-    // El sistema calcula y ordena; la rutina y los dominios quedan debajo, en silencio.
+    // INICIO = lo realmente importante a primera vista.
+    //  · Dueño: pulso del negocio hoy (ventas · food cost · mermas → Negocio).
+    //  · Todos: lo urgente que exige decisión (riesgo/atención), y la rutina.
+    // La navegación por dominios vive en la barra inferior, no aquí.
     el("home-content").innerHTML = `
       <div class="home-eyebrow home-hi">${esc(saludo)}${nombre?`, ${esc(nombre)}`:""} · ${hora}</div>
       ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos</div>` : ""}
-      <div class="home-hero" role="button" tabindex="0" title="m de materia" aria-label="m de materia" onclick="goHome()" onkeydown="if(event.key==='Enter'){goHome();}"><i></i><i></i><i></i></div>
+      ${esAdmin ? businessPulseHTML(kpis) : ""}
+      <div class="home-sec">Lo importante ahora</div>
+      ${homeImportantHTML(dec || {}, 4)}
       <div class="home-routine">
         <button class="rrow" onclick="irA_apertura()">
           <span class="rlbl">Apertura del local ${aperCompleta?`<span>· lista</span>`:`<span>· faltan ${aperTotal-aperHechos}</span>`}</span>
@@ -2489,14 +2637,7 @@ async function loadHome() {
           <span class="rmeter"><i style="width:${cierPct}%"></i></span>
           <span class="rfrac">${cierHechos}/${cierTotal}</span>
         </button>`:""}
-      </div>
-      <nav class="home-nav">
-        <button onclick="irA_preparaciones()">Producción<span class="nsub">${pendPrep?`${pendPrep} pendiente${pendPrep>1?"s":""}`:"al día"}</span></button>
-        <button onclick="irA_categoria('materia')">Materia<span class="nsub">${pendPedir?`${pendPedir} por pedir`:"al día"}</span></button>
-        <button onclick="irA_appcc()">APPCC<span class="nsub">${caducados?`${caducados} caducidad${caducados>1?"es":""}`:"sin riesgo"}</span></button>
-        <button onclick="irA_mbds()">Laboratorio<span class="nsub">mbds</span></button>
-        ${esAdmin?`<button onclick="irA_centroControl()">Negocio<span class="nsub">cómo va</span></button>`:""}
-      </nav>`;
+      </div>`;
   } catch(e) {
     el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
   }

@@ -143,6 +143,7 @@ app.use("/api", auth.requerido);
 
 app.use("/api/inicio", require("./routes/inicio"));
 app.use("/api/decisiones", require("./routes/decisiones"));
+app.use("/api/buscar", require("./routes/buscar"));
 app.use("/api/auditoria", require("./routes/auditoria"));
 app.use("/api/materias", require("./routes/materias"));
 app.use("/api/recetas", require("./routes/recetas"));

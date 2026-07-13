@@ -194,7 +194,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   overflow-y: auto;
   padding: 32px 36px;
   transform: translateX(100%);
-  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+  transition: none;          /* cambio de pantalla INSTANTÁNEO · sin deslizamiento */
   background: transparent;   /* deja ver la marca de agua del viewport */
 }
 
@@ -202,8 +202,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   transform: translateX(0);
 }
 
+/* La pantalla que sale se oculta del todo al instante (sin dejar franja visible). */
 .screen.exit {
-  transform: translateX(-30%);
+  transform: translateX(100%);
 }
 
 /* ── HOME GRID ───────────────────────────────────────── */

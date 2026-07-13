@@ -129,7 +129,7 @@ test("inicio: información importante · pulso del negocio, urgencias y rutina",
   await expect(page.locator(".home-sec")).toContainText(/importante/i);
   await expect(page.locator(".home-routine")).toBeVisible();
   // Navegación por dominios en la barra INFERIOR (4 fijos, estilo Spotify).
-  await expect(page.locator("#tabbar .tab")).toHaveCount(4);
+  await expect(page.locator("#tabbar .tab")).toHaveCount(3);
   // Tres acciones fijas arriba: inicio · buscar · ajustes (esta última, dueño).
   await expect(page.locator("#tb-buscar")).toBeVisible();
   await expect(page.locator("#tb-ajustes")).toBeVisible();
@@ -264,8 +264,8 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   await page.evaluate(() => irA_categoria("materia"));
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
-  // Clic en el logotipo de texto → inicio.
-  await page.click(".topbar .brandword");
+  // Clic en el imagotipo del centro (o "inicio") → inicio.
+  await page.click(".topbar-center .mark");
   await expect(page.locator(".home-routine")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });

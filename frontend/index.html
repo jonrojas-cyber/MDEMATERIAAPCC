@@ -1672,6 +1672,16 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
 .lim-presets button { font-size: 10px; letter-spacing: .06em; color: var(--muted); background: transparent; border: 1px solid var(--line); padding: 6px 11px; cursor: pointer; }
 .lim-presets button:hover { border-color: var(--ink); color: var(--ink); }
+.lim-presets button.on { border-color: var(--ink); color: var(--ink); background: var(--olive-light); }
+/* Generador de etiquetas de producción */
+.etq-in { display: block; width: 100%; margin-top: 8px; padding: 12px 12px; font-family: var(--font); font-size: 14px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); }
+.etq-in::placeholder { color: var(--muted); }
+.etq-in:focus { outline: none; border-color: var(--ink); }
+.etq-libre { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.etq-libre input { width: 90px; padding: 8px 10px; font-family: var(--font); font-size: 13px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); }
+.etq-libre input:focus { outline: none; border-color: var(--ink); }
+.etq-libre > span { font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.etq-libre .etq-libre-val { margin-left: 4px; }
 .lim-seg { display: flex; border: 1px solid var(--line); margin-bottom: 12px; }
 .lim-seg button { flex: 1; font-size: 10px; letter-spacing: .12em; text-transform: lowercase; padding: 9px; background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--muted); cursor: pointer; }
 .lim-seg button:last-child { border-right: 0; }
@@ -2639,6 +2649,7 @@ async function irA_lab(){
       ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
       ${tile("Limonadas", "Asistente de producción paso a paso", "irA_limonadas()", "")}
+      ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
     </div>`);
 }
 
@@ -2909,8 +2920,13 @@ function limOleoRender(){
       <li>Tapar y macerar 4–24 h a temperatura ambiente.</li>
       <li>Colar y prensar. Guardar en frío.</li>
     </ol>`;
-  const foot=`<button class="btn-ghost" onclick="irA_limonadas()">← Volver a limonadas</button>`;
+  const foot=`<button class="btn-ghost" onclick="irA_limonadas()">← Volver</button>
+    <button class="btn-primary" onclick="etqDesdeOleo()">generar etiqueta →</button>`;
   el("inner-content").innerHTML=`<div id="lim">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div>`;
+}
+function etqDesdeOleo(){
+  const r=limOleoDesdePiel(window._lim.peel);
+  irA_etiquetaProd({ nombre:"óleo saccharum", cantidad: limNum(r.oleoMl,0)+" ml", vidaDias:14 });
 }
 function limOleoFilas(r){
   const row=(q,n,s)=>`<tr><td class="q">${q}</td><td class="n">${esc(n)}${s?`<small>${esc(s)}</small>`:""}</td></tr>`;
@@ -2920,6 +2936,80 @@ function limOleoFilas(r){
 function limOleoVivo(){
   const out=el("lim-oleo-out");
   if(out) out.innerHTML=`<tbody>${limOleoFilas(limOleoDesdePiel(window._lim.peel))}</tbody>`;
+}
+
+// ── Etiquetas de producción ───────────────────────────────────────────────────
+// Datea CUALQUIER cosa que preparas (óleo, base de matcha, cordial, lo que sea).
+// Tú eliges el producto, la cantidad y la vida útil — nada estándar. Genera la
+// etiqueta térmica con QR que, al escanear, dice el tiempo que lleva en vivo.
+// No guarda lote: los datos viajan en el propio QR (ruta pública /etiqueta/prep).
+const ETQ_PRODUCTOS = [
+  { n:"óleo saccharum", v:14 },
+  { n:"base de matcha", v:3 },
+  { n:"cordial", v:21 },
+  { n:"cold brew", v:7 },
+  { n:"infusión", v:5 },
+  { n:"limonada", v:5 },
+];
+const ETQ_VIDAS = [
+  { h:12,  t:"12 h" }, { h:24, t:"1 día" }, { h:72, t:"3 días" },
+  { h:168, t:"1 sem" }, { h:336, t:"2 sem" }, { h:720, t:"1 mes" },
+];
+function irA_etiquetaProd(pre){
+  pre = pre || {};
+  const u = getUser();
+  window._etq = {
+    nombre: pre.nombre || "",
+    cantidad: pre.cantidad || "",
+    vidaH: pre.vidaDias != null ? pre.vidaDias * 24 : (pre.vidaH != null ? pre.vidaH : 72),
+    resp: (u && u.nombre) || "",
+  };
+  navReset(); openSection("etiquetaprod", "Etiqueta de producción");
+  etqRender();
+}
+function etqLeer(){
+  const s=window._etq;
+  const n=el("etq-nombre"), c=el("etq-cant"), r=el("etq-resp");
+  if(n) s.nombre=n.value.trim();
+  if(c) s.cantidad=c.value.trim();
+  if(r) s.resp=r.value.trim();
+}
+function etqPreset(nombre, vidaDias){ etqLeer(); const s=window._etq; s.nombre=nombre; if(vidaDias!=null) s.vidaH=vidaDias*24; etqRender(); }
+function etqVida(h){ etqLeer(); window._etq.vidaH=h; etqRender(); }
+function etqVidaLibre(dias){ const d=Math.max(0,parseFloat(dias)||0); window._etq.vidaH=d*24; const box=el("etq-vida-libre-val"); if(box) box.textContent=d?`${limNum(d,1)} días de vida útil`:""; document.querySelectorAll("#etq .lim-presets button").forEach(b=>b.classList.remove("on")); }
+function etqRender(){
+  const s=window._etq;
+  const head=`<div class="lim-head">
+      <div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Etiqueta de producción</div></div>
+    </div>`;
+  const chips=ETQ_PRODUCTOS.map(p=>`<button class="${s.nombre===p.n?"on":""}" onclick="etqPreset('${p.n.replace(/'/g,"\\'")}',${p.v})">${esc(p.n)}</button>`).join("");
+  const vidas=ETQ_VIDAS.map(v=>`<button class="${s.vidaH===v.h?"on":""}" onclick="etqVida(${v.h})">${v.t}</button>`).join("");
+  const body=`<div class="lim-lead">Datea cualquier cosa que preparas. Eliges el producto, la cantidad y la vida útil; la etiqueta lleva un QR que te dice el tiempo que lleva en vivo.</div>
+    <div class="lim-eyebrow" style="margin-bottom:6px">producto</div>
+    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${chips}</div>
+    <input id="etq-nombre" class="etq-in" type="text" placeholder="nombre del producto" value="${esc(s.nombre)}" oninput="etqLeer()" style="margin-top:10px">
+    <input id="etq-cant" class="etq-in" type="text" placeholder="cantidad · ej. 601 ml, 2 L, 30 uds" value="${esc(s.cantidad)}" oninput="etqLeer()">
+    <div class="lim-eyebrow" style="margin:16px 0 6px">vida útil</div>
+    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${vidas}</div>
+    <div class="etq-libre"><input id="etq-vida-libre" type="number" min="0" step="0.5" placeholder="otros" inputmode="decimal" oninput="etqVidaLibre(this.value)"><span>días</span><span id="etq-vida-libre-val" class="etq-libre-val"></span></div>
+    <div class="lim-eyebrow" style="margin:16px 0 6px">responsable</div>
+    <input id="etq-resp" class="etq-in" type="text" placeholder="quién lo prepara" value="${esc(s.resp)}" oninput="etqLeer()">`;
+  const foot=`<button class="btn-ghost" onclick="goBack()">← Salir</button>
+    <button class="btn-primary" onclick="etqGenerar()">imprimir etiqueta →</button>`;
+  el("inner-content").innerHTML=`<div id="lim"><div id="etq">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div></div>`;
+}
+function etqGenerar(){
+  etqLeer();
+  const s=window._etq;
+  if(!s.nombre){ alert("Ponle un nombre al producto"); const n=el("etq-nombre"); if(n) n.focus(); return; }
+  const qs=new URLSearchParams();
+  qs.set("n", s.nombre);
+  if(s.cantidad) qs.set("c", s.cantidad);
+  if(s.vidaH>0) qs.set("v", s.vidaH);
+  if(s.resp) qs.set("r", s.resp);
+  qs.set("p", new Date().toISOString()); // sella el momento de la impresión
+  qs.set("print", "1");
+  window.open("/etiqueta/prep?"+qs.toString(), "_blank");
 }
 
 // Cronómetro simple para el modo trabajador.

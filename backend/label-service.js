@@ -76,8 +76,20 @@ function fechaCorta(iso) {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// Fecha compacta para la etiqueta: "16.07.26 · 14:30" (estilo boticario, sin
+// barras). Sólo presentación; no toca fechaCorta que usa la ficha pública.
+function fechaSello(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)} · ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // HTML de una etiqueta térmica de 62x30mm para la Phomemo D520BT.
-// QR a la derecha, datos a la izquierda. Tipografía 7-9px datos, 11px nombre.
+// Lenguaje "m de materia": minúsculas, tags con tracking, líneas finas de
+// boticario y el imagotipo de las tres líneas. Negro puro sobre blanco para
+// que la impresión térmica salga nítida; el QR nunca se recorta.
 async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint }) {
   const qrTexto = urlFichaLote(req, lote.id);
   const qrDataUrl = await generateQRCode(qrTexto);
@@ -91,34 +103,51 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint })
   @page { size: 62mm 30mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 62mm; height: 30mm; overflow: hidden; }
-  body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; }
-  /* 2mm de margen interno de seguridad: nada toca el borde. */
-  .label { width: 62mm; height: 30mm; padding: 2mm; display: flex; gap: 2mm; align-items: stretch; page-break-inside: avoid; }
-  .datos { flex: 1; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
-  .nombre { font-size: 10px; font-weight: 700; line-height: 1.05; }
-  .linea { font-size: 7px; line-height: 1.2; }
-  .linea b { font-size: 7px; }
-  .codigo { font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px; }
-  /* QR cuadrado con zona blanca alrededor; nunca se recorta. */
-  .qr { width: 24mm; flex: 0 0 24mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .qr img { width: 22mm; height: 22mm; display: block; background: #fff; image-rendering: pixelated; }
-  .qr span { font-size: 6px; margin-top: 0.4mm; text-align: center; }
-  @media screen { body { background: #ddd; padding: 10px; } .label { box-shadow: 0 0 0 1px #999; background:#fff; } .toolbar{font-family:sans-serif;margin-bottom:8px;} }
+  body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; }
+  /* Margen interno de seguridad: nada toca el borde. */
+  .label { width: 62mm; height: 30mm; padding: 1.8mm 2mm; display: flex; gap: 2mm; align-items: stretch; page-break-inside: avoid; }
+  .datos { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  /* Cabecera de marca: palabra tracked + imagotipo tres líneas. */
+  .brand { display: flex; align-items: center; justify-content: space-between; }
+  .brand .word { font-size: 5px; letter-spacing: 1.4px; text-transform: lowercase; }
+  .brand .mark { display: flex; align-items: flex-end; gap: 0.5mm; }
+  .brand .mark i { display: block; width: 0.42mm; height: 2.6mm; background: #000; }
+  .brand .mark i:nth-child(2) { height: 3.2mm; }
+  .rule { height: 0; border-top: 0.2mm solid #000; margin: 1mm 0; }
+  .rule.foot { margin-top: auto; margin-bottom: 0.8mm; }
+  .nombre { font-size: 11px; font-weight: 700; line-height: 1.02; letter-spacing: 0.2px; text-transform: lowercase; }
+  /* Ficha de meta en columnas: tag en minúscula tracked, valor en negrita. */
+  .meta { display: grid; grid-template-columns: auto 1fr; column-gap: 2mm; row-gap: 0.5mm; margin-top: 1.2mm; }
+  .meta dt { font-size: 5.5px; letter-spacing: 0.7px; text-transform: lowercase; align-self: baseline; }
+  .meta dd { font-size: 7.5px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+  .meta dd.big { font-size: 8.5px; }
+  .codigo { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; }
+  /* QR con marco fino de boticario y pie tracked. */
+  .qr { width: 23mm; flex: 0 0 23mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .qr .frame { border: 0.2mm solid #000; padding: 0.6mm; background: #fff; }
+  .qr img { width: 18.5mm; height: 18.5mm; display: block; background: #fff; image-rendering: pixelated; }
+  .qr span { font-size: 5px; letter-spacing: 1px; text-transform: lowercase; margin-top: 0.9mm; text-align: center; }
+  @media screen { body { background: #ddd; padding: 14px; } .label { box-shadow: 0 0 0 1px #999; background:#fff; } .toolbar{font-family:sans-serif;margin-bottom:10px;font-size:12px;color:#333;} .toolbar button{font-family:inherit;} }
   @media print { .toolbar { display: none; } }
 </style></head>
 <body>
-  <div class="toolbar"><button onclick="window.print()">Imprimir</button> — Tamaño 62×30mm · Phomemo D520BT</div>
+  <div class="toolbar"><button onclick="window.print()">Imprimir</button> — 62×30mm · Phomemo D520BT</div>
   <div class="label">
     <div class="datos">
+      <div class="brand"><span class="word">m · de · materia</span><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span></div>
+      <div class="rule"></div>
       <div class="nombre">${nombre}</div>
+      <dl class="meta">
+        <dt>elaborado</dt><dd>${fechaSello(lote.producido_en)}</dd>
+        <dt>consumir</dt><dd class="big">${fechaSello(lote.caduca_en)}</dd>
+        <dt>responsable</dt><dd>${escapeHTML((responsable || "—")).toLowerCase()}</dd>
+      </dl>
+      <div class="rule foot"></div>
       <div class="codigo">${escapeHTML(lote.codigo)}</div>
-      <div class="linea">Prod: ${fechaCorta(lote.producido_en)}</div>
-      <div class="linea"><b>Consumir antes:</b> ${fechaCorta(lote.caduca_en)}</div>
-      <div class="linea">Resp: ${escapeHTML(responsable || "—")}</div>
     </div>
     <div class="qr">
-      <img src="${qrDataUrl}" alt="QR">
-      <span>${escapeHTML(lote.codigo)}</span>
+      <div class="frame"><img src="${qrDataUrl}" alt="QR"></div>
+      <span>escanea · vida útil</span>
     </div>
   </div>
   ${autoprint ? "<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script>" : ""}

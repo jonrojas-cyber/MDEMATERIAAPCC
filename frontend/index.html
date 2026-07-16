@@ -3032,13 +3032,17 @@ function mbIntens(v){ mbLeer(); window._mb.intensidad=v; mbRender(); }
 function mbCalcio(b){ mbLeer(); window._mb.calcio=b; mbRender(); }
 function mbCalc(){
   const s=window._mb, L=s.litros||0, agua=L*1000;
-  return { agua, gellan: agua*s.cuerpo/100, matcha: L*s.intensidad, calcio: s.calcio ? L*0.1 : 0 };
+  // El agua se parte en dos: mitad caliente hidrata el gellan (85-90 °C) y
+  // mitad fría lleva el matcha. Al juntarlas la mezcla queda templada (~50 °C)
+  // y el matcha no se cuece (no amarga ni pierde color).
+  return { agua, aguaCal: agua*0.5, aguaFria: agua*0.5, gellan: agua*s.cuerpo/100, matcha: L*s.intensidad, calcio: s.calcio ? L*0.1 : 0 };
 }
 function mbFilas(){
   const r=mbCalc(), s=window._mb;
   const row=(q,n,sub)=>`<tr><td class="q">${q}</td><td class="n">${esc(n)}${sub?`<small>${esc(sub)}</small>`:""}</td></tr>`;
-  let out = row(limG(r.agua),"agua filtrada","blanda · fría al empezar")
+  let out = row(limG(r.aguaCal),"agua · caliente","mitad para el gellan · 85–90 °C")
     + row(limG(r.gellan),"gellan LA",`cuerpo ${limNum(s.cuerpo,1)} %`)
+    + row(limG(r.aguaFria),"agua · fría","mitad para el matcha · máx 40 °C")
     + row(limG(r.matcha),"matcha",`${limNum(s.intensidad,0)} g/L · tamizado`);
   if(r.calcio>0) out += row(limG(r.calcio),"sal cálcica","una punta · firma el gel");
   return out;
@@ -3066,14 +3070,14 @@ function mbRender(){
     <div class="lim-eyebrow" style="margin:16px 0 6px">calcio · agua muy blanda</div>
     <div class="lim-seg"><button class="${!s.calcio?"on":""}" onclick="mbCalcio(false)">sin calcio</button><button class="${s.calcio?"on":""}" onclick="mbCalcio(true)">con calcio</button></div>
     <table class="lim-tab" id="mb-out" style="margin-top:8px"><tbody>${mbFilas()}</tbody></table>
-    <div class="lim-eyebrow" style="margin:18px 0 6px">proceso</div>
+    <div class="lim-eyebrow" style="margin:18px 0 6px">proceso · agua partida en dos</div>
     <ol class="lim-steps">
-      <li>Con la túrmix en marcha, lluvia el gellan en el agua <b>fría</b> — sin grumos.</li>
-      <li>Calienta a <b>85–90 °C</b> removiendo 1–2 min para hidratarlo.</li>
-      <li>Baja a ~80 °C, tamiza el matcha y bátelo dentro. No lo hiervas.</li>
+      <li>Separa el agua en <b>dos mitades</b>: una para el gellan, otra para el matcha.</li>
+      <li><b>Mitad caliente:</b> lluvia el gellan en su agua fría con la túrmix, luego calienta a <b>85–90 °C</b> 1–2 min para hidratarlo.</li>
+      <li><b>Mitad fría:</b> tamiza el matcha y bátelo en la otra mitad, fría o templada (<b>máx 40 °C</b>).</li>
+      <li>Vierte el gellan caliente sobre el matcha batiendo. La mezcla queda templada (~50 °C) — <b>el matcha no se cuece</b>.</li>
       <li>Vierte y deja cuajar; remata en nevera hasta gel firme.</li>
-      <li>Tritura el gel frío hasta que quede sedoso y vertible.</li>
-      <li>Cuela fino y guarda en frío · <b>3 días</b> de vida útil.</li>
+      <li>Tritura el gel frío hasta sedoso y vertible; cuela y guarda en frío · <b>3 días</b>.</li>
     </ol>`;
   const foot=`<button class="btn-ghost" onclick="irA_lab()">← Volver</button>
     <button class="btn-primary" onclick="etqDesdeMatcha()">generar etiqueta →</button>`;

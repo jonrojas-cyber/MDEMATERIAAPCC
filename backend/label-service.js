@@ -8,6 +8,17 @@ function urlFichaLote(req, loteId) {
   return `${host}/lote/${loteId}`;
 }
 
+// URL de la ficha de una PRODUCCIÓN genérica (etiqueta sin lote guardado). Los
+// datos viajan en el propio QR (nombre, elaborado, vida útil, responsable) y la
+// ficha calcula el tiempo en vivo. Así se etiqueta cualquier cosa que preparas
+// sin tener que darla de alta como receta.
+function urlFichaPrep(req, q) {
+  const host = req ? `${req.protocol}://${req.get("host")}` : "http://localhost:4001";
+  const usp = new URLSearchParams();
+  ["n", "c", "v", "r", "p"].forEach((k) => { if (q[k] != null && q[k] !== "") usp.set(k, q[k]); });
+  return `${host}/p?${usp.toString()}`;
+}
+
 async function generateQRCode(texto) {
   // Devuelve un data URL (PNG en base64) listo para <img src="...">
   return QRCode.toDataURL(texto, { margin: 1, width: 300 });
@@ -90,8 +101,8 @@ function fechaSello(iso) {
 // Lenguaje "m de materia": minúsculas, tags con tracking, líneas finas de
 // boticario y el imagotipo de las tres líneas. Negro puro sobre blanco para
 // que la impresión térmica salga nítida; el QR nunca se recorta.
-async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint }) {
-  const qrTexto = urlFichaLote(req, lote.id);
+async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, qrUrl }) {
+  const qrTexto = qrUrl || urlFichaLote(req, lote.id);
   const qrDataUrl = await generateQRCode(qrTexto);
   const nombre = escapeHTML(receta ? receta.nombre : lote.receta_id);
   const unidad = receta ? receta.unidad : "";
@@ -293,4 +304,5 @@ module.exports = {
   renderFichaLoteHTML,
   generateQRCode,
   urlFichaLote,
+  urlFichaPrep,
 };

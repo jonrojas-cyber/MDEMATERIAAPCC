@@ -56,6 +56,58 @@ app.get("/etiqueta/lote/:loteId", async (req, res) => {
   }
 });
 
+// Etiqueta de PRODUCCIÓN genérica (pública, sin lote guardado). Sirve para
+// datar CUALQUIER cosa que preparas —óleo, base de matcha, cordial…— con su
+// hora de elaboración y la vida útil que elijas. No persiste nada: los datos
+// viajan en el QR y la ficha (/p) calcula el tiempo que lleva en vivo.
+function prepDatos(q) {
+  const nombre = String(q.n || "producción").slice(0, 60);
+  const cantidad = q.c ? String(q.c).slice(0, 40) : "";
+  const vidaH = Math.max(0, Number(q.v) || 0);
+  const prodRaw = q.p ? new Date(q.p) : new Date();
+  const producido = isNaN(prodRaw.getTime()) ? new Date() : prodRaw;
+  const caduca = vidaH > 0 ? new Date(producido.getTime() + vidaH * 3600000) : null;
+  const p2 = (n) => String(n).padStart(2, "0");
+  const ini = (nombre.replace(/[^a-zA-ZñÑ]/g, "").slice(0, 3).toUpperCase()) || "PRD";
+  const code = `${ini}-${p2(producido.getDate())}${p2(producido.getMonth() + 1)}-${p2(producido.getHours())}${p2(producido.getMinutes())}`;
+  return { nombre, cantidad, vidaH, producidoISO: producido.toISOString(), caducaISO: caduca ? caduca.toISOString() : null, code };
+}
+
+app.get("/etiqueta/prep", async (req, res) => {
+  const labelService = require("./label-service");
+  try {
+    const d = prepDatos(req.query);
+    const lote = { id: "prep", codigo: d.code, receta_id: d.nombre, producido_en: d.producidoISO, caduca_en: d.caducaISO };
+    const html = await labelService.renderEtiquetaHTML(req, {
+      lote,
+      receta: null,
+      responsable: req.query.r || "—",
+      autoprint: req.query.print === "1",
+      qrUrl: labelService.urlFichaPrep(req, req.query),
+    });
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(400).send("No se pudo generar la etiqueta: " + e.message);
+  }
+});
+
+app.get("/p", (req, res) => {
+  const labelService = require("./label-service");
+  try {
+    const d = prepDatos(req.query);
+    const lote = {
+      id: "prep", codigo: d.code, receta_id: d.nombre,
+      producido_en: d.producidoISO, caduca_en: d.caducaISO,
+      cantidad_inicial: d.cantidad || "", estado: "Correcto",
+      responsable: req.query.r || null,
+    };
+    const html = labelService.renderFichaLoteHTML({ lote, receta: null, materias: [], responsable: req.query.r || null });
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(400).send("No se pudo abrir la ficha: " + e.message);
+  }
+});
+
 // Ficha pública de un lote: es la página que abre el QR de la pegatina.
 // Pública (el móvil que escanea no lleva sesión) y con toda la trazabilidad.
 app.get("/lote/:id", async (req, res) => {

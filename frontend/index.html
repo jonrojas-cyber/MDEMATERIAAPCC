@@ -2649,6 +2649,7 @@ async function irA_lab(){
       ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
       ${tile("Limonadas", "Asistente de producción paso a paso", "irA_limonadas()", "")}
+      ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
       ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
     </div>`);
 }
@@ -3011,6 +3012,75 @@ function etqGenerar(){
   qs.set("print", "1");
   window.open("/etiqueta/prep?"+qs.toString(), "_blank");
 }
+
+// ── Base de matcha · gel fluido (matcha + agua + gellan) ──────────────────────
+// Producción de la base concentrada de matcha para el grifo. El gellan LA
+// mantiene el matcha en suspensión y da cuerpo sedoso. Eliges litros y tres
+// palancas — cuerpo (gellan %), intensidad (matcha g/L) y calcio — y calcula
+// las cantidades. No persiste; genera etiqueta con vida útil de 3 días.
+const MB_CUERPO = [ { v:0.3, t:"suelto" }, { v:0.5, t:"sedoso" }, { v:0.7, t:"estructurado" } ]; // % gellan / agua
+const MB_INTENS = [ { v:20, t:"suave" }, { v:30, t:"estándar" }, { v:40, t:"intenso" } ];        // g matcha / L
+function irA_matchaBase(){
+  window._mb = window._mb || { litros:1, cuerpo:0.5, intensidad:30, calcio:false };
+  navReset(); openSection("matchabase","Base de matcha");
+  mbRender();
+}
+function mbLeer(){ const a=el("mb-lit"); if(a) window._mb.litros=Math.max(0,parseFloat(a.value)||0); }
+function mbLitPreset(l){ window._mb.litros=l; const a=el("mb-lit"); if(a) a.value=l; mbVivo(); }
+function mbCuerpo(v){ mbLeer(); window._mb.cuerpo=v; mbRender(); }
+function mbIntens(v){ mbLeer(); window._mb.intensidad=v; mbRender(); }
+function mbCalcio(b){ mbLeer(); window._mb.calcio=b; mbRender(); }
+function mbCalc(){
+  const s=window._mb, L=s.litros||0, agua=L*1000;
+  return { agua, gellan: agua*s.cuerpo/100, matcha: L*s.intensidad, calcio: s.calcio ? L*0.1 : 0 };
+}
+function mbFilas(){
+  const r=mbCalc(), s=window._mb;
+  const row=(q,n,sub)=>`<tr><td class="q">${q}</td><td class="n">${esc(n)}${sub?`<small>${esc(sub)}</small>`:""}</td></tr>`;
+  let out = row(limG(r.agua),"agua filtrada","blanda · fría al empezar")
+    + row(limG(r.gellan),"gellan LA",`cuerpo ${limNum(s.cuerpo,1)} %`)
+    + row(limG(r.matcha),"matcha",`${limNum(s.intensidad,0)} g/L · tamizado`);
+  if(r.calcio>0) out += row(limG(r.calcio),"sal cálcica","una punta · firma el gel");
+  return out;
+}
+function mbRender(){
+  const s=window._mb;
+  const head=`<div class="lim-head">
+      <div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Base de matcha</div></div>
+      <div class="lim-meta">gel fluido</div>
+    </div>`;
+  const cuerpo=MB_CUERPO.map(c=>`<button class="${s.cuerpo===c.v?"on":""}" onclick="mbCuerpo(${c.v})">${limNum(c.v,1)}% · ${c.t}</button>`).join("");
+  const intens=MB_INTENS.map(i=>`<button class="${s.intensidad===i.v?"on":""}" onclick="mbIntens(${i.v})">${i.v} g · ${i.t}</button>`).join("");
+  const body=`<div class="lim-lead">Base concentrada para el grifo. El gellan mantiene el matcha en suspensión y da cuerpo. Metes los litros y ajustas las palancas.</div>
+    <div class="lim-liters">
+      <div class="lim-lin"><div class="rn">producir</div><input id="mb-lit" type="number" min="0" step="0.5" value="${s.litros||""}" inputmode="decimal" oninput="mbLeer();mbVivo()"><div class="u">litros</div></div>
+    </div>
+    <div class="lim-presets">
+      <button onclick="mbLitPreset(0.5)">0,5 L</button><button onclick="mbLitPreset(1)">1 L</button>
+      <button onclick="mbLitPreset(2)">2 L</button><button onclick="mbLitPreset(5)">5 L</button>
+    </div>
+    <div class="lim-eyebrow" style="margin:18px 0 6px">cuerpo · gellan</div>
+    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${cuerpo}</div>
+    <div class="lim-eyebrow" style="margin:16px 0 6px">intensidad · matcha</div>
+    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${intens}</div>
+    <div class="lim-eyebrow" style="margin:16px 0 6px">calcio · agua muy blanda</div>
+    <div class="lim-seg"><button class="${!s.calcio?"on":""}" onclick="mbCalcio(false)">sin calcio</button><button class="${s.calcio?"on":""}" onclick="mbCalcio(true)">con calcio</button></div>
+    <table class="lim-tab" id="mb-out" style="margin-top:8px"><tbody>${mbFilas()}</tbody></table>
+    <div class="lim-eyebrow" style="margin:18px 0 6px">proceso</div>
+    <ol class="lim-steps">
+      <li>Con la túrmix en marcha, lluvia el gellan en el agua <b>fría</b> — sin grumos.</li>
+      <li>Calienta a <b>85–90 °C</b> removiendo 1–2 min para hidratarlo.</li>
+      <li>Baja a ~80 °C, tamiza el matcha y bátelo dentro. No lo hiervas.</li>
+      <li>Vierte y deja cuajar; remata en nevera hasta gel firme.</li>
+      <li>Tritura el gel frío hasta que quede sedoso y vertible.</li>
+      <li>Cuela fino y guarda en frío · <b>3 días</b> de vida útil.</li>
+    </ol>`;
+  const foot=`<button class="btn-ghost" onclick="irA_lab()">← Volver</button>
+    <button class="btn-primary" onclick="etqDesdeMatcha()">generar etiqueta →</button>`;
+  el("inner-content").innerHTML=`<div id="lim">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div>`;
+}
+function mbVivo(){ const o=el("mb-out"); if(o) o.innerHTML=`<tbody>${mbFilas()}</tbody>`; }
+function etqDesdeMatcha(){ mbLeer(); irA_etiquetaProd({ nombre:"base de matcha", cantidad: limNum(window._mb.litros,1)+" L", vidaDias:3 }); }
 
 // Cronómetro simple para el modo trabajador.
 let _cronoT=null,_cronoS=0;

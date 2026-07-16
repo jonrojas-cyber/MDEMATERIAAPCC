@@ -3018,10 +3018,12 @@ function etqGenerar(){
 // mantiene el matcha en suspensión y da cuerpo sedoso. Eliges litros y tres
 // palancas — cuerpo (gellan %), intensidad (matcha g/L) y calcio — y calcula
 // las cantidades. No persiste; genera etiqueta con vida útil de 3 días.
-const MB_CUERPO = [ { v:0.3, t:"suelto" }, { v:0.5, t:"sedoso" }, { v:0.7, t:"estructurado" } ]; // % gellan / agua
+// Cuerpo en rango de BEBIDA (no de salsa). Para suspender el matcha y dar tacto
+// sedoso basta muy poco gellan; 0,5 % gelificaría demasiado para beber al grifo.
+const MB_CUERPO = [ { v:0.1, t:"ligero" }, { v:0.2, t:"sedoso" }, { v:0.35, t:"con cuerpo" } ]; // % gellan / agua
 const MB_INTENS = [ { v:20, t:"suave" }, { v:30, t:"estándar" }, { v:40, t:"intenso" } ];        // g matcha / L
 function irA_matchaBase(){
-  window._mb = window._mb || { litros:1, cuerpo:0.5, intensidad:30, calcio:false };
+  window._mb = window._mb || { litros:1, cuerpo:0.2, intensidad:30, calcio:false };
   navReset(); openSection("matchabase","Base de matcha");
   mbRender();
 }

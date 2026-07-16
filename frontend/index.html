@@ -2813,7 +2813,8 @@ function limRender(){
 
   if(paso==="tipo"){
     body=`<div class="lim-lead">¿Qué línea vas a producir? Cada una tiene su receta, su vida útil y su proceso.</div>
-      ${Object.entries(LIM_TIPOS).map(([k,v])=>`<button class="lim-tipo" onclick="limSetTipo('${k}')"><span class="rn">${esc(v.rn)}</span><div class="nm">${esc(v.nm)}</div><div class="ds">${esc(v.ds)}</div></button>`).join("")}`;
+      ${Object.entries(LIM_TIPOS).map(([k,v])=>`<button class="lim-tipo" onclick="limSetTipo('${k}')"><span class="rn">${esc(v.rn)}</span><div class="nm">${esc(v.nm)}</div><div class="ds">${esc(v.ds)}</div></button>`).join("")}
+      <button class="cc-link cc-link-wide" style="margin-top:10px" onclick="limOleo()">óleo saccharum · desde piel disponible →</button>`;
     foot=btnPrev; // sin "siguiente": se avanza eligiendo tipo
   } else if(paso==="litros"){
     const campo=(id,rn,val,dis)=> `<div class="lim-lin"><div class="rn">${esc(rn)}</div><input id="${id}" type="number" min="0" step="1" value="${val}" ${dis?"disabled":""} inputmode="numeric" oninput="limLeerLitros();limTotalVivo()"><div class="u">litros</div></div>`;
@@ -2861,6 +2862,64 @@ function limTotalVivo(){
   const total=(s.tipo==="ii"?0:s.l1)+(s.tipo==="i"?0:s.l2);
   const out=el("lim-total-vivo"); if(out) out.innerHTML=`Total líquido final <b style="color:var(--ink);font-size:15px;">${limNum(total,0)} L</b>`;
   const hm=el("lim-meta-total"); if(hm) hm.textContent=`${limNum(total,0)} L`;
+}
+
+// ── Óleo saccharum · base de la limonada ──────────────────────────────────────
+// Calculadora al revés del asistente: partes de la piel de limón que TIENES y te
+// dice el azúcar y el óleo que sale. Misma proporción que la extracción E1 de las
+// recetas (ancla 100 g piel → 180 g azúcar → 180 ml óleo · relación 1:1,8), así
+// que nunca se contradice con lo que calculan las limonadas. No guarda nada.
+const OLEO = { piel: 100, azucar: 180, rinde: 180 }; // gramos · gramos · ml
+function limOleoDesdePiel(pielG){
+  const p = Math.max(0, Number(pielG) || 0);
+  return { piel: p, azucar: p * OLEO.azucar / OLEO.piel, oleoMl: p * OLEO.rinde / OLEO.piel };
+}
+function limOleo(){
+  if(!window._lim) window._lim={ tipo:null, l1:0, l2:0, step:1, sel:"i" };
+  if(window._lim.peel==null) window._lim.peel=334; // lo que hay ahora en bandeja
+  openSection("limonadas","Limonadas");
+  limOleoRender();
+}
+function limLeerPeel(){ const a=el("lim-peel"); if(a) window._lim.peel=Math.max(0,parseFloat(a.value)||0); }
+function limPeelPreset(g){ window._lim.peel=g; const a=el("lim-peel"); if(a) a.value=g; limOleoVivo(); }
+function limOleoRender(){
+  const r=limOleoDesdePiel(window._lim.peel);
+  const head=`<div class="lim-head">
+      <div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Óleo saccharum · base</div></div>
+      <div class="lim-meta">1 : 1,8</div>
+    </div>`;
+  const body=`<div class="lim-lead">¿Cuánta <b>piel de limón</b> tienes? Te digo el azúcar que va y el óleo que sale. Solo la parte amarilla, sin blanco.</div>
+    <div class="lim-liters">
+      <div class="lim-lin"><div class="rn">piel de limón</div><input id="lim-peel" type="number" min="0" step="1" value="${window._lim.peel||""}" inputmode="numeric" oninput="limLeerPeel();limOleoVivo()"><div class="u">gramos</div></div>
+    </div>
+    <div class="lim-presets">
+      <button onclick="limPeelPreset(250)">250 g</button>
+      <button onclick="limPeelPreset(500)">500 g</button>
+      <button onclick="limPeelPreset(1000)">1 kg</button>
+    </div>
+    <table class="lim-tab" style="margin-top:20px" id="lim-oleo-out"><tbody>${limOleoFilas(r)}</tbody></table>
+    <dl class="lim-spec" style="margin-top:16px">
+      <dt>Macerar</dt><dd>4–24 h · mejor de un día para otro</dd>
+      <dt>Extrae</dt><dd>el azúcar tira el aceite de la corteza</dd>
+      <dt>Colar</dt><dd>prensar la piel · el líquido ámbar es el óleo</dd>
+    </dl>
+    <ol class="lim-steps">
+      <li>Pelar sólo lo amarillo — el blanco amarga.</li>
+      <li>Mezclar piel + azúcar hasta cubrirla toda.</li>
+      <li>Tapar y macerar 4–24 h a temperatura ambiente.</li>
+      <li>Colar y prensar. Guardar en frío.</li>
+    </ol>`;
+  const foot=`<button class="btn-ghost" onclick="irA_limonadas()">← Volver a limonadas</button>`;
+  el("inner-content").innerHTML=`<div id="lim">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div>`;
+}
+function limOleoFilas(r){
+  const row=(q,n,s)=>`<tr><td class="q">${q}</td><td class="n">${esc(n)}${s?`<small>${esc(s)}</small>`:""}</td></tr>`;
+  return row(limG(r.azucar),"azúcar","proporción 1:1,8 sobre la piel")
+       + row(limMl(r.oleoMl),"óleo saccharum","rendimiento aproximado tras colar");
+}
+function limOleoVivo(){
+  const out=el("lim-oleo-out");
+  if(out) out.innerHTML=`<tbody>${limOleoFilas(limOleoDesdePiel(window._lim.peel))}</tbody>`;
 }
 
 // Cronómetro simple para el modo trabajador.

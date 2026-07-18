@@ -487,11 +487,10 @@
 
     <!-- SIDEBAR -->
     <div id="sidebar">
-        <button data-cat="matcha"    onclick="selectCat('matcha')">Matcha</button>
-        <button data-cat="coldbrew"  onclick="selectCat('coldbrew')">Cold Brew</button>
-        <button data-cat="limonadas" onclick="selectCat('limonadas')">Limonadas</button>
-        <button data-cat="cocteleria" onclick="selectCat('cocteleria')">Coctelería</button>
-        <button data-cat="leches"    onclick="selectCat('leches')">Leches</button>
+        <button data-cat="matcha"   onclick="selectCat('matcha')">Matcha</button>
+        <button data-cat="coldbrew" onclick="selectCat('coldbrew')">Cold Brew</button>
+        <button data-cat="burbujas" onclick="selectCat('burbujas')">Burbujas</button>
+        <button data-cat="zumos"    onclick="selectCat('zumos')">Zumos</button>
     </div>
 
     <!-- MAIN -->
@@ -558,54 +557,60 @@
        STATE
     ═══════════════════════════════════════════════════════════ */
     const DEF = {
+      // Versión de la estructura. Al cambiarla, los dispositivos con estado
+      // guardado migran a la nueva carta (recetas/válvulas/barril) conservando
+      // sólo la configuración de conexión.
+      schema: 2,
       ip: '192.168.4.1',
       mode: 'dynamic', // dynamic | recipe | start
       recipes: {
+        // Matcha y Cold Brew salen SOLOS (sin leche): un único ítem por línea.
         matcha: [
-          { name:'Matcha Entera',  ing:[ {t:'Matcha',g:35}, {t:'Entera',g:180} ] },
-          { name:'Matcha Avena',   ing:[ {t:'Matcha',g:35}, {t:'Avena',g:180} ] },
-          { name:'Matcha Soja',    ing:[ {t:'Matcha',g:35}, {t:'Soja',g:180} ] },
-          { name:'Matcha Coco',    ing:[ {t:'Matcha',g:35}, {t:'Coco',g:180} ] },
+          { name:'Matcha', ing:[ {t:'Matcha', g:220} ] },
         ],
         coldbrew: [
-          { name:'Cold Brew Entera', ing:[ {t:'Cold Brew',g:120}, {t:'Entera',g:95} ] },
-          { name:'Cold Brew Avena',  ing:[ {t:'Cold Brew',g:120}, {t:'Avena',g:95} ] },
-          { name:'Cold Brew Soja',   ing:[ {t:'Cold Brew',g:120}, {t:'Soja',g:95} ] },
-          { name:'Cold Brew Coco',   ing:[ {t:'Cold Brew',g:120}, {t:'Coco',g:95} ] },
+          { name:'Cold Brew', ing:[ {t:'Cold Brew', g:220} ] },
         ],
-        limonadas: [
-          { name:'Limonada Limón',   ing:[ {t:'Limón',g:250} ] },
-          { name:'Limonada Pomelo',  ing:[ {t:'Pomelo',g:250} ] },
-          { name:'Limonada Naranja', ing:[ {t:'Naranja',g:250} ] },
+        // Burbujas y Zumos: tres versiones cada uno (Origen / Equilibrio / Colección).
+        burbujas: [
+          { name:'Burbujas Origen',     ing:[ {t:'Burbujas Origen',     g:250} ] },
+          { name:'Burbujas Equilibrio', ing:[ {t:'Burbujas Equilibrio', g:250} ] },
+          { name:'Burbujas Colección',  ing:[ {t:'Burbujas Colección',  g:250} ] },
         ],
-        cocteleria: [
-          { name:'Espresso Martini', ing:[ {t:'Espresso',g:60}, {t:'Licor',g:80}, {t:'Simple',g:40} ] },
-          { name:'Spritz',           ing:[ {t:'Prosecco',g:90}, {t:'Aperol',g:60}, {t:'Soda',g:30} ] },
-          { name:'Negroni',          ing:[ {t:'Gin',g:30}, {t:'Campari',g:30}, {t:'Vermouth',g:30} ] },
+        zumos: [
+          { name:'Zumo Origen',     ing:[ {t:'Zumo Origen',     g:250} ] },
+          { name:'Zumo Equilibrio', ing:[ {t:'Zumo Equilibrio', g:250} ] },
+          { name:'Zumo Colección',  ing:[ {t:'Zumo Colección',  g:250} ] },
         ],
-        leches: []
       },
       valves: {
-        // Válvulas físicas reales en el Arduino actual (1-5)
-        'Entera': 1, 'Avena': 2, 'Soja': 3, 'Matcha': 4, 'Coco': 5,
-        // Líneas futuras: SIN válvula física asignada todavía.
-        'Cold Brew': null, 'Limón': null, 'Pomelo': null, 'Naranja': null,
-        'Espresso': null, 'Licor': null, 'Simple': null, 'Prosecco': null,
-        'Aperol': null, 'Soda': null, 'Gin': null, 'Campari': null, 'Vermouth': null
+        // 8 líneas físicas, una por grifo. Matcha=4 y Cold Brew=1 (fijados);
+        // el resto reparte Burbujas (2/3/5) y Zumos (6/7/8).
+        'Cold Brew': 1,
+        'Burbujas Origen': 2,
+        'Burbujas Equilibrio': 3,
+        'Matcha': 4,
+        'Burbujas Colección': 5,
+        'Zumo Origen': 6,
+        'Zumo Equilibrio': 7,
+        'Zumo Colección': 8,
       },
       stock: {
-        'Matcha':10, 'Cold Brew':10, 'Limón':10, 'Pomelo':10,
-        'Naranja':10, 'Entera':10, 'Avena':10, 'Soja':10, 'Coco':10
+        'Matcha':10, 'Cold Brew':10,
+        'Burbujas Origen':10, 'Burbujas Equilibrio':10, 'Burbujas Colección':10,
+        'Zumo Origen':10, 'Zumo Equilibrio':10, 'Zumo Colección':10
       },
       stockMax: {
-        'Matcha':10, 'Cold Brew':10, 'Limón':10, 'Pomelo':10,
-        'Naranja':10, 'Entera':10, 'Avena':10, 'Soja':10, 'Coco':10
+        'Matcha':10, 'Cold Brew':10,
+        'Burbujas Origen':10, 'Burbujas Equilibrio':10, 'Burbujas Colección':10,
+        'Zumo Origen':10, 'Zumo Equilibrio':10, 'Zumo Colección':10
       },
       // Barril por línea, en GRAMOS. c = cargado (lo que metiste), d = disponible
       // (lo que queda). Se descuenta d en cada servicio con los gramos de receta.
       barril: {
-        'Matcha':{c:0,d:0}, 'Cold Brew':{c:0,d:0}, 'Limón':{c:0,d:0}, 'Pomelo':{c:0,d:0},
-        'Naranja':{c:0,d:0}, 'Entera':{c:0,d:0}, 'Avena':{c:0,d:0}, 'Soja':{c:0,d:0}, 'Coco':{c:0,d:0}
+        'Matcha':{c:0,d:0}, 'Cold Brew':{c:0,d:0},
+        'Burbujas Origen':{c:0,d:0}, 'Burbujas Equilibrio':{c:0,d:0}, 'Burbujas Colección':{c:0,d:0},
+        'Zumo Origen':{c:0,d:0}, 'Zumo Equilibrio':{c:0,d:0}, 'Zumo Colección':{c:0,d:0}
       },
       // Cadencia de lectura de la báscula (ms). Editable en CONFIG.
       pollGap: 60
@@ -616,7 +621,14 @@
     function loadST() {
       try {
         const s = localStorage.getItem('mmateria_st');
-        if (s) return Object.assign({}, DEF, JSON.parse(s));
+        if (s) {
+          const saved = JSON.parse(s);
+          if (saved.schema === DEF.schema) return Object.assign({}, DEF, saved);
+          // Esquema viejo → migra a la carta nueva conservando la conexión.
+          const fresh = JSON.parse(JSON.stringify(DEF));
+          ['ip','mode','pollGap'].forEach(k => { if (saved[k] !== undefined) fresh[k] = saved[k]; });
+          return fresh;
+        }
       } catch(e){}
       return JSON.parse(JSON.stringify(DEF));
     }
@@ -713,11 +725,10 @@
     let lechesAmount = null;
 
     const CAT_LABELS = {
-      matcha:    'MATCHA',
-      coldbrew:  'COLD BREW',
-      limonadas: 'LIMONADAS',
-      cocteleria:'COCTELERÍA',
-      leches:    'LECHES'
+      matcha:   'MATCHA',
+      coldbrew: 'COLD BREW',
+      burbujas: 'BURBUJAS',
+      zumos:    'ZUMOS'
     };
 
     function selectCat(cat) {
@@ -927,7 +938,7 @@
     function closePanel() { document.getElementById('panel-overlay').classList.remove('open'); }
 
     /* ─── RECETAS ─────────────────────────────────────────── */
-    const CAT_KEYS = ['matcha','coldbrew','limonadas','cocteleria'];
+    const CAT_KEYS = ['matcha','coldbrew','burbujas','zumos'];
     let recTab = 'matcha';
 
     function renderRecetasPanel(body) {
@@ -1190,14 +1201,14 @@
       <div class="config-section">
         <div class="config-section-title">VÁLVULAS · MANTENER PULSADO PARA ABRIR</div>
         <div class="valve-grid" id="valve-grid">
-          <button class="valve-btn" data-v="1">VLV 1<br>Entera</button>
-          <button class="valve-btn" data-v="2">VLV 2<br>Avena</button>
-          <button class="valve-btn" data-v="3">VLV 3<br>Soja</button>
+          <button class="valve-btn" data-v="1">VLV 1<br>Cold Brew</button>
+          <button class="valve-btn" data-v="2">VLV 2<br>Burbujas Origen</button>
+          <button class="valve-btn" data-v="3">VLV 3<br>Burbujas Equilibrio</button>
           <button class="valve-btn" data-v="4">VLV 4<br>Matcha</button>
-          <button class="valve-btn" data-v="5">VLV 5<br>Coco</button>
-          <button class="valve-btn" data-v="6">VLV 6<br>Sin Asignar</button>
-          <button class="valve-btn" data-v="7">VLV 7<br>Sin Asignar</button>
-          <button class="valve-btn" data-v="8">VLV 8<br>Sin Asignar</button>
+          <button class="valve-btn" data-v="5">VLV 5<br>Burbujas Colección</button>
+          <button class="valve-btn" data-v="6">VLV 6<br>Zumo Origen</button>
+          <button class="valve-btn" data-v="7">VLV 7<br>Zumo Equilibrio</button>
+          <button class="valve-btn" data-v="8">VLV 8<br>Zumo Colección</button>
         </div>
       </div>
 

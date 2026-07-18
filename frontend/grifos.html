@@ -478,7 +478,7 @@
         <span class="brand" onclick="selectCat('home')" style="cursor:pointer">C O N T R O L · M · G R I F O S</span>
         <div class="top-actions">
             <button onclick="openPanel('recetas')">Recetas</button>
-            <button onclick="openPanel('stock')">Stock</button>
+            <button onclick="openPanel('barril')">Barril</button>
             <button class="cfg-btn" onclick="openPanel('config')" title="Ajustes" aria-label="Ajustes">
               <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             </button>
@@ -600,6 +600,12 @@
       stockMax: {
         'Matcha':10, 'Cold Brew':10, 'Limón':10, 'Pomelo':10,
         'Naranja':10, 'Entera':10, 'Avena':10, 'Soja':10, 'Coco':10
+      },
+      // Barril por línea, en GRAMOS. c = cargado (lo que metiste), d = disponible
+      // (lo que queda). Se descuenta d en cada servicio con los gramos de receta.
+      barril: {
+        'Matcha':{c:0,d:0}, 'Cold Brew':{c:0,d:0}, 'Limón':{c:0,d:0}, 'Pomelo':{c:0,d:0},
+        'Naranja':{c:0,d:0}, 'Entera':{c:0,d:0}, 'Avena':{c:0,d:0}, 'Soja':{c:0,d:0}, 'Coco':{c:0,d:0}
       },
       // Cadencia de lectura de la báscula (ms). Editable en CONFIG.
       pollGap: 60
@@ -851,13 +857,25 @@
             document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
             showScreen('home');
             updateHomeDisplay();
-            showToast('SIRVIENDO · ' + rec.name);
+            // Descuento por servicio: barril en gramos (fuente principal) y el
+            // stock antiguo en kg (compatibilidad). Avisa si el barril no llega.
+            let vacios = [];
             rec.ing.forEach(x => {
               if (ST.stock[x.t] !== undefined) {
                 ST.stock[x.t] = Math.max(0, ST.stock[x.t] - x.g / 1000);
               }
+              if (ST.barril && ST.barril[x.t]) {
+                const b = ST.barril[x.t];
+                if (b.c > 0 && b.d < x.g) vacios.push(x.t); // barril cargado pero sin bastante
+                b.d = Math.max(0, (b.d || 0) - x.g);
+              }
             });
             saveST();
+            if (vacios.length) {
+              showToast('⚠ BARRIL SIN SUFICIENTE · ' + vacios.join(' · '));
+            } else {
+              showToast('SIRVIENDO · ' + rec.name);
+            }
           }
         });
       });
@@ -895,9 +913,9 @@
       if (which === 'recetas') {
         document.getElementById('panel-title').textContent = 'RECETAS';
         renderRecetasPanel(body);
-      } else if (which === 'stock') {
-        document.getElementById('panel-title').textContent = 'STOCK';
-        renderStockPanel(body);
+      } else if (which === 'barril') {
+        document.getElementById('panel-title').textContent = 'BARRIL';
+        renderBarrilPanel(body);
       } else if (which === 'config') {
         document.getElementById('panel-title').textContent = 'CONFIGURACIÓN';
         renderConfigPanel(body);
@@ -1006,7 +1024,72 @@
       el.textContent = 'TOTAL  ' + t.toFixed(1) + 'G';
     }
 
-    /* ─── STOCK ─────────────────────────────────────────── */
+    /* ─── BARRIL ──────────────────────────────────────────
+       Inventario por línea en GRAMOS. Cargas el barril con los gramos de la
+       mezcla; cada servicio descuenta los gramos de receta; muestra lo que
+       queda disponible. Sólo se listan las líneas con válvula física asignada
+       (las que de verdad sirven de un barril).
+    ─────────────────────────────────────────────────────── */
+    function renderBarrilPanel(body) {
+      const grid = document.createElement('div');
+      grid.className = 'stock-grid';
+      Object.keys(ST.barril)
+        .filter(line => ST.valves[line]) // sólo líneas con válvula real
+        .forEach(line => {
+          const b = ST.barril[line] || { c:0, d:0 };
+          const pct = b.c > 0 ? Math.min(100, (b.d / b.c) * 100) : 0;
+          const valve = ST.valves[line];
+          const card = document.createElement('div');
+          card.className = 'stock-card';
+          card.innerHTML = `
+            <div class="stock-name">${line}</div>
+            <div class="stock-bar-wrap"><div class="stock-bar" id="bb-${line}" style="width:${pct}%"></div></div>
+            <div class="stock-info"><span>${Math.round(b.d)} g</span><span>${pct.toFixed(0)}%</span></div>
+            <div class="stock-valve">VLV ${valve} · barril ${Math.round(b.c)} g</div>
+            <div class="stock-actions mt8">
+              <input class="stock-input" id="bi-${line}" placeholder="cargar g" inputmode="numeric">
+              <button class="stock-btn" onclick="cargarBarril('${line}')">Cargar</button>
+            </div>
+            <div class="stock-actions mt8">
+              <button class="stock-btn" onclick="ajustarBarril('${line}',-50)">−50</button>
+              <button class="stock-btn" onclick="ajustarBarril('${line}',50)">+50</button>
+              <button class="stock-btn" onclick="vaciarBarril('${line}')">Vaciar</button>
+            </div>`;
+          grid.appendChild(card);
+        });
+      body.appendChild(grid);
+    }
+    function cargarBarril(line) {
+      const inp = document.getElementById('bi-' + line);
+      const v = parseFloat(inp.value);
+      if (!isNaN(v) && v > 0) {
+        ST.barril[line] = { c: v, d: v }; // barril nuevo: cargado = disponible
+        saveST(); refreshBarril(line); inp.value = '';
+        showToast('BARRIL CARGADO · ' + line + ' · ' + Math.round(v) + ' G');
+      }
+    }
+    function ajustarBarril(line, delta) {
+      const b = ST.barril[line] || { c:0, d:0 };
+      b.d = Math.max(0, (b.d || 0) + delta);
+      if (b.d > b.c) b.c = b.d; // si rellenas por encima, sube el cargado
+      ST.barril[line] = b; saveST(); refreshBarril(line);
+    }
+    function vaciarBarril(line) { ST.barril[line] = { c:0, d:0 }; saveST(); refreshBarril(line); }
+    function refreshBarril(line) {
+      const b = ST.barril[line] || { c:0, d:0 };
+      const pct = b.c > 0 ? Math.min(100, (b.d / b.c) * 100) : 0;
+      const bar = document.getElementById('bb-' + line);
+      if (!bar) return;
+      bar.style.width = pct + '%';
+      const info = bar.parentElement.nextElementSibling;
+      info.children[0].textContent = Math.round(b.d) + ' g';
+      info.children[1].textContent = pct.toFixed(0) + '%';
+      const card = bar.closest('.stock-card');
+      const vl = card && card.querySelector('.stock-valve');
+      if (vl) vl.textContent = 'VLV ' + ST.valves[line] + ' · barril ' + Math.round(b.c) + ' g';
+    }
+
+    /* ─── STOCK (heredado) ─────────────────────────────────── */
     function renderStockPanel(body) {
       const grid = document.createElement('div');
       grid.className = 'stock-grid';

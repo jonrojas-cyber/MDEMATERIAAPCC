@@ -652,8 +652,11 @@
     let pollTimer = null;
     let currentWeight = 0;
     let statusSeq = 0;
+    let offlineStreak = 0;   // lecturas fallidas seguidas (para reintentar despacio)
+    let lastWStr = null;     // último peso pintado (evita reescribir el DOM igual)
 
     const POLL_TIMEOUT = 600;   // ms para abortar una lectura colgada (antes 1200)
+    const POLL_OFFLINE = 1500;  // sin conexión: reintenta cada 1,5 s (no ahoga la tablet)
 
     function startPolling() { if (polling) return; polling = true; poll(); }
     function pausePolling() { polling = false; if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
@@ -666,9 +669,15 @@
       // cache-buster: evita que el navegador sirva una lectura vieja de /status
       fetch(`http://${ST.ip}/status?_=${++statusSeq}`, { signal: ctrl.signal, cache: 'no-store' })
         .then(r => r.text())
-        .then(txt => { clearTimeout(t); parseStatus(txt.trim()); setOnline(true); })
-        .catch(() => { clearTimeout(t); setOnline(false); })
-        .finally(() => { if (polling) pollTimer = setTimeout(poll, Math.max(0, ST.pollGap || 60)); });
+        .then(txt => { clearTimeout(t); offlineStreak = 0; parseStatus(txt.trim()); setOnline(true); })
+        .catch(() => { clearTimeout(t); offlineStreak++; setOnline(false); })
+        .finally(() => {
+          if (!polling) return;
+          // Con conexión: a la cadencia elegida. Sin conexión (varios fallos
+          // seguidos): reintenta despacio para no saturar la tablet ni la red.
+          const delay = offlineStreak > 3 ? POLL_OFFLINE : Math.max(0, ST.pollGap || 60);
+          pollTimer = setTimeout(poll, delay);
+        });
     }
 
     let servingInProgress = false;
@@ -684,13 +693,18 @@
       const estado = parts[2] || 'idle';
       const wStr = displayWeight.toFixed(1);
 
-      document.getElementById('scale-weight').textContent = wStr;
-      const catW = document.getElementById('cat-scale-weight');
-      if (catW) catW.textContent = wStr;
+      // Solo tocamos el DOM si el valor cambió: evita reflows en cada lectura.
+      if (wStr !== lastWStr) {
+        lastWStr = wStr;
+        document.getElementById('scale-weight').textContent = wStr;
+        const catW = document.getElementById('cat-scale-weight');
+        if (catW) catW.textContent = wStr;
+      }
 
       const running = estado !== 'idle';
       const dot = document.getElementById('status-dot');
-      dot.className = running ? 'running' : 'online';
+      const dotCls = running ? 'running' : 'online';
+      if (dot.className !== dotCls) dot.className = dotCls;
 
       const catState = document.getElementById('cat-scale-state');
       if (catState) {
@@ -930,6 +944,7 @@
        PANEL
     ═══════════════════════════════════════════════════════════ */
     function openPanel(which) {
+      pausePolling(); // el panel tapa la báscula: no hace falta leer mientras
       document.getElementById('panel-overlay').classList.add('open');
       const body = document.getElementById('panel-body');
       body.innerHTML = '';
@@ -947,7 +962,7 @@
         renderManualPanel(body);
       }
     }
-    function closePanel() { document.getElementById('panel-overlay').classList.remove('open'); }
+    function closePanel() { document.getElementById('panel-overlay').classList.remove('open'); resumePolling(); }
 
     /* ─── RECETAS ─────────────────────────────────────────── */
     const CAT_KEYS = ['matcha','coldbrew','burbujas','zumos'];

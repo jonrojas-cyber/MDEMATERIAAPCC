@@ -85,6 +85,7 @@ app.get("/etiqueta/prep", async (req, res) => {
       responsable: req.query.r || "—",
       autoprint: req.query.print === "1",
       qrUrl: labelService.urlFichaPrep(req, req.query),
+      venceLabel: req.query.et ? String(req.query.et).slice(0, 24) : null,
     });
     res.set("Content-Type", "text/html; charset=utf-8").send(html);
   } catch (e) {

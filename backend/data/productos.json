@@ -150,5 +150,93 @@
         "cantidad": 250
       }
     ]
+  },
+  {
+    "id": "prod-cafe-esp-bra",
+    "clave": "Espresso Brasil",
+    "nombre": "Espresso · Brasil",
+    "categoria": "café",
+    "descripcion": "Doble 17 g",
+    "precio_venta": 1.65,
+    "margen_objetivo": 0.75,
+    "activo": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-cafe-brasil",
+        "cantidad": 17
+      }
+    ]
+  },
+  {
+    "id": "prod-cafe-esp-eti",
+    "clave": "Espresso Etiopía",
+    "nombre": "Espresso · Etiopía",
+    "categoria": "café",
+    "descripcion": "Doble 17 g",
+    "precio_venta": 2.2,
+    "margen_objetivo": 0.75,
+    "activo": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-cafe-etiopia",
+        "cantidad": 17
+      }
+    ]
+  },
+  {
+    "id": "prod-cafe-leche-bra",
+    "clave": "Con leche Brasil",
+    "nombre": "Con leche · Brasil",
+    "categoria": "café",
+    "descripcion": "Doble 17 g + 160 ml leche fresca",
+    "precio_venta": 2.3,
+    "margen_objetivo": 0.75,
+    "activo": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-cafe-brasil",
+        "cantidad": 17
+      },
+      {
+        "materia_id": "mat-leche-fresca",
+        "cantidad": 160
+      }
+    ]
+  },
+  {
+    "id": "prod-cafe-vegetal-bra",
+    "clave": "Con leche vegetal Brasil",
+    "nombre": "Con leche vegetal · Brasil",
+    "categoria": "café",
+    "descripcion": "Doble 17 g + 160 ml coco/avena",
+    "precio_venta": 2.75,
+    "margen_objetivo": 0.75,
+    "activo": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-cafe-brasil",
+        "cantidad": 17
+      },
+      {
+        "materia_id": "mat-leche-vegetal",
+        "cantidad": 160
+      }
+    ]
+  },
+  {
+    "id": "prod-cafe-coldbrew",
+    "clave": "Cold brew coco",
+    "nombre": "Cold brew coco",
+    "categoria": "café",
+    "descripcion": "Vaso 200 ml",
+    "precio_venta": 5.0,
+    "margen_objetivo": 0.75,
+    "activo": true,
+    "ingredientes": [
+      {
+        "materia_id": "mat-cafe-coldbrew",
+        "cantidad": 17.5
+      }
+    ]
   }
 ]

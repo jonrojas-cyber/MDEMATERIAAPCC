@@ -29,7 +29,7 @@
     "unidad": "ml",
     "proveedor_id": "prov-002",
     "coste_medio": 0.0061,
-    "disponibilidad_actual": 3980,
+    "disponibilidad_actual": 3975,
     "stock_minimo": 2000,
     "stock_ideal": 6000,
     "ubicacion": "Almacén seco",
@@ -41,7 +41,7 @@
     "unidad": "g",
     "proveedor_id": "prov-003",
     "coste_medio": 0.0011,
-    "disponibilidad_actual": 2965,
+    "disponibilidad_actual": 2963,
     "stock_minimo": 500,
     "stock_ideal": 3000,
     "ubicacion": "Almacén seco",
@@ -113,7 +113,7 @@
     "unidad": "ud",
     "proveedor_id": "prov-007",
     "coste_medio": 0.42,
-    "disponibilidad_actual": 38,
+    "disponibilidad_actual": 37,
     "stock_minimo": 30,
     "stock_ideal": 80,
     "ubicacion": "Obrador · Estantería pan",
@@ -221,7 +221,7 @@
     "unidad": "g",
     "proveedor_id": "prov-001",
     "coste_medio": 0.026,
-    "disponibilidad_actual": 2000,
+    "disponibilidad_actual": 1910,
     "stock_minimo": 800,
     "stock_ideal": 3000,
     "ubicacion": "Cámara producción · Balda 2",
@@ -279,5 +279,50 @@
     "ubicacion": "Despensa",
     "vida_util_horas": 2160,
     "coste_estimado": true
+  },
+  {
+    "id": "mat-cafe-brasil",
+    "nombre": "Café Brasil (espresso)",
+    "unidad": "g",
+    "coste_medio": 0.0239,
+    "categoria": "Café",
+    "ubicacion": "Barra",
+    "disponibilidad_actual": 1000
+  },
+  {
+    "id": "mat-cafe-etiopia",
+    "nombre": "Café Etiopía (espresso)",
+    "unidad": "g",
+    "coste_medio": 0.0319,
+    "categoria": "Café",
+    "ubicacion": "Barra",
+    "disponibilidad_actual": 500
+  },
+  {
+    "id": "mat-cafe-coldbrew",
+    "nombre": "Café cold brew coco (Quebraditas)",
+    "unidad": "g",
+    "coste_medio": 0.07088,
+    "categoria": "Café",
+    "ubicacion": "Barra",
+    "disponibilidad_actual": 500
+  },
+  {
+    "id": "mat-leche-fresca",
+    "nombre": "Leche fresca",
+    "unidad": "ml",
+    "coste_medio": 0.001,
+    "categoria": "Leche",
+    "ubicacion": "Barra",
+    "disponibilidad_actual": 5000
+  },
+  {
+    "id": "mat-leche-vegetal",
+    "nombre": "Leche coco/avena",
+    "unidad": "ml",
+    "coste_medio": 0.00168,
+    "categoria": "Leche",
+    "ubicacion": "Barra",
+    "disponibilidad_actual": 3000
   }
 ]

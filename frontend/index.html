@@ -7234,8 +7234,22 @@ async function irA_carta(){
       const w=Math.max(2,Math.round(p.margen_bruto*100));
       const barra=`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
       const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
-      const sugiere=(p.precio_recomendado>0 && Math.abs(p.precio_recomendado-p.precio_venta)>=0.05)
-        ? `<div style="font-size:10px;color:var(--olive);margin-top:4px;">PVP recomendado para ${Math.round(p.margen_objetivo*100)}% de margen: <b>${p.precio_recomendado.toFixed(2)} €</b></div>`:"";
+      // Escenarios de food-cost (20/25/30%) + objetivo editable por producto.
+      const e3 = p.escenarios ? `
+        <div style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;">PVP por food-cost objetivo</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          ${['20','25','30'].map(fc=>{
+            const v=p.escenarios['fc'+fc]||0;
+            const on=Math.round(p.food_cost_objetivo)==+fc;
+            return `<div style="border:1px solid ${on?'var(--ink)':'var(--line)'};padding:6px 8px;text-align:center;${on?'background:var(--olive-light);':''}">
+              <div style="font-size:9px;color:var(--muted);">${fc}% food cost</div>
+              <div style="font-size:15px;font-weight:700;color:var(--ink);">${v.toFixed(2)} €</div></div>`;
+          }).join("")}
+        </div>` : "";
+      const sugiere = p.escenarios ? `
+        <div style="font-size:11px;margin-top:8px;color:var(--muted);">objetivo
+          <input type="number" min="5" max="90" step="1" value="${Math.round(p.food_cost_objetivo)}" onchange="setFcObjetivo('${p.id}',this.value)" style="width:60px;padding:4px 6px;margin:0 2px;"> % food cost →
+          <b style="color:var(--olive);">${p.precio_recomendado.toFixed(2)} €</b></div>` : "";
       const alerg=(p.alergenos&&p.alergenos.length)
         ? `<div style="font-size:10px;color:var(--muted);margin-top:6px;">Alérgenos: ${p.alergenos.map(a=>esc(a)).join(" · ")}</div>`:"";
       const meta2=[p.version?`Versión ${esc(p.version)}`:"",p.vida_util_horas?`Vida útil ${p.vida_util_horas} h`:""].filter(Boolean).join(" · ");
@@ -7245,11 +7259,25 @@ async function irA_carta(){
         `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:var(--muted);">(estimado)</span>':""}`,
         `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
         `<button class="btn-ghost" onclick="formReceta('${p.id}')">Editar</button><button class="btn-ghost" onclick="borrarReceta('${p.id}')">Quitar</button>`,
-        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+sugiere+alerg+metaLine+foto
+        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+e3+sugiere+alerg+metaLine+foto
       );
     }, "No hay productos en la carta.");
     setInner(cab+resumen+items);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// Cambia el food-cost objetivo de un producto (lo guarda como margen y recalcula
+// el PVP recomendado). "no todo es igual": cada producto puede ir a su objetivo.
+async function setFcObjetivo(id, fcPct){
+  let fc=Number(String(fcPct).replace(",","."));
+  if(!(fc>0)) return;
+  if(fc>1) fc=fc/100;                 // admite 25 o 0.25
+  if(fc>=1) return;
+  const margen=1-fc;
+  try{
+    await api("/carta/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({margen_objetivo:margen})});
+    irA_carta();
+  }catch(e){ alert(e.message); }
 }
 
 // ── EDITOR DE RECETAS (escandallo + PVP recomendado en vivo) ──

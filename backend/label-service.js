@@ -101,7 +101,7 @@ function fechaSello(iso) {
 // Lenguaje "m de materia": minúsculas, tags con tracking, líneas finas de
 // boticario y el imagotipo de las tres líneas. Negro puro sobre blanco para
 // que la impresión térmica salga nítida; el QR nunca se recorta.
-async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, qrUrl }) {
+async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, qrUrl, venceLabel }) {
   const qrTexto = qrUrl || urlFichaLote(req, lote.id);
   const qrDataUrl = await generateQRCode(qrTexto);
   const nombre = escapeHTML(receta ? receta.nombre : lote.receta_id);
@@ -150,7 +150,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       <div class="nombre">${nombre}</div>
       <dl class="meta">
         <dt>elaborado</dt><dd>${fechaSello(lote.producido_en)}</dd>
-        <dt>consumir</dt><dd class="big">${fechaSello(lote.caduca_en)}</dd>
+        <dt>${escapeHTML(venceLabel || "consumir").toLowerCase()}</dt><dd class="big">${fechaSello(lote.caduca_en)}</dd>
         <dt>responsable</dt><dd>${escapeHTML((responsable || "—")).toLowerCase()}</dd>
       </dl>
       <div class="rule foot"></div>

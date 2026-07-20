@@ -8044,11 +8044,18 @@ function _mdmMacMain(){
     $('catanum').value = (+$('catanum').value)+1;
     render();
   }
+  // Imprime abriendo la MISMA página de etiqueta del backend que el resto del
+  // sistema (/etiqueta/prep): tiene @page 62×30mm + autoimpresión, así sale en
+  // la Phomemo. window.print() sobre la app NO sirve (la página es A4).
   function macPrint(){
-    document.body.classList.add('mac-print');
-    window.print();
+    const c = calcular();
+    const vol = n2(c.recuperado/1000)+' L';
+    const abrir = (o) => window.open(location.origin+'/etiqueta/prep?'+new URLSearchParams(o).toString(), '_blank');
+    abrir({ n:'Cold Brew · '+c.cafe.n, c:vol, v:c.horas, r:c.op, p:c.ini.toISOString(), code:c.lote, et:'Maceración lista', print:'1' });
+    if(c.destino==='barril'){
+      abrir({ n:'Cold Brew Nitro · '+c.cafe.n, c:vol, v:VIDA_BARRIL_DIAS*24, r:c.op, p:c.fin.toISOString(), code:c.lote, et:'Consumir', print:'1' });
+    }
   }
-  window.addEventListener('afterprint', () => document.body.classList.remove('mac-print'));
 
   // Poblar café (una vez por montaje del shell)
   const sel = $('cafe');

@@ -655,6 +655,20 @@
     let offlineStreak = 0;   // lecturas fallidas seguidas (para reintentar despacio)
     let lastWStr = null;     // último peso pintado (evita reescribir el DOM igual)
 
+    // Suavizado del peso: la célula de carga tiene ruido y "salta", sobre todo al
+    // tarar. Filtro de mediana de las últimas 3 lecturas (quita picos sin apenas
+    // retardo) + banda muerta cerca de 0 para que la tara quede quieta.
+    let _wBuf = [];
+    function resetSmoothing() { _wBuf = []; lastWStr = null; }
+    function smoothWeight(raw) {
+      _wBuf.push(raw);
+      if (_wBuf.length > 3) _wBuf.shift();
+      const s = _wBuf.slice().sort((a, b) => a - b);
+      let m = s[(s.length - 1) >> 1];  // mediana
+      if (Math.abs(m) < 0.4) m = 0;    // banda muerta: no tiembla en el cero
+      return m;
+    }
+
     const POLL_TIMEOUT = 600;   // ms para abortar una lectura colgada (antes 1200)
     const POLL_OFFLINE = 1500;  // sin conexión: reintenta cada 1,5 s (no ahoga la tablet)
 
@@ -689,7 +703,7 @@
       if (!parts.length) return;
       currentWeight = parseFloat(parts[0]) || 0;
       lastTarget = parseFloat(parts[1]) || 0;
-      const displayWeight = Math.max(0, currentWeight);
+      const displayWeight = Math.max(0, smoothWeight(currentWeight));
       const estado = parts[2] || 'idle';
       const wStr = displayWeight.toFixed(1);
 
@@ -846,6 +860,7 @@
        ACTIONS
     ═══════════════════════════════════════════════════════════ */
     function doTare() {
+      resetSmoothing(); // arranca limpio: el cero se asienta sin temblar
       fetchESP('/tare').then(ok => {
         showToast(ok ? 'TARA REALIZADA' : 'SIN CONEXIÓN · TARA NO REALIZADA');
       });
@@ -879,6 +894,7 @@
       }
 
       pausePolling();
+      resetSmoothing();
       showToast('TARANDO...');
       fetchESP('/tare').then(tareOk => {
         if (!tareOk) {

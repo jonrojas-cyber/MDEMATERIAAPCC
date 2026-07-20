@@ -1981,30 +1981,35 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 #mdm-mac .warn{color:#8a3b1e}
 #mdm-mac button{font-family:inherit;font-size:10px;text-transform:uppercase;letter-spacing:.18em;padding:11px 20px;border:1px solid var(--mac-olive);background:var(--mac-olive);color:var(--mac-sand);cursor:pointer}
 #mdm-mac button.ghost{background:transparent;color:var(--mac-olive)}
+/* Etiqueta ESTÁNDAR de Control M (misma que APPCC): réplica scopeada del
+   diseño Aesop 62×30 del backend (label-service). Negro puro sobre blanco. */
 #mdm-mac .sheet{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
-#mdm-mac .lb{background:#fff;color:#000;border:1px solid var(--mac-line);font-family:"Courier Prime",'Courier New',monospace;padding:3mm;position:relative}
-#mdm-mac .lb-62{width:62mm;height:40mm;font-size:7.6pt;line-height:1.28}
-#mdm-mac .lb-cata{width:50mm;height:25mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
-#mdm-mac .lb .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:.4mm solid #000;padding-bottom:1mm;margin-bottom:1.4mm}
-#mdm-mac .lb .mk{font-size:6pt;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
-#mdm-mac .lb .nm{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:10.5pt;line-height:1.1;margin-bottom:.4mm}
-#mdm-mac .lb .og{font-size:6pt;letter-spacing:.06em;margin-bottom:1.4mm}
-#mdm-mac .lb table{width:100%;border-collapse:collapse;font-size:7.2pt}
-#mdm-mac .lb td{padding:.25mm 0;vertical-align:top}
-#mdm-mac .lb td:first-child{width:19mm;letter-spacing:.08em;font-size:6.2pt;text-transform:uppercase;padding-top:.6mm}
-#mdm-mac .lb td:last-child{font-weight:700}
-#mdm-mac .lb .qr{position:absolute;right:3mm;bottom:2.5mm}
-#mdm-mac .lb .qr img{width:11mm !important;height:11mm !important}
-#mdm-mac .lb .alert{border:.4mm solid #000;padding:.6mm 1.4mm;font-size:6.4pt;font-weight:700;letter-spacing:.06em;display:inline-block;margin-top:1mm}
-#mdm-mac .lb .catanum{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:30pt;line-height:1}
-#mdm-mac .lb .catafoot{font-size:6pt;letter-spacing:.22em;text-transform:uppercase;margin-top:1.5mm}
+#mdm-mac .mlbl{width:62mm;height:30mm;background:#fff;color:#000;border:1px solid var(--mac-line);font-family:"Courier Prime",'Courier New',monospace;padding:1.8mm 2mm;display:flex;gap:2mm;align-items:stretch;position:relative}
+#mdm-mac .mlbl-datos{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#mdm-mac .mlbl-brand{display:flex;align-items:center;justify-content:space-between}
+#mdm-mac .mlbl-word{font-size:5px;letter-spacing:1.4px;text-transform:lowercase}
+#mdm-mac .mlbl-mark{display:flex;align-items:flex-end;gap:.5mm}
+#mdm-mac .mlbl-mark i{display:block;width:.42mm;height:2.6mm;background:#000}
+#mdm-mac .mlbl-mark i:nth-child(2){height:3.2mm}
+#mdm-mac .mlbl-rule{height:0;border-top:.2mm solid #000;margin:1mm 0}
+#mdm-mac .mlbl-rule.foot{margin-top:auto;margin-bottom:.8mm}
+#mdm-mac .mlbl-nombre{font-size:11px;font-weight:700;line-height:1.02;letter-spacing:.2px;text-transform:lowercase}
+#mdm-mac .mlbl-meta{display:grid;grid-template-columns:auto 1fr;column-gap:2mm;row-gap:.5mm;margin-top:1.2mm}
+#mdm-mac .mlbl-meta dt{font-size:5.5px;letter-spacing:.7px;text-transform:lowercase;align-self:baseline;margin:0}
+#mdm-mac .mlbl-meta dd{font-size:7.5px;font-weight:700;line-height:1.1;white-space:nowrap;margin:0}
+#mdm-mac .mlbl-meta dd.big{font-size:8.5px}
+#mdm-mac .mlbl-codigo{font-size:8px;font-weight:700;letter-spacing:1.2px}
+#mdm-mac .mlbl-qr{width:23mm;flex:0 0 23mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#mdm-mac .mlbl-frame{border:.2mm solid #000;padding:.6mm;background:#fff}
+#mdm-mac .mlbl-qr img{width:18.5mm !important;height:18.5mm !important;display:block;background:#fff}
+#mdm-mac .mlbl-qr span{font-size:5px;letter-spacing:1px;text-transform:lowercase;margin-top:.9mm;text-align:center}
 @media print{
   body.mac-print{background:#fff}
   body.mac-print .topbar,body.mac-print .tabbar{display:none !important}
   #mdm-mac{background:#fff;padding:0}
   #mdm-mac .noprint{display:none !important}
   #mdm-mac .sheet{gap:0}
-  #mdm-mac .lb{border:none;page-break-inside:avoid;margin:0}
+  #mdm-mac .mlbl{border:none;page-break-inside:avoid;margin:0}
 }
 </style>
 </head>
@@ -7972,56 +7977,56 @@ function _mdmMacMain(){
       '<div class="cell"><div class="k">fin previsto</div><div class="v" style="font-size:15px">'+sello(c.fin)+'</div></div>';
   }
 
-  // QR: reusa el generador de Control M (backend /qr) como el resto de etiquetas.
-  function qr(el,payload){
-    el.innerHTML='';
-    const img=document.createElement('img');
-    img.src='/qr?d='+encodeURIComponent(payload)+'&w=132';
-    img.alt='QR';
-    el.appendChild(img);
+  // URL de la ficha en vivo (misma /p que el resto de etiquetas). El QR la lleva.
+  function fichaUrl(nombre, prodISO, vidaH, resp, code, et){
+    const u = new URLSearchParams();
+    u.set('n', nombre); u.set('p', prodISO);
+    if(vidaH) u.set('v', vidaH);
+    if(resp) u.set('r', resp);
+    if(code) u.set('code', code);
+    if(et) u.set('et', et);
+    return location.origin + '/p?' + u.toString();
+  }
+  // Etiqueta ESTÁNDAR de Control M (idéntica a las de APPCC). QR → ficha en vivo.
+  function stdLabel(o){
+    const el = document.createElement('div');
+    el.className = 'mlbl';
+    el.innerHTML =
+      '<div class="mlbl-datos">'+
+        '<div class="mlbl-brand"><span class="mlbl-word">m · de · materia</span>'+
+          '<span class="mlbl-mark"><i></i><i></i><i></i></span></div>'+
+        '<div class="mlbl-rule"></div>'+
+        '<div class="mlbl-nombre">'+o.nombre.toLowerCase()+'</div>'+
+        '<dl class="mlbl-meta">'+
+          '<dt>elaborado</dt><dd>'+sello(o.elaboradoD)+'</dd>'+
+          '<dt>'+o.venceLabel+'</dt><dd class="big">'+sello(o.venceD)+'</dd>'+
+          '<dt>responsable</dt><dd>'+String(o.resp||'—').toLowerCase()+'</dd>'+
+        '</dl>'+
+        '<div class="mlbl-rule foot"></div>'+
+        '<div class="mlbl-codigo">'+o.code+'</div>'+
+      '</div>'+
+      '<div class="mlbl-qr"><div class="mlbl-frame"><img src="/qr?d='+encodeURIComponent(o.fichaUrl)+'&w=132" alt="QR"></div>'+
+        '<span>escanea · tiempo</span></div>';
+    return el;
   }
 
   function pintarEtiquetas(c){
     const sh = $('sheet'); sh.innerHTML='';
-    const a = document.createElement('div');
-    a.className='lb lb-62';
-    a.innerHTML=
-      '<div class="hd"><span class="mk">m · maceración</span><span class="mk">'+c.op+'</span></div>'+
-      '<div class="nm">'+c.cafe.n+'</div><div class="og">'+c.cafe.o+'</div>'+
-      '<table>'+
-      '<tr><td>lote</td><td>'+c.lote+'</td></tr>'+
-      '<tr><td>dosis · mol</td><td>'+n2(c.dosis)+' g · '+c.mol+' µm</td></tr>'+
-      '<tr><td>agua</td><td>'+n2(c.agua)+' g &nbsp; 1:'+n2(c.R)+(c.bloom?' · bloom':'')+'</td></tr>'+
-      '<tr><td>temp</td><td>'+c.temp+' °C · '+c.horas+' h</td></tr>'+
-      '<tr><td>inicio</td><td>'+sello(c.ini)+'</td></tr>'+
-      '<tr><td>fin</td><td>'+sello(c.fin)+'</td></tr>'+
-      '</table><div class="qr"></div>';
-    sh.appendChild(a);
-    qr(a.querySelector('.qr'), JSON.stringify({t:'mac',l:c.lote,c:c.cafe.id,d:Math.round(c.dosis),r:c.R,f:c.ini.toISOString()}));
-
+    // 1 · MACERADOR: el QR cuenta el tiempo que RESTA de maceración (hasta fin).
+    const nombreMac = 'Cold Brew · ' + c.cafe.n;
+    sh.appendChild(stdLabel({
+      nombre: nombreMac, elaboradoD: c.ini,
+      venceLabel: 'maceración lista', venceD: c.fin, resp: c.op, code: c.lote,
+      fichaUrl: fichaUrl(nombreMac, c.ini.toISOString(), c.horas, c.op, c.lote, 'Maceración lista')
+    }));
+    // 2 · BARRIL (producto acabado): el QR cuenta la vida útil (consumir antes).
     if(c.destino==='barril'){
-      const b = document.createElement('div');
-      b.className='lb lb-62';
-      b.innerHTML=
-        '<div class="hd"><span class="mk">m · barril</span><span class="mk">'+c.op+'</span></div>'+
-        '<div class="nm">Cold Brew Nitro</div><div class="og">'+c.cafe.o+'</div>'+
-        '<table>'+
-        '<tr><td>lote</td><td>'+c.lote+'</td></tr>'+
-        '<tr><td>envasado</td><td>'+sello(c.fin)+'</td></tr>'+
-        '<tr><td>tds</td><td>'+c.tds.toFixed(2)+' %</td></tr>'+
-        '<tr><td>volumen</td><td>'+n2(c.recuperado/1000)+' L</td></tr>'+
-        '<tr><td>consumir</td><td>'+fecha(c.cad)+'</td></tr>'+
-        '</table><div class="alert">mantener ≤ 4 °C</div><div class="qr"></div>';
-      sh.appendChild(b);
-      qr(b.querySelector('.qr'), JSON.stringify({t:'bar',l:c.lote,tds:+c.tds.toFixed(2),cad:c.cad.toISOString()}));
-    }
-
-    if(c.destino==='cata'){
-      const d = document.createElement('div');
-      d.className='lb lb-cata';
-      d.innerHTML='<div class="catanum">'+String(c.catanum).padStart(2,'0')+'</div>'+
-                  '<div class="catafoot">cata · '+fecha(c.ini)+'</div>';
-      sh.appendChild(d);
+      const nombreBar = 'Cold Brew Nitro · ' + c.cafe.n;
+      sh.appendChild(stdLabel({
+        nombre: nombreBar, elaboradoD: c.fin,
+        venceLabel: 'consumir', venceD: c.cad, resp: c.op, code: c.lote,
+        fichaUrl: fichaUrl(nombreBar, c.fin.toISOString(), VIDA_BARRIL_DIAS*24, c.op, c.lote, '')
+      }));
     }
   }
 

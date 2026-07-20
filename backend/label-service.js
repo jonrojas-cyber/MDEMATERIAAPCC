@@ -15,7 +15,7 @@ function urlFichaLote(req, loteId) {
 function urlFichaPrep(req, q) {
   const host = req ? `${req.protocol}://${req.get("host")}` : "http://localhost:4001";
   const usp = new URLSearchParams();
-  ["n", "c", "v", "r", "p"].forEach((k) => { if (q[k] != null && q[k] !== "") usp.set(k, q[k]); });
+  ["n", "c", "v", "r", "p", "code", "et"].forEach((k) => { if (q[k] != null && q[k] !== "") usp.set(k, q[k]); });
   return `${host}/p?${usp.toString()}`;
 }
 
@@ -169,7 +169,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
 // pegatina. Muestra la vida útil EN TIEMPO REAL (cuenta atrás viva, barra y
 // color según riesgo) más toda la trazabilidad del lote. El QR no guarda un
 // dato estático: lleva a esta vista dinámica, que recalcula con la hora actual.
-function renderFichaLoteHTML({ lote, receta, materias, responsable }) {
+function renderFichaLoteHTML({ lote, receta, materias, responsable, venceLabel }) {
   const indice = {};
   (materias || []).forEach((m) => (indice[m.id] = m));
   const nombre = escapeHTML(receta ? receta.nombre : lote.receta_id);
@@ -244,7 +244,7 @@ function renderFichaLoteHTML({ lote, receta, materias, responsable }) {
 
   <div class="rows">
     ${fila("Producido", fechaCorta(lote.producido_en))}
-    ${fila("Consumir antes", fechaCorta(lote.caduca_en))}
+    ${fila(venceLabel || "Consumir antes", fechaCorta(lote.caduca_en))}
     ${fila("Cantidad inicial", `${escapeHTML(lote.cantidad_inicial)} ${escapeHTML(unidad)}`)}
     ${lote.cantidad_restante != null ? fila("Restante", `${escapeHTML(lote.cantidad_restante)} ${escapeHTML(unidad)}`) : ""}
     ${lote.ubicacion ? fila("Ubicación", escapeHTML(lote.ubicacion)) : ""}

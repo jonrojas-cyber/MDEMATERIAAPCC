@@ -615,6 +615,10 @@
         'Burbujas Origen':{c:0,d:0}, 'Burbujas Equilibrio':{c:0,d:0}, 'Burbujas Colección':{c:0,d:0},
         'Zumo Origen':{c:0,d:0}, 'Zumo Equilibrio':{c:0,d:0}, 'Zumo Colección':{c:0,d:0}
       },
+      // Compensación por línea (gramos). La ESP32 corta un poco antes del
+      // objetivo; aquí sumamos lo que falta para que salga la cantidad real.
+      // Se aplica sólo en modo Dynamic (que es el que envía gramos).
+      ajuste: {},
       // Cadencia de lectura de la báscula (ms). Editable en CONFIG.
       pollGap: 60
     };
@@ -847,7 +851,12 @@
           addLog('✕ Bloqueado: falta asignar válvula a ' + missing.map(x => x.t).join(', '));
           return;
         }
-        const seq = rec.ing.map(x => `${ST.valves[x.t]}:${Math.round(x.g)}`).join(',');
+        // Objetivo + compensación de cierre anticipado (por línea).
+        const seq = rec.ing.map(x => {
+          const comp = (ST.ajuste && ST.ajuste[x.t]) || 0;
+          const g = Math.max(0, Math.round(x.g + comp));
+          return `${ST.valves[x.t]}:${g}`;
+        }).join(',');
         url = `/recipe?name=${name}&seq=${seq}`;
       } else if (ST.mode === 'recipe') {
         url = `/recipe?name=${name}`;
@@ -1158,7 +1167,21 @@
     }
 
     /* ─── CONFIG ─────────────────────────────────────────── */
+    function setAjuste(inp) {
+      const line = inp.dataset.line;
+      const v = parseFloat(inp.value);
+      if (!ST.ajuste) ST.ajuste = {};
+      ST.ajuste[line] = isNaN(v) ? 0 : v;
+      saveST();
+    }
     function renderConfigPanel(body) {
+      if (!ST.ajuste) ST.ajuste = {};
+      const cmpRows = Object.keys(ST.valves).filter(l => ST.valves[l]).map(function(l){
+        return '<div class="config-row"><span class="config-label">' + l + '</span>'
+          + '<input class="config-input" type="number" step="1" inputmode="numeric" data-line="' + l
+          + '" value="' + (ST.ajuste[l] || 0) + '" onchange="setAjuste(this)" style="max-width:80px">'
+          + '<span class="config-label" style="min-width:auto">g</span></div>';
+      }).join('');
       body.innerHTML = `
       <div class="config-section">
         <div class="config-section-title">ESP32</div>
@@ -1190,6 +1213,12 @@
           </div>
         </div>
         <div class="config-hint">Menor reposo = el peso sigue a la báscula más rápido (más peticiones al ESP32). "Máx" lee tan rápido como responde el equipo.</div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">COMPENSACIÓN · GRAMOS POR SERVICIO</div>
+        <div class="config-hint">Si la báscula corta antes del objetivo, suma aquí los gramos que faltan por línea. La app enviará <b>objetivo + compensación</b> (solo en modo Dynamic). Ej.: pides 50, salen 38 → pon 12.</div>
+        ${cmpRows}
       </div>
 
       <div class="config-section">

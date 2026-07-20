@@ -296,6 +296,10 @@ store
         process.exit(1);
       }
     }
+    // Siembra idempotente de la carta de café (cafés Inefable + leches). Inserta
+    // en el almacén real (Postgres o JSON) si faltan; se ejecuta una sola vez.
+    require("./seed-cafe").seedCafe().catch(() => {});
+
     app.listen(PORT, () => {
       console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);
     });

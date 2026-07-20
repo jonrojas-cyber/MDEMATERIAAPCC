@@ -672,13 +672,26 @@
     const POLL_TIMEOUT = 600;   // ms para abortar una lectura colgada (antes 1200)
     const POLL_OFFLINE = 1500;  // sin conexión: reintenta cada 1,5 s (no ahoga la tablet)
 
+    // El servidor del ESP atiende UNA petición a la vez. commandInFlight indica
+    // que hay un comando (tara/servir/stop/manual) en curso: el polling NO pide
+    // status mientras tanto, para no colisionar y que el comando salga al vuelo.
+    let commandInFlight = 0;
+    let pollCtrl = null;        // AbortController del /status en vuelo (para cortarlo al servir)
+
     function startPolling() { if (polling) return; polling = true; poll(); }
-    function pausePolling() { polling = false; if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+    function pausePolling() {
+      polling = false;
+      if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+      if (pollCtrl) { try { pollCtrl.abort(); } catch (e) {} pollCtrl = null; } // libera el ESP ya
+    }
     function resumePolling() { startPolling(); }
 
     function poll() {
       if (!polling) return;
+      // No competir con un comando: el ESP es de una petición a la vez.
+      if (commandInFlight > 0) { pollTimer = setTimeout(poll, 80); return; }
       const ctrl = new AbortController();
+      pollCtrl = ctrl;
       const t = setTimeout(() => ctrl.abort(), POLL_TIMEOUT);
       // cache-buster: evita que el navegador sirva una lectura vieja de /status
       fetch(`http://${ST.ip}/status?_=${++statusSeq}`, { signal: ctrl.signal, cache: 'no-store' })
@@ -686,6 +699,7 @@
         .then(txt => { clearTimeout(t); offlineStreak = 0; parseStatus(txt.trim()); setOnline(true); })
         .catch(() => { clearTimeout(t); offlineStreak++; setOnline(false); })
         .finally(() => {
+          pollCtrl = null;
           if (!polling) return;
           // Con conexión: a la cadencia elegida. Sin conexión (varios fallos
           // seguidos): reintenta despacio para no saturar la tablet ni la red.
@@ -695,6 +709,7 @@
     }
 
     let servingInProgress = false;
+    let serveBusy = false;   // anti doble-pulsación: bloquea reentradas al servir
     let lastTarget = 0;
 
     function parseStatus(txt) {
@@ -893,61 +908,96 @@
         url = `/start?receta=${name}`;
       }
 
+      serveBusy = true;
       pausePolling();
       resetSmoothing();
-      showToast('TARANDO...');
-      fetchESP('/tare').then(tareOk => {
-        if (!tareOk) {
-          showToast('SIN CONEXIÓN · NO SE PUDO TARAR');
-          resumePolling();
-          return;
-        }
-        fetchESP(url).then(ok => {
-          resumePolling();
-          if (ok) {
-            servingInProgress = true;
-            activeRecipe = rec;
-            document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
-            showScreen('home');
-            updateHomeDisplay();
-            // Descuento por servicio: barril en gramos (fuente principal) y el
-            // stock antiguo en kg (compatibilidad). Avisa si el barril no llega.
-            let vacios = [];
-            rec.ing.forEach(x => {
-              if (ST.stock[x.t] !== undefined) {
-                ST.stock[x.t] = Math.max(0, ST.stock[x.t] - x.g / 1000);
-              }
-              if (ST.barril && ST.barril[x.t]) {
-                const b = ST.barril[x.t];
-                if (b.c > 0 && b.d < x.g) vacios.push(x.t); // barril cargado pero sin bastante
-                b.d = Math.max(0, (b.d || 0) - x.g);
-              }
-            });
-            saveST();
-            if (vacios.length) {
-              showToast('⚠ BARRIL SIN SUFICIENTE · ' + vacios.join(' · '));
-            } else {
-              showToast('SIRVIENDO · ' + rec.name);
+      showToast('ENVIANDO…'); // feedback inmediato al pulsar
+      const fin = () => { serveBusy = false; resumePolling(); };
+
+      // Tara y luego receta, ambos por la cola serializada con reintentos.
+      espSend('/tare', { timeout: 1500, retries: 2 }).then(tareOk => {
+        if (!tareOk) { showToast('✕ SIN CONEXIÓN · no se pudo tarar'); fin(); return; }
+        espSend(url, { timeout: 2000, retries: 2 }).then(ok => {
+          fin();
+          if (!ok) {
+            // NUNCA silencioso: si no salió, se avisa para volver a pulsar.
+            showToast('✕ NO SALIÓ · vuelve a pulsar');
+            addLog('✕ Serve falló tras reintentos: ' + url);
+            return;
+          }
+          servingInProgress = true;
+          activeRecipe = rec;
+          document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
+          showScreen('home');
+          updateHomeDisplay();
+          // Descuento por servicio: barril en gramos (fuente principal) y el
+          // stock antiguo en kg (compatibilidad). Avisa si el barril no llega.
+          let vacios = [];
+          rec.ing.forEach(x => {
+            if (ST.stock[x.t] !== undefined) {
+              ST.stock[x.t] = Math.max(0, ST.stock[x.t] - x.g / 1000);
             }
+            if (ST.barril && ST.barril[x.t]) {
+              const b = ST.barril[x.t];
+              if (b.c > 0 && b.d < x.g) vacios.push(x.t); // barril cargado pero sin bastante
+              b.d = Math.max(0, (b.d || 0) - x.g);
+            }
+          });
+          saveST();
+          if (vacios.length) {
+            showToast('⚠ BARRIL SIN SUFICIENTE · ' + vacios.join(' · '));
+          } else {
+            showToast('SIRVIENDO · ' + rec.name);
           }
         });
       });
     }
 
-    function fetchESP(path, timeoutMs = 5000, _isRetry = false) {
+    /* ═══════════════════════════════════════════════════════════
+       CAPA DE COMUNICACIÓN CON EL ESP · fiabilidad
+       El ESP atiende una petición a la vez. Serializamos TODO en una cola:
+       nunca hay dos en vuelo (evita colisiones/caídas). Cada comando aborta el
+       /status en curso para salir al instante, usa timeout corto y reintenta.
+    ═══════════════════════════════════════════════════════════ */
+    let espChain = Promise.resolve();
+
+    function espOnce(path, timeout) {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      const t = setTimeout(() => ctrl.abort(), timeout);
       return fetch(`http://${ST.ip}${path}`, { signal: ctrl.signal, cache: 'no-store' })
         .then(r => { clearTimeout(t); addLog('→ ' + path + ' · ' + r.status); return r.ok; })
-        .catch(() => {
-          clearTimeout(t);
-          if (!_isRetry) {
-            addLog('⟳ ' + path + ' · reintentando');
-            return fetchESP(path, timeoutMs, true);
+        .catch(() => { clearTimeout(t); return false; });
+    }
+
+    // Envía un comando por la cola. timeout corto + reintentos con micro-backoff.
+    // Devuelve true/false (nunca lanza). Todos los comandos pasan por aquí.
+    function espSend(path, opts) {
+      opts = opts || {};
+      const timeout = opts.timeout || 1800;
+      const retries = opts.retries == null ? 2 : opts.retries;
+      const run = async () => {
+        commandInFlight++;
+        if (pollCtrl) { try { pollCtrl.abort(); } catch (e) {} pollCtrl = null; } // libera el ESP ya
+        try {
+          for (let i = 0; i <= retries; i++) {
+            const ok = await espOnce(path, timeout);
+            if (ok) return true;
+            if (i < retries) { addLog('⟳ ' + path); await new Promise(r => setTimeout(r, 100 * (i + 1))); }
           }
-          addLog('✕ ' + path + ' · offline');
+          addLog('✕ ' + path + ' · sin respuesta');
           return false;
-        });
+        } finally {
+          commandInFlight--;
+        }
+      };
+      const p = espChain.then(run, run); // encadena aunque el anterior fallara
+      espChain = p.catch(() => {});
+      return p;
+    }
+
+    // Compatibilidad: fetchESP delega en la cola serializada.
+    function fetchESP(path, timeoutMs) {
+      return espSend(path, { timeout: timeoutMs && timeoutMs < 3000 ? timeoutMs : 1800 });
     }
 
     function slugify(str) {

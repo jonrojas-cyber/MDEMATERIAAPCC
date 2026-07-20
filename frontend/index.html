@@ -1952,6 +1952,61 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
   #mdm-burbujas .mdm-aguja{transition:none}
 }
 </style>
+
+<!-- ===== MÓDULO MACERACIÓN · estilos (scopeados a #mdm-mac · sin CDN) ===== -->
+<style>
+#mdm-mac{
+  --mac-sand:#ece2d0; --mac-olive:#4a5a2e; --mac-ink:#1a1a18; --mac-line:rgba(26,26,24,.18);
+  background:var(--mac-sand); color:var(--mac-ink);
+  font-family:"Courier Prime",'Courier New',monospace; font-size:13px; line-height:1.5;
+  padding:28px 20px 80px; min-height:100vh;
+}
+#mdm-mac *{box-sizing:border-box}
+#mdm-mac .wrap{max-width:940px;margin:0 auto}
+#mdm-mac h1{font-family:Fraunces,Georgia,serif;font-style:italic;font-weight:400;font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
+#mdm-mac .sub{text-transform:uppercase;letter-spacing:.18em;font-size:10px;color:var(--mac-olive);margin-bottom:26px}
+#mdm-mac fieldset{border:none;border-top:1px solid var(--mac-line);margin:0 0 22px;padding:18px 0 0}
+#mdm-mac legend{display:none}
+#mdm-mac .sec{text-transform:uppercase;letter-spacing:.18em;font-size:10px;color:var(--mac-olive);margin-bottom:14px}
+#mdm-mac .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+#mdm-mac label{display:block}
+#mdm-mac .lab{text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;opacity:.65;margin-bottom:5px}
+#mdm-mac input,#mdm-mac select{width:100%;padding:9px 10px;border:1px solid var(--mac-line);border-radius:0;background:transparent;font-family:inherit;font-size:13px;color:var(--mac-ink)}
+#mdm-mac input:focus,#mdm-mac select:focus{outline:none;border-color:var(--mac-olive)}
+#mdm-mac .out{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--mac-line);border:1px solid var(--mac-line);margin-top:4px}
+#mdm-mac .cell{background:var(--mac-sand);padding:13px 12px}
+#mdm-mac .cell .k{text-transform:uppercase;letter-spacing:.1em;font-size:9px;opacity:.6}
+#mdm-mac .cell .v{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:21px;margin-top:3px}
+#mdm-mac .cell .u{font-size:11px;opacity:.6;font-style:normal;font-family:"Courier Prime",'Courier New',monospace}
+#mdm-mac .warn{color:#8a3b1e}
+#mdm-mac button{font-family:inherit;font-size:10px;text-transform:uppercase;letter-spacing:.18em;padding:11px 20px;border:1px solid var(--mac-olive);background:var(--mac-olive);color:var(--mac-sand);cursor:pointer}
+#mdm-mac button.ghost{background:transparent;color:var(--mac-olive)}
+#mdm-mac .sheet{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+#mdm-mac .lb{background:#fff;color:#000;border:1px solid var(--mac-line);font-family:"Courier Prime",'Courier New',monospace;padding:3mm;position:relative}
+#mdm-mac .lb-62{width:62mm;height:40mm;font-size:7.6pt;line-height:1.28}
+#mdm-mac .lb-cata{width:50mm;height:25mm;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#mdm-mac .lb .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:.4mm solid #000;padding-bottom:1mm;margin-bottom:1.4mm}
+#mdm-mac .lb .mk{font-size:6pt;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
+#mdm-mac .lb .nm{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:10.5pt;line-height:1.1;margin-bottom:.4mm}
+#mdm-mac .lb .og{font-size:6pt;letter-spacing:.06em;margin-bottom:1.4mm}
+#mdm-mac .lb table{width:100%;border-collapse:collapse;font-size:7.2pt}
+#mdm-mac .lb td{padding:.25mm 0;vertical-align:top}
+#mdm-mac .lb td:first-child{width:19mm;letter-spacing:.08em;font-size:6.2pt;text-transform:uppercase;padding-top:.6mm}
+#mdm-mac .lb td:last-child{font-weight:700}
+#mdm-mac .lb .qr{position:absolute;right:3mm;bottom:2.5mm}
+#mdm-mac .lb .qr img{width:11mm !important;height:11mm !important}
+#mdm-mac .lb .alert{border:.4mm solid #000;padding:.6mm 1.4mm;font-size:6.4pt;font-weight:700;letter-spacing:.06em;display:inline-block;margin-top:1mm}
+#mdm-mac .lb .catanum{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:30pt;line-height:1}
+#mdm-mac .lb .catafoot{font-size:6pt;letter-spacing:.22em;text-transform:uppercase;margin-top:1.5mm}
+@media print{
+  body.mac-print{background:#fff}
+  body.mac-print .topbar,body.mac-print .tabbar{display:none !important}
+  #mdm-mac{background:#fff;padding:0}
+  #mdm-mac .noprint{display:none !important}
+  #mdm-mac .sheet{gap:0}
+  #mdm-mac .lb{border:none;page-break-inside:avoid;margin:0}
+}
+</style>
 </head>
 <body>
 
@@ -2130,6 +2185,68 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
     </div>
   </div>
 </div>
+  </div>
+  <!-- MÓDULO MACERACIÓN · pantalla propia (init diferido) -->
+  <div class="screen" id="screen-maceracion">
+<div id="mdm-mac"><div class="wrap">
+  <div class="noprint">
+    <h1>maceración</h1>
+    <div class="sub">control m · módulo cold brew</div>
+
+    <fieldset>
+      <div class="sec">lote</div>
+      <div class="grid">
+        <label><span class="lab">café</span><select id="cafe"></select></label>
+        <label><span class="lab">modo de cálculo</span>
+          <select id="modo">
+            <option value="vol">por volumen final</option>
+            <option value="dosis">por dosis de café</option>
+          </select></label>
+        <label id="wVol"><span class="lab">volumen objetivo (L)</span><input id="vol" type="number" step="0.1" value="2.1"></label>
+        <label id="wDosis" style="display:none"><span class="lab">dosis (g)</span><input id="dosis" type="number" step="1" value="185"></label>
+        <label><span class="lab">ratio 1:x</span><input id="ratio" type="number" step="0.1" value="13.5"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="sec">parámetros</div>
+      <div class="grid">
+        <label><span class="lab">molienda (µm)</span><input id="mol" type="number" step="10" value="1000"></label>
+        <label><span class="lab">temperatura (°C)</span><input id="temp" type="number" step="0.5" value="3"></label>
+        <label><span class="lab">tiempo (h)</span><input id="horas" type="number" step="0.5" value="16"></label>
+        <label><span class="lab">bloom térmico</span>
+          <select id="bloom"><option value="0">no</option><option value="1">sí · 93 °C</option></select></label>
+        <label><span class="lab">extracción objetivo (%)</span><input id="ey" type="number" step="0.1" value="19.5"></label>
+        <label><span class="lab">retención (g/g)</span><input id="ret" type="number" step="0.05" value="2.05"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="sec">trazabilidad</div>
+      <div class="grid">
+        <label><span class="lab">inicio</span><input id="inicio" type="datetime-local"></label>
+        <label><span class="lab">operario</span><select id="op"><option>ML</option><option>JON</option><option>LARA</option></select></label>
+        <label><span class="lab">destino</span>
+          <select id="destino">
+            <option value="cata">cata / I+D</option>
+            <option value="barril">barril de servicio</option>
+          </select></label>
+        <label><span class="lab">nº de cata (ciega)</span><input id="catanum" type="number" step="1" value="1"></label>
+      </div>
+    </fieldset>
+
+    <div class="out" id="out"></div>
+
+    <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
+      <button id="mac-print">imprimir etiquetas</button>
+      <button class="ghost" id="mac-nuevo">nuevo lote</button>
+    </div>
+
+    <fieldset style="margin-top:30px"><div class="sec">etiquetas</div></fieldset>
+  </div>
+
+  <div class="sheet" id="sheet"></div>
+</div></div>
   </div>
 </div>
 
@@ -2401,8 +2518,28 @@ function openSection(id, title) {
 // cargar la página). Aquí solo lo mostramos/ocultamos como una pantalla más y
 // le fijamos el data-rol de la sesión: "direccion" (Jon/Mónica) o "lara".
 function _ocultaBurbujas() {
-  const sb = document.getElementById("screen-burbujas");
-  if (sb) { sb.classList.remove("active"); sb.classList.add("exit"); }
+  ["screen-burbujas", "screen-maceracion"].forEach(function (id) {
+    const sb = document.getElementById(id);
+    if (sb) { sb.classList.remove("active"); sb.classList.add("exit"); }
+  });
+}
+function irA_maceracion() {
+  navInto(() => irA_lab());
+  currentSection = "maceracion";
+  _sectionTitle = "Maceración";
+  document.getElementById("topbar-section").textContent = "Maceración";
+  document.getElementById("topbar-back").classList.add("visible");
+  document.getElementById("screen-home").classList.remove("active");
+  document.getElementById("screen-home").classList.add("exit");
+  document.getElementById("screen-inner").classList.remove("active");
+  document.getElementById("screen-inner").classList.add("exit");
+  document.getElementById("screen-burbujas").classList.remove("active");
+  document.getElementById("screen-burbujas").classList.add("exit");
+  const sc = document.getElementById("screen-maceracion");
+  sc.classList.add("active");
+  sc.classList.remove("exit");
+  if (window.__mdmMacInit) window.__mdmMacInit();
+  if (window.__mdmMacRefresh) window.__mdmMacRefresh(); // inicio = hora real + recalcular
 }
 function irA_burbujas() {
   navInto(() => irA_lab());           // "atrás" vuelve al hub de producción
@@ -3060,6 +3197,7 @@ async function irA_lab(){
       ${tile("Limonadas", "Asistente de producción paso a paso", "irA_limonadas()", "")}
       ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
       ${tile("Burbujas", "Formulación de lote · refrescos con gas", "irA_burbujas()", "")}
+      ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
       ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
     </div>`);
 }
@@ -7764,6 +7902,175 @@ window.__mdmBurbujasInit = function(){
   if(!sel) return;                              // shell aún no presente
   if(sel.options && sel.options.length) return; // ya inicializado
   _mdmBurbujasMain();
+};
+</script>
+
+<!-- ===== MÓDULO MACERACIÓN · script (IIFE · scopeado a #mdm-mac · init diferido) =====
+     Adaptado del módulo original: envuelto para no filtrar globals (render/calcular
+     colisionaban con la app), el listener y $ scopeados al contenedor, el QR reusa
+     el generador de Control M (/qr) en vez de una librería CDN, y las horas se
+     calculan en LOCAL del navegador (el inicio se pone a la hora real al abrir). -->
+<script>
+function _mdmMacMain(){
+  'use strict';
+  const root = document.getElementById('mdm-mac');
+  const $ = id => document.getElementById(id);
+
+  const CAFES = [
+    {id:'QCO', n:'Quebraditas Coconut', o:'colombia · huila · co-fermentado'},
+    {id:'RUM', n:'Romario Umaña',       o:'costa rica · tarrazú · natural'},
+    {id:'TMB', n:'Tembo Tembo',         o:'tanzania · karatu · lavado'},
+    {id:'TBR', n:'Tibebu Roba',         o:'etiopía · yirgacheffe · natural'}
+  ];
+  const VIDA_BARRIL_DIAS = 10;
+
+  const n2 = v => v.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:2});
+  const fecha = d => String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0');
+  const hora  = d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const sello = d => fecha(d)+' · '+hora(d);
+  const nowLocal = () => new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+
+  function loteId(cafe,d){
+    const y = String(d.getFullYear()).slice(2);
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return 'CB-'+y+m+day+'-'+cafe;
+  }
+
+  function calcular(){
+    const cafe = CAFES.find(c=>c.id===$('cafe').value) || CAFES[0];
+    const R    = +$('ratio').value;
+    const ret  = +$('ret').value;
+    const ey   = +$('ey').value/100;
+    const modo = $('modo').value;
+    let dosis, recuperado;
+    if(modo==='vol'){ recuperado = +$('vol').value*1000; dosis = recuperado/(R-ret); }
+    else { dosis = +$('dosis').value; recuperado = dosis*(R-ret); }
+    const agua = dosis*R, retenido = dosis*ret, solidos = dosis*ey, tds = solidos/recuperado*100;
+    const bloom = $('bloom').value==='1';
+    const aguaCal = bloom ? dosis*2 : 0;
+    const aguaFria = agua - aguaCal;
+    const ini = $('inicio').value ? new Date($('inicio').value) : new Date();
+    const fin = new Date(ini.getTime() + (+$('horas').value)*3600e3);
+    const cad = new Date(fin.getTime() + VIDA_BARRIL_DIAS*864e5);
+    return {cafe,R,dosis,agua,aguaCal,aguaFria,retenido,recuperado,solidos,tds,bloom,ini,fin,cad,
+            mol:+$('mol').value, temp:+$('temp').value, horas:+$('horas').value,
+            op:$('op').value, destino:$('destino').value, catanum:$('catanum').value,
+            lote:loteId(cafe.id,ini)};
+  }
+
+  function pintarOut(c){
+    const alerta = (c.tds<1.4||c.tds>2.0) ? ' warn' : '';
+    $('out').innerHTML =
+      '<div class="cell"><div class="k">dosis</div><div class="v">'+n2(c.dosis)+'<span class="u"> g</span></div></div>'+
+      '<div class="cell"><div class="k">agua total</div><div class="v">'+n2(c.agua)+'<span class="u"> g</span></div></div>'+
+      (c.bloom?'<div class="cell"><div class="k">bloom 93 °C</div><div class="v">'+n2(c.aguaCal)+'<span class="u"> g</span></div></div>'+
+               '<div class="cell"><div class="k">agua fría</div><div class="v">'+n2(c.aguaFria)+'<span class="u"> g</span></div></div>':'')+
+      '<div class="cell"><div class="k">retención</div><div class="v">'+n2(c.retenido)+'<span class="u"> g</span></div></div>'+
+      '<div class="cell"><div class="k">recuperado</div><div class="v">'+n2(c.recuperado/1000)+'<span class="u"> L</span></div></div>'+
+      '<div class="cell"><div class="k">tds previsto</div><div class="v'+alerta+'">'+c.tds.toFixed(2)+'<span class="u"> %</span></div></div>'+
+      '<div class="cell"><div class="k">fin previsto</div><div class="v" style="font-size:15px">'+sello(c.fin)+'</div></div>';
+  }
+
+  // QR: reusa el generador de Control M (backend /qr) como el resto de etiquetas.
+  function qr(el,payload){
+    el.innerHTML='';
+    const img=document.createElement('img');
+    img.src='/qr?d='+encodeURIComponent(payload)+'&w=132';
+    img.alt='QR';
+    el.appendChild(img);
+  }
+
+  function pintarEtiquetas(c){
+    const sh = $('sheet'); sh.innerHTML='';
+    const a = document.createElement('div');
+    a.className='lb lb-62';
+    a.innerHTML=
+      '<div class="hd"><span class="mk">m · maceración</span><span class="mk">'+c.op+'</span></div>'+
+      '<div class="nm">'+c.cafe.n+'</div><div class="og">'+c.cafe.o+'</div>'+
+      '<table>'+
+      '<tr><td>lote</td><td>'+c.lote+'</td></tr>'+
+      '<tr><td>dosis · mol</td><td>'+n2(c.dosis)+' g · '+c.mol+' µm</td></tr>'+
+      '<tr><td>agua</td><td>'+n2(c.agua)+' g &nbsp; 1:'+n2(c.R)+(c.bloom?' · bloom':'')+'</td></tr>'+
+      '<tr><td>temp</td><td>'+c.temp+' °C · '+c.horas+' h</td></tr>'+
+      '<tr><td>inicio</td><td>'+sello(c.ini)+'</td></tr>'+
+      '<tr><td>fin</td><td>'+sello(c.fin)+'</td></tr>'+
+      '</table><div class="qr"></div>';
+    sh.appendChild(a);
+    qr(a.querySelector('.qr'), JSON.stringify({t:'mac',l:c.lote,c:c.cafe.id,d:Math.round(c.dosis),r:c.R,f:c.ini.toISOString()}));
+
+    if(c.destino==='barril'){
+      const b = document.createElement('div');
+      b.className='lb lb-62';
+      b.innerHTML=
+        '<div class="hd"><span class="mk">m · barril</span><span class="mk">'+c.op+'</span></div>'+
+        '<div class="nm">Cold Brew Nitro</div><div class="og">'+c.cafe.o+'</div>'+
+        '<table>'+
+        '<tr><td>lote</td><td>'+c.lote+'</td></tr>'+
+        '<tr><td>envasado</td><td>'+sello(c.fin)+'</td></tr>'+
+        '<tr><td>tds</td><td>'+c.tds.toFixed(2)+' %</td></tr>'+
+        '<tr><td>volumen</td><td>'+n2(c.recuperado/1000)+' L</td></tr>'+
+        '<tr><td>consumir</td><td>'+fecha(c.cad)+'</td></tr>'+
+        '</table><div class="alert">mantener ≤ 4 °C</div><div class="qr"></div>';
+      sh.appendChild(b);
+      qr(b.querySelector('.qr'), JSON.stringify({t:'bar',l:c.lote,tds:+c.tds.toFixed(2),cad:c.cad.toISOString()}));
+    }
+
+    if(c.destino==='cata'){
+      const d = document.createElement('div');
+      d.className='lb lb-cata';
+      d.innerHTML='<div class="catanum">'+String(c.catanum).padStart(2,'0')+'</div>'+
+                  '<div class="catafoot">cata · '+fecha(c.ini)+'</div>';
+      sh.appendChild(d);
+    }
+  }
+
+  function render(){
+    $('wVol').style.display   = $('modo').value==='vol'  ? 'block':'none';
+    $('wDosis').style.display = $('modo').value==='dosis'? 'block':'none';
+    const c = calcular();
+    pintarOut(c);
+    pintarEtiquetas(c);
+  }
+  window.__mdmMacRender = render;
+
+  function nuevoLote(){
+    $('inicio').value = nowLocal();
+    $('catanum').value = (+$('catanum').value)+1;
+    render();
+  }
+  function macPrint(){
+    document.body.classList.add('mac-print');
+    window.print();
+  }
+  window.addEventListener('afterprint', () => document.body.classList.remove('mac-print'));
+
+  // Poblar café (una vez por montaje del shell)
+  const sel = $('cafe');
+  if (sel && !sel.options.length) {
+    CAFES.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.n; sel.appendChild(o); });
+  }
+  $('inicio').value = nowLocal();
+  // Listener SCOPEADO al módulo (no engancha el resto de la app)
+  root.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',render));
+  $('mac-nuevo').addEventListener('click', nuevoLote);
+  $('mac-print').addEventListener('click', macPrint);
+  render();
+}
+// Init diferido: el shell se reconstruye tras el splash/login (APP_SHELL); se
+// monta la 1ª vez que se abre Maceración (y si el shell se rehízo, select vacío).
+window.__mdmMacInit = function(){
+  const sel = document.getElementById('cafe');
+  if(!sel) return;
+  if(sel.options && sel.options.length) return;
+  _mdmMacMain();
+};
+// Refresco al abrir: pone el inicio a la hora real y recalcula.
+window.__mdmMacRefresh = function(){
+  const i = document.getElementById('inicio');
+  if(!i) return;
+  i.value = new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+  if(typeof window.__mdmMacRender==='function') window.__mdmMacRender();
 };
 </script>
 </body>

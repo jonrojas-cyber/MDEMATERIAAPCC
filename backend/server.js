@@ -69,7 +69,8 @@ function prepDatos(q) {
   const caduca = vidaH > 0 ? new Date(producido.getTime() + vidaH * 3600000) : null;
   const p2 = (n) => String(n).padStart(2, "0");
   const ini = (nombre.replace(/[^a-zA-ZñÑ]/g, "").slice(0, 3).toUpperCase()) || "PRD";
-  const code = `${ini}-${p2(producido.getDate())}${p2(producido.getMonth() + 1)}-${p2(producido.getHours())}${p2(producido.getMinutes())}`;
+  // Código: el que venga (lote real, ej. CB-260720-QCO) o uno generado.
+  const code = q.code ? String(q.code).slice(0, 40) : `${ini}-${p2(producido.getDate())}${p2(producido.getMonth() + 1)}-${p2(producido.getHours())}${p2(producido.getMinutes())}`;
   return { nombre, cantidad, vidaH, producidoISO: producido.toISOString(), caducaISO: caduca ? caduca.toISOString() : null, code };
 }
 
@@ -101,7 +102,10 @@ app.get("/p", (req, res) => {
       cantidad_inicial: d.cantidad || "", estado: "Correcto",
       responsable: req.query.r || null,
     };
-    const html = labelService.renderFichaLoteHTML({ lote, receta: null, materias: [], responsable: req.query.r || null });
+    // et: etiqueta del campo de vencimiento (p. ej. "Maceración lista" en cold
+    // brew, en vez de "Consumir antes"). El contador de tiempo es el mismo.
+    const venceLabel = req.query.et ? String(req.query.et).slice(0, 40) : null;
+    const html = labelService.renderFichaLoteHTML({ lote, receta: null, materias: [], responsable: req.query.r || null, venceLabel });
     res.set("Content-Type", "text/html; charset=utf-8").send(html);
   } catch (e) {
     res.status(400).send("No se pudo abrir la ficha: " + e.message);

@@ -124,15 +124,17 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   .brand .mark { display: flex; align-items: flex-end; gap: 0.5mm; }
   .brand .mark i { display: block; width: 0.42mm; height: 2.6mm; background: #000; }
   .brand .mark i:nth-child(2) { height: 3.2mm; }
-  .rule { height: 0; border-top: 0.2mm solid #000; margin: 1mm 0; }
-  .rule.foot { margin-top: auto; margin-bottom: 0.8mm; }
-  .nombre { font-size: 11px; font-weight: 700; line-height: 1.02; letter-spacing: 0.2px; text-transform: lowercase; }
+  .rule { height: 0; border-top: 0.2mm solid #000; margin: 0.7mm 0; }
+  .rule.foot { margin-top: auto; margin-bottom: 0.6mm; }
+  /* Nombre: máx 2 líneas (nunca desborda ni corta el resto de la etiqueta). */
+  .nombre { font-size: 10px; font-weight: 700; line-height: 1.05; letter-spacing: 0.2px; text-transform: lowercase;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   /* Ficha de meta en columnas: tag en minúscula tracked, valor en negrita. */
-  .meta { display: grid; grid-template-columns: auto 1fr; column-gap: 2mm; row-gap: 0.5mm; margin-top: 1.2mm; }
+  .meta { display: grid; grid-template-columns: auto 1fr; column-gap: 2mm; row-gap: 0.35mm; margin-top: 0.9mm; }
   .meta dt { font-size: 5.5px; letter-spacing: 0.7px; text-transform: lowercase; align-self: baseline; }
-  .meta dd { font-size: 7.5px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
-  .meta dd.big { font-size: 8.5px; }
-  .codigo { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; }
+  .meta dd { font-size: 8px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+  .meta dd.big { font-size: 9px; }
+  .codigo { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; white-space: nowrap; }
   /* QR con marco fino de boticario y pie tracked. */
   .qr { width: 23mm; flex: 0 0 23mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .qr .frame { border: 0.2mm solid #000; padding: 0.6mm; background: #fff; }

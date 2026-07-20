@@ -701,9 +701,16 @@
         .finally(() => {
           pollCtrl = null;
           if (!polling) return;
-          // Con conexión: a la cadencia elegida. Sin conexión (varios fallos
-          // seguidos): reintenta despacio para no saturar la tablet ni la red.
-          const delay = offlineStreak > 3 ? POLL_OFFLINE : Math.max(0, ST.pollGap || 60);
+          // Adaptativo: rápido al servir o si el peso se mueve; suave en reposo
+          // (menos carga sobre el ESP = menos fallos). Sin conexión: despacio.
+          let delay;
+          if (offlineStreak > 3) {
+            delay = POLL_OFFLINE;
+          } else {
+            const fast = Math.max(0, ST.pollGap || 60);
+            const idle = !servingInProgress && Date.now() > activeUntil;
+            delay = idle ? Math.max(POLL_IDLE, fast) : fast;
+          }
           pollTimer = setTimeout(poll, delay);
         });
     }
@@ -711,6 +718,32 @@
     let servingInProgress = false;
     let serveBusy = false;   // anti doble-pulsación: bloquea reentradas al servir
     let lastTarget = 0;
+
+    // ── Fiabilidad de servido: verificación en lazo cerrado + watchdog ──
+    // No basta con que el ESP responda 200: hay que confirmar que SALE líquido
+    // (el peso sube). Y si durante el servido se atasca o se pasa de tiempo, se
+    // corta solo.
+    let serveStartAt = 0;         // ms del envío de receta (0 = sin servido activo)
+    let serveStartWeight = 0;     // peso al arrancar
+    let serveVerified = false;    // confirmado que sale líquido
+    let lastProgressWeight = 0;   // último peso al que avanzó
+    let lastProgressAt = 0;       // cuándo avanzó por última vez
+    let serveVerifyTimer = null;  // "¿empezó a salir?"
+    let activeUntil = 0;          // leer rápido hasta este momento (polling adaptativo)
+    const SERVE_START_MS = 2200;  // debe empezar a subir antes de esto
+    const SERVE_STALL_MS = 6000;  // sin avance esto durante el servido → STOP
+    const SERVE_MAX_MS   = 90000; // tope duro de un servido
+    const POLL_IDLE      = 500;   // en reposo, lectura suave (menos carga al ESP)
+
+    function verifyServeStarted() {
+      serveVerifyTimer = null;
+      if (serveVerified || !serveStartAt) return;
+      if (currentWeight - serveStartWeight > 2) { serveVerified = true; return; }
+      // Ni subió el peso ni arrancó: válvula atascada, barril vacío o aire.
+      addLog('✕ Servido no arrancó (sin subida de peso en ' + SERVE_START_MS + ' ms)');
+      showToast('✕ NO EMPEZÓ · revisa grifo/barril');
+      serveStartAt = 0;
+    }
 
     function parseStatus(txt) {
       // peso|target|estado|recetaActual|stepIndex|totalSteps|manualMode
@@ -728,6 +761,7 @@
         document.getElementById('scale-weight').textContent = wStr;
         const catW = document.getElementById('cat-scale-weight');
         if (catW) catW.textContent = wStr;
+        activeUntil = Date.now() + 2500; // el peso se mueve → seguir leyendo rápido
       }
 
       const running = estado !== 'idle';
@@ -743,8 +777,23 @@
 
       if (running) {
         servingInProgress = true;
+        activeUntil = Date.now() + 3000;
+        // Watchdog en lazo cerrado: confirma que sube y vigila que no se atasque.
+        if (currentWeight > serveStartWeight + 2) serveVerified = true;
+        if (currentWeight > lastProgressWeight + 0.5) {
+          lastProgressWeight = currentWeight;
+          lastProgressAt = Date.now();
+        }
+        const now = Date.now();
+        if (serveStartAt && (now - lastProgressAt > SERVE_STALL_MS || now - serveStartAt > SERVE_MAX_MS)) {
+          addLog('⚠ Watchdog: servido atascado/largo → STOP');
+          serveStartAt = 0;
+          doStop();
+          showToast('⚠ CORTADO · no avanzaba');
+        }
       } else if (servingInProgress && !running) {
         servingInProgress = false;
+        serveStartAt = 0;
         onRecipeFinished();
       }
     }
@@ -881,7 +930,15 @@
       });
     }
 
-    function doStop() { fetchESP('/stop').then(() => showToast('STOP ENVIADO')); }
+    function doStop() {
+      // STOP es prioritario: cancela la vigilancia del servido, libera el ESP
+      // (aborta el /status en curso) y reintenta con fuerza hasta confirmar.
+      if (serveVerifyTimer) { clearTimeout(serveVerifyTimer); serveVerifyTimer = null; }
+      serveStartAt = 0;
+      if (pollCtrl) { try { pollCtrl.abort(); } catch (e) {} pollCtrl = null; }
+      espSend('/stop', { timeout: 1200, retries: 3 }).then(ok =>
+        showToast(ok ? 'STOP' : '✕ STOP no confirmado · repite'));
+    }
 
     function doServe(rec) {
       if (!rec) return;
@@ -927,6 +984,16 @@
           }
           servingInProgress = true;
           activeRecipe = rec;
+          // Arranca la verificación en lazo cerrado: a partir de aquí exigimos
+          // que el peso suba; si no, avisamos, y si se atasca, cortamos.
+          serveStartAt = Date.now();
+          serveStartWeight = currentWeight;
+          serveVerified = false;
+          lastProgressWeight = currentWeight;
+          lastProgressAt = Date.now();
+          activeUntil = Date.now() + 6000;
+          if (serveVerifyTimer) clearTimeout(serveVerifyTimer);
+          serveVerifyTimer = setTimeout(verifyServeStarted, SERVE_START_MS);
           document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
           showScreen('home');
           updateHomeDisplay();

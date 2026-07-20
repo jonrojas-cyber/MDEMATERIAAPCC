@@ -108,6 +108,24 @@ app.get("/p", (req, res) => {
   }
 });
 
+// QR genérico como PNG (mismo generador que el etiquetado de lotes: qrcode).
+// Lo usan las etiquetas del frontend con <img src="/qr?d=...">, para no meter
+// una segunda librería de QR en el sistema. Público: las etiquetas se imprimen
+// en ventanas/impresión sin sesión.
+app.get("/qr", async (req, res) => {
+  const QRCode = require("qrcode");
+  const texto = String(req.query.d || "").slice(0, 1200);
+  if (!texto) return res.status(400).send("Falta el parámetro d");
+  try {
+    const buf = await QRCode.toBuffer(texto, { margin: 1, width: Math.min(600, Math.max(64, parseInt(req.query.w, 10) || 220)), errorCorrectionLevel: "M" });
+    res.set("Content-Type", "image/png");
+    res.set("Cache-Control", "public, max-age=86400");
+    res.send(buf);
+  } catch (e) {
+    res.status(500).send("No se pudo generar el QR: " + e.message);
+  }
+});
+
 // Ficha pública de un lote: es la página que abre el QR de la pegatina.
 // Pública (el móvil que escanea no lleva sesión) y con toda la trazabilidad.
 app.get("/lote/:id", async (req, res) => {

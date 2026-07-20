@@ -60,7 +60,14 @@ function escandallar(producto, materias) {
     food_cost: mm.food_cost,
     rentabilidad,
     margen_objetivo: Math.round(margenObjetivo * 1000) / 1000,
+    food_cost_objetivo: Math.round((1 - margenObjetivo) * 1000) / 10, // % (ej. 30.0)
     precio_recomendado: precioRecomendado,
+    // Escenarios de food-cost: PVP para servir a 20 / 25 / 30% (coste ÷ food-cost).
+    escenarios: {
+      fc20: coste > 0 ? redondearPrecio(coste / 0.20) : 0,
+      fc25: coste > 0 ? redondearPrecio(coste / 0.25) : 0,
+      fc30: coste > 0 ? redondearPrecio(coste / 0.30) : 0,
+    },
     coste_estimado: costeEstimado || producto.cantidades_estimadas === true,
     alergenos: producto.alergenos || [],
     version: producto.version || "",

@@ -1732,13 +1732,13 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
      Sin fuentes externas (regla: cero dependencias nuevas). El módulo cae a su
      propio stack: Courier Prime→monospace del sistema, Fraunces→Georgia. -->
 <style>
-/* ---------- CONTROL M · BURBUJAS ---------- */
+/* ---------- CONTROL M · BURBUJAS · recetas de producción ---------- */
 #mdm-burbujas{
   --ground:#ece2d0;
   --paper:#f4ece0;
   --olive:#4a5a2e;
-  --olive-soft:rgba(74,90,46,.16);
-  --hair:rgba(74,90,46,.28);
+  --olive-soft:rgba(74,90,46,.14);
+  --hair:rgba(74,90,46,.30);
   --ink:#23241c;
   --muted:#6d7060;
   --aviso:#9c5432;
@@ -1749,207 +1749,51 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
   font-family:var(--mono);
   font-size:13px;
   line-height:1.55;
-  padding:32px 28px 64px;
   min-height:100vh;
-  -webkit-font-smoothing:antialiased;
 }
 #mdm-burbujas *{box-sizing:border-box}
-
-/* --- cabecera --- */
-#mdm-burbujas .mdm-head{
-  display:flex;align-items:baseline;justify-content:space-between;
-  gap:24px;flex-wrap:wrap;
-  border-bottom:1px solid var(--ink);
-  padding-bottom:14px;margin-bottom:28px;
-}
-#mdm-burbujas .mdm-title{
-  font-family:var(--display);font-style:italic;font-weight:300;
-  font-size:38px;line-height:1;letter-spacing:-.01em;margin:0;
-}
-#mdm-burbujas .mdm-eyebrow{
-  font-size:10px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--muted);display:block;margin-bottom:10px;
-}
-#mdm-burbujas .mdm-lote{font-size:11px;letter-spacing:.14em;color:var(--olive)}
-
-/* --- rejilla --- */
-#mdm-burbujas .mdm-grid{
-  display:grid;grid-template-columns:minmax(280px,360px) 1fr;
-  gap:28px;align-items:start;
-}
-@media (max-width:900px){#mdm-burbujas .mdm-grid{grid-template-columns:1fr}}
-
-#mdm-burbujas .mdm-panel{
-  background:var(--paper);border:1px solid var(--hair);padding:22px 20px;
-}
-#mdm-burbujas .mdm-panel + .mdm-panel{margin-top:20px}
-
-#mdm-burbujas h2{
-  font-family:var(--display);font-style:italic;font-weight:400;
-  font-size:19px;margin:0 0 4px;letter-spacing:-.01em;
-}
-#mdm-burbujas .mdm-sub{
-  font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--muted);margin:0 0 18px;
-}
-
-/* --- controles --- */
-#mdm-burbujas label{display:block;margin-bottom:16px}
-#mdm-burbujas .mdm-lab{
-  display:flex;justify-content:space-between;align-items:baseline;
-  font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:6px;
-}
-#mdm-burbujas .mdm-val{
-  font-size:13px;letter-spacing:0;text-transform:none;color:var(--olive);font-weight:700;
-}
-#mdm-burbujas select,#mdm-burbujas input[type=number]{
-  width:100%;font-family:var(--mono);font-size:14px;color:var(--ink);
-  background:transparent;border:0;border-bottom:1px solid var(--ink);
-  padding:5px 0;border-radius:0;appearance:none;
-}
-#mdm-burbujas select{background-image:none}
-#mdm-burbujas input[type=range]{
-  width:100%;appearance:none;background:transparent;height:22px;margin:0;
-}
-#mdm-burbujas input[type=range]::-webkit-slider-runnable-track{
-  height:1px;background:var(--ink);
-}
-#mdm-burbujas input[type=range]::-moz-range-track{height:1px;background:var(--ink)}
-#mdm-burbujas input[type=range]::-webkit-slider-thumb{
-  appearance:none;width:13px;height:13px;background:var(--olive);
-  border-radius:50%;margin-top:-6px;
-}
-#mdm-burbujas input[type=range]::-moz-range-thumb{
-  width:13px;height:13px;background:var(--olive);border:0;border-radius:50%;
-}
-#mdm-burbujas :focus-visible{outline:2px solid var(--olive);outline-offset:3px}
-
-#mdm-burbujas .mdm-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-#mdm-burbujas .mdm-note{font-size:10.5px;color:var(--muted);line-height:1.5;margin:-8px 0 16px}
-
-/* --- ficha técnica de la fruta --- */
-#mdm-burbujas .mdm-ficha{
-  border-top:1px solid var(--hair);margin-top:6px;padding-top:14px;
-  font-size:11.5px;
-}
-#mdm-burbujas .mdm-ficha div{display:flex;justify-content:space-between;padding:2.5px 0}
-#mdm-burbujas .mdm-ficha span:last-child{color:var(--olive)}
-#mdm-burbujas .mdm-fuente{
-  font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--muted);margin-top:10px;
-}
-
-/* --- hoja de tarada --- */
-#mdm-burbujas table{width:100%;border-collapse:collapse;font-size:13px}
-#mdm-burbujas th{
-  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--muted);font-weight:400;text-align:right;
-  padding:0 0 8px;border-bottom:1px solid var(--ink);
-}
+#mdm-burbujas .bur-wrap{max-width:900px;margin:0 auto;padding:26px 20px 70px}
+#mdm-burbujas h1.bur-title{font-family:var(--display);font-style:italic;font-weight:400;font-size:34px;margin:0 0 4px;letter-spacing:-.01em}
+#mdm-burbujas .bur-eyebrow{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
+#mdm-burbujas .bur-rule{height:1.5px;background:var(--ink);margin:14px 0 22px}
+#mdm-burbujas .bur-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:22px}
+#mdm-burbujas .bur-controls label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px}
+#mdm-burbujas select,#mdm-burbujas input[type=number]{font-family:var(--mono);font-size:15px;background:var(--paper);border:1px solid var(--hair);border-radius:0;padding:9px 11px;color:var(--ink)}
+#mdm-burbujas select{min-width:220px}
+#mdm-burbujas input[type=number]{width:110px}
+#mdm-burbujas .bur-chips{display:flex;gap:6px}
+#mdm-burbujas .bur-chip{font-size:12px;padding:8px 12px;border:1px solid var(--hair);background:var(--paper);cursor:pointer;user-select:none}
+#mdm-burbujas .bur-chip.on{background:var(--olive);color:var(--ground);border-color:var(--olive)}
+#mdm-burbujas .bur-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:9px;margin:22px 0 12px;flex-wrap:wrap;gap:10px}
+#mdm-burbujas .bur-head h2{font-family:var(--display);font-style:italic;font-weight:400;font-size:23px;margin:0}
+#mdm-burbujas .bur-pilar{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--olive)}
+#mdm-burbujas .bur-param{display:flex;flex-wrap:wrap;border:1px solid var(--hair);margin-bottom:14px}
+#mdm-burbujas .bur-param div{flex:1;min-width:70px;padding:8px 10px;border-right:1px solid var(--hair)}
+#mdm-burbujas .bur-param div:last-child{border-right:none}
+#mdm-burbujas .bur-param b{display:block;font-size:15px;color:var(--olive)}
+#mdm-burbujas .bur-param span{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#mdm-burbujas table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
+#mdm-burbujas th{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:400;text-align:right;padding:0 0 7px;border-bottom:1px solid var(--ink)}
 #mdm-burbujas th:first-child{text-align:left}
 #mdm-burbujas td{padding:7px 0;border-bottom:1px solid var(--olive-soft);text-align:right}
 #mdm-burbujas td:first-child{text-align:left}
-#mdm-burbujas tr.mdm-total td{
-  border-bottom:0;border-top:1px solid var(--ink);
-  font-weight:700;color:var(--olive);padding-top:10px;
-}
-#mdm-burbujas .mdm-ing{font-size:9.5px;color:var(--muted);display:block;letter-spacing:.08em}
-
-/* --- SIGNATURE: la regla de equilibrio --- */
-#mdm-burbujas .mdm-regla{margin:26px 0 6px}
-#mdm-burbujas .mdm-regla-cab{
-  display:flex;justify-content:space-between;align-items:baseline;
-  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
-  margin-bottom:14px;
-}
-#mdm-burbujas .mdm-regla-cab b{
-  font-size:15px;letter-spacing:0;text-transform:none;color:var(--olive);
-}
-#mdm-burbujas .mdm-escala{position:relative;height:44px}
-#mdm-burbujas .mdm-banda{
-  position:absolute;top:0;height:15px;background:var(--olive-soft);
-}
-#mdm-burbujas .mdm-eje{position:absolute;top:15px;left:0;right:0;height:1px;background:var(--ink)}
-#mdm-burbujas .mdm-tick{position:absolute;top:9px;width:1px;height:6px;background:var(--hair)}
-#mdm-burbujas .mdm-tick.mdm-mayor{top:6px;height:9px;background:var(--ink)}
-#mdm-burbujas .mdm-tick-lab{
-  position:absolute;top:20px;font-size:9px;color:var(--muted);transform:translateX(-50%);
-}
-#mdm-burbujas .mdm-aguja{
-  position:absolute;top:0;width:1.5px;height:15px;background:var(--olive);
-  transition:left .18s ease;
-}
-#mdm-burbujas .mdm-aguja::after{
-  content:'';position:absolute;left:-4px;top:-4px;
-  border-left:5px solid transparent;border-right:5px solid transparent;
-  border-top:6px solid var(--olive);
-}
-#mdm-burbujas .mdm-regla-pie{
-  display:flex;justify-content:space-between;font-size:9.5px;
-  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px;
-}
-
-/* --- bloques de control --- */
-#mdm-burbujas .mdm-cifras{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));
-  gap:1px;background:var(--hair);border:1px solid var(--hair);margin-top:22px;
-}
-#mdm-burbujas .mdm-cifra{background:var(--paper);padding:13px 12px}
-#mdm-burbujas .mdm-cifra b{
-  display:block;font-size:20px;font-weight:400;color:var(--olive);line-height:1.2;
-}
-#mdm-burbujas .mdm-cifra span{
-  font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
-}
-
-/* --- protocolo --- */
-#mdm-burbujas .mdm-fases{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair);margin-top:20px;border:1px solid var(--hair)}
-@media (max-width:820px){#mdm-burbujas .mdm-fases{grid-template-columns:1fr}}
-#mdm-burbujas .mdm-fase{background:var(--paper);padding:20px 18px}
-#mdm-burbujas .mdm-fase h3{
-  font-family:var(--display);font-style:italic;font-weight:400;
-  font-size:17px;margin:0 0 3px;
-}
-#mdm-burbujas .mdm-fase .mdm-t{
-  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:14px;
-}
-#mdm-burbujas .mdm-fase ol{margin:0;padding-left:16px;font-size:12px;line-height:1.65}
-#mdm-burbujas .mdm-fase li{margin-bottom:8px}
-#mdm-burbujas .mdm-fase b{color:var(--olive);font-weight:700}
-
-/* --- avisos --- */
-#mdm-burbujas .mdm-avisos{margin-top:20px}
-#mdm-burbujas .mdm-aviso{
-  border-left:2px solid var(--aviso);padding:9px 0 9px 13px;
-  font-size:12px;margin-bottom:9px;color:var(--aviso);
-}
-#mdm-burbujas .mdm-aviso b{letter-spacing:.14em;text-transform:uppercase;font-size:9.5px;display:block}
-
-/* --- acciones --- */
-#mdm-burbujas .mdm-acciones{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
-#mdm-burbujas button{
-  font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-  background:var(--olive);color:var(--ground);border:1px solid var(--olive);
-  padding:11px 20px;cursor:pointer;border-radius:0;
-}
-#mdm-burbujas button.mdm-alt{background:transparent;color:var(--olive)}
-#mdm-burbujas button:hover{opacity:.85}
-
-/* --- roles --- */
-#mdm-burbujas[data-rol="lara"] .mdm-solo-direccion{display:none}
-
-/* --- impresión: se pega en el barril --- */
+#mdm-burbujas td.big{font-size:16px;color:var(--olive);font-weight:700;font-variant-numeric:tabular-nums}
+#mdm-burbujas .cod{display:inline-block;font-size:9px;font-weight:700;background:var(--olive);color:var(--ground);padding:1px 5px;margin-right:6px;letter-spacing:.08em}
+#mdm-burbujas tr.tardia td{color:var(--aviso)}
+#mdm-burbujas tr.tardia .cod{background:var(--aviso)}
+#mdm-burbujas .bur-aviso{border-left:2px solid var(--aviso);padding:8px 0 8px 12px;margin:12px 0;color:var(--aviso);font-size:12px}
+#mdm-burbujas .bur-aviso b{display:block;font-size:8.5px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}
+#mdm-burbujas .bur-compra{font-size:12px;color:var(--muted);margin:4px 0 18px}
+#mdm-burbujas .bur-bases{margin-top:34px}
+#mdm-burbujas .bcard{background:var(--paper);border:1px solid var(--hair);padding:13px 15px;margin-bottom:9px}
+#mdm-burbujas .bcard .bt{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+#mdm-burbujas .bcard h3{font-family:var(--display);font-style:italic;font-weight:400;font-size:16px;margin:0}
+#mdm-burbujas .bcard .bp{font-size:11px;color:var(--olive)}
+#mdm-burbujas .bcard .bn{font-size:11.5px;color:var(--muted)}
+#mdm-burbujas :focus-visible{outline:2px solid var(--olive);outline-offset:3px}
 @media print{
-  #mdm-burbujas{background:#fff;padding:0;font-size:11px}
-  #mdm-burbujas .mdm-no-print,#mdm-burbujas .mdm-acciones{display:none!important}
-  #mdm-burbujas .mdm-grid{grid-template-columns:1fr}
-  #mdm-burbujas .mdm-panel{border-color:#000;background:#fff;break-inside:avoid}
-  #mdm-burbujas .mdm-fases{grid-template-columns:repeat(3,1fr)}
-}
-@media (prefers-reduced-motion:reduce){
-  #mdm-burbujas .mdm-aguja{transition:none}
+  #mdm-burbujas{background:#fff}
+  #mdm-burbujas .bur-controls{display:none}
 }
 </style>
 
@@ -2046,147 +1890,35 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
   <!-- MÓDULO BURBUJAS · pantalla propia (su IIFE se autoinicializa al cargar) -->
   <div class="screen" id="screen-burbujas">
 <div id="mdm-burbujas" data-rol="direccion">
+  <div class="bur-wrap">
+    <span class="bur-eyebrow">M de Materia · producción</span>
+    <h1 class="bur-title">Burbujas</h1>
+    <div class="bur-rule"></div>
 
-  <div class="mdm-head">
-    <div>
-      <span class="mdm-eyebrow">Control M · producción · burbujas</span>
-      <h1 class="mdm-title">formulación de lote</h1>
-    </div>
-    <div class="mdm-lote">LOTE <span id="mdmLote">—</span></div>
-  </div>
-
-  <div class="mdm-grid">
-
-    <!-- ---------- columna de control ---------- -->
-    <div>
-      <div class="mdm-panel mdm-no-print">
-        <h2>materia</h2>
-        <p class="mdm-sub">línea Boiron 100% fruta</p>
-
-        <label>
-          <span class="mdm-lab">fruta</span>
-          <select id="mdmFruta"></select>
-        </label>
-
-        <div class="mdm-pair">
-          <label>
-            <span class="mdm-lab">lote <em class="mdm-val" id="mdmVolVal">19 L</em></span>
-            <input type="number" id="mdmVol" value="19" min="2" max="60" step="1">
-          </label>
-          <label>
-            <span class="mdm-lab">lata <em class="mdm-val" id="mdmLataVal">250 ml</em></span>
-            <input type="number" id="mdmLata" value="250" min="150" max="500" step="10">
-          </label>
-        </div>
-
-        <div class="mdm-ficha" id="mdmFicha"></div>
-        <p class="mdm-fuente" id="mdmFuente"></p>
+    <div class="bur-controls">
+      <div>
+        <label>Receta</label>
+        <select id="burSel"></select>
       </div>
-
-      <div class="mdm-panel mdm-no-print">
-        <h2>objetivo en lata</h2>
-        <p class="mdm-sub">lo que debe saber el cliente</p>
-
-        <label>
-          <span class="mdm-lab">dulzor <em class="mdm-val" id="mdmBxVal">7,0 °Bx</em></span>
-          <input type="range" id="mdmBx" min="5" max="10" step="0.1" value="7">
-        </label>
-        <label>
-          <span class="mdm-lab">acidez <em class="mdm-val" id="mdmTaVal">0,42 %</em></span>
-          <input type="range" id="mdmTa" min="0.28" max="0.62" step="0.01" value="0.42">
-        </label>
-        <label>
-          <span class="mdm-lab">fruta <em class="mdm-val" id="mdmFrVal">10 %</em></span>
-          <input type="range" id="mdmFr" min="5" max="20" step="0.5" value="10">
-        </label>
-        <label>
-          <span class="mdm-lab">sal <em class="mdm-val" id="mdmSalVal">0,06 %</em></span>
-          <input type="range" id="mdmSal" min="0" max="0.12" step="0.01" value="0.06">
-        </label>
-        <p class="mdm-note">La sal no se percibe como sal. Suprime amargor y sube el dulzor percibido: es lo que sostiene el producto a 7 °Bx en vez de a 10.</p>
-
-        <label>
-          <span class="mdm-lab">carbonatación <em class="mdm-val" id="mdmCoVal">3,0 vol</em></span>
-          <input type="range" id="mdmCo" min="2.2" max="3.8" step="0.1" value="3">
-        </label>
-        <label>
-          <span class="mdm-lab">temp. de barril <em class="mdm-val" id="mdmTpVal">2 °C</em></span>
-          <input type="range" id="mdmTp" min="0" max="8" step="0.5" value="2">
-        </label>
+      <div>
+        <label>Litros de lote</label>
+        <input id="burLitros" type="number" value="16" min="0.5" step="0.5">
       </div>
-
-      <div class="mdm-panel mdm-no-print">
-        <h2>medida real</h2>
-        <p class="mdm-sub">jugo clarificado · anula la ficha</p>
-        <div class="mdm-pair">
-          <label>
-            <span class="mdm-lab">°Bx medido</span>
-            <input type="number" id="mdmBxReal" placeholder="—" step="0.1" min="0" max="30">
-          </label>
-          <label>
-            <span class="mdm-lab">acidez medida %</span>
-            <input type="number" id="mdmTaReal" placeholder="—" step="0.05" min="0" max="8">
-          </label>
-        </div>
-        <p class="mdm-note">El Bx de la ficha es el del puré, no el de tu jugo tras clarificar. Mide antes de construir y escríbelo aquí: el lote se recalcula solo.</p>
-      </div>
-
-      <div class="mdm-panel mdm-no-print mdm-solo-direccion">
-        <h2>coste</h2>
-        <p class="mdm-sub">dirección</p>
-        <div class="mdm-pair">
-          <label>
-            <span class="mdm-lab">puré €/kg</span>
-            <input type="number" id="mdmPrecio" value="11" step="0.5" min="0">
-          </label>
-          <label>
-            <span class="mdm-lab">latas / día</span>
-            <input type="number" id="mdmRot" value="25" step="1" min="1">
-          </label>
+      <div>
+        <label>Rápido</label>
+        <div class="bur-chips">
+          <span class="bur-chip" data-l="2">2 L</span>
+          <span class="bur-chip" data-l="5">5 L</span>
+          <span class="bur-chip on" data-l="16">16 L</span>
         </div>
       </div>
     </div>
 
-    <!-- ---------- columna de ficha ---------- -->
-    <div>
-      <div class="mdm-panel">
-        <h2>hoja de tarada</h2>
-        <p class="mdm-sub" id="mdmSubTarada">—</p>
+    <div id="burOut"></div>
 
-        <table>
-          <thead>
-            <tr><th>componente</th><th>gramos</th><th>%</th></tr>
-          </thead>
-          <tbody id="mdmTabla"></tbody>
-        </table>
-
-        <!-- SIGNATURE -->
-        <div class="mdm-regla">
-          <div class="mdm-regla-cab">
-            <span>regla de equilibrio · °Bx ÷ acidez</span>
-            <b id="mdmRatio">—</b>
-          </div>
-          <div class="mdm-escala" id="mdmEscala">
-            <div class="mdm-banda" id="mdmBanda"></div>
-            <div class="mdm-eje"></div>
-            <div class="mdm-aguja" id="mdmAguja"></div>
-          </div>
-          <div class="mdm-regla-pie">
-            <span>cortante</span><span>banda de rellamada</span><span>empalagoso</span>
-          </div>
-        </div>
-
-        <div class="mdm-cifras" id="mdmCifras"></div>
-        <div class="mdm-avisos" id="mdmAvisos"></div>
-      </div>
-
-      <div class="mdm-fases" id="mdmFases"></div>
-
-      <div class="mdm-acciones mdm-no-print">
-        <button id="mdmImprimir">imprimir hoja</button>
-        <button class="mdm-alt" id="mdmPedido">preparar pedido</button>
-        <button class="mdm-alt" id="mdmReset">valores casa</button>
-      </div>
+    <div class="bur-bases">
+      <div class="bur-head"><h2>Bases y corazones</h2><span class="bur-pilar">se elaboran antes · una vez</span></div>
+      <div id="burBout"></div>
     </div>
   </div>
 </div>
@@ -2561,15 +2293,6 @@ function irA_burbujas() {
   sb.classList.remove("exit");
   // Inicializa el módulo la 1ª vez (el shell ya tiene su markup en el DOM).
   if (window.__mdmBurbujasInit) window.__mdmBurbujasInit();
-  // Rol real de la sesión → data-rol. El CSS oculta el panel de coste; el propio
-  // módulo omite la cifra "fruta / lata". Recalculamos para aplicarlo ya.
-  const u = getUser();
-  const raiz = document.getElementById("mdm-burbujas");
-  if (raiz) {
-    raiz.setAttribute("data-rol", (u && u.rol === "admin") ? "direccion" : "lara");
-    const fr = document.getElementById("mdmFruta");
-    if (fr) fr.dispatchEvent(new Event("input"));
-  }
 }
 
 // ── HELPERS ───────────────────────────────────────────
@@ -7636,302 +7359,178 @@ arrancar();
      (APP_SHELL) tras el splash/login; si corriese al cargar, el markup del
      módulo aún no estaría en el DOM. Se inicializa la 1ª vez que se abre. -->
 <script>
+// Recetas de producción de Burbujas (sodas de té). Datos verificados POR LITRO;
+// el cliente multiplica por los litros del lote. Sin dependencias ni fetch.
 function _mdmBurbujasMain(){
   'use strict';
+  var raiz = document.getElementById('mdm-burbujas');
+  if(!raiz) return;
+  var $ = function(id){ return document.getElementById(id); };
 
-  /* ---- ficha técnica Boiron 100% fruta ----
-     bx / ph = ficha del fabricante (objetivo).
-     ta = acidez titulable estimada en g/100 g como ácido cítrico:
-          Boiron NO la publica. Es orientativa: titula y anula.
-     rend = rendimiento tras despectinizar y filtrar.
-     apt  = aptitud para burbujas (3 alta / 2 media / 1 baja).      */
-  var FRUTAS = [
-    {id:'maracuya', n:'maracuyá',         bx:13,   ph:2.95, ta:3.8,  rend:.88, apt:3, luz:0, src:'ficha', nota:'ácida, muy aromática y persistente'},
-    {id:'frambuesa',n:'frambuesa',        bx:10,   ph:2.90, ta:1.6,  rend:.86, apt:3, luz:1, src:'ficha', nota:'acidulada, nota de nuez'},
-    {id:'fresa',    n:'fresa',            bx:8,    ph:3.30, ta:0.8,  rend:.84, apt:3, luz:1, src:'ficha', nota:'nota verde de fruta fresca'},
-    {id:'cassis',   n:'grosella negra',   bx:11,   ph:2.90, ta:2.8,  rend:.86, apt:3, luz:1, src:'ref',   nota:'tánica, color muy intenso'},
-    {id:'rojos',    n:'frutos rojos',     bx:12,   ph:3.15, ta:1.4,  rend:.85, apt:3, luz:1, src:'ficha', nota:'mezcla, tánica y floral'},
-    {id:'yuzu',     n:'yuzu',             bx:9,    ph:2.50, ta:4.5,  rend:.92, apt:3, luz:0, src:'ref',   nota:'cítrico aromático, muy ácido'},
-    {id:'mandarina',n:'mandarina verde',  bx:10,   ph:3.00, ta:1.2,  rend:.88, apt:3, luz:0, src:'ref',   nota:'cítrico verde, amargor fino'},
-    {id:'griotte',  n:'cereza griotte',   bx:14,   ph:3.40, ta:1.6,  rend:.85, apt:3, luz:1, src:'ref',   nota:'ácida, hueso'},
-    {id:'arandano', n:'arándano',         bx:10,   ph:3.18, ta:0.7,  rend:.83, apt:2, luz:1, src:'ficha', nota:'tánica y floral'},
-    {id:'mora',     n:'mora',             bx:9,    ph:3.00, ta:1.2,  rend:.83, apt:2, luz:1, src:'ref',   nota:'tánica, color frágil'},
-    {id:'albarico', n:'albaricoque',      bx:12,   ph:3.40, ta:1.4,  rend:.76, apt:2, luz:0, src:'ref',   nota:'pulpa alta, cuerpo'},
-    {id:'melocoton',n:'melocotón de viña',bx:11.5, ph:3.70, ta:0.6,  rend:.74, apt:2, luz:0, src:'ref',   nota:'pulpa alta, aroma delicado'},
-    {id:'sanguina', n:'naranja sanguina', bx:11,   ph:3.50, ta:1.1,  rend:.86, apt:2, luz:1, src:'ref',   nota:'color inestable a la luz'},
-    {id:'pina',     n:'piña',             bx:13,   ph:3.60, ta:0.8,  rend:.80, apt:2, luz:0, src:'ref',   nota:'enzimática, fibrosa'},
-    {id:'manzana',  n:'manzana verde',    bx:11,   ph:3.40, ta:0.6,  rend:.82, apt:2, luz:0, src:'ref',   nota:'málica, oxida rápido'},
-    {id:'ruibarbo', n:'ruibarbo',         bx:5,    ph:3.20, ta:1.2,  rend:.80, apt:2, luz:0, src:'ref',   nota:'muy poco azúcar propio'},
-    {id:'tropical', n:'tropical',         bx:15,   ph:3.25, ta:0.9,  rend:.80, apt:2, luz:0, src:'ficha', nota:'tánica y floral'},
-    {id:'guayaba',  n:'guayaba',          bx:10,   ph:3.70, ta:0.8,  rend:.72, apt:2, luz:0, src:'ref',   nota:'pulpa muy alta'},
-    {id:'mango',    n:'mango alphonso',   bx:16,   ph:4.30, ta:0.4,  rend:.70, apt:1, luz:0, src:'ref',   nota:'pulpa altísima, poca acidez'},
-    {id:'pera',     n:'pera williams',    bx:12.5, ph:4.00, ta:0.25, rend:.74, apt:1, luz:0, src:'ref',   nota:'plana sin ácido añadido'},
-    {id:'higo',     n:'higo',             bx:16,   ph:4.60, ta:0.2,  rend:.66, apt:1, luz:0, src:'ref',   nota:'clarifica mal, se opone al gas'},
-    {id:'litchi',   n:'litchi',           bx:15,   ph:4.00, ta:0.4,  rend:.78, apt:1, luz:0, src:'ref',   nota:'aroma volátil, se pierde en barril'},
-    {id:'melon',    n:'melón',            bx:9,    ph:6.00, ta:0.15, rend:.76, apt:1, luz:0, src:'ref',   nota:'pH alto: riesgo microbiológico'},
-    {id:'coco',     n:'coco',             bx:7,    ph:6.00, ta:0.05, rend:.60, apt:1, luz:0, src:'ref',   nota:'graso: incompatible con carbonatar'}
-  ];
-
-  var CASA = {bx:7, ta:0.42, fr:10, sal:0.06, co:3.0, tp:2, vol:19, lata:250};
-
-  var $ = function(id){return document.getElementById(id);};
-  var raiz = $('mdm-burbujas');
-
-  function num(v,d){ var n = parseFloat(v); return isNaN(n) ? d : n; }
-  function fmt(n,d){
-    if(!isFinite(n)) return '—';
-    return n.toFixed(d===undefined?1:d).replace('.', ',');
-  }
-
-  /* presión de equilibrio (aprox. estándar cervecero, T en °F) */
-  function presionBar(vols, tempC){
-    var f = tempC * 9/5 + 32;
-    var k = 0.01821 + 0.09011 * Math.exp(-(f-32)/43.11);
-    var psi = (vols + 0.003342)/k - 14.695;
-    return {psi:psi, bar:psi*0.0689476};
-  }
-
-  function poblarSelect(){
-    var s = $('mdmFruta'), grupos = [[3,'aptitud alta'],[2,'aptitud media'],[1,'aptitud baja']];
-    for(var g=0; g<grupos.length; g++){
-      var og = document.createElement('optgroup');
-      og.label = grupos[g][1];
-      for(var i=0; i<FRUTAS.length; i++){
-        if(FRUTAS[i].apt !== grupos[g][0]) continue;
-        var o = document.createElement('option');
-        o.value = FRUTAS[i].id; o.textContent = FRUTAS[i].n;
-        og.appendChild(o);
-      }
-      s.appendChild(og);
-    }
-    s.value = 'frambuesa';
-  }
-
-  function fruta(){
-    var id = $('mdmFruta').value;
-    for(var i=0;i<FRUTAS.length;i++){ if(FRUTAS[i].id===id) return FRUTAS[i]; }
-    return FRUTAS[0];
-  }
-
-  function loteId(f){
-    var d = new Date(), p = function(x){return (x<10?'0':'')+x;};
-    return 'BUR-' + f.id.slice(0,3).toUpperCase() + '-'
-      + String(d.getFullYear()).slice(2) + p(d.getMonth()+1) + p(d.getDate());
-  }
-
-  function calcular(){
-    var f = fruta();
-    var L    = num($('mdmVol').value, 19);
-    var lata = num($('mdmLata').value, 250);
-    var oBx  = num($('mdmBx').value, 7);
-    var oTa  = num($('mdmTa').value, .42);
-    var oFr  = num($('mdmFr').value, 10);
-    var oSal = num($('mdmSal').value, .06);
-    var oCo  = num($('mdmCo').value, 3);
-    var oTp  = num($('mdmTp').value, 2);
-
-    var bxReal = $('mdmBxReal').value !== '' ? num($('mdmBxReal').value, f.bx) : null;
-    var taReal = $('mdmTaReal').value !== '' ? num($('mdmTaReal').value, f.ta) : null;
-    var bxP = bxReal !== null ? bxReal : f.bx;
-    var taP = taReal !== null ? taReal : f.ta;
-
-    /* masa del lote: densidad aprox. de una solución a oBx grados */
-    var dens = 1 + 0.004 * oBx;
-    var masa = L * 1000 * dens;
-
-    var gPure  = masa * oFr/100;
-    var gAzuc  = masa * oBx/100 - gPure * bxP/100;
-    var acidEq = masa * oTa/100 - gPure * taP/100;
-    var gCitr  = acidEq > 0 ? acidEq * 0.70 * 1.048 : 0;   /* monohidrato */
-    var gMal   = acidEq > 0 ? acidEq * 0.30 * 1.047 : 0;
-    var gSal   = masa * oSal/100;
-    var gAsc   = f.luz ? L * 0.5 : 0;
-    var gAgua  = masa - gPure - Math.max(gAzuc,0) - gCitr - gMal - gSal - gAsc;
-
-    var gCompra = gPure / f.rend;
-    var gPect   = gCompra * 0.0004;
-    var gAguaCl = gCompra;   /* dilución 1:1 para clarificar */
-
-    var ratio = oTa > 0 ? oBx/oTa : 0;
-    var p = presionBar(oCo, oTp);
-    var linea = (p.psi/2.2) * 0.3048;
-    var latas = Math.floor(L*1000/lata);
-    var rot   = num($('mdmRot').value, 25);
-    var dias  = latas / (rot>0?rot:1);
-    var coste = (gCompra/1000) * num($('mdmPrecio').value, 11);
-
-    /* ---- ficha de la fruta ---- */
-    $('mdmFicha').innerHTML =
-      '<div><span>°Bx ficha</span><span>' + fmt(f.bx) + '</span></div>' +
-      '<div><span>pH ficha</span><span>' + fmt(f.ph,2) + '</span></div>' +
-      '<div><span>acidez estimada</span><span>' + fmt(f.ta,2) + ' %</span></div>' +
-      '<div><span>rendimiento clarificado</span><span>' + Math.round(f.rend*100) + ' %</span></div>' +
-      '<div><span>perfil</span><span>' + f.nota + '</span></div>';
-    $('mdmFuente').textContent = (f.src==='ficha'
-      ? 'Bx y pH de ficha técnica Boiron'
-      : 'Bx y pH de referencia — confirma con la ficha del lote')
-      + ' · acidez siempre estimada: titula antes de construir';
-
-    $('mdmLote').textContent = loteId(f);
-    $('mdmSubTarada').textContent = f.n + ' · lote de ' + fmt(L,0) + ' L · ' + latas + ' latas de ' + fmt(lata,0) + ' ml';
-
-    /* ---- tabla ---- */
-    var filas = [
-      ['puré ' + f.n, gPure, 'a partir de ' + fmt(gCompra/1000,2) + ' kg de envase'],
-      ['azúcar', Math.max(gAzuc,0), 'sacarosa'],
-      ['ácido cítrico', gCitr, 'monohidrato'],
-      ['ácido málico', gMal, 'redondea el centro'],
-      ['sal', gSal, 'fina, sin yodar']
-    ];
-    if(gAsc>0) filas.push(['ácido ascórbico', gAsc, 'protege el color']);
-    filas.push(['agua', gAgua, 'de la cual ' + fmt(gAguaCl,0) + ' g en la clarificación']);
-
-    var html = '';
-    for(var i=0;i<filas.length;i++){
-      html += '<tr><td>' + filas[i][0] + '<span class="mdm-ing">' + filas[i][2] + '</span></td>'
-           + '<td>' + fmt(filas[i][1],0) + '</td>'
-           + '<td>' + fmt(filas[i][1]/masa*100,1) + '</td></tr>';
-    }
-    html += '<tr class="mdm-total"><td>lote</td><td>' + fmt(masa,0) + '</td><td>100,0</td></tr>';
-    $('mdmTabla').innerHTML = html;
-
-    /* ---- regla de equilibrio ---- */
-    var min=10, max=24;
-    var pos = function(v){ return Math.max(0,Math.min(100,(v-min)/(max-min)*100)); };
-    $('mdmBanda').style.left  = pos(13) + '%';
-    $('mdmBanda').style.width = (pos(18)-pos(13)) + '%';
-    $('mdmAguja').style.left  = pos(ratio) + '%';
-    $('mdmRatio').textContent = fmt(ratio,1);
-
-    var esc = $('mdmEscala');
-    var viejos = esc.querySelectorAll('.mdm-tick,.mdm-tick-lab');
-    for(var t=0;t<viejos.length;t++){ esc.removeChild(viejos[t]); }
-    for(var v=min; v<=max; v++){
-      var tk = document.createElement('div');
-      tk.className = 'mdm-tick' + (v%2===0 ? ' mdm-mayor' : '');
-      tk.style.left = pos(v) + '%';
-      esc.appendChild(tk);
-      if(v%2===0){
-        var lb = document.createElement('div');
-        lb.className = 'mdm-tick-lab'; lb.style.left = pos(v) + '%'; lb.textContent = v;
-        esc.appendChild(lb);
+  var DATA = {
+    // --- BASES (infusiones + jarabe) · dosis por litro de infusión ---
+    bases: {
+      B1: { nombre: "Infusión earl grey", temp: "55 °C", tiempo: "90 min",
+            dosis: "8 g/L hoja", nota: "La más fría y segura: la bergamota se pierde por encima de 60 °C." },
+      B2: { nombre: "Infusión chai de especias", temp: "68 °C", tiempo: "2 h",
+            dosis: "mezcla", nota: "Jengibre 8 · canela 3 · cardamomo 2 (últimos 30 min) · pimienta 1 · clavo 0,5 · té negro 2 (opc). Sin leche." },
+      B3: { nombre: "Infusión lapsang souchong", temp: "70 °C", tiempo: "≤ 40 min",
+            dosis: "6 g/L hoja", nota: "La del riesgo: catar a 25/30/40 y cortar en cuanto la astringencia tape el ahumado." },
+      B4: { nombre: "Infusión de pimienta", temp: "60 °C", tiempo: "45 min",
+            dosis: "15 g/L bayas majadas", nota: "Aparte, para dosificar el picante al gusto. Majar, no moler." },
+      B5: { nombre: "Jarabe", temp: "—", tiempo: "—",
+            dosis: "500 g azúcar / L", nota: "Vida 10 días a 2 °C." }
+    },
+    // --- CORAZONES (zumos clarificados) ---
+    corazones: {
+      C1: { nombre: "Manzana clarificada", tiempo: "45 min", rend: "85 %",
+            nota: "Ascórbico 0,5 g/L en el vaso ANTES de licuar. Pectinasa 1 g/kg 40 °C 30 min + diatomeas 1,5 g/L. Va entera, sin 20 % crudo." },
+      C2: { nombre: "Piña clarificada", tiempo: "45 min", rend: "85 %",
+            nota: "Su propia bromelina: 40 °C 30 min, sin enzima añadida. Diatomeas 1,5 g/L. Reservar 20 % crudo." },
+      C3: { nombre: "Melocotón clarificado", tiempo: "1 h", rend: "80 %",
+            nota: "Pulpa limpia (sin piel ni hueso). Pectinasa 1,5 g/kg 45 °C 40 min + diatomeas 2 g/L. Reservar 20 % crudo." }
+    },
+    // --- RECETAS · todas las cantidades POR LITRO ---
+    recetas: {
+      R1: {
+        nombre: "Manzana verde · earl grey", pilar: "I · ORIGEN",
+        bx: "6,5", acidez: "0,55 %", co2: "3,0 vol", bar: "1,04 bar", linea: "2,08 m",
+        compra: "≈ 5,2 kg manzana Granny Smith / 16 L",
+        lineas: [
+          { c: "C1", n: "Manzana clarificada",  v: 180,  u: "g",  cod: "C1" },
+          { c: "B1", n: "Infusión earl grey",   v: 300,  u: "ml", cod: "B1" },
+          { n: "Azúcar",            v: 45.2, u: "g" },
+          { n: "Ácido cítrico",     v: 2.76, u: "g" },
+          { n: "Ácido málico",      v: 1.84, u: "g" },
+          { n: "Sal sin yodar",     v: 0.50, u: "g" },
+          { n: "Citrato trisódico", v: 0.42, u: "g" },
+          { n: "Ácido ascórbico",   v: 0.35, u: "g" }
+        ],
+        aviso: "Corre contra el reloj: se oxida en montaje. Lote del tirón, zumo recién clarificado."
+      },
+      R2: {
+        nombre: "Melocotón · lapsang · picante", pilar: "II · EQUILIBRIO",
+        bx: "8,5", acidez: "0,59 %", co2: "3,0 vol", bar: "1,04 bar", linea: "2,08 m",
+        compra: "≈ 9,7 kg melocotón / 16 L · sin menta",
+        lineas: [
+          { c: "C3", n: "Melocotón clarificado", v: 260, u: "g", cod: "C3" },
+          { c: "B3", n: "Infusión lapsang",      v: 250, u: "ml", cod: "B3" },
+          { n: "Azúcar",            v: 56.0, u: "g" },
+          { n: "Ácido cítrico",     v: 2.15, u: "g" },
+          { n: "Ácido málico",      v: 2.15, u: "g" },
+          { n: "Sal sin yodar (declarada)", v: 1.00, u: "g" },
+          { n: "Citrato trisódico", v: 0.42, u: "g" },
+          { n: "Ácido ascórbico",   v: 0.35, u: "g" },
+          { c: "C3", n: "Melocotón crudo", v: 40,  u: "g",  cod: "C3", tardio: true },
+          { c: "B4", n: "Infusión de pimienta", v: 22.5, u: "ml", cod: "B4", tardio: true }
+        ],
+        aviso: "Sal a 0,10 %: declarable, 123 mg sodio/lata. Registro salino con el ahumado."
+      },
+      R3: {
+        nombre: "Piña · chai", pilar: "III · COLECCIÓN",
+        bx: "10,0", acidez: "0,65 %", co2: "2,8 vol", bar: "0,90 bar", linea: "1,53 m",
+        compra: "≈ 8,3 kg piña / 16 L · chai = infusión de especias",
+        lineas: [
+          { c: "C2", n: "Piña clarificada", v: 200, u: "g", cod: "C2" },
+          { c: "B2", n: "Infusión chai",    v: 280, u: "ml", cod: "B2" },
+          { n: "Azúcar",            v: 70.0, u: "g" },
+          { n: "Ácido cítrico",     v: 3.16, u: "g" },
+          { n: "Ácido málico",      v: 1.36, u: "g" },
+          { n: "Sal sin yodar",     v: 0.50, u: "g" },
+          { n: "Citrato trisódico", v: 0.42, u: "g" },
+          { n: "Ácido ascórbico",   v: 0.35, u: "g" },
+          { c: "C2", n: "Piña cruda", v: 50, u: "g", cod: "C2", tardio: true }
+        ],
+        aviso: "PENDIENTE: Bx 10 / ratio 15, dulce. Catar carbonatada; si empalaga, bajar azúcar a ~45 g/L (Bx 8, ratio 12)."
       }
     }
+  };
 
-    /* ---- cifras de control ---- */
-    var cif = [
-      [fmt(oBx,1), '°Bx en lata'],
-      [fmt(oTa,2) + ' %', 'acidez'],
-      [fmt(oCo,1), 'volúmenes CO₂'],
-      [fmt(p.bar,2) + ' bar', fmt(p.psi,0) + ' psi a ' + fmt(oTp,1) + ' °C'],
-      [fmt(linea,1) + ' m', 'línea 3/16"'],
-      [latas, 'latas'],
-      [fmt(dias,1) + ' d', 'vida de barril']
-    ];
-    if(raiz.getAttribute('data-rol') !== 'lara'){
-      cif.push([fmt(coste/latas,2) + ' €', 'fruta / lata']);
-    }
-    var hc = '';
-    for(var c=0;c<cif.length;c++){
-      hc += '<div class="mdm-cifra"><b>' + cif[c][0] + '</b><span>' + cif[c][1] + '</span></div>';
-    }
-    $('mdmCifras').innerHTML = hc;
-
-    /* ---- protocolo ---- */
-    $('mdmFases').innerHTML =
-      '<div class="mdm-fase"><h3>clarificar</h3><p class="mdm-t">fase i · obrador · 14 h</p><ol>'
-      + '<li>Pesa <b>' + fmt(gCompra,0) + ' g</b> de puré y añade <b>' + fmt(gAguaCl,0) + ' g</b> de agua.</li>'
-      + '<li>Pectinasa <b>' + fmt(gPect,1) + ' g</b>. Mantén 45–50 °C durante 90 min, removiendo.</li>'
-      + '<li>Enfría y decanta 12 h a 2 °C. Sifona el sobrenadante.</li>'
-      + '<li>Filtra 5 µm y después 1 µm.</li>'
-      + '<li><b>Test del alcohol:</b> muestra + etanol 1:1. Si hila, queda pectina — repite.</li></ol></div>'
-
-      + '<div class="mdm-fase"><h3>construir</h3><p class="mdm-t">fase ii · obrador · 40 min</p><ol>'
-      + '<li>Mide °Bx y acidez del jugo y escríbelos en «medida real».</li>'
-      + '<li>Disuelve azúcar, ácidos y sal en parte del agua, en frío.</li>'
-      + '<li>Une con el jugo y completa hasta <b>' + fmt(masa,0) + ' g</b>.</li>'
-      + '<li>Corrige y vuelve a medir. Anota en el lote.</li>'
-      + '<li>Cata: sabrá 1–1,5 °Bx más dulce que en lata. No lo corrijas.</li></ol></div>'
-
-      + '<div class="mdm-fase"><h3>carbonatar</h3><p class="mdm-t">fase iii · cámara · 24–36 h</p><ol>'
-      + '<li>Enfría a <b>' + fmt(oTp,1) + ' °C</b> antes de gasificar. Sin excepción.</li>'
-      + '<li>Barril a <b>' + fmt(p.bar,2) + ' bar</b> (' + fmt(p.psi,0) + ' psi). CO₂ puro.</li>'
-      + '<li>24–36 h a presión de servicio. No agites.</li>'
-      + '<li>Línea de <b>' + fmt(linea,1) + ' m</b> refrigerada, grifo de flujo controlado.</li>'
-      + '<li>Sirve a la misma presión. Etiqueta QR y a servicio.</li></ol></div>';
-
-    /* ---- avisos ---- */
-    var av = [];
-    if(acidEq <= 0){
-      av.push(['acidez excedida', f.n + ' ya aporta más acidez que el objetivo. Baja el % de fruta o sube la acidez objetivo por encima de ' + fmt(gPure*taP/100/masa*100,2) + ' %.']);
-    }
-    if(gAzuc <= 0){
-      av.push(['azúcar negativo', 'El puré aporta más azúcar que el objetivo. Baja el % de fruta o sube el °Bx.']);
-    }
-    if(ratio < 13) av.push(['demasiado cortante', 'Por debajo de 13 el ácido tapa la fruta y la lata se abandona a medias. Sube el °Bx o baja la acidez.']);
-    if(ratio > 18) av.push(['empalaga', 'Por encima de 18 el refresco satura y no hay segundo trago. Sube la acidez.']);
-    if(f.apt === 1) av.push(['fruta poco apta', f.n + ': ' + f.nota + '. Rendimiento ' + Math.round(f.rend*100) + ' %. No la lleves a barril sin prueba previa.']);
-    if(f.ph > 4.4) av.push(['pH alto', 'El pH de esta fruta no protege sola. Confirma que el lote acabado queda por debajo de 3,6 antes de embarrilar.']);
-    if(dias > 14) av.push(['barril demasiado largo', 'Al ritmo actual el barril dura ' + fmt(dias,1) + ' días. El aroma se apaga antes que el gas: reduce el lote a ' + Math.ceil(rot*12*lata/1000) + ' L.']);
-    if(oCo > 3.4) av.push(['carbonatación alta', 'Por encima de 3,4 vol la lata rebosa al sellar salvo que la línea y el grifo estén perfectamente balanceados.']);
-
-    var ha = '';
-    for(var a=0;a<av.length;a++){
-      ha += '<div class="mdm-aviso"><b>' + av[a][0] + '</b>' + av[a][1] + '</div>';
-    }
-    $('mdmAvisos').innerHTML = ha;
-
-    /* ---- etiquetas de los mandos ---- */
-    $('mdmVolVal').textContent  = fmt(L,0) + ' L';
-    $('mdmLataVal').textContent = fmt(lata,0) + ' ml';
-    $('mdmBxVal').textContent   = fmt(oBx,1) + ' °Bx';
-    $('mdmTaVal').textContent   = fmt(oTa,2) + ' %';
-    $('mdmFrVal').textContent   = fmt(oFr,1) + ' %';
-    $('mdmSalVal').textContent  = fmt(oSal,2) + ' %';
-    $('mdmCoVal').textContent   = fmt(oCo,1) + ' vol';
-    $('mdmTpVal').textContent   = fmt(oTp,1) + ' °C';
-
-    raiz.dataset.compra = fmt(gCompra/1000,2);
-    raiz.dataset.fruta  = f.n;
+  function fmt(x){
+    if(x>=100) return Math.round(x).toLocaleString('es-ES');
+    if(x>=10)  return (Math.round(x*10)/10).toLocaleString('es-ES');
+    return (Math.round(x*100)/100).toLocaleString('es-ES');
   }
 
-  /* ---- eventos ---- */
-  poblarSelect();
-  var mandos = ['mdmFruta','mdmVol','mdmLata','mdmBx','mdmTa','mdmFr','mdmSal',
-                'mdmCo','mdmTp','mdmBxReal','mdmTaReal','mdmPrecio','mdmRot'];
-  for(var m=0;m<mandos.length;m++){
-    $(mandos[m]).addEventListener('input', calcular);
-    $(mandos[m]).addEventListener('change', calcular);
+  function initSel(){
+    var s = $('burSel');
+    Object.keys(DATA.recetas).forEach(function(k){
+      var r = DATA.recetas[k];
+      var o = document.createElement('option');
+      o.value = k; o.textContent = r.pilar + '  ·  ' + r.nombre;
+      s.appendChild(o);
+    });
   }
 
-  $('mdmImprimir').addEventListener('click', function(){ window.print(); });
+  function setL(n){ $('burLitros').value = n; sync(); render(); }
 
-  $('mdmReset').addEventListener('click', function(){
-    $('mdmBx').value=CASA.bx; $('mdmTa').value=CASA.ta; $('mdmFr').value=CASA.fr;
-    $('mdmSal').value=CASA.sal; $('mdmCo').value=CASA.co; $('mdmTp').value=CASA.tp;
-    $('mdmVol').value=CASA.vol; $('mdmLata').value=CASA.lata;
-    $('mdmBxReal').value=''; $('mdmTaReal').value='';
-    calcular();
-  });
-
-  /* engancha con el pedido a proveedor que ya existe en Control M */
-  $('mdmPedido').addEventListener('click', function(){
-    var texto = 'Pedido burbujas · ' + raiz.dataset.fruta + ' · '
-              + raiz.dataset.compra + ' kg de puré Boiron 100% fruta · lote '
-              + $('mdmLote').textContent;
-    if(window.ControlM && typeof window.ControlM.nuevoPedido === 'function'){
-      window.ControlM.nuevoPedido({modulo:'burbujas', texto:texto});
-    } else {
-      window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+  function sync(){
+    var L = parseFloat($('burLitros').value) || 0;
+    var chips = raiz.querySelectorAll('.bur-chip');
+    for(var i=0;i<chips.length;i++){
+      chips[i].classList.toggle('on', parseFloat(chips[i].getAttribute('data-l')) === L);
     }
-  });
+  }
 
-  calcular();
+  function render(){
+    var rk = $('burSel').value;
+    var L = parseFloat($('burLitros').value) || 0;
+    var r = DATA.recetas[rk];
+    if(!r) return;
+    var rows = r.lineas.map(function(li){
+      var total = li.v * L;
+      var cod = li.cod ? '<span class="cod">' + li.cod + '</span>' : '';
+      var cls = li.tardio ? ' class="tardia"' : '';
+      var tag = li.tardio ? ' <span style="font-size:8.5px;letter-spacing:.1em;text-transform:uppercase">tardío</span>' : '';
+      return '<tr' + cls + '><td>' + cod + li.n + tag + '</td><td>' + fmt(li.v) + ' ' + li.u + '/L</td><td class="big">' + fmt(total) + ' ' + li.u + '</td></tr>';
+    }).join('');
+    $('burOut').innerHTML =
+      '<div class="bur-head"><h2>' + r.nombre + '</h2><span class="bur-pilar">' + r.pilar + '</span></div>' +
+      '<div class="bur-param">' +
+        '<div><b>' + r.bx + '</b><span>°Bx</span></div>' +
+        '<div><b>' + r.acidez + '</b><span>acidez</span></div>' +
+        '<div><b>' + r.co2 + '</b><span>CO₂</span></div>' +
+        '<div><b>' + r.bar + '</b><span>2 °C</span></div>' +
+        '<div><b>' + r.linea + '</b><span>línea 3/16"</span></div>' +
+      '</div>' +
+      '<table><thead><tr><th>componente</th><th>por litro</th><th>lote ' + fmt(L) + ' L</th></tr></thead>' +
+      '<tbody>' + rows +
+      '<tr><td style="font-weight:700;color:var(--olive);border-top:1px solid var(--ink);padding-top:9px">Agua c.s.p.</td>' +
+      '<td style="border-top:1px solid var(--ink);padding-top:9px">—</td>' +
+      '<td class="big" style="border-top:1px solid var(--ink);padding-top:9px">hasta ' + fmt(L) + ' L</td></tr>' +
+      '</tbody></table>' +
+      '<div class="bur-aviso"><b>atención</b>' + r.aviso + '</div>' +
+      '<div class="bur-compra"><b>Compra:</b> ' + r.compra + ' · ' + Math.floor(L*1000/250*0.96) + ' latas vendibles</div>';
+  }
+
+  function renderBases(){
+    var h = '';
+    Object.keys(DATA.corazones).forEach(function(k){
+      var c = DATA.corazones[k];
+      h += '<div class="bcard"><div class="bt"><h3><span class="cod">' + k + '</span>' + c.nombre + '</h3>' +
+           '<span class="bp">' + c.tiempo + ' · rend. ' + c.rend + '</span></div><div class="bn">' + c.nota + '</div></div>';
+    });
+    Object.keys(DATA.bases).forEach(function(k){
+      var b = DATA.bases[k];
+      h += '<div class="bcard"><div class="bt"><h3><span class="cod">' + k + '</span>' + b.nombre + '</h3>' +
+           '<span class="bp">' + b.temp + (b.tiempo !== '—' ? ' · ' + b.tiempo : '') + ' · ' + b.dosis + '</span></div><div class="bn">' + b.nota + '</div></div>';
+    });
+    $('burBout').innerHTML = h;
+  }
+
+  $('burSel').addEventListener('change', render);
+  $('burLitros').addEventListener('input', function(){ sync(); render(); });
+  var chips = raiz.querySelectorAll('.bur-chip');
+  for(var i=0;i<chips.length;i++){
+    chips[i].addEventListener('click', function(){ setL(parseFloat(this.getAttribute('data-l'))); });
+  }
+
+  initSel(); renderBases(); sync(); render();
 }
 // Init bajo demanda: se ejecuta cuando el shell ya tiene el markup del módulo
 // (al abrir Burbujas). Reinicializa si el shell se reconstruyó (select vacío).
 window.__mdmBurbujasInit = function(){
-  var sel = document.getElementById('mdmFruta');
+  var sel = document.getElementById('burSel');
   if(!sel) return;                              // shell aún no presente
   if(sel.options && sel.options.length) return; // ya inicializado
   _mdmBurbujasMain();

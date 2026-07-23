@@ -213,6 +213,30 @@ app.post("/agora/ingest", express.json({ limit: "12mb" }), async (req, res) => {
   }
 });
 
+// ── CARTA DIGITAL PÚBLICA (la que abre el cliente por QR en la mesa) ──────────
+// Pública, sin sesión, con la identidad de marca. Solo muestra nombre,
+// descripción y precio de venta (nunca coste ni margen). /carta = la carta;
+// /carta/qr = cartelito imprimible con el QR hacia la carta.
+app.get("/carta", (req, res) => {
+  try {
+    const html = require("./menu-service").renderCartaPublicaHTML();
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(500).send("No se pudo abrir la carta: " + e.message);
+  }
+});
+app.get("/carta/qr", (req, res) => {
+  try {
+    const proto = (req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0];
+    const urlCarta = `${proto}://${req.get("host")}/carta`;
+    const qrSrc = `/qr?d=${encodeURIComponent(urlCarta)}&w=520`;
+    const html = require("./menu-service").renderQRCarterHTML(urlCarta, qrSrc);
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(500).send("No se pudo generar el QR de la carta: " + e.message);
+  }
+});
+
 // ── A partir de aquí, todo /api/* exige sesión válida (y respeta el rol) ───────
 app.use("/api", auth.requerido);
 

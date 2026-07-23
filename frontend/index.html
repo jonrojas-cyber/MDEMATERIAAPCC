@@ -2436,6 +2436,7 @@ function modulosMeta(d) {
     // APPCC
     lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
     // Informes y configuración
+    cafes:        { num:"00", name:"Cafés", badge:"Escandallo por bebida", urgent:false },
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
@@ -2454,7 +2455,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir ahora · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario", ids:["materias","pedidos","proveedores","recepcion","inventario"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Costes · Márgenes · Ventas · Config", ids:["carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Cafés · Costes · Márgenes · Ventas · Config", ids:["cafes","carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -6948,7 +6949,7 @@ async function irA_carta(){
   openSection("carta","Carta y márgenes");
   try{
     const d=await api("/carta");
-    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="irA_escandalloCafe()">Escandallo de café</button><button class="btn-ghost" onclick="formReceta()">Crear receta</button></div>`;
+    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="irA_cafes()">Cafés</button><button class="btn-ghost" onclick="formReceta()">Crear receta</button></div>`;
     const resumen=`<div class="section-label">Resumen de la carta</div>
       <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
         <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
@@ -7003,11 +7004,10 @@ async function setFcObjetivo(id, fcPct){
   }catch(e){ alert(e.message); }
 }
 
-// ── ESCANDALLO DE CAFÉ · constructor guiado ──────────────────────
-// Eliges bebida + grano + leche; fija los g/ml de la receta, calcula el coste
-// con los precios reales de materia, te pregunta el food-cost objetivo,
-// recomienda el PVP y tú eliges el precio final. Al fijar, crea el producto en
-// la carta (pasa por el motor único de coste/margen del backend).
+// ── CAFÉS · categoría propia (escoge bebida → grano, leche y precio) ──────
+// Todo el café en un sitio, sin mezclar con el resto de la carta. Cada bebida
+// del recetario se configura eligiendo grano y leche del catálogo, con food-cost
+// y PVP; al guardar pasa por el motor único de coste/margen del backend.
 const CAFE_BEBIDAS = [
   { k:"espresso",  n:"Espresso",   desc:"2 shot · pocillo",                    g:17,  leche:0   },
   { k:"lungo",     n:"Lungo",      desc:"2 shot + agua · taza mediana",        g:17,  leche:0   },
@@ -7019,104 +7019,123 @@ const CAFE_BEBIDAS = [
   { k:"icedlatte", n:"Iced latte", desc:"1 shot + 2 hielos + leche",           g:8.5, leche:180 },
 ];
 
-async function irA_escandalloCafe(){
-  openSection("escandalloCafe","Escandallo de café");
+// Abre la categoría Cafés: la lista de bebidas con su precio/coste si ya está fijada.
+async function irA_cafes(){
+  openSection("cafes","Cafés");
   try{
-    const mats=await api("/materias");
-    window._ecMats=mats;
-    // Granos de café (categoría Café, en gramos) menos el cold brew (no es espresso).
-    window._ecCafes=mats.filter(m=>m.categoria==="Café" && m.unidad==="g" && !/coldbrew/i.test(m.id));
-    // Leches (categoría Leche) menos la combinada legacy.
-    window._ecLeches=mats.filter(m=>m.categoria==="Leche" && m.id!=="mat-leche-vegetal");
-    if(!window._ecCafes.length){ setInner(`<div class="err">No hay cafés cargados en materias.</div>`); return; }
-    renderEscandalloCafe();
+    const [mats, carta] = await Promise.all([api("/materias"), api("/carta")]);
+    window._cafeMats = mats;
+    window._cafeCafes = mats.filter(m=>m.categoria==="Café" && m.unidad==="g" && !/coldbrew/i.test(m.id));
+    window._cafeLeches = mats.filter(m=>m.categoria==="Leche" && m.id!=="mat-leche-vegetal");
+    window._cafeCarta = (carta.productos||[]).filter(p=>p.categoria==="café");
+    renderCafeLista();
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
 
-function renderEscandalloCafe(){
-  const bOpts=CAFE_BEBIDAS.map((b,i)=>`<option value="${i}">${esc(b.n)} — ${esc(b.desc)}</option>`).join("");
-  const cOpts=window._ecCafes.map(m=>`<option value="${m.id}">${esc(m.nombre)}</option>`).join("");
-  const lOpts=window._ecLeches.map(m=>`<option value="${m.id}">${esc(m.nombre)}</option>`).join("");
-  setInner(`
-    <div class="card-actions" style="margin-bottom:14px;"><button class="btn-ghost" onclick="irA_carta()">← Volver a la carta</button></div>
-    <div class="section-label">Construye la bebida</div>
-    <div class="card">
-      <div class="field"><label>Bebida</label>
-        <select id="ec-bebida" style="width:100%;" onchange="ecCargarBebida()">${bOpts}</select></div>
-      <div class="field"><label>Grano de café</label>
-        <select id="ec-cafe" style="width:100%;" onchange="ecCargarBebida()">${cOpts}</select></div>
-      <div class="field" style="max-width:160px;"><label>Café (g)</label>
-        <input id="ec-g" type="number" step="0.5" min="0" value="17" oninput="ecCalc()" style="width:100%;"></div>
-      <div id="ec-leche-wrap">
-        <div class="field"><label>Leche</label>
-          <select id="ec-leche" style="width:100%;" onchange="ecCalc()">${lOpts}</select></div>
-        <div class="field" style="max-width:160px;"><label>Leche (ml)</label>
-          <input id="ec-ml" type="number" step="5" min="0" value="0" oninput="ecCalc()" style="width:100%;"></div>
-      </div>
-    </div>
+// Empareja una bebida con su producto en la carta (por clave/nombre exacto).
+function cafeProductoDe(bebida){
+  return (window._cafeCarta||[]).find(p=>p.clave===bebida.n || p.nombre===bebida.n) || null;
+}
 
+function renderCafeLista(){
+  const filas = CAFE_BEBIDAS.map((b,i)=>{
+    const p = cafeProductoDe(b);
+    const estado = p
+      ? `<span style="color:var(--olive);">${p.precio_venta.toFixed(2)} €</span> · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}%`
+      : `<span style="color:var(--muted);">sin precio fijado</span>`;
+    const grano = p && p.ingredientes && p.ingredientes[0] ? p.ingredientes[0].nombre : "";
+    return `<div class="card">
+      <div class="card-name">${esc(b.n)}</div>
+      <div class="card-meta">${esc(b.desc)}</div>
+      <div style="font-size:12px;margin-top:6px;">${estado}</div>
+      ${grano?`<div style="font-size:10px;color:var(--muted);margin-top:3px;">grano: ${esc(grano)}</div>`:""}
+      <div class="card-actions"><button class="btn-primary" onclick="cafeConfig(${i})">${p?"Editar":"Configurar"}</button></div>
+    </div>`;
+  }).join("");
+  setInner(`<div class="section-label">Bebidas de café</div>
+    <div class="card-meta" style="margin-bottom:12px;">Toca una bebida para elegir su grano, su leche y su precio.</div>
+    ${filas}`);
+}
+
+// Configura UNA bebida: grano + leche + gramos/ml + food-cost + precio.
+function cafeConfig(i){
+  const b = CAFE_BEBIDAS[i];
+  const p = cafeProductoDe(b);
+  window._cafeIdx = i;
+  window._cafeEditId = p ? p.id : null;
+  const ingCafe  = p && p.ingredientes ? p.ingredientes.find(x=>/mat-cafe/.test(x.materia_id))  : null;
+  const ingLeche = p && p.ingredientes ? p.ingredientes.find(x=>/mat-leche/.test(x.materia_id)) : null;
+  const granoSel = ingCafe ? ingCafe.materia_id : (window._cafeCafes[0]||{}).id;
+  const gVal     = ingCafe ? ingCafe.cantidad : b.g;
+  const lecheSel = ingLeche ? ingLeche.materia_id : (window._cafeLeches[0]||{}).id;
+  const mlVal    = ingLeche ? ingLeche.cantidad : b.leche;
+  const fcVal    = p && p.food_cost_objetivo ? Math.round(p.food_cost_objetivo) : 25;
+  const pvpVal   = p ? p.precio_venta : 0;
+
+  const cOpts = window._cafeCafes.map(m=>`<option value="${m.id}" ${m.id===granoSel?"selected":""}>${esc(m.nombre)}</option>`).join("");
+  const lOpts = window._cafeLeches.map(m=>`<option value="${m.id}" ${m.id===lecheSel?"selected":""}>${esc(m.nombre)}</option>`).join("");
+  const lecheBloque = b.leche>0 ? `
+    <div class="field"><label>Leche</label>
+      <select id="cf-leche" style="width:100%;" onchange="cafeCalc()">${lOpts}</select></div>
+    <div class="field" style="max-width:160px;"><label>Leche (ml)</label>
+      <input id="cf-ml" type="number" step="5" min="0" value="${mlVal}" oninput="cafeCalc()" style="width:100%;"></div>` : "";
+
+  setInner(`
+    <div class="card-actions" style="margin-bottom:12px;"><button class="btn-ghost" onclick="irA_cafes()">← Cafés</button></div>
+    <div class="section-label">${esc(b.n)}</div>
+    <div class="card-meta" style="margin-bottom:12px;">${esc(b.desc)}</div>
+    <div class="card">
+      <div class="field"><label>Grano de café</label>
+        <select id="cf-cafe" style="width:100%;" onchange="cafeCalc()">${cOpts}</select></div>
+      <div class="field" style="max-width:160px;"><label>Café (g)</label>
+        <input id="cf-g" type="number" step="0.5" min="0" value="${gVal}" oninput="cafeCalc()" style="width:100%;"></div>
+      ${lecheBloque}
+    </div>
     <div class="section-label">Food cost objetivo</div>
     <div class="card">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
-        ${[20,25,30].map(fc=>`<button type="button" class="ec-fc" data-fc="${fc}" onclick="ecSetFc(${fc})" style="padding:10px 8px;border:1px solid var(--line);background:var(--olive-light);color:var(--ink);cursor:pointer;font-weight:700;">${fc}%</button>`).join("")}
+        ${[20,25,30].map(fc=>`<button type="button" class="cf-fc" data-fc="${fc}" onclick="cafeSetFc(${fc})" style="padding:10px 8px;border:1px solid var(--line);background:var(--olive-light);color:var(--ink);cursor:pointer;font-weight:700;">${fc}%</button>`).join("")}
       </div>
-      <div class="field" style="max-width:200px;"><label>o food cost a mano (%)</label>
-        <input id="ec-fc" type="number" step="1" min="5" max="90" value="25" oninput="ecCalc()" style="width:100%;"></div>
-      <div id="ec-out" class="card-meta" style="line-height:1.9;"></div>
+      <div class="field" style="max-width:200px;"><label>o a mano (%)</label>
+        <input id="cf-fc" type="number" step="1" min="5" max="90" value="${fcVal}" oninput="cafeCalc()" style="width:100%;"></div>
+      <div id="cf-out" class="card-meta" style="line-height:1.9;"></div>
     </div>
-
-    <div class="section-label">Precio final (lo eliges tú)</div>
+    <div class="section-label">Precio de venta (lo eliges tú)</div>
     <div class="card">
-      <div class="field" style="max-width:200px;"><label>PVP de venta (€)</label>
-        <input id="ec-pvp" type="number" step="0.05" min="0" value="0" oninput="ecCalc()" style="width:100%;"></div>
-      <div class="card-actions"><button class="btn-ghost" onclick="ecUsarRecom()">Usar PVP recomendado</button></div>
-      <div id="ec-final" class="card-meta" style="line-height:1.7;"></div>
+      <div class="field" style="max-width:200px;"><label>PVP (€)</label>
+        <input id="cf-pvp" type="number" step="0.05" min="0" value="${pvpVal||0}" oninput="cafeCalc()" style="width:100%;"></div>
+      <div class="card-actions"><button class="btn-ghost" onclick="cafeUsarRecom()">Usar PVP recomendado</button></div>
+      <div id="cf-final" class="card-meta" style="line-height:1.7;"></div>
     </div>
-
-    <div class="card">
-      <div class="field"><label>Nombre en la carta</label><input id="ec-nombre" style="width:100%;"></div>
-      <div class="card-actions">
-        <button class="btn-primary" onclick="ecFijar(this)">Fijar receta en la carta</button>
-        <button class="btn-ghost" onclick="irA_carta()">Cancelar</button>
-      </div>
-      <div id="ec-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>
-    </div>`);
-  ecCargarBebida();
+    <div class="card-actions">
+      <button class="btn-primary" onclick="cafeGuardar(this)">${window._cafeEditId?"Guardar cambios":"Fijar en la carta"}</button>
+      <button class="btn-ghost" onclick="irA_cafes()">Cancelar</button>
+    </div>
+    <div id="cf-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>`);
+  cafeSetFc(fcVal);
 }
 
-function ecMat(id){ return (window._ecMats||[]).find(m=>m.id===id); }
+function cafeMat(id){ return (window._cafeMats||[]).find(m=>m.id===id); }
 
-function ecCargarBebida(){
-  const b=CAFE_BEBIDAS[Number(el("ec-bebida").value)||0];
-  el("ec-g").value=b.g;
-  const wrap=el("ec-leche-wrap");
-  if(b.leche>0){ wrap.style.display=""; el("ec-ml").value=b.leche; }
-  else { wrap.style.display="none"; el("ec-ml").value=0; }
-  const cafe=ecMat(el("ec-cafe").value);
-  const grano=cafe?cafe.nombre.replace(/^Café\s+/i,"").replace(/\s*\(espresso\)/i,""):"";
-  el("ec-nombre").value=b.n+(grano?" · "+grano:"");
-  ecCalc();
-}
-
-function ecCalc(){
-  const g=Number(el("ec-g").value)||0;
-  const cafe=ecMat(el("ec-cafe").value);
-  const llevaLeche=el("ec-leche-wrap").style.display!=="none";
-  const ml=llevaLeche?(Number(el("ec-ml").value)||0):0;
-  const leche=llevaLeche?ecMat(el("ec-leche").value):null;
+function cafeCalc(){
+  const g=Number(el("cf-g").value)||0;
+  const cafe=cafeMat(el("cf-cafe").value);
+  const lecheEl=el("cf-leche");
+  const ml=lecheEl?(Number(el("cf-ml").value)||0):0;
+  const leche=lecheEl?cafeMat(lecheEl.value):null;
   const costeCafe=cafe?cafe.coste_medio*g:0;
   const costeLeche=leche?leche.coste_medio*ml:0;
   const coste=Math.round((costeCafe+costeLeche)*10000)/10000;
-  const fc=Math.min(0.9,Math.max(0.05,(Number(el("ec-fc").value)||25)/100));
+  const fc=Math.min(0.9,Math.max(0.05,(Number(el("cf-fc").value)||25)/100));
   const recom=coste>0?redondearPvp(coste/fc):0;
-  window._ecCoste=coste; window._ecRecom=recom;
-  el("ec-out").innerHTML=
+  window._cafeCoste=coste; window._cafeRecom=recom;
+  el("cf-out").innerHTML=
     `Café: <b>${cafe?esc(cafe.nombre):"—"}</b> · ${g} g → ${costeCafe.toFixed(3)} €<br>`+
-    (llevaLeche?`Leche: <b>${leche?esc(leche.nombre):"—"}</b> · ${ml} ml → ${costeLeche.toFixed(3)} €<br>`:"")+
+    (lecheEl?`Leche: <b>${leche?esc(leche.nombre):"—"}</b> · ${ml} ml → ${costeLeche.toFixed(3)} €<br>`:"")+
     `Coste total: <b>${coste.toFixed(3)} €</b><br>`+
     `A ${Math.round(fc*100)}% food cost → PVP recomendado <b style="color:var(--olive);font-size:16px;">${recom.toFixed(2)} €</b>`;
-  const pvp=Number(el("ec-pvp").value)||0;
-  const out=el("ec-final");
+  const pvp=Number(el("cf-pvp").value)||0;
+  const out=el("cf-final");
   if(pvp>0 && coste>0){
     const margen=(pvp-coste)/pvp, food=coste/pvp;
     const col=food>0.35?"var(--alert)":(food>0.28?"#C9CBBE":"var(--olive)");
@@ -7124,39 +7143,40 @@ function ecCalc(){
   } else out.innerHTML=`Pon un precio o pulsa «Usar PVP recomendado».`;
 }
 
-function ecSetFc(fc){
-  el("ec-fc").value=fc;
-  document.querySelectorAll(".ec-fc").forEach(b=>{
+function cafeSetFc(fc){
+  el("cf-fc").value=fc;
+  document.querySelectorAll(".cf-fc").forEach(b=>{
     const on=(+b.dataset.fc===fc);
     b.style.background=on?"var(--olive)":"var(--olive-light)";
     b.style.color=on?"#23241C":"var(--ink)";
   });
-  ecCalc();
+  cafeCalc();
 }
-function ecUsarRecom(){ if(window._ecRecom>0){ el("ec-pvp").value=window._ecRecom; ecCalc(); } }
+function cafeUsarRecom(){ if(window._cafeRecom>0){ el("cf-pvp").value=window._cafeRecom; cafeCalc(); } }
 
-async function ecFijar(btn){
-  const nombre=el("ec-nombre").value.trim();
-  const pvp=Number(el("ec-pvp").value)||0;
-  const g=Number(el("ec-g").value)||0;
-  const cafeId=el("ec-cafe").value;
-  const llevaLeche=el("ec-leche-wrap").style.display!=="none";
-  const ml=llevaLeche?(Number(el("ec-ml").value)||0):0;
-  const lecheId=el("ec-leche").value;
-  const fc=Math.min(0.9,Math.max(0.05,(Number(el("ec-fc").value)||25)/100));
-  const msg=el("ec-msg");
-  if(!nombre){ msg.textContent="Ponle un nombre a la bebida."; return; }
+async function cafeGuardar(btn){
+  const b=CAFE_BEBIDAS[window._cafeIdx||0];
+  const pvp=Number(el("cf-pvp").value)||0;
+  const g=Number(el("cf-g").value)||0;
+  const cafeId=el("cf-cafe").value;
+  const lecheEl=el("cf-leche");
+  const ml=lecheEl?(Number(el("cf-ml").value)||0):0;
+  const lecheId=lecheEl?lecheEl.value:"";
+  const fc=Math.min(0.9,Math.max(0.05,(Number(el("cf-fc").value)||25)/100));
+  const msg=el("cf-msg");
   if(!cafeId || !(g>0)){ msg.textContent="Elige el grano y los gramos de café."; return; }
   const ingredientes=[{materia_id:cafeId, cantidad:g}];
-  if(llevaLeche && lecheId && ml>0) ingredientes.push({materia_id:lecheId, cantidad:ml});
-  const body={ nombre, categoria:"café", descripcion:CAFE_BEBIDAS[Number(el("ec-bebida").value)||0].desc,
+  if(lecheEl && lecheId && ml>0) ingredientes.push({materia_id:lecheId, cantidad:ml});
+  const body={ nombre:b.n, clave:b.n, categoria:"café", descripcion:b.desc,
     precio_venta:pvp, margen_objetivo:1-fc, ingredientes };
   if(btn) btn.disabled=true;
   try{
-    await api("/carta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    irA_carta();
+    if(window._cafeEditId) await api("/carta/"+window._cafeEditId,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    else await api("/carta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_cafes();
   }catch(e){ msg.textContent=e.message; if(btn) btn.disabled=false; }
 }
+
 
 // ── EDITOR DE RECETAS (escandallo + PVP recomendado en vivo) ──
 function redondearPvp(n){ return n>0?Math.ceil(n*20)/20:0; }

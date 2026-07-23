@@ -82,6 +82,14 @@ const BATCHES = [
     ],
     productos: [],
   },
+  {
+    // Leche de soja (para el matcha origen). Precio editable en Materias.
+    flag: "cafe_seed_v5_soja",
+    materias: [
+      { id: "mat-leche-soja", nombre: "Leche soja", unidad: "ml", coste_medio: 0.0018, categoria: "Leche", ubicacion: "Barra", disponibilidad_actual: 2000 },
+    ],
+    productos: [],
+  },
 ];
 
 async function seedCafe() {

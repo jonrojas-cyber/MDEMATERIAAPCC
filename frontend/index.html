@@ -2436,6 +2436,7 @@ function modulosMeta(d) {
     // APPCC
     lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
     // Informes y configuración
+    menu:         { num:"00", name:"Carta por categorías", badge:"Café · Matcha · Burbujas · Zumos · Comida", urgent:false },
     cafes:        { num:"00", name:"Cafés", badge:"Escandallo por bebida", urgent:false },
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
@@ -2455,7 +2456,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir ahora · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario", ids:["materias","pedidos","proveedores","recepcion","inventario"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Cafés · Costes · Márgenes · Ventas · Config", ids:["cafes","carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Ventas · Config", ids:["menu","cafes","carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -7004,6 +7005,118 @@ async function setFcObjetivo(id, fcPct){
   }catch(e){ alert(e.message); }
 }
 
+// ── CARTA POR CATEGORÍAS · árbol de escandallos ──────────────────────────
+// Toda la carta organizada en bloques (Café · Matcha · Burbujas · Zumos ·
+// Comida) con sus subniveles. Cada producto (hoja) abre el editor de escandallo:
+// tú pones sus ingredientes y su precio; se guarda en la carta y viaja a Ágora.
+// Nada inventado: los nombres son plantillas y el escandallo lo fijas tú.
+const CARTA_ARBOL = {
+  cafe:   { nombre:"Café", cafe:true },
+  matcha: { nombre:"Matcha", subs:{
+    origen: { nombre:"Origen", items:[
+      { n:"Matcha Origen · leche entera", cat:"matcha", desc:"Matcha 30 g + leche entera" },
+      { n:"Matcha Origen · coco",         cat:"matcha", desc:"Matcha 30 g + leche de coco" },
+      { n:"Matcha Origen · avena",        cat:"matcha", desc:"Matcha 30 g + leche de avena" },
+      { n:"Matcha Origen · soja",         cat:"matcha", desc:"Matcha 30 g + leche de soja" },
+    ]},
+    equilibrio: { nombre:"Equilibrio", items:[
+      { n:"Matcha Equilibrio", cat:"matcha", desc:"Nuestra interpretación · leche de coco + …" },
+    ]},
+    coleccion: { nombre:"Colección", items:[
+      { n:"Matcha Colección", cat:"matcha", desc:"Por desarrollar" },
+    ]},
+  }},
+  burbujas: { nombre:"Burbujas", items:[
+    { n:"Burbujas Origen",     cat:"burbujas", desc:"Refresco de té · origen" },
+    { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Refresco de té · equilibrio" },
+    { n:"Burbujas Colección",  cat:"burbujas", desc:"Refresco de té · colección" },
+  ]},
+  zumos: { nombre:"Zumos", items:[
+    { n:"Zumo Origen",     cat:"zumos", desc:"Zumo · origen" },
+    { n:"Zumo Equilibrio", cat:"zumos", desc:"Zumo · equilibrio" },
+    { n:"Zumo Colección",  cat:"zumos", desc:"Zumo · colección" },
+  ]},
+  comida: { nombre:"Comida", subs:{
+    tostas: { nombre:"Tostas", items:[
+      { n:"Tosta Origen", cat:"comida" }, { n:"Tosta Equilibrio", cat:"comida" }, { n:"Tosta Colección", cat:"comida" },
+    ]},
+    sandwich: { nombre:"Sándwich", items:[
+      { n:"Sándwich Origen", cat:"comida" }, { n:"Sándwich Equilibrio", cat:"comida" }, { n:"Sándwich Colección", cat:"comida" },
+    ]},
+    reposteria: { nombre:"Repostería", items:[
+      { n:"Croissant", cat:"comida" }, { n:"Cookie de pistacho", cat:"comida" },
+      { n:"Cardamomo y lima", cat:"comida" }, { n:"Rol de canela", cat:"comida" },
+    ]},
+    bowls: { nombre:"Bowls", items:[
+      { n:"Bowl Origen", cat:"comida" }, { n:"Bowl Equilibrio", cat:"comida" }, { n:"Bowl Colección", cat:"comida" },
+    ]},
+  }},
+};
+
+async function irA_menu(){
+  openSection("menu","Carta por categorías");
+  try{
+    const carta = await api("/carta");
+    window._menuCarta = carta.productos || [];
+    menuNivel([]);
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+async function menuRecargar(path){
+  try{ const carta = await api("/carta"); window._menuCarta = carta.productos || []; }catch(_){ }
+  menuNivel(path);
+}
+function menuNodoEn(path){
+  let node = { subs: CARTA_ARBOL };
+  for(const k of path){ node = (node.subs || {})[k]; if(!node) return null; }
+  return node;
+}
+function menuProductoDe(leaf){
+  return (window._menuCarta || []).find(p => p.clave === leaf.n || p.nombre === leaf.n) || null;
+}
+function menuNivel(path){
+  window._menuPath = path.slice();
+  const node = menuNodoEn(path);
+  if(!node){ menuNivel([]); return; }
+  const nombres = path.map((k,i) => (menuNodoEn(path.slice(0,i+1))||{}).nombre || k);
+  const titulo = path.length ? nombres[nombres.length-1] : "Carta por categorías";
+  const atras = path.length
+    ? `<div class="card-actions" style="margin-bottom:12px;"><button class="btn-ghost" onclick='menuNivel(${JSON.stringify(path.slice(0,-1))})'>← ${esc(path.length>1?nombres[nombres.length-2]:"Carta")}</button></div>`
+    : "";
+  let cuerpo = "";
+  if(node.subs){
+    cuerpo = Object.keys(node.subs).map((k) => {
+      const s = node.subs[k];
+      const n = s.items ? s.items.length : (s.subs ? Object.keys(s.subs).length : 0);
+      const sub = s.cafe ? "grano + leche · builder de cafés" : (s.items ? n+" productos" : n+" apartados");
+      const onclick = s.cafe ? "irA_cafes()" : `menuNivel(${JSON.stringify(path.concat(k))})`;
+      return card(esc(s.nombre), esc(sub), `<button class="btn-primary" onclick='${onclick}'>Abrir</button>`);
+    }).join("");
+  } else if(node.items){
+    cuerpo = node.items.map((it, idx) => {
+      const prod = menuProductoDe(it);
+      const estado = prod
+        ? `<span style="color:var(--olive);">${prod.precio_venta.toFixed(2)} €</span> · coste ${prod.coste.toFixed(2)} € · margen ${Math.round(prod.margen_bruto*100)}%`
+        : `<span style="color:var(--muted);">sin fijar</span>`;
+      return `<div class="card">
+        <div class="card-name">${esc(it.n)}</div>
+        ${it.desc?`<div class="card-meta">${esc(it.desc)}</div>`:""}
+        <div style="font-size:12px;margin-top:6px;">${estado}</div>
+        <div class="card-actions"><button class="btn-primary" onclick="menuEditar(${idx})">${prod?"Editar":"Configurar"}</button></div>
+      </div>`;
+    }).join("");
+  }
+  setInner(`${atras}<div class="section-label">${esc(titulo)}</div>${cuerpo}`);
+}
+function menuEditar(idx){
+  const path = window._menuPath || [];
+  const node = menuNodoEn(path);
+  const it = node && node.items ? node.items[idx] : null;
+  if(!it) return;
+  const prod = menuProductoDe(it);
+  const preset = { nombre: it.n, categoria: it.cat || "", descripcion: it.desc || "" };
+  formReceta(prod ? prod.id : null, preset, () => menuRecargar(path));
+}
+
 // ── CAFÉS · categoría propia (escoge bebida → grano, leche y precio) ──────
 // Todo el café en un sitio, sin mezclar con el resto de la carta. Cada bebida
 // del recetario se configura eligiendo grano y leche del catálogo, con food-cost
@@ -7180,12 +7293,15 @@ async function cafeGuardar(btn){
 
 // ── EDITOR DE RECETAS (escandallo + PVP recomendado en vivo) ──
 function redondearPvp(n){ return n>0?Math.ceil(n*20)/20:0; }
-async function formReceta(id){
+async function formReceta(id, preset, volver){
   const mats=await api("/materias");
   window._cartaMats=mats;
   let listaAlerg=[]; try{ listaAlerg=await api("/carta/alergenos"); }catch(_){ listaAlerg=[]; }
   let p={nombre:"",categoria:"",descripcion:"",precio_venta:0,margen_objetivo:0.7,ingredientes:[],alergenos:[],version:"",vida_util_horas:"",foto_url:null};
   if(id){ try{ const det=await api("/carta/"+id); p={nombre:det.nombre,categoria:det.categoria||"",descripcion:det.descripcion||"",precio_venta:det.precio_venta||0,margen_objetivo:det.margen_objetivo||0.7,ingredientes:(det.ingredientes||[]).map(i=>({materia_id:i.materia_id,cantidad:i.cantidad})),alergenos:det.alergenos||[],version:det.version||"",vida_util_horas:det.vida_util_horas!=null?det.vida_util_horas:"",foto_url:det.foto_url||null}; }catch(e){ alert(e.message); return; } }
+  // Preset (desde el árbol de la carta): rellena nombre/categoría/descripción de la receta nueva.
+  else if(preset){ p.nombre=preset.nombre||""; p.categoria=preset.categoria||""; p.descripcion=preset.descripcion||""; }
+  window._recetaVolver = typeof volver==="function" ? volver : null;
   window._recetaEditId=id||null;
   window._recetaFoto=p.foto_url||null;
   const seleccionados=new Set(p.alergenos||[]);
@@ -7315,7 +7431,8 @@ async function guardarReceta(btn){
     }else{
       await api("/carta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     }
-    irA_carta();
+    if(window._recetaVolver){ const v=window._recetaVolver; window._recetaVolver=null; v(); }
+    else irA_carta();
   }catch(e){ if(msg) msg.textContent="Esto no cuadra: "+e.message; if(btn){btn.disabled=false;} }
 }
 

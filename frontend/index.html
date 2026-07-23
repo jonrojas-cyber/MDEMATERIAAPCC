@@ -6948,7 +6948,7 @@ async function irA_carta(){
   openSection("carta","Carta y márgenes");
   try{
     const d=await api("/carta");
-    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="formReceta()">Crear receta</button></div>`;
+    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="irA_escandalloCafe()">Escandallo de café</button><button class="btn-ghost" onclick="formReceta()">Crear receta</button></div>`;
     const resumen=`<div class="section-label">Resumen de la carta</div>
       <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
         <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
@@ -7001,6 +7001,161 @@ async function setFcObjetivo(id, fcPct){
     await api("/carta/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({margen_objetivo:margen})});
     irA_carta();
   }catch(e){ alert(e.message); }
+}
+
+// ── ESCANDALLO DE CAFÉ · constructor guiado ──────────────────────
+// Eliges bebida + grano + leche; fija los g/ml de la receta, calcula el coste
+// con los precios reales de materia, te pregunta el food-cost objetivo,
+// recomienda el PVP y tú eliges el precio final. Al fijar, crea el producto en
+// la carta (pasa por el motor único de coste/margen del backend).
+const CAFE_BEBIDAS = [
+  { k:"espresso",  n:"Espresso",   desc:"2 shot · pocillo",                    g:17,  leche:0   },
+  { k:"lungo",     n:"Lungo",      desc:"2 shot + agua · taza mediana",        g:17,  leche:0   },
+  { k:"americano", n:"Americano",  desc:"2 shot + agua · 170 ml",              g:17,  leche:0   },
+  { k:"cortado",   n:"Cortado",    desc:"2 shot + leche · pocillo",            g:17,  leche:90  },
+  { k:"flatwhite", n:"Flat White", desc:"2 shot + leche · 200 ml",             g:17,  leche:200 },
+  { k:"capuccino", n:"Capuccino",  desc:"1 shot + leche · 200 ml",             g:8.5, leche:200 },
+  { k:"latte",     n:"Latte",      desc:"2 shot + leche · taza grande 220 ml", g:17,  leche:220 },
+  { k:"icedlatte", n:"Iced latte", desc:"1 shot + 2 hielos + leche",           g:8.5, leche:180 },
+];
+
+async function irA_escandalloCafe(){
+  openSection("escandalloCafe","Escandallo de café");
+  try{
+    const mats=await api("/materias");
+    window._ecMats=mats;
+    // Granos de café (categoría Café, en gramos) menos el cold brew (no es espresso).
+    window._ecCafes=mats.filter(m=>m.categoria==="Café" && m.unidad==="g" && !/coldbrew/i.test(m.id));
+    // Leches (categoría Leche) menos la combinada legacy.
+    window._ecLeches=mats.filter(m=>m.categoria==="Leche" && m.id!=="mat-leche-vegetal");
+    if(!window._ecCafes.length){ setInner(`<div class="err">No hay cafés cargados en materias.</div>`); return; }
+    renderEscandalloCafe();
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+
+function renderEscandalloCafe(){
+  const bOpts=CAFE_BEBIDAS.map((b,i)=>`<option value="${i}">${esc(b.n)} — ${esc(b.desc)}</option>`).join("");
+  const cOpts=window._ecCafes.map(m=>`<option value="${m.id}">${esc(m.nombre)}</option>`).join("");
+  const lOpts=window._ecLeches.map(m=>`<option value="${m.id}">${esc(m.nombre)}</option>`).join("");
+  setInner(`
+    <div class="card-actions" style="margin-bottom:14px;"><button class="btn-ghost" onclick="irA_carta()">← Volver a la carta</button></div>
+    <div class="section-label">Construye la bebida</div>
+    <div class="card">
+      <div class="field"><label>Bebida</label>
+        <select id="ec-bebida" style="width:100%;" onchange="ecCargarBebida()">${bOpts}</select></div>
+      <div class="field"><label>Grano de café</label>
+        <select id="ec-cafe" style="width:100%;" onchange="ecCargarBebida()">${cOpts}</select></div>
+      <div class="field" style="max-width:160px;"><label>Café (g)</label>
+        <input id="ec-g" type="number" step="0.5" min="0" value="17" oninput="ecCalc()" style="width:100%;"></div>
+      <div id="ec-leche-wrap">
+        <div class="field"><label>Leche</label>
+          <select id="ec-leche" style="width:100%;" onchange="ecCalc()">${lOpts}</select></div>
+        <div class="field" style="max-width:160px;"><label>Leche (ml)</label>
+          <input id="ec-ml" type="number" step="5" min="0" value="0" oninput="ecCalc()" style="width:100%;"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Food cost objetivo</div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+        ${[20,25,30].map(fc=>`<button type="button" class="ec-fc" data-fc="${fc}" onclick="ecSetFc(${fc})" style="padding:10px 8px;border:1px solid var(--line);background:var(--olive-light);color:var(--ink);cursor:pointer;font-weight:700;">${fc}%</button>`).join("")}
+      </div>
+      <div class="field" style="max-width:200px;"><label>o food cost a mano (%)</label>
+        <input id="ec-fc" type="number" step="1" min="5" max="90" value="25" oninput="ecCalc()" style="width:100%;"></div>
+      <div id="ec-out" class="card-meta" style="line-height:1.9;"></div>
+    </div>
+
+    <div class="section-label">Precio final (lo eliges tú)</div>
+    <div class="card">
+      <div class="field" style="max-width:200px;"><label>PVP de venta (€)</label>
+        <input id="ec-pvp" type="number" step="0.05" min="0" value="0" oninput="ecCalc()" style="width:100%;"></div>
+      <div class="card-actions"><button class="btn-ghost" onclick="ecUsarRecom()">Usar PVP recomendado</button></div>
+      <div id="ec-final" class="card-meta" style="line-height:1.7;"></div>
+    </div>
+
+    <div class="card">
+      <div class="field"><label>Nombre en la carta</label><input id="ec-nombre" style="width:100%;"></div>
+      <div class="card-actions">
+        <button class="btn-primary" onclick="ecFijar(this)">Fijar receta en la carta</button>
+        <button class="btn-ghost" onclick="irA_carta()">Cancelar</button>
+      </div>
+      <div id="ec-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>
+    </div>`);
+  ecCargarBebida();
+}
+
+function ecMat(id){ return (window._ecMats||[]).find(m=>m.id===id); }
+
+function ecCargarBebida(){
+  const b=CAFE_BEBIDAS[Number(el("ec-bebida").value)||0];
+  el("ec-g").value=b.g;
+  const wrap=el("ec-leche-wrap");
+  if(b.leche>0){ wrap.style.display=""; el("ec-ml").value=b.leche; }
+  else { wrap.style.display="none"; el("ec-ml").value=0; }
+  const cafe=ecMat(el("ec-cafe").value);
+  const grano=cafe?cafe.nombre.replace(/^Café\s+/i,"").replace(/\s*\(espresso\)/i,""):"";
+  el("ec-nombre").value=b.n+(grano?" · "+grano:"");
+  ecCalc();
+}
+
+function ecCalc(){
+  const g=Number(el("ec-g").value)||0;
+  const cafe=ecMat(el("ec-cafe").value);
+  const llevaLeche=el("ec-leche-wrap").style.display!=="none";
+  const ml=llevaLeche?(Number(el("ec-ml").value)||0):0;
+  const leche=llevaLeche?ecMat(el("ec-leche").value):null;
+  const costeCafe=cafe?cafe.coste_medio*g:0;
+  const costeLeche=leche?leche.coste_medio*ml:0;
+  const coste=Math.round((costeCafe+costeLeche)*10000)/10000;
+  const fc=Math.min(0.9,Math.max(0.05,(Number(el("ec-fc").value)||25)/100));
+  const recom=coste>0?redondearPvp(coste/fc):0;
+  window._ecCoste=coste; window._ecRecom=recom;
+  el("ec-out").innerHTML=
+    `Café: <b>${cafe?esc(cafe.nombre):"—"}</b> · ${g} g → ${costeCafe.toFixed(3)} €<br>`+
+    (llevaLeche?`Leche: <b>${leche?esc(leche.nombre):"—"}</b> · ${ml} ml → ${costeLeche.toFixed(3)} €<br>`:"")+
+    `Coste total: <b>${coste.toFixed(3)} €</b><br>`+
+    `A ${Math.round(fc*100)}% food cost → PVP recomendado <b style="color:var(--olive);font-size:16px;">${recom.toFixed(2)} €</b>`;
+  const pvp=Number(el("ec-pvp").value)||0;
+  const out=el("ec-final");
+  if(pvp>0 && coste>0){
+    const margen=(pvp-coste)/pvp, food=coste/pvp;
+    const col=food>0.35?"var(--alert)":(food>0.28?"#C9CBBE":"var(--olive)");
+    out.innerHTML=`Con tu precio (${pvp.toFixed(2)} €): margen <b style="color:${col}">${Math.round(margen*100)}%</b> · food cost <b style="color:${col}">${Math.round(food*100)}%</b> · ganas ${(pvp-coste).toFixed(2)} €/taza`;
+  } else out.innerHTML=`Pon un precio o pulsa «Usar PVP recomendado».`;
+}
+
+function ecSetFc(fc){
+  el("ec-fc").value=fc;
+  document.querySelectorAll(".ec-fc").forEach(b=>{
+    const on=(+b.dataset.fc===fc);
+    b.style.background=on?"var(--olive)":"var(--olive-light)";
+    b.style.color=on?"#23241C":"var(--ink)";
+  });
+  ecCalc();
+}
+function ecUsarRecom(){ if(window._ecRecom>0){ el("ec-pvp").value=window._ecRecom; ecCalc(); } }
+
+async function ecFijar(btn){
+  const nombre=el("ec-nombre").value.trim();
+  const pvp=Number(el("ec-pvp").value)||0;
+  const g=Number(el("ec-g").value)||0;
+  const cafeId=el("ec-cafe").value;
+  const llevaLeche=el("ec-leche-wrap").style.display!=="none";
+  const ml=llevaLeche?(Number(el("ec-ml").value)||0):0;
+  const lecheId=el("ec-leche").value;
+  const fc=Math.min(0.9,Math.max(0.05,(Number(el("ec-fc").value)||25)/100));
+  const msg=el("ec-msg");
+  if(!nombre){ msg.textContent="Ponle un nombre a la bebida."; return; }
+  if(!cafeId || !(g>0)){ msg.textContent="Elige el grano y los gramos de café."; return; }
+  const ingredientes=[{materia_id:cafeId, cantidad:g}];
+  if(llevaLeche && lecheId && ml>0) ingredientes.push({materia_id:lecheId, cantidad:ml});
+  const body={ nombre, categoria:"café", descripcion:CAFE_BEBIDAS[Number(el("ec-bebida").value)||0].desc,
+    precio_venta:pvp, margen_objetivo:1-fc, ingredientes };
+  if(btn) btn.disabled=true;
+  try{
+    await api("/carta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    irA_carta();
+  }catch(e){ msg.textContent=e.message; if(btn) btn.disabled=false; }
 }
 
 // ── EDITOR DE RECETAS (escandallo + PVP recomendado en vivo) ──

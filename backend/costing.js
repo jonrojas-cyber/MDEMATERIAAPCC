@@ -37,17 +37,31 @@ function costeProducto(producto, idxMat) {
   return Math.round(costeEscandallo(producto.ingredientes, idxMat) * 10000) / 10000;
 }
 
-// Margen de un producto de carta: coste, precio, margen bruto y food cost.
+// IVA de venta por defecto en hostelería (España): 10%. Editable por producto.
+const IVA_DEF = 0.10;
+function ivaDe(producto) {
+  const v = producto && producto.iva != null ? Number(producto.iva) : IVA_DEF;
+  return v >= 0 && v < 1 ? v : IVA_DEF;
+}
+
+// Margen de un producto de carta: coste (NETO), precio (PVP con IVA), margen y
+// food cost. El precio_venta es lo que paga el cliente (con IVA); para el margen
+// y el food cost se usa el precio SIN IVA (base imponible), que es lo comparable
+// con el coste neto de las materias.
 function margenProducto(producto, idxMat) {
   const coste = costeProducto(producto, idxMat);
-  const precio = Number(producto.precio_venta) || 0;
-  const margenBruto = precio > 0 ? (precio - coste) / precio : 0;
-  const foodCost = precio > 0 ? coste / precio : 0;
+  const iva = ivaDe(producto);
+  const precio = Number(producto.precio_venta) || 0;      // PVP con IVA
+  const precioNeto = precio > 0 ? precio / (1 + iva) : 0;  // base imponible
+  const margenBruto = precioNeto > 0 ? (precioNeto - coste) / precioNeto : 0;
+  const foodCost = precioNeto > 0 ? coste / precioNeto : 0;
   return {
     coste,
     precio,
+    iva,
+    precio_neto: Math.round(precioNeto * 100) / 100,
     margen_bruto: Math.round(margenBruto * 1000) / 1000,
-    margen_euros: Math.round((precio - coste) * 100) / 100,
+    margen_euros: Math.round((precioNeto - coste) * 100) / 100,
     food_cost: Math.round(foodCost * 1000) / 1000,
   };
 }
@@ -107,5 +121,5 @@ function tamanosLote(receta) {
 module.exports = {
   indiceMaterias, costeEscandallo, costeReceta, costePorUnidad, costeProducto,
   margenProducto, margenMedioCarta, foodCostMedioCarta, valorStock, valorProduccion,
-  costeMermas, tamanosLote,
+  costeMermas, tamanosLote, ivaDe, IVA_DEF,
 };

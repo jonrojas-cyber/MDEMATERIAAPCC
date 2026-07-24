@@ -42,11 +42,11 @@ function escandallar(producto, materias) {
   if (foodCost > 0.35) rentabilidad = "baja";
   else if (foodCost > 0.28) rentabilidad = "media";
 
-  // PVP recomendado para mantener el margen objetivo, YA CON IVA (lo que pones en
-  // la carta): precio_neto = coste / (1 - margen); PVP = precio_neto × (1 + IVA).
+  // PVP recomendado para mantener el margen objetivo. El coste ya lleva IVA, así
+  // que el PVP = coste / (1 - margen) (no se vuelve a sumar IVA).
   const margenObjetivo = producto.margen_objetivo != null ? Number(producto.margen_objetivo) : MARGEN_OBJETIVO_DEF;
   const iva = costing.ivaDe(producto);
-  const precioRecomendado = coste > 0 && margenObjetivo < 1 ? redondearPrecio((coste / (1 - margenObjetivo)) * (1 + iva)) : 0;
+  const precioRecomendado = coste > 0 && margenObjetivo < 1 ? redondearPrecio(coste / (1 - margenObjetivo)) : 0;
 
   return {
     id: producto.id,
@@ -65,13 +65,13 @@ function escandallar(producto, materias) {
     food_cost_objetivo: Math.round((1 - margenObjetivo) * 1000) / 10, // % (ej. 30.0)
     precio_recomendado: precioRecomendado,
     iva: Math.round(iva * 1000) / 1000,
-    precio_neto: mm.precio_neto,
-    // Escenarios de food-cost: PVP CON IVA para servir a 20 / 25 / 30%
-    // (coste ÷ food-cost × (1 + IVA)).
+    coste_neto: mm.coste_neto,
+    // Escenarios de food-cost: PVP para servir a 20 / 25 / 30% (coste ÷ food-cost).
+    // El coste ya incluye IVA, por eso no se vuelve a sumar.
     escenarios: {
-      fc20: coste > 0 ? redondearPrecio((coste / 0.20) * (1 + iva)) : 0,
-      fc25: coste > 0 ? redondearPrecio((coste / 0.25) * (1 + iva)) : 0,
-      fc30: coste > 0 ? redondearPrecio((coste / 0.30) * (1 + iva)) : 0,
+      fc20: coste > 0 ? redondearPrecio(coste / 0.20) : 0,
+      fc25: coste > 0 ? redondearPrecio(coste / 0.25) : 0,
+      fc30: coste > 0 ? redondearPrecio(coste / 0.30) : 0,
     },
     coste_estimado: costeEstimado || producto.cantidades_estimadas === true,
     alergenos: producto.alergenos || [],

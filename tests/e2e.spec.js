@@ -439,7 +439,7 @@ test("recetas: editor calcula escandallo y PVP recomendado en vivo", async ({ pa
   await page.fill(".rc-cant", "100");
   await page.fill("#rc-margen", "70");
   await page.dispatchEvent("#rc-margen", "input");
-  await expect(page.locator("#rc-calc")).toContainText(/Coste del escandallo/i);
+  await expect(page.locator("#rc-calc")).toContainText(/Coste con IVA/i);
   await expect(page.locator("#rc-calc")).toContainText(/PVP recomendado/i);
   // "Usar PVP recomendado" copia el precio sugerido.
   await page.evaluate(() => usarPvp());

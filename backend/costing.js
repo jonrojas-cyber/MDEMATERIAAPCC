@@ -44,24 +44,23 @@ function ivaDe(producto) {
   return v >= 0 && v < 1 ? v : IVA_DEF;
 }
 
-// Margen de un producto de carta: coste (NETO), precio (PVP con IVA), margen y
-// food cost. El precio_venta es lo que paga el cliente (con IVA); para el margen
-// y el food cost se usa el precio SIN IVA (base imponible), que es lo comparable
-// con el coste neto de las materias.
+// Margen de un producto de carta. El COSTE se muestra CON IVA (lo que pagas de
+// verdad al comprar la materia: neto + IVA de compra). El precio, el margen y el
+// food cost se calculan contra ese coste con IVA.
 function margenProducto(producto, idxMat) {
-  const coste = costeProducto(producto, idxMat);
+  const costeNeto = costeProducto(producto, idxMat);
   const iva = ivaDe(producto);
-  const precio = Number(producto.precio_venta) || 0;      // PVP con IVA
-  const precioNeto = precio > 0 ? precio / (1 + iva) : 0;  // base imponible
-  const margenBruto = precioNeto > 0 ? (precioNeto - coste) / precioNeto : 0;
-  const foodCost = precioNeto > 0 ? coste / precioNeto : 0;
+  const coste = Math.round(costeNeto * (1 + iva) * 10000) / 10000; // coste CON IVA
+  const precio = Number(producto.precio_venta) || 0;
+  const margenBruto = precio > 0 ? (precio - coste) / precio : 0;
+  const foodCost = precio > 0 ? coste / precio : 0;
   return {
     coste,
-    precio,
+    coste_neto: Math.round(costeNeto * 10000) / 10000,
     iva,
-    precio_neto: Math.round(precioNeto * 100) / 100,
+    precio,
     margen_bruto: Math.round(margenBruto * 1000) / 1000,
-    margen_euros: Math.round((precioNeto - coste) * 100) / 100,
+    margen_euros: Math.round((precio - coste) * 100) / 100,
     food_cost: Math.round(foodCost * 1000) / 1000,
   };
 }

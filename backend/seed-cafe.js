@@ -90,6 +90,18 @@ const BATCHES = [
     ],
     productos: [],
   },
+  {
+    // Matcha en polvo: en producción no existía ninguna materia de matcha (el
+    // "Matcha base" del JSON nunca llegó a Postgres), así que no salía en el
+    // almacén ni como ingrediente. Se siembra aquí, clasificada en su bloque.
+    // El coste_medio es orientativo: edítalo con el precio real de tu albarán.
+    flag: "cafe_seed_v6_matcha",
+    materias: [
+      { id: "mat-matcha", nombre: "Matcha en polvo", unidad: "g", coste_medio: 0.35, categoria: "Matcha",
+        macro: "Materia Prima", subcategoria: "Café, Matcha y Té", ubicacion: "Barra", disponibilidad_actual: 200 },
+    ],
+    productos: [],
+  },
 ];
 
 async function seedCafe() {

@@ -7012,20 +7012,10 @@ async function setFcObjetivo(id, fcPct){
 // Nada inventado: los nombres son plantillas y el escandallo lo fijas tú.
 const CARTA_ARBOL = {
   cafe:   { nombre:"Café", cafe:true },
-  matcha: { nombre:"Matcha", subs:{
-    origen: { nombre:"Origen", items:[
-      { n:"Matcha Origen · leche entera", cat:"matcha", desc:"Matcha 30 g + leche entera" },
-      { n:"Matcha Origen · coco",         cat:"matcha", desc:"Matcha 30 g + leche de coco" },
-      { n:"Matcha Origen · avena",        cat:"matcha", desc:"Matcha 30 g + leche de avena" },
-      { n:"Matcha Origen · soja",         cat:"matcha", desc:"Matcha 30 g + leche de soja" },
-    ]},
-    equilibrio: { nombre:"Equilibrio", items:[
-      { n:"Matcha Equilibrio", cat:"matcha", desc:"Nuestra interpretación · leche de coco + …" },
-    ]},
-    coleccion: { nombre:"Colección", items:[
-      { n:"Matcha Colección", cat:"matcha", desc:"Por desarrollar" },
-    ]},
-  }},
+  matcha: { nombre:"Matcha", items:[
+    { n:"Matcha Latte",     cat:"matcha", desc:"Matcha + leche" },
+    { n:"Matcha Ice Latte", cat:"matcha", desc:"Matcha + leche + hielo" },
+  ]},
   burbujas: { nombre:"Burbujas", items:[
     { n:"Burbujas Origen",     cat:"burbujas", desc:"Refresco de té · origen" },
     { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Refresco de té · equilibrio" },
@@ -7316,6 +7306,10 @@ async function formReceta(id, preset, volver){
     </div>
     <div class="card">
       <div class="card-name">Ingredientes (escandallo)</div>
+      <div class="field" style="margin:2px 0 6px;">
+        <input id="rc-buscar" placeholder="Buscar materia y añadir…" oninput="rcBuscar(this.value)" style="width:100%;">
+        <div id="rc-buscar-res" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+      </div>
       <div id="rc-ings">${filas}</div>
       <div class="card-actions"><button class="btn-ghost" onclick="addIngrediente()">Añadir ingrediente</button></div>
     </div>
@@ -7360,6 +7354,31 @@ function filaIngredienteHTML(i){
 function addIngrediente(){
   const cont=el("rc-ings"); if(!cont) return;
   cont.insertAdjacentHTML("beforeend",filaIngredienteHTML({materia_id:"",cantidad:0}));
+}
+// Buscador de materias: filtra por nombre (sin acentos) y las añade como ingrediente.
+function rcNorm(s){ return String(s||"").toLowerCase().replace(/[áàä]/g,"a").replace(/[éèë]/g,"e").replace(/[íìï]/g,"i").replace(/[óòö]/g,"o").replace(/[úùü]/g,"u").replace(/ñ/g,"n"); }
+function rcBuscar(q){
+  const cont=el("rc-buscar-res"); if(!cont) return;
+  const n=rcNorm(q).trim();
+  if(!n){ cont.innerHTML=""; return; }
+  const hits=(window._cartaMats||[]).filter(m=>rcNorm(m.nombre).includes(n)).slice(0,16);
+  cont.innerHTML = hits.length
+    ? hits.map(m=>`<button type="button" class="chip" onclick="rcAddMateria('${m.id}')">${esc(m.nombre)} <span style="opacity:.55;">${esc(m.unidad)}</span></button>`).join("")
+    : `<span style="font-size:11px;color:var(--muted);">sin resultados</span>`;
+}
+function rcAddMateria(id){
+  const cont=el("rc-ings"); if(!cont) return;
+  // Reusa la primera fila vacía; si no hay, añade una nueva.
+  let target=null;
+  cont.querySelectorAll(".rc-row").forEach(r=>{ if(!target && !r.querySelector(".rc-mat").value) target=r; });
+  if(target){ target.querySelector(".rc-mat").value=id; }
+  else { cont.insertAdjacentHTML("beforeend",filaIngredienteHTML({materia_id:id,cantidad:0})); }
+  recalcReceta();
+  const busc=el("rc-buscar"); if(busc) busc.value="";
+  const res=el("rc-buscar-res"); if(res) res.innerHTML="";
+  const rows=[...cont.querySelectorAll(".rc-row")].reverse();
+  const row=rows.find(r=>r.querySelector(".rc-mat").value===id);
+  const c=row&&row.querySelector(".rc-cant"); if(c) c.focus();
 }
 function matById(id){ return (window._cartaMats||[]).find(m=>m.id===id); }
 

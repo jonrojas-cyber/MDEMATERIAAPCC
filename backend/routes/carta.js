@@ -42,9 +42,11 @@ function escandallar(producto, materias) {
   if (foodCost > 0.35) rentabilidad = "baja";
   else if (foodCost > 0.28) rentabilidad = "media";
 
-  // PVP recomendado para mantener el margen objetivo: coste / (1 - margen).
+  // PVP recomendado para mantener el margen objetivo, YA CON IVA (lo que pones en
+  // la carta): precio_neto = coste / (1 - margen); PVP = precio_neto × (1 + IVA).
   const margenObjetivo = producto.margen_objetivo != null ? Number(producto.margen_objetivo) : MARGEN_OBJETIVO_DEF;
-  const precioRecomendado = coste > 0 && margenObjetivo < 1 ? redondearPrecio(coste / (1 - margenObjetivo)) : 0;
+  const iva = costing.ivaDe(producto);
+  const precioRecomendado = coste > 0 && margenObjetivo < 1 ? redondearPrecio((coste / (1 - margenObjetivo)) * (1 + iva)) : 0;
 
   return {
     id: producto.id,
@@ -62,11 +64,14 @@ function escandallar(producto, materias) {
     margen_objetivo: Math.round(margenObjetivo * 1000) / 1000,
     food_cost_objetivo: Math.round((1 - margenObjetivo) * 1000) / 10, // % (ej. 30.0)
     precio_recomendado: precioRecomendado,
-    // Escenarios de food-cost: PVP para servir a 20 / 25 / 30% (coste ÷ food-cost).
+    iva: Math.round(iva * 1000) / 1000,
+    precio_neto: mm.precio_neto,
+    // Escenarios de food-cost: PVP CON IVA para servir a 20 / 25 / 30%
+    // (coste ÷ food-cost × (1 + IVA)).
     escenarios: {
-      fc20: coste > 0 ? redondearPrecio(coste / 0.20) : 0,
-      fc25: coste > 0 ? redondearPrecio(coste / 0.25) : 0,
-      fc30: coste > 0 ? redondearPrecio(coste / 0.30) : 0,
+      fc20: coste > 0 ? redondearPrecio((coste / 0.20) * (1 + iva)) : 0,
+      fc25: coste > 0 ? redondearPrecio((coste / 0.25) * (1 + iva)) : 0,
+      fc30: coste > 0 ? redondearPrecio((coste / 0.30) * (1 + iva)) : 0,
     },
     coste_estimado: costeEstimado || producto.cantidades_estimadas === true,
     alergenos: producto.alergenos || [],
@@ -133,6 +138,11 @@ function camposDe(body) {
     let mo = Number(body.margen_objetivo);
     if (mo > 1) mo = mo / 100; // admite porcentaje (70) o fracción (0.7)
     if (mo >= 0 && mo < 1) c.margen_objetivo = mo;
+  }
+  if (body.iva != null && body.iva !== "") {
+    let iva = Number(body.iva);
+    if (iva > 1) iva = iva / 100; // admite porcentaje (10) o fracción (0.10)
+    if (iva >= 0 && iva < 1) c.iva = iva;
   }
   if (Array.isArray(body.ingredientes)) {
     c.ingredientes = body.ingredientes

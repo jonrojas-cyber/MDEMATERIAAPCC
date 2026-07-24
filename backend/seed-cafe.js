@@ -102,6 +102,25 @@ const BATCHES = [
     ],
     productos: [],
   },
+  {
+    // Recetas de matcha ya cargadas (tú solo pones el precio):
+    //   Matcha Latte     = 2 g matcha  + 220 ml leche
+    //   Matcha Ice Latte = 2,5 g matcha + 180 ml leche
+    // Cada uno con las 4 leches (entera/coco/avena/soja). precio_venta 0 = falta
+    // precio (no sale en la carta pública hasta que le pongas PVP).
+    flag: "cafe_seed_v7_matcha_recetas",
+    materias: [],
+    productos: [
+      { id: "prod-matcha-latte-entera", clave: "Matcha Latte · entera", nombre: "Matcha Latte · entera", categoria: "matcha", descripcion: "2 g matcha + 220 ml leche entera", precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2 }, { materia_id: "mat-leche-fresca", cantidad: 220 }] },
+      { id: "prod-matcha-latte-coco",   clave: "Matcha Latte · coco",   nombre: "Matcha Latte · coco",   categoria: "matcha", descripcion: "2 g matcha + 220 ml leche de coco",  precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2 }, { materia_id: "mat-leche-coco", cantidad: 220 }] },
+      { id: "prod-matcha-latte-avena",  clave: "Matcha Latte · avena",  nombre: "Matcha Latte · avena",  categoria: "matcha", descripcion: "2 g matcha + 220 ml leche de avena", precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2 }, { materia_id: "mat-leche-avena", cantidad: 220 }] },
+      { id: "prod-matcha-latte-soja",   clave: "Matcha Latte · soja",   nombre: "Matcha Latte · soja",   categoria: "matcha", descripcion: "2 g matcha + 220 ml leche de soja",  precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2 }, { materia_id: "mat-leche-soja", cantidad: 220 }] },
+      { id: "prod-matcha-ice-entera",   clave: "Matcha Ice Latte · entera", nombre: "Matcha Ice Latte · entera", categoria: "matcha", descripcion: "2,5 g matcha + 180 ml leche entera", precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 }] },
+      { id: "prod-matcha-ice-coco",     clave: "Matcha Ice Latte · coco",   nombre: "Matcha Ice Latte · coco",   categoria: "matcha", descripcion: "2,5 g matcha + 180 ml leche de coco",  precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-coco", cantidad: 180 }] },
+      { id: "prod-matcha-ice-avena",    clave: "Matcha Ice Latte · avena",  nombre: "Matcha Ice Latte · avena",  categoria: "matcha", descripcion: "2,5 g matcha + 180 ml leche de avena", precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-avena", cantidad: 180 }] },
+      { id: "prod-matcha-ice-soja",     clave: "Matcha Ice Latte · soja",   nombre: "Matcha Ice Latte · soja",   categoria: "matcha", descripcion: "2,5 g matcha + 180 ml leche de soja",  precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-soja", cantidad: 180 }] },
+    ],
+  },
 ];
 
 async function seedCafe() {

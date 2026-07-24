@@ -7012,10 +7012,20 @@ async function setFcObjetivo(id, fcPct){
 // Nada inventado: los nombres son plantillas y el escandallo lo fijas tú.
 const CARTA_ARBOL = {
   cafe:   { nombre:"Café", cafe:true },
-  matcha: { nombre:"Matcha", items:[
-    { n:"Matcha Latte",     cat:"matcha", desc:"Matcha + leche" },
-    { n:"Matcha Ice Latte", cat:"matcha", desc:"Matcha + leche + hielo" },
-  ]},
+  matcha: { nombre:"Matcha", subs:{
+    latte: { nombre:"Matcha Latte", cat:"matcha", items:[
+      { n:"Matcha Latte · entera", cat:"matcha", desc:"2 g matcha + 220 ml leche entera" },
+      { n:"Matcha Latte · coco",   cat:"matcha", desc:"2 g matcha + 220 ml leche de coco" },
+      { n:"Matcha Latte · avena",  cat:"matcha", desc:"2 g matcha + 220 ml leche de avena" },
+      { n:"Matcha Latte · soja",   cat:"matcha", desc:"2 g matcha + 220 ml leche de soja" },
+    ]},
+    iceLatte: { nombre:"Matcha Ice Latte", cat:"matcha", items:[
+      { n:"Matcha Ice Latte · entera", cat:"matcha", desc:"2,5 g matcha + 180 ml leche entera" },
+      { n:"Matcha Ice Latte · coco",   cat:"matcha", desc:"2,5 g matcha + 180 ml leche de coco" },
+      { n:"Matcha Ice Latte · avena",  cat:"matcha", desc:"2,5 g matcha + 180 ml leche de avena" },
+      { n:"Matcha Ice Latte · soja",   cat:"matcha", desc:"2,5 g matcha + 180 ml leche de soja" },
+    ]},
+  }},
   burbujas: { nombre:"Burbujas", items:[
     { n:"Burbujas Origen",     cat:"burbujas", desc:"Refresco de té · origen" },
     { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Refresco de té · equilibrio" },
@@ -7082,20 +7092,32 @@ function menuNivel(path){
       return card(esc(s.nombre), esc(sub), `<button class="btn-primary" onclick='${onclick}'>Abrir</button>`);
     }).join("");
   } else if(node.items){
-    cuerpo = node.items.map((it, idx) => {
+    const productos = node.items.map((it, idx) => {
       const prod = menuProductoDe(it);
-      const estado = prod
-        ? `<span style="color:var(--olive);">${prod.precio_venta.toFixed(2)} €</span> · coste ${prod.coste.toFixed(2)} € · margen ${Math.round(prod.margen_bruto*100)}%`
-        : `<span style="color:var(--muted);">sin fijar</span>`;
+      const estado = !prod
+        ? `<span style="color:var(--muted);">sin crear</span>`
+        : (prod.precio_venta > 0
+            ? `<span style="color:var(--olive);">${prod.precio_venta.toFixed(2)} €</span> · coste ${prod.coste.toFixed(2)} € · margen ${Math.round(prod.margen_bruto*100)}%`
+            : `<span style="color:var(--muted);">receta lista · falta precio</span> · coste ${prod.coste.toFixed(2)} €`);
       return `<div class="card">
         <div class="card-name">${esc(it.n)}</div>
         ${it.desc?`<div class="card-meta">${esc(it.desc)}</div>`:""}
         <div style="font-size:12px;margin-top:6px;">${estado}</div>
-        <div class="card-actions"><button class="btn-primary" onclick="menuEditar(${idx})">${prod?"Editar":"Configurar"}</button></div>
+        <div class="card-actions"><button class="btn-primary" onclick="menuEditar(${idx})">${prod?(prod.precio_venta>0?"Editar":"Poner precio"):"Configurar"}</button></div>
       </div>`;
     }).join("");
+    // Crear un producto nuevo en esta categoría (además de las plantillas).
+    const crear = `<div class="card-actions" style="margin-top:4px;"><button class="btn-ghost" onclick="menuCrear()">+ Crear producto aquí</button></div>`;
+    cuerpo = productos + crear;
   }
   setInner(`${atras}<div class="section-label">${esc(titulo)}</div>${cuerpo}`);
+}
+// Crear un producto nuevo dentro de la categoría actual (receta libre).
+function menuCrear(){
+  const path = window._menuPath || [];
+  const node = menuNodoEn(path);
+  const cat = (node && (node.cat || (node.items && node.items[0] && node.items[0].cat))) || "";
+  formReceta(null, { nombre:"", categoria: cat, descripcion:"" }, () => menuRecargar(path));
 }
 function menuEditar(idx){
   const path = window._menuPath || [];
@@ -7155,9 +7177,14 @@ function renderCafeLista(){
       <div class="card-actions"><button class="btn-primary" onclick="cafeConfig(${i})">${p?"Editar":"Configurar"}</button></div>
     </div>`;
   }).join("");
+  const crear = `<div class="card-actions" style="margin-top:4px;"><button class="btn-ghost" onclick="cafeCrear()">+ Crear producto de café</button></div>`;
   setInner(`<div class="section-label">Bebidas de café</div>
     <div class="card-meta" style="margin-bottom:12px;">Toca una bebida para elegir su grano, su leche y su precio.</div>
-    ${filas}`);
+    ${filas}${crear}`);
+}
+// Crear un producto de café libre (receta a mano) dentro de la categoría café.
+function cafeCrear(){
+  formReceta(null, { nombre:"", categoria:"café", descripcion:"" }, () => irA_cafes());
 }
 
 // Configura UNA bebida: grano + leche + gramos/ml + food-cost + precio.

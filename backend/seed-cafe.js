@@ -121,6 +121,22 @@ const BATCHES = [
       { id: "prod-matcha-ice-soja",     clave: "Matcha Ice Latte · soja",   nombre: "Matcha Ice Latte · soja",   categoria: "matcha", descripcion: "2,5 g matcha + 180 ml leche de soja",  precio_venta: 0, margen_objetivo: 0.75, activo: true, ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-soja", cantidad: 180 }] },
     ],
   },
+  {
+    // Repostería COMPRADA (reventa): una materia por pieza con su coste de compra
+    // NETO (sin IVA, deducible) y su producto en la carta. Solo falta el PVP.
+    //   Croissant 0,60 · Cookie pistacho/cardamomo/lima 2,10 · Rol de canela 0,71
+    flag: "cafe_seed_v8_reposteria",
+    materias: [
+      { id: "mat-rep-croissant",  nombre: "Croissant",                          unidad: "ud", coste_medio: 0.60, categoria: "Repostería", macro: "Materia Prima", subcategoria: "Seco y Despensa", ubicacion: "Vitrina", disponibilidad_actual: 20 },
+      { id: "mat-rep-cookie-pcl", nombre: "Cookie de pistacho, cardamomo y lima", unidad: "ud", coste_medio: 2.10, categoria: "Repostería", macro: "Materia Prima", subcategoria: "Seco y Despensa", ubicacion: "Vitrina", disponibilidad_actual: 20 },
+      { id: "mat-rep-rol-canela", nombre: "Rol de canela",                       unidad: "ud", coste_medio: 0.71, categoria: "Repostería", macro: "Materia Prima", subcategoria: "Seco y Despensa", ubicacion: "Vitrina", disponibilidad_actual: 20 },
+    ],
+    productos: [
+      { id: "prod-rep-croissant", clave: "Croissant",                            nombre: "Croissant",                            categoria: "repostería", descripcion: "Comprado", precio_venta: 0, margen_objetivo: 0.7, activo: true, ingredientes: [{ materia_id: "mat-rep-croissant", cantidad: 1 }] },
+      { id: "prod-rep-cookie",    clave: "Cookie de pistacho, cardamomo y lima", nombre: "Cookie de pistacho, cardamomo y lima", categoria: "repostería", descripcion: "Comprada", precio_venta: 0, margen_objetivo: 0.7, activo: true, ingredientes: [{ materia_id: "mat-rep-cookie-pcl", cantidad: 1 }] },
+      { id: "prod-rep-rol",       clave: "Rol de canela",                        nombre: "Rol de canela",                        categoria: "repostería", descripcion: "Comprado", precio_venta: 0, margen_objetivo: 0.7, activo: true, ingredientes: [{ materia_id: "mat-rep-rol-canela", cantidad: 1 }] },
+    ],
+  },
 ];
 
 async function seedCafe() {

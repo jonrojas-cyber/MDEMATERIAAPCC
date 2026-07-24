@@ -14,8 +14,10 @@ const ORDEN_CAT = [
   ["burbujas", "burbujas"],
   ["zumos", "zumos"],
   ["infusiones", "infusiones"],
-  ["dulce", "dulce"],
   ["comida", "comida"],
+  ["repostería", "repostería"],
+  ["reposteria", "repostería"],
+  ["dulce", "dulce"],
 ];
 
 function esc(s) {

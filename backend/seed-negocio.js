@@ -23,8 +23,18 @@ const BATCHES = [
     flag: "negocio_seed_v2_prestamos",
     entity: "debts",
     inserts: [
-      { id: "debt-0892", name: "Préstamo *0892", lender: "Banco", type: "loan", initial_amount: 40000, outstanding_amount: 36830.19, interest_rate: 0, monthly_payment: 480.93, start_date: null, end_date: "2035-04-30", status: "activa", notes: "Cuadro del banco (2 de 4)", creado_en: new Date().toISOString() },
-      { id: "debt-7186", name: "Préstamo *7186", lender: "Banco", type: "loan", initial_amount: 20000, outstanding_amount: 19521.05, interest_rate: 0, monthly_payment: 227.10, start_date: null, end_date: "2036-02-29", status: "activa", notes: "Cuadro del banco (4 de 4)", creado_en: new Date().toISOString() },
+      { id: "debt-0892", name: "Préstamo *0892", lender: "Banco", type: "loan", initial_amount: 40000, outstanding_amount: 36830.19, interest_rate: 0, monthly_payment: 480.93, start_date: null, end_date: "2035-04-30", status: "activa", notes: "Cuadro del banco", creado_en: new Date().toISOString() },
+      { id: "debt-7186", name: "Préstamo *7186", lender: "Banco", type: "loan", initial_amount: 20000, outstanding_amount: 19521.05, interest_rate: 0, monthly_payment: 227.10, start_date: null, end_date: "2036-02-29", status: "activa", notes: "Cuadro del banco", creado_en: new Date().toISOString() },
+    ],
+  },
+  {
+    // Quitar los costes de EJEMPLO que el usuario no tiene (Internet y Seguro RC).
+    // Se desactivan (no se borran) por si luego los quiere con su importe real.
+    flag: "negocio_seed_v4_limpieza",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-internet", active: false },
+      { id: "fc-seguro", active: false },
     ],
   },
 ];

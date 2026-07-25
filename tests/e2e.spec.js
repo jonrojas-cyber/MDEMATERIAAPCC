@@ -693,7 +693,7 @@ test("costes fijos OS: la pantalla muestra coste de existir y punto de equilibri
   await login(page);
   await page.evaluate(() => irA_costesFijos());
   await expect(page.locator(".cc-label", { hasText: /Coste de existir/ })).toBeVisible();
-  await expect(page.locator(".cc-label", { hasText: /Punto de equilibrio · hoy/ })).toBeVisible();
+  await expect(page.locator(".cc-label", { hasText: /Punto de equilibrio/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

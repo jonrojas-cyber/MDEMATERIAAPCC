@@ -4123,7 +4123,7 @@ function ccRender(d){
     <div class="cc-label">Coste de abrir la persiana · ${esc(d.periodo.label)}</div>
     <div class="cc-kpi">${ccEur(ca.total)}</div>
     <div class="cc-mini">Al día ${ccEur(ca.prorrateo&&ca.prorrateo.diario)} · semana ${ccEur(ca.prorrateo&&ca.prorrateo.semanal)} · mes ${ccEur(ca.prorrateo&&ca.prorrateo.mensual)}</div>
-    <div class="cc-mini cc-accent">${be&&be.ingreso_equilibrio_dia!=null?`Punto de equilibrio: ${ccEur(be.ingreso_equilibrio_dia)}/día${be.hoy&&be.hoy.cafes?` (≈ ${eur0(be.hoy.cafes)} cafés)`:""}`:`Necesitas vender ${ccEur(ventaNec)}/día para cubrirlo con margen`}</div></button>`;
+    <div class="cc-mini cc-accent">${be&&(be.ingreso_equilibrio_dia_abierto!=null||be.ingreso_equilibrio_dia!=null)?`Punto de equilibrio: ${ccEur(be.ingreso_equilibrio_dia_abierto!=null?be.ingreso_equilibrio_dia_abierto:be.ingreso_equilibrio_dia)}/día abierto`:`Necesitas vender ${ccEur(ventaNec)}/día para cubrirlo con margen`}</div></button>`;
   // Valor empresa
   const valorCard=`<button class="cc-card" onclick="irA_valorEmpresa()">
     <div class="cc-label">Valor de la empresa</div>
@@ -4337,9 +4337,9 @@ async function irA_costesFijos(){
         <div class="cc-kpi cc-big">${ccEur(db.coste_mes)}<span class="cc-score-max"> /mes</span></div>
         <div class="cc-mini">Al día ${ccEur(db.coste_dia)} · semana ${ccEur(db.coste_semana)} · año ${ccEur(db.coste_anio)}</div>
         <div class="cc-mini">Cada hora abierta cuesta <b>${ccEur(db.coste_hora)}</b> (${ccEur(db.coste_minuto)}/min)${db.mayor_gasto?` · mayor gasto: <b>${esc(db.mayor_gasto.nombre)}</b> ${eur0(db.mayor_gasto.mensual)} €/mes`:""}</div></div>
-      <div class="cc-card"><div class="cc-label">Punto de equilibrio · hoy</div>
-        <div class="cc-kpi">${be.ingreso_equilibrio_dia!=null?ccEur(be.ingreso_equilibrio_dia):'—'}</div>
-        <div class="cc-mini">${be.hoy&&be.hoy.cafes?`≈ ${eur0(be.hoy.cafes)} cafés o ${eur0(be.hoy.clientes)} clientes`:'Configura ticket medio en el perfil'} · contribución ${ct.ratio_contribucion_pct!=null?ct.ratio_contribucion_pct+'%':'—'}</div>
+      <div class="cc-card"><div class="cc-label">Punto de equilibrio · por día abierto</div>
+        <div class="cc-kpi">${be.ingreso_equilibrio_dia_abierto!=null?ccEur(be.ingreso_equilibrio_dia_abierto):(be.ingreso_equilibrio_dia!=null?ccEur(be.ingreso_equilibrio_dia):'—')}</div>
+        <div class="cc-mini">${be.hoy&&be.hoy.cafes?`≈ ${eur0(Math.ceil(be.hoy.cafes*((be.ingreso_equilibrio_dia_abierto&&be.ingreso_equilibrio_dia)?be.ingreso_equilibrio_dia_abierto/be.ingreso_equilibrio_dia:1)))} cafés o ${eur0(Math.ceil(be.hoy.clientes*((be.ingreso_equilibrio_dia_abierto&&be.ingreso_equilibrio_dia)?be.ingreso_equilibrio_dia_abierto/be.ingreso_equilibrio_dia:1)))} clientes`:'Configura ticket medio en el perfil'} · ${be.dias_abiertos_mes?eur0(be.dias_abiertos_mes)+' días/mes':''} · contribución ${ct.ratio_contribucion_pct!=null?ct.ratio_contribucion_pct+'%':'—'}</div>
         <div class="cc-mini ${ms!=null&&ms<0?'cc-accent':''}">${msTxt}</div>
         <div class="cc-mini">Semana ${be.semana&&be.semana.disponible?ccEur(be.semana.ingreso_necesario):'—'} · mes ${be.mes&&be.mes.disponible?ccEur(be.mes.ingreso_necesario):'—'} · año ${be.anio&&be.anio.disponible?ccEur(be.anio.ingreso_necesario):'—'}</div></div>
       <div class="cc-grid">
@@ -7036,22 +7036,11 @@ const CARTA_ARBOL = {
     { n:"Zumo Equilibrio", cat:"zumos", desc:"Zumo · equilibrio" },
     { n:"Zumo Colección",  cat:"zumos", desc:"Zumo · colección" },
   ]},
-  comida: { nombre:"Comida", subs:{
-    tostas: { nombre:"Tostas", items:[
-      { n:"Tosta Origen", cat:"comida" }, { n:"Tosta Equilibrio", cat:"comida" }, { n:"Tosta Colección", cat:"comida" },
-    ]},
-    sandwich: { nombre:"Sándwich", items:[
-      { n:"Sándwich Origen", cat:"comida" }, { n:"Sándwich Equilibrio", cat:"comida" }, { n:"Sándwich Colección", cat:"comida" },
-    ]},
-    reposteria: { nombre:"Repostería", cat:"repostería", items:[
-      { n:"Croissant", cat:"repostería", desc:"Comprado · 0,60 € + IVA" },
-      { n:"Cookie de pistacho, cardamomo y lima", cat:"repostería", desc:"Comprada · 2,10 € + IVA" },
-      { n:"Rol de canela", cat:"repostería", desc:"Comprado · 0,71 € + IVA" },
-    ]},
-    bowls: { nombre:"Bowls", items:[
-      { n:"Bowl Origen", cat:"comida" }, { n:"Bowl Equilibrio", cat:"comida" }, { n:"Bowl Colección", cat:"comida" },
-    ]},
-  }},
+  reposteria: { nombre:"Repostería", cat:"repostería", items:[
+    { n:"Croissant", cat:"repostería", desc:"Comprado · 0,60 € + IVA" },
+    { n:"Cookie de pistacho, cardamomo y lima", cat:"repostería", desc:"Comprada · 2,10 € + IVA" },
+    { n:"Rol de canela", cat:"repostería", desc:"Comprado · 0,71 € + IVA" },
+  ]},
 };
 
 async function irA_menu(){

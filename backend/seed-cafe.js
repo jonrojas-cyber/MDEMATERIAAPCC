@@ -137,6 +137,16 @@ const BATCHES = [
       { id: "prod-rep-rol",       clave: "Rol de canela",                        nombre: "Rol de canela",                        categoria: "repostería", descripcion: "Comprado", precio_venta: 0, margen_objetivo: 0.7, activo: true, ingredientes: [{ materia_id: "mat-rep-rol-canela", cantidad: 1 }] },
     ],
   },
+  {
+    // Precio real del matcha (albarán): 190 €/kg neto = 0,19 €/g (antes 0,35
+    // provisional). Baja el coste de todos los matchas y sube su margen.
+    flag: "cafe_seed_v9_matcha_precio",
+    materias: [],
+    productos: [],
+    actualizaciones: [
+      { entity: "materias", id: "mat-matcha", campos: { coste_medio: 0.19 } },
+    ],
+  },
 ];
 
 async function seedCafe() {

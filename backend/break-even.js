@@ -76,9 +76,15 @@ function puntoEquilibrio(now = Date.now(), opts = {}) {
   const ratio = contrib.ratio_contribucion > 0 ? contrib.ratio_contribucion : null;
 
   const fijoDia = baseFijaDiaria(now);
-  const ingresoDia = ratio ? fijoDia / ratio : null;   // ventas para equilibrio hoy
+  const ingresoDia = ratio ? fijoDia / ratio : null;   // ventas de equilibrio por día de CALENDARIO
   const ticket = Number(perfil.ticket_medio) > 0 ? Number(perfil.ticket_medio) : null;
   const cafe = Number(perfil.cafe_medio) > 0 ? Number(perfil.cafe_medio) : null;
+
+  // Ventas de equilibrio por día ABIERTO: el break-even del mes hay que hacerlo
+  // solo los días que abres. Días abiertos/mes = dias_semana × (52/12).
+  const diasSemana = Number(perfil.dias_semana) > 0 ? Number(perfil.dias_semana) : 6;
+  const diasAbiertosMes = diasSemana * (365 / 12 / 7); // 6 días ≈ 26,07/mes
+  const ingresoDiaAbierto = ingresoDia != null && diasAbiertosMes > 0 ? (ingresoDia * MES) / diasAbiertosMes : null;
 
   const escala = (dias) => {
     if (ingresoDia == null) return { disponible: false };
@@ -108,6 +114,9 @@ function puntoEquilibrio(now = Date.now(), opts = {}) {
     ratio_contribucion_pct: contrib.ratio_contribucion_pct,
     base_fija_diaria: eur(fijoDia),
     ingreso_equilibrio_dia: ingresoDia != null ? eur(ingresoDia) : null,
+    ingreso_equilibrio_dia_abierto: ingresoDiaAbierto != null ? eur(ingresoDiaAbierto) : null,
+    dias_abiertos_mes: Math.round(diasAbiertosMes * 10) / 10,
+    dias_semana: diasSemana,
     hoy: escala(1),
     semana: escala(7),
     mes: escala(MES),

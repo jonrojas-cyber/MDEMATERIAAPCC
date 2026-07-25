@@ -44,6 +44,8 @@ function sistemaOperativo(now = Date.now(), localId = "principal") {
     lineas: totales.lineas,
     mayor_gasto: mayor,
     equilibrio_dia: equilibrio.ingreso_equilibrio_dia,
+    equilibrio_dia_abierto: equilibrio.ingreso_equilibrio_dia_abierto,
+    dias_abiertos_mes: equilibrio.dias_abiertos_mes,
     equilibrio_clientes_dia: equilibrio.hoy && equilibrio.hoy.clientes,
     equilibrio_cafes_dia: equilibrio.hoy && equilibrio.hoy.cafes,
     margen_seguridad_pct: equilibrio.margen_seguridad_pct,

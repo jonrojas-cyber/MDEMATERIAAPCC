@@ -323,6 +323,8 @@ store
     // Siembra idempotente de la carta de café (cafés Inefable + leches). Inserta
     // en el almacén real (Postgres o JSON) si faltan; se ejecuta una sola vez.
     require("./seed-cafe").seedCafe().catch(() => {});
+    // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
+    require("./seed-negocio").seedNegocio().catch(() => {});
 
     app.listen(PORT, () => {
       console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);

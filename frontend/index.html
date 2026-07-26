@@ -4327,6 +4327,16 @@ async function irA_costesFijos(){
     // Calculadora de objetivo de beneficio (cliente): cuotas de préstamo + margen + días.
     const cuotasPrestamos=(deudas.todas||[]).filter(x=>x&&(x.status||'activa')!=='pagada').reduce((s,x)=>s+(Number(x.monthly_payment)||0),0);
     window._ccObj={ ratio:(ct.ratio_contribucion_pct!=null?ct.ratio_contribucion_pct/100:0), fijos:(db.coste_mes||0), cuotas:cuotasPrestamos, dias:(be.dias_abiertos_mes||26), iva:0.10 };
+    // EBITDA real = margen × ventas netas − gastos fijos de explotación (sin
+    // intereses/préstamos ni amortizaciones). Necesita ventas registradas.
+    const ratioLive=(ct.ratio_contribucion_pct||0)/100;
+    let ebitdaTxt='Registra ventas (Ágora) para ver tu EBITDA real.';
+    if(be.venta_media_dia>0 && ratioLive>0){
+      const ventasMesNeto=(be.venta_media_dia*30.4375)/1.10;
+      const ebitda=ratioLive*ventasMesNeto-(db.coste_mes||0);
+      const pct=ventasMesNeto>0?Math.round(ebitda/ventasMesNeto*100):0;
+      ebitdaTxt=`EBITDA con tus ventas (${ccEur(be.venta_media_dia)}/día): <b style="color:var(--olive)">${ccEur(ebitda)}/mes · ${pct}%</b>`;
+    }
     const filas=(d.costes||[]).map(f=>`<div class="card"><div class="card-name">${esc(f.name)} <span class="tag-ink">${esc(f.category||'Otros')}</span></div>
       <div class="card-meta">${eur0(f.amount)} € ${CC_PER_LABEL[f.periodicity]||f.periodicity} · ${eur0(f.prorrateo.diario)} €/día · ${eur0(f.prorrateo.mensual)} €/mes${f.active===false?' · <b>inactivo</b>':''}</div>
       <div class="card-actions"><button class="btn-ghost" onclick='ccFcForm(${JSON.stringify(f.id)})'>Editar</button><button class="btn-ghost" onclick='ccFcBorrar(${JSON.stringify(f.id)})'>Quitar</button></div></div>`).join("");
@@ -4345,11 +4355,13 @@ async function irA_costesFijos(){
         <div class="cc-kpi">${be.ingreso_equilibrio_dia_abierto!=null?ccEur(be.ingreso_equilibrio_dia_abierto):(be.ingreso_equilibrio_dia!=null?ccEur(be.ingreso_equilibrio_dia):'—')}</div>
         <div class="cc-mini">${be.hoy&&be.hoy.cafes?`≈ ${eur0(Math.ceil(be.hoy.cafes*((be.ingreso_equilibrio_dia_abierto&&be.ingreso_equilibrio_dia)?be.ingreso_equilibrio_dia_abierto/be.ingreso_equilibrio_dia:1)))} cafés o ${eur0(Math.ceil(be.hoy.clientes*((be.ingreso_equilibrio_dia_abierto&&be.ingreso_equilibrio_dia)?be.ingreso_equilibrio_dia_abierto/be.ingreso_equilibrio_dia:1)))} clientes`:'Configura ticket medio en el perfil'} · ${be.dias_abiertos_mes?eur0(be.dias_abiertos_mes)+' días/mes':''} · contribución ${ct.ratio_contribucion_pct!=null?ct.ratio_contribucion_pct+'%':'—'}</div>
         <div class="cc-mini ${ms!=null&&ms<0?'cc-accent':''}">${msTxt}</div>
+        <div class="cc-mini">${ebitdaTxt}</div>
         <div class="cc-mini">Semana ${be.semana&&be.semana.disponible?ccEur(be.semana.ingreso_necesario):'—'} · mes ${be.mes&&be.mes.disponible?ccEur(be.mes.ingreso_necesario):'—'} · año ${be.anio&&be.anio.disponible?ccEur(be.anio.ingreso_necesario):'—'}</div></div>
       <div class="cc-card"><div class="cc-label">¿Cuánto facturar para ganar lo que quiero?</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 4px;">
           <label style="font-size:10px;color:var(--muted);">Ganar limpio (€/mes)<br><input id="cc-obj-ben" type="number" step="100" min="0" value="2000" oninput="ccObjetivo()" style="width:130px;margin-top:3px;"></label>
           <label style="font-size:10px;color:var(--muted);">IRPF+autónomos (%)<br><input id="cc-obj-tipo" type="number" step="1" min="0" max="60" value="25" oninput="ccObjetivo()" style="width:90px;margin-top:3px;"></label>
+          <label style="font-size:10px;color:var(--muted);">Trabajadores extra (×1.800 €)<br><input id="cc-obj-trab" type="number" step="1" min="0" value="0" oninput="ccObjetivo()" style="width:90px;margin-top:3px;"></label>
           <label style="font-size:11px;display:flex;align-items:center;gap:5px;"><input id="cc-obj-prest" type="checkbox" checked onchange="ccObjetivo()"> con préstamos</label>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:8px;">${[1000,2000,3000].map(n=>`<button type="button" class="chip" onclick="el('cc-obj-ben').value=${n};ccObjetivo()">${eur0(n)} €</button>`).join("")}</div>
@@ -4378,15 +4390,23 @@ function ccObjetivo(){
   const conPrest=!el("cc-obj-prest")||el("cc-obj-prest").checked;
   const ratio=o.ratio>0?o.ratio:0;
   if(!ratio){ out.innerHTML="Añade productos con precio para calcular tu margen."; return; }
+  const trab=Math.max(0,Number(el("cc-obj-trab")?el("cc-obj-trab").value:0)||0);
+  const iva=(o.iva||0.10);
+  const fijosOper=(o.fijos||0)+trab*1800;                 // gastos de explotación (con trabajadores extra), SIN préstamos
   const pretax = tipo<1 ? D/(1-tipo) : D;
-  const base = (o.fijos||0) + (conPrest?(o.cuotas||0):0) + pretax;
-  const facturaMes = base*(1+(o.iva||0.10))/ratio;
+  const base = fijosOper + (conPrest?(o.cuotas||0):0) + pretax;
+  const facturaMes = base*(1+iva)/ratio;
   const dias = o.dias>0?o.dias:26;
   const facturaDia = facturaMes/dias;
+  // EBITDA a ese nivel de facturación (antes de intereses/préstamos e impuestos).
+  const ventaNeta = facturaMes/(1+iva);
+  const ebitda = ratio*ventaNeta - fijosOper;
+  const ebitdaPct = ventaNeta>0 ? (ebitda/ventaNeta)*100 : 0;
   out.innerHTML =
     `Para ganar <b>${ccEur(D)}</b> limpios/mes necesitas facturar<br>`+
     `<b style="color:var(--olive);font-size:18px;">${ccEur(facturaMes)}/mes</b> · <b style="color:var(--olive);">${ccEur(facturaDia)}/día</b> <span class="cc-mini">(${eur0(dias)} días abiertos)</span><br>`+
-    `<span class="cc-mini">Ya descontado: materia prima, gastos fijos${conPrest?', préstamos':''}, IVA ${Math.round((o.iva||0.10)*100)}% e IRPF/autónomos ${Math.round(tipo*100)}%. Margen ${Math.round(ratio*100)}%.</span>`;
+    `<span class="cc-mini">EBITDA a ese nivel: <b>${ccEur(ebitda)}/mes (${Math.round(ebitdaPct)}%)</b></span><br>`+
+    `<span class="cc-mini">Ya descontado: materia prima, gastos fijos${trab>0?` (+${trab} trabajador${trab===1?'':'es'} ×1.800 €)`:''}${conPrest?', préstamos':''}, IVA ${Math.round(iva*100)}% e IRPF/autónomos ${Math.round(tipo*100)}%. Margen ${Math.round(ratio*100)}%.</span>`;
 }
 async function ccPerfilForm(){
   const p=await api("/fixed-costs/perfil").catch(()=>({}));

@@ -27,6 +27,16 @@ function disponible() {
 const ESQUEMA = {
   type: "object",
   properties: {
+    tipo_documento: {
+      type: "string",
+      description:
+        "Tipo de documento: 'factura' si es una FACTURA (documento fiscal: aparece la palabra FACTURA, " +
+        "un número de factura, desglose de IVA/base imponible, 'total a pagar', vencimiento o forma de pago). " +
+        "'albaran' si es un ALBARÁN o nota de entrega (acompaña la mercancía, lista productos y cantidades, " +
+        "suele decir 'ALBARÁN'/'nota de entrega'/'no válido a efectos fiscales' y no desglosa impuestos). " +
+        "Si no está claro, 'desconocido'.",
+    },
+    numero_documento: { type: "string", description: "Número de la factura o del albarán tal cual aparece (p. ej. 'FRA 2025/0123' o 'ALB-4471'). Si no se ve, cadena vacía." },
     proveedor: { type: "string", description: "Nombre comercial/fiscal del proveedor o emisor del albarán" },
     proveedor_cif: { type: "string", description: "CIF/NIF del proveedor si aparece (p. ej. B12345678). Si no, cadena vacía." },
     proveedor_telefono: { type: "string", description: "Teléfono del proveedor si aparece. Si no, cadena vacía." },
@@ -103,8 +113,13 @@ async function extraerAlbaran(base64, mediaType) {
             {
               type: "text",
               text:
-                "Esto es la foto de un albarán de un proveedor de hostelería. " +
-                "Extrae los datos del PROVEEDOR/emisor de la cabecera del albarán: nombre, " +
+                "Esto es la foto de un documento de un proveedor de hostelería: puede ser un ALBARÁN (nota de entrega) " +
+                "o una FACTURA (documento fiscal). Lo primero: decide 'tipo_documento'. Es FACTURA si aparece la palabra " +
+                "'FACTURA', un número de factura, desglose de IVA/base imponible, 'total a pagar', vencimiento o forma de " +
+                "pago. Es ALBARÁN si acompaña la mercancía, lista productos y cantidades sin desglose de impuestos, o dice " +
+                "'ALBARÁN'/'nota de entrega'/'no válido a efectos fiscales'. Si no está claro, 'desconocido'. Extrae también " +
+                "el 'numero_documento' (nº de factura o de albarán). " +
+                "Extrae los datos del PROVEEDOR/emisor de la cabecera: nombre, " +
                 "CIF/NIF, teléfono, email y dirección (los que aparezcan; si alguno no se ve, cadena vacía). " +
                 "Extrae también la fecha, el importe total y las líneas de producto " +
                 "(descripción, cantidad, UNIDAD de medida, precio unitario e importe). " +
@@ -155,7 +170,11 @@ async function extraerAlbaranMulti(imagenes, mediaType) {
   content.push({
     type: "text",
     text:
-      `Estas ${fotos.length} fotos son las HOJAS de un MISMO albarán de un proveedor de hostelería. ` +
+      `Estas ${fotos.length} fotos son las HOJAS de un MISMO documento (albarán o factura) de un proveedor de hostelería. ` +
+      "Primero decide 'tipo_documento': 'factura' si es documento fiscal (palabra FACTURA, nº de factura, desglose de " +
+      "IVA/base imponible, 'total a pagar', vencimiento o forma de pago); 'albaran' si es nota de entrega (mercancía, " +
+      "productos y cantidades sin desglose de impuestos, 'ALBARÁN'/'nota de entrega'/'no válido a efectos fiscales'); si " +
+      "no está claro, 'desconocido'. Extrae también 'numero_documento'. " +
       "Trátalas como un solo documento: extrae UNA cabecera de proveedor (nombre, CIF, teléfono, email, dirección; " +
       "normalmente en la primera hoja), la fecha, el importe total (el gran total, normalmente en la última hoja) y " +
       "COMBINA en una única lista TODAS las líneas de producto de todas las hojas (descripción, cantidad, UNIDAD de " +

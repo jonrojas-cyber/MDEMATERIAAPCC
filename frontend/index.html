@@ -6043,7 +6043,7 @@ function renderAvisos(cot){
 // ── RECEPCIÓN ────────────────────────────────────────
 async function irA_recepcion(pre){
   openSection("recepcion","Recepción");
-  window._albHojas=[]; window._albFoto=null; // empieza sin hojas de albarán acumuladas
+  window._albHojas=[]; window._albFoto=null; window._tipoDoc="albaran"; window._numDoc=""; // empieza sin hojas de albarán acumuladas
   try{
     const [provs,recs,mats]=await Promise.all([api("/proveedores"),api("/recepciones"),api("/materias")]);
     window._mat=mats;
@@ -6068,8 +6068,9 @@ async function irA_recepcion(pre){
         <div class="card-actions"><button class="btn-primary" onclick="nuevaRcp()">Registrar recepción</button></div>
       </div>
       <div class="card">
-        <div class="card-name">Escanear albarán</div>
-        <div class="card-meta" id="ocr-hint">Haz la foto del albarán: ajustas las esquinas, se endereza y se lee solo.</div>
+        <div class="card-name">Escanear albarán o factura</div>
+        <div class="card-meta" id="ocr-hint">Haz la foto: ajustas las esquinas, se endereza y se lee solo. Detecta si es albarán o factura.</div>
+        <div id="rcp-tipo-badge" style="display:none;margin:8px 0;"></div>
         <input type="file" accept="image/*" capture="environment" id="alb-file-cam" style="display:none" onchange="escanearAlbaran(this)">
         <input type="file" accept="image/*" id="alb-file-gal" style="display:none" onchange="escanearAlbaran(this)">
         <div class="card-actions">
@@ -6090,9 +6091,11 @@ async function irA_recepcion(pre){
           `<button class="btn-ghost" onclick="resolverRcp('${r.id}','Rechazado')">Rechazar</button>`
         :"")
         +(r.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`:"");
-      const extra=[r.lote_proveedor?`lote ${esc(r.lote_proveedor)}`:"", r.caducidad?`cad. ${esc(r.caducidad)}`:""].filter(Boolean).join(" · ");
+      const esFac=r.tipo_documento==="factura";
+      const tipoTag=`<span style="display:inline-block;background:${esFac?"#9C5A2E":"var(--olive)"};color:#fff;font-weight:700;font-size:10px;padding:1px 7px;border-radius:20px;vertical-align:1px;">${esFac?"FACTURA":"ALBARÁN"}</span>`;
+      const extra=[r.numero_documento?`nº ${esc(r.numero_documento)}`:"", r.lote_proveedor?`lote ${esc(r.lote_proveedor)}`:"", r.caducidad?`cad. ${esc(r.caducidad)}`:""].filter(Boolean).join(" · ");
       return card(
-        `${prov?.nombre||r.proveedor_id} — ${r.importe_total.toFixed(2)} €`,
+        `${tipoTag} ${prov?.nombre||r.proveedor_id} — ${r.importe_total.toFixed(2)} €`,
         `<span style="color:${colEst};font-weight:700">${r.estado}</span> · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}${extra?` · ${extra}`:""}`,
         acciones
       );
@@ -6185,12 +6188,14 @@ async function nuevaRcp(){
     foto_producto:window._rcpProdFoto||null,
     lote_proveedor:(el("rcp-lote")&&el("rcp-lote").value.trim())||"",
     caducidad:(el("rcp-cad")&&el("rcp-cad").value.trim())||"",
+    tipo_documento:window._tipoDoc||"albaran",
+    numero_documento:window._numDoc||"",
     lineas:recogerLineasAlbaran(), pedido_id:window._pedidoId||null,
   };
   if(!bloqueaDoble("recepcion")) return;
   try{
     await api("/recepciones",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    window._albFoto=null; window._albHojas=[]; window._pedidoId=null; window._rcpProdFoto=null;
+    window._albFoto=null; window._albHojas=[]; window._pedidoId=null; window._rcpProdFoto=null; window._tipoDoc="albaran"; window._numDoc="";
     irA_recepcion();
   }catch(e){alert(e.message);}
   finally{ liberaDoble("recepcion"); }
@@ -6311,6 +6316,18 @@ async function aplicarResultadoAlbaran(r){
       }
     }
     if(r.importe_total) el("rcp-imp").value=r.importe_total;
+    // Tipo de documento detectado: albarán (entra al almacén) o factura (documento
+    // fiscal → apartado de pagados). Se guarda para registrarlo con la recepción.
+    window._tipoDoc=r.tipo_documento==="factura"?"factura":"albaran";
+    window._numDoc=r.numero_documento||"";
+    const esFactura=window._tipoDoc==="factura";
+    const badge=el("rcp-tipo-badge");
+    if(badge){
+      badge.style.display="";
+      badge.innerHTML=esFactura
+        ?`<span style="display:inline-block;background:#9C5A2E;color:#fff;font-weight:700;font-size:11px;padding:3px 10px;border-radius:20px;">FACTURA detectada</span> <span style="font-size:12px;color:var(--muted)">documento fiscal · irá a Pagados · no suma stock${window._numDoc?` · nº ${esc(window._numDoc)}`:""}</span>`
+        :`<span style="display:inline-block;background:var(--olive);color:#fff;font-weight:700;font-size:11px;padding:3px 10px;border-radius:20px;">ALBARÁN detectado</span> <span style="font-size:12px;color:var(--muted)">nota de entrega · entra al almacén${window._numDoc?` · nº ${esc(window._numDoc)}`:""}</span>`;
+    }
     if(hint){
       const nProd=(r.materias_creadas||[]).length;
       const partes=[`Leído: <b>${esc(r.proveedor_nombre||r.proveedor||"proveedor ?")}</b>`];
@@ -6835,22 +6852,31 @@ async function irA_pagos(){
     const [pagos,justs]=await Promise.all([api("/pagos"),api("/pagos/justificantes").catch(()=>[])]);
     const sPagos=section("Por proveedor",pagos,p=>{
       const listId=`alb-${p.proveedor_id}`;
-      const filas=(p.recepciones||[]).slice().reverse().map(r=>{
+      // Cada proveedor se divide en dos bloques: sus ALBARANES y sus FACTURAS.
+      const fila=(r)=>{
         const f=new Date(r.fecha).toLocaleDateString("es-ES");
         const btn=r.tiene_foto
-          ? `<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`
+          ? `<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver documento</button>`
           : `<span style="font-size:10px;color:#aaa490;">sin foto</span>`;
+        const num=r.numero_documento?` · nº ${esc(r.numero_documento)}`:"";
         return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #E2DBCB;">
-          <span style="font-size:11px;color:#555040;">${f} · ${(r.importe_total||0).toFixed(2)} € · ${r.estado}${r.n_lineas?` · ${r.n_lineas} líneas`:""}</span>
+          <span style="font-size:11px;color:#555040;">${f} · ${(r.importe_total||0).toFixed(2)} € · ${r.estado}${num}${r.n_lineas?` · ${r.n_lineas} líneas`:""}</span>
           ${btn}</div>`;
-      }).join("");
+      };
+      const recs=(p.recepciones||[]).slice().reverse();
+      const albs=recs.filter(r=>r.tipo_documento!=="factura");
+      const facs=recs.filter(r=>r.tipo_documento==="factura");
+      const bloque=(titulo,arr)=>arr.length?`
+        <div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:var(--muted);margin-top:8px;text-transform:uppercase;">${titulo} (${arr.length})</div>
+        ${arr.map(fila).join("")}`:"";
       const extra=`
         <div onclick="toggleAlb('${listId}')" style="cursor:pointer;font-size:11px;color:var(--olive);margin-top:8px;user-select:none;">
-          <span id="${listId}-arrow">▸</span> Desplegar ${(p.recepciones||[]).length} albarán(es)</div>
-        <div id="${listId}" style="display:none;margin-top:4px;">${filas}</div>`;
+          <span id="${listId}-arrow">▸</span> Desplegar ${recs.length} documento(s)</div>
+        <div id="${listId}" style="display:none;margin-top:4px;">${bloque("Albaranes",albs)}${bloque("Facturas",facs)}</div>`;
+      const resumen=[`${p.solo_albaranes_pendientes||0} albarán(es)`,`${p.facturas_pendientes||0} factura(s)`].join(" · ");
       return card(
         p.proveedor_nombre,
-        `${p.importe_pendiente.toFixed(2)} € · ${p.albaranes_pendientes} albarán(es)`,
+        `${p.importe_pendiente.toFixed(2)} € · ${resumen}`,
         `<button class="btn-ghost" onclick="marcarPagado('${p.proveedor_id}')">Marcar como pagado</button>`,
         extra
       );

@@ -290,7 +290,12 @@ app.use(
   express.static(path.join(__dirname, "..", "frontend"), {
     etag: true,
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith(".html") || filePath.endsWith("sw.js")) {
+      if (filePath.endsWith(".webmanifest")) {
+        // Manifest de la PWA: content-type correcto y sin caché agresiva para
+        // que los cambios (tema, iconos) lleguen al reinstalar.
+        res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache");
+      } else if (filePath.endsWith(".html") || filePath.endsWith("sw.js")) {
         // El service worker también sin caché, para que se actualice siempre.
         res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       } else if (/\.(woff2|ttf|png|jpe?g|svg|ico)$/i.test(filePath)) {

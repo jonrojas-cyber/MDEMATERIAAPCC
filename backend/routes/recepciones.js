@@ -3,7 +3,7 @@ const store = require("../data-store");
 const ocr = require("../ocr");
 const { convertir } = require("../unidades");
 const intake = require("../albaran-intake");
-const { esLineaProducto, normNombre, buscarProveedor, crearProveedorDesdeOCR, crearMateriaDesdeLinea } = intake;
+const { esLineaProducto, normNombre, buscarProveedor, crearProveedorDesdeOCR, crearMateriaDesdeLinea, clasificarTipoDocumento } = intake;
 
 const router = express.Router();
 
@@ -13,7 +13,12 @@ const jsonGrande = express.json({ limit: "12mb" });
 // Versión ligera (sin las fotos en base64) para listados.
 function slim(r) {
   const { foto_albaran_url, foto_producto_url, ...resto } = r;
-  return { ...resto, tiene_foto: !!foto_albaran_url, tiene_foto_producto: !!foto_producto_url };
+  return {
+    ...resto,
+    tipo_documento: r.tipo_documento || "albaran",
+    tiene_foto: !!foto_albaran_url,
+    tiene_foto_producto: !!foto_producto_url,
+  };
 }
 
 // Respaldo de emparejado línea↔materia por solapamiento de palabras (cuando la
@@ -131,6 +136,11 @@ router.post("/escanear", jsonGrande, async (req, res) => {
       ? await ocr.extraerAlbaranMulti(fotos, media_type)
       : await ocr.extraerAlbaran(fotos[0], media_type);
 
+    // ¿Es albarán o factura? Una factura es documento fiscal: va al apartado de
+    // pagados y NO da de alta stock (factura mercancía ya recibida en albaranes).
+    const tipoDocumento = clasificarTipoDocumento(datos);
+    const esFactura = tipoDocumento === "factura";
+
     // Emparejar el proveedor (por CIF o por nombre). Si no existe, se crea al
     // vuelo con los datos de la cabecera del albarán: no hay que meterlo a mano.
     const proveedores = store.readAll("proveedores");
@@ -156,7 +166,10 @@ router.post("/escanear", jsonGrande, async (req, res) => {
     const lineas = (datos.lineas || []).map((l) => {
       let m = mejorMateriaPorPalabras(l.descripcion, materias);
       let creada = false;
-      if (!m && esLineaProducto(l.descripcion)) {
+      // En una factura NO damos de alta materias nuevas (evita stock fantasma:
+      // la factura suele cobrar mercancía ya recibida por albarán). Solo casamos
+      // con las materias que ya existen para poder comparar precios.
+      if (!esFactura && !m && esLineaProducto(l.descripcion)) {
         const clave = normNombre(l.descripcion);
         m = nuevasPorNombre.get(clave);
         if (!m) {
@@ -224,6 +237,8 @@ router.post("/escanear", jsonGrande, async (req, res) => {
 
     res.json({
       ...datos,
+      tipo_documento: tipoDocumento,
+      numero_documento: String(datos.numero_documento || "").trim(),
       lineas,
       proveedor_id: provId,
       proveedor_nombre: proveedor ? proveedor.nombre : (datos.proveedor || ""),
@@ -290,8 +305,9 @@ router.post("/cotejar", jsonGrande, (req, res) => {
 // Entrada de recepción (manual o tras escanear). Admite fotos, líneas, pedido,
 // lote del proveedor y caducidad.
 router.post("/", jsonGrande, async (req, res) => {
-  const { proveedor_id, importe_total, foto_albaran, foto_producto, lineas, pedido_id, lote_proveedor, caducidad } = req.body;
+  const { proveedor_id, importe_total, foto_albaran, foto_producto, lineas, pedido_id, lote_proveedor, caducidad, tipo_documento, numero_documento } = req.body;
   if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor de la recepción" });
+  const tipoDoc = tipo_documento === "factura" ? "factura" : "albaran";
   // El importe puede venir como "120,50" (coma) o número; lo normalizamos y
   // exigimos que sea un número válido y no negativo (evita NaN/strings en pagos).
   let importe = typeof importe_total === "string" ? Number(importe_total.replace(/\./g, "").replace(",", ".")) : Number(importe_total);
@@ -301,6 +317,8 @@ router.post("/", jsonGrande, async (req, res) => {
     id: store.nextId("rcp", "recepciones"),
     proveedor_id,
     pedido_id: pedido_id || null,
+    tipo_documento: tipoDoc,
+    numero_documento: numero_documento ? String(numero_documento).trim() : "",
     fecha: new Date().toISOString(),
     foto_albaran_url: foto_albaran || null,
     foto_producto_url: foto_producto || null,

@@ -16,6 +16,23 @@ function unidadConsumoDe(unidadAlbaran) {
   return d.base === "masa" ? "g" : d.base === "volumen" ? "ml" : "ud";
 }
 
+// Decide si un documento escaneado es ALBARÁN o FACTURA. Confía primero en lo que
+// leyó el modelo (tipo_documento) y, como refuerzo, mira señales de texto en el
+// número/cabecera. Un albarán entra al almacén (stock) y se paga por proveedor;
+// una factura es documento fiscal → va directa al apartado de pagados, sin volver
+// a sumar stock (normalmente factura mercancía ya recibida en albaranes).
+function clasificarTipoDocumento(datos) {
+  const d = datos || {};
+  const bruto = String(d.tipo_documento || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (/factura|fiscal|invoice/.test(bruto)) return "factura";
+  if (/albaran|nota de entrega|entrega|delivery/.test(bruto)) return "albaran";
+  // Sin respuesta clara del modelo: señales en el número de documento.
+  const num = String(d.numero_documento || "").toLowerCase();
+  if (/\bfra\b|\bfact|factura/.test(num)) return "factura";
+  if (/\balb\b|albaran|\bne\b/.test(num)) return "albaran";
+  return "albaran"; // por defecto, tratamos como albarán (comportamiento actual)
+}
+
 // ¿La línea es un producto real (y no un concepto de factura: portes, IVA, dto…)?
 function esLineaProducto(desc) {
   const d = String(desc || "").trim();
@@ -101,5 +118,5 @@ function crearMateriaDesdeLinea(linea, provId) {
 
 module.exports = {
   unidadConsumoDe, esLineaProducto, normNombre, buscarProveedor,
-  crearProveedorDesdeOCR, crearMateriaDesdeLinea,
+  crearProveedorDesdeOCR, crearMateriaDesdeLinea, clasificarTipoDocumento,
 };

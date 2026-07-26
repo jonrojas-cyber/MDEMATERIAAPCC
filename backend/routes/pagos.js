@@ -27,15 +27,24 @@ router.get("/", (req, res) => {
         proveedor_id: r.proveedor_id,
         importe_pendiente: 0,
         albaranes_pendientes: 0,
+        facturas_pendientes: 0,
+        solo_albaranes_pendientes: 0,
         recepciones: [],
       };
     }
     porProveedor[r.proveedor_id].importe_pendiente += r.pendiente_pago;
     if (r.estado !== "Pagado") porProveedor[r.proveedor_id].albaranes_pendientes += 1;
+    const tipoDoc = r.tipo_documento === "factura" ? "factura" : "albaran";
+    if (r.estado !== "Pagado") {
+      if (tipoDoc === "factura") porProveedor[r.proveedor_id].facturas_pendientes += 1;
+      else porProveedor[r.proveedor_id].solo_albaranes_pendientes += 1;
+    }
     // Sin la foto base64 (pesada); el visor la pide aparte por id.
     porProveedor[r.proveedor_id].recepciones.push({
       id: r.id,
       fecha: r.fecha,
+      tipo_documento: tipoDoc,
+      numero_documento: r.numero_documento || "",
       importe_total: r.importe_total,
       pendiente_pago: r.pendiente_pago,
       estado: r.estado,

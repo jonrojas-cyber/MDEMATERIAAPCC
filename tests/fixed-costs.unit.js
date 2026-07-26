@@ -45,11 +45,16 @@ test("break-even: ingreso de equilibrio = coste fijo / margen de contribución",
   limpiar();
   // Coste fijo diario = 50 €. Carta: café precio 2, coste 0.5 → contribución 75%.
   store.writeAll("fixed_costs", [{ id: "f1", name: "Alquiler", amount: 50, periodicity: "daily", active: true, start_date: "2024-01-01" }]);
+  store.writeAll("debts", []); // sin créditos → break-even puro sin cuotas de préstamo
   store.writeAll("materias", [{ id: "m1", coste_medio: 0.5, disponibilidad_actual: 100 }]);
-  store.writeAll("productos", [{ id: "p1", nombre: "Café", precio_venta: 2, activo: true, ingredientes: [{ materia_id: "m1", cantidad: 1 }] }]);
+  // iva:0 → coste sin IVA (0.5) para probar el break-even con un margen limpio del 75%.
+  store.writeAll("productos", [{ id: "p1", nombre: "Café", precio_venta: 2, activo: true, iva: 0, ingredientes: [{ materia_id: "m1", cantidad: 1 }] }]);
   const be = breakEven.puntoEquilibrio(NOW, { perfil: { ticket_medio: 4, cafe_medio: 2 } });
   assert.ok(be.disponible, "break-even disponible");
   assert.strictEqual(be.base_fija_diaria, 50, "base fija diaria = 50 (sin laboral)");
+  // Con créditos = 0, el equilibrio con créditos coincide con el base.
+  assert.strictEqual(be.cuota_creditos_mes, 0, "sin cuotas de crédito");
+  assert.ok(Math.abs(be.ingreso_equilibrio_con_creditos_dia - be.ingreso_equilibrio_dia) < 0.01, "sin créditos, con-créditos = base");
   // margen 75% → ingreso equilibrio = 50 / 0.75 = 66.67
   assert.ok(Math.abs(be.ingreso_equilibrio_dia - 66.67) < 0.1, "ingreso equilibrio ≈ 66.67: " + be.ingreso_equilibrio_dia);
   assert.strictEqual(be.hoy.cafes, Math.ceil(be.ingreso_equilibrio_dia / 2), "cafés = ingreso / precio café");

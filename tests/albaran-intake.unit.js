@@ -80,5 +80,18 @@ test("crearMateriaDesdeLinea clasifica en la categoría correcta y pone unidad d
   assert.strictEqual(raro.unidad, "ud");
 });
 
+test("clasificarTipoDocumento distingue factura de albarán", () => {
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "factura" }), "factura");
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "FACTURA" }), "factura");
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "invoice" }), "factura");
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "albaran" }), "albaran");
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "Albarán / nota de entrega" }), "albaran");
+  // Sin respuesta clara del modelo: señal en el número de documento.
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "", numero_documento: "FRA 2025/12" }), "factura");
+  assert.strictEqual(intake.clasificarTipoDocumento({ tipo_documento: "desconocido", numero_documento: "ALB-4471" }), "albaran");
+  // Por defecto, albarán (comportamiento anterior, sin riesgo de stock fantasma).
+  assert.strictEqual(intake.clasificarTipoDocumento({}), "albaran");
+});
+
 if (fallos) { console.error(`\n${fallos} prueba(s) de alta automática fallaron`); process.exit(1); }
 console.log("\nTodas las pruebas de alta automática desde albarán OK");

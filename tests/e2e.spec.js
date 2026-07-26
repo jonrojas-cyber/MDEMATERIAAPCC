@@ -682,9 +682,31 @@ test("costes fijos OS: el endpoint ensambla todos los bloques", async ({ page })
   expect(typeof os.dashboard.coste_mes).toBe("number");
   expect(typeof os.dashboard.coste_hora).toBe("number");
   expect(os.break_even).toBeTruthy();
+  // Punto de equilibrio CON créditos: los préstamos entran siempre en la base.
+  const be = os.break_even;
+  expect("ingreso_equilibrio_con_creditos_dia_abierto" in be).toBe(true);
+  expect("ingreso_equilibrio_con_creditos_mes" in be).toBe(true);
+  expect("ingreso_equilibrio_con_creditos_anio" in be).toBe(true);
+  expect(typeof be.cuota_creditos_mes).toBe("number");
+  // Con créditos nunca es menor que sin créditos (la cuota solo puede sumar).
+  if (be.ingreso_equilibrio_mes != null && be.ingreso_equilibrio_con_creditos_mes != null) {
+    expect(be.ingreso_equilibrio_con_creditos_mes).toBeGreaterThanOrEqual(be.ingreso_equilibrio_mes);
+  }
   expect(os.contribucion).toBeTruthy();
   expect(os.forecast).toBeTruthy();
   expect(os.analitica && Array.isArray(os.analitica.alertas)).toBe(true);
+});
+
+test("punto de equilibrio: la pantalla abre y crea escenarios con créditos", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // Cargar el centro de control para poblar window._ccData y luego abrir el detalle.
+  await page.evaluate(async () => await irA_centroControl());
+  await page.evaluate(() => irA_puntoEquilibrio());
+  await expect(page.locator(".cc-label", { hasText: /Facturar para pagarlo TODO/ })).toBeVisible();
+  await expect(page.locator("#cc-obj-out")).toContainText(/limpios\/mes/);
+  expect(errors).toEqual([]);
 });
 
 test("costes fijos OS: la pantalla muestra coste de existir y punto de equilibrio", async ({ page }) => {

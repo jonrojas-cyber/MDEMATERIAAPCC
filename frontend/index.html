@@ -4124,6 +4124,14 @@ function ccRender(d){
     <div class="cc-kpi">${ccEur(ca.total)}</div>
     <div class="cc-mini">Al día ${ccEur(ca.prorrateo&&ca.prorrateo.diario)} · semana ${ccEur(ca.prorrateo&&ca.prorrateo.semanal)} · mes ${ccEur(ca.prorrateo&&ca.prorrateo.mensual)}</div>
     <div class="cc-mini cc-accent">${be&&(be.ingreso_equilibrio_dia_abierto!=null||be.ingreso_equilibrio_dia!=null)?`Punto de equilibrio: ${ccEur(be.ingreso_equilibrio_dia_abierto!=null?be.ingreso_equilibrio_dia_abierto:be.ingreso_equilibrio_dia)}/día abierto`:`Necesitas vender ${ccEur(ventaNec)}/día para cubrirlo con margen`}</div></button>`;
+  // Punto de equilibrio (con créditos: los préstamos son parte del negocio)
+  const beDiaCred=be.ingreso_equilibrio_con_creditos_dia_abierto!=null?be.ingreso_equilibrio_con_creditos_dia_abierto:be.ingreso_equilibrio_dia_abierto;
+  const beCard=`<button class="cc-card" onclick="irA_puntoEquilibrio()">
+    <div class="cc-label">Punto de equilibrio · con créditos</div>
+    <div class="cc-kpi">${beDiaCred!=null?ccEur(beDiaCred):'—'}<span class="cc-score-max">/día abierto</span></div>
+    <div class="cc-mini">Para pagarlo TODO: mes ${be.ingreso_equilibrio_con_creditos_mes!=null?ccEur(be.ingreso_equilibrio_con_creditos_mes):'—'} · año ${be.ingreso_equilibrio_con_creditos_anio!=null?ccEur(be.ingreso_equilibrio_con_creditos_anio):'—'}</div>
+    <div class="cc-mini cc-accent">${de.cuota_mensual_total>0?`Incluye préstamos ${ccEur(de.cuota_mensual_total)}/mes`:'Sin préstamos registrados'} · contribución ${be.ratio_contribucion_pct!=null?be.ratio_contribucion_pct+'%':'—'}</div>
+    <div class="cc-mini">Pincha para crear escenarios de ganancia →</div></button>`;
   // Valor empresa
   const valorCard=`<button class="cc-card" onclick="irA_valorEmpresa()">
     <div class="cc-label">Valor de la empresa</div>
@@ -4163,7 +4171,7 @@ function ccRender(d){
 
   return `${ccFiltroHTML()}
     <div class="cc-grid">
-      ${saludCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${opCard}${capCard}
+      ${saludCard}${beCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${opCard}${capCard}
     </div>
     ${objCard}
     ${copCard}
@@ -4217,6 +4225,58 @@ function irA_valorEmpresa(){
     <div class="card-actions"><button class="btn-ghost" onclick="irA_tesoreria()">Cuentas y tesorería</button><button class="btn-ghost" onclick="irA_activos()">Activos</button><button class="btn-ghost" onclick="irA_deuda()">Deuda</button></div>`);
 }
 // ── Detalle: Beneficio real ────────────────────────────────────────────────
+// ── Detalle: Punto de equilibrio + escenarios de ganancia ───────────────────
+// Cuánto hay que facturar (día abierto / mes / año) para pagarlo TODO, con los
+// créditos incluidos porque son parte del negocio. Y un calculador para crear
+// escenarios: cuánto facturar para llevarte X limpio, pudiendo añadir trabajadores.
+function irA_puntoEquilibrio(){
+  ccVolver(); openSection("cc-equilibrio","Punto de equilibrio");
+  const d=window._ccData; if(!d){ irA_centroControl(); return; }
+  const be=d.break_even||{}, de=d.deuda||{};
+  const MES=365/12;
+  const ratio=be.ratio_contribucion_pct!=null?be.ratio_contribucion_pct/100:0;
+  const dias=be.dias_abiertos_mes||26;
+  const ticket=be.ticket_medio;
+  // Calculador de escenarios: fijos operativos/mes (incluye personal actual),
+  // cuotas de préstamos/mes, margen de contribución y días abiertos.
+  window._ccObj={ ratio, fijos:(be.base_fija_diaria!=null?be.base_fija_diaria*MES:0), cuotas:(de.cuota_mensual_total||0), dias, iva:0.10 };
+
+  const cred=de.cuota_mensual_total>0;
+  const diaAbCred=be.ingreso_equilibrio_con_creditos_dia_abierto!=null?be.ingreso_equilibrio_con_creditos_dia_abierto:be.ingreso_equilibrio_dia_abierto;
+  const clientes=(x)=> ticket&&x!=null?`≈ ${eur0(Math.ceil(x/ticket))} clientes/día abierto`:'Configura el ticket medio en el perfil';
+  // Fila comparativa: sin créditos vs con créditos.
+  const fila=(l,sin,con)=>`<div class="cc-line"><span>${l}</span><b>${sin!=null?ccEur(sin):'—'} <span style="color:var(--olive)">· ${con!=null?ccEur(con):'—'}</span></b></div>`;
+
+  setInner(`
+    <div class="cc-card cc-hero-single">
+      <div class="cc-label">Facturar para pagarlo TODO · con créditos</div>
+      <div class="cc-kpi cc-big">${diaAbCred!=null?ccEur(diaAbCred):'—'}<span class="cc-score-max"> /día abierto</span></div>
+      <div class="cc-mini">${clientes(diaAbCred)} · ${eur0(dias)} días abiertos/mes · contribución ${be.ratio_contribucion_pct!=null?be.ratio_contribucion_pct+'%':'—'}</div>
+      ${cred?`<div class="cc-mini cc-accent">Incluye las cuotas de tus préstamos: ${ccEur(de.cuota_mensual_total)}/mes · ${de.num_deudas} crédito(s). Son parte del negocio, así que van siempre dentro del punto de equilibrio.</div>`:`<div class="cc-mini">No hay préstamos registrados. Añádelos en Deuda para que entren en el punto de equilibrio.</div>`}
+    </div>
+    <div class="section-label">Cuánto facturar para no perder</div>
+    <div class="cc-card">
+      <div class="cc-mini" style="margin-bottom:6px;">Negro = solo gastos · <b style="color:var(--olive)">verde = con créditos incluidos</b></div>
+      ${fila("Al día abierto",be.ingreso_equilibrio_dia_abierto,be.ingreso_equilibrio_con_creditos_dia_abierto)}
+      ${fila("Al mes",be.ingreso_equilibrio_mes,be.ingreso_equilibrio_con_creditos_mes)}
+      ${fila("Al año",be.ingreso_equilibrio_anio,be.ingreso_equilibrio_con_creditos_anio)}
+    </div>
+    <div class="section-label">Crear escenario de ganancia</div>
+    <div class="cc-card">
+      <div class="cc-label">¿Cuánto facturar para ganar lo que quiero?</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:6px 0 4px;">
+        <label style="font-size:10px;color:var(--muted);">Ganar limpio (€/mes)<br><input id="cc-obj-ben" type="number" step="100" min="0" value="3000" oninput="ccObjetivo()" style="width:130px;margin-top:3px;"></label>
+        <label style="font-size:10px;color:var(--muted);">IRPF+autónomos (%)<br><input id="cc-obj-tipo" type="number" step="1" min="0" max="60" value="25" oninput="ccObjetivo()" style="width:90px;margin-top:3px;"></label>
+        <label style="font-size:10px;color:var(--muted);">Trabajadores extra (×1.800 €)<br><input id="cc-obj-trab" type="number" step="1" min="0" value="0" oninput="ccObjetivo()" style="width:90px;margin-top:3px;"></label>
+        <label style="font-size:11px;display:flex;align-items:center;gap:5px;"><input id="cc-obj-prest" type="checkbox" checked onchange="ccObjetivo()"> con préstamos</label>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">${[1000,2000,3000].map(n=>`<button type="button" class="chip" onclick="el('cc-obj-ben').value=${n};ccObjetivo()">${eur0(n)} €</button>`).join("")}</div>
+      <div id="cc-obj-out" class="cc-mini" style="line-height:1.9;"></div>
+    </div>
+    <div class="card-actions"><button class="btn-ghost" onclick="irA_costesFijos()">Ver costes fijos</button> <button class="btn-ghost" onclick="irA_deuda()">Ver deuda</button></div>`);
+  ccObjetivo();
+}
+
 function irA_beneficio(){
   ccVolver(); openSection("cc-beneficio","Beneficio real");
   const d=window._ccData; if(!d){ irA_centroControl(); return; }

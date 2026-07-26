@@ -86,6 +86,15 @@ function puntoEquilibrio(now = Date.now(), opts = {}) {
   const diasAbiertosMes = diasSemana * (365 / 12 / 7); // 6 días ≈ 26,07/mes
   const ingresoDiaAbierto = ingresoDia != null && diasAbiertosMes > 0 ? (ingresoDia * MES) / diasAbiertosMes : null;
 
+  // Punto de equilibrio CON CRÉDITOS: los préstamos son parte del negocio y hay
+  // que pagarlos, así que se suman a la base fija. La cuota mensual de la deuda se
+  // reparte a diario (calendario) y se cubre con el mismo margen de contribución.
+  const cuotaCreditosMes = require("./debts").resumen(now).cuota_mensual_total || 0;
+  const cuotaCreditosDia = cuotaCreditosMes * 12 / 365;
+  const fijoDiaConCreditos = fijoDia + cuotaCreditosDia;
+  const ingresoDiaConCreditos = ratio ? fijoDiaConCreditos / ratio : null;
+  const ingresoDiaAbiertoConCreditos = ingresoDiaConCreditos != null && diasAbiertosMes > 0 ? (ingresoDiaConCreditos * MES) / diasAbiertosMes : null;
+
   const escala = (dias) => {
     if (ingresoDia == null) return { disponible: false };
     const ingreso = ingresoDia * dias;
@@ -115,6 +124,15 @@ function puntoEquilibrio(now = Date.now(), opts = {}) {
     base_fija_diaria: eur(fijoDia),
     ingreso_equilibrio_dia: ingresoDia != null ? eur(ingresoDia) : null,
     ingreso_equilibrio_dia_abierto: ingresoDiaAbierto != null ? eur(ingresoDiaAbierto) : null,
+    ingreso_equilibrio_mes: ingresoDia != null ? eur(ingresoDia * MES) : null,
+    ingreso_equilibrio_anio: ingresoDia != null ? eur(ingresoDia * 365) : null,
+    // Con créditos: lo que hay que facturar para pagarlo TODO, préstamos incluidos.
+    cuota_creditos_mes: eur(cuotaCreditosMes),
+    base_fija_diaria_con_creditos: eur(fijoDiaConCreditos),
+    ingreso_equilibrio_con_creditos_dia: ingresoDiaConCreditos != null ? eur(ingresoDiaConCreditos) : null,
+    ingreso_equilibrio_con_creditos_dia_abierto: ingresoDiaAbiertoConCreditos != null ? eur(ingresoDiaAbiertoConCreditos) : null,
+    ingreso_equilibrio_con_creditos_mes: ingresoDiaConCreditos != null ? eur(ingresoDiaConCreditos * MES) : null,
+    ingreso_equilibrio_con_creditos_anio: ingresoDiaConCreditos != null ? eur(ingresoDiaConCreditos * 365) : null,
     dias_abiertos_mes: Math.round(diasAbiertosMes * 10) / 10,
     dias_semana: diasSemana,
     hoy: escala(1),

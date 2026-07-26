@@ -2,8 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#3E4534"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<!-- Barra de estado del mismo tono que la app: sin franja negra arriba. -->
+<meta name="theme-color" content="#2A332B"/>
+<!-- Pantalla completa al abrir desde el icono de inicio (Android e iOS). -->
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Control M"/>
 <title>Control M · m de materia</title>
 <!-- Tipografía autoalojada (Courier Prime WOFF2). Sin dependencias externas. -->
 <style>
@@ -979,7 +985,11 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* Barra superior oliva con 3 zonas: marca · ||| · control total */
 .topbar { background: var(--olivebar); color: var(--oliveink); height: 94px;
   padding: 0 42px; gap: 0; justify-content: space-between;
-  box-shadow: 0 2px 10px rgba(23,21,15,.16); z-index: 5; position: relative; }
+  box-shadow: 0 2px 10px rgba(23,21,15,.16); z-index: 5; position: relative;
+  /* Pantalla completa: el fondo oliva sube tras la barra de estado y el
+     contenido de la cabecera queda por debajo de la hora/batería (iOS/notch). */
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(94px + env(safe-area-inset-top, 0px)); }
 .topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
 .topbar-center { flex: 0 0 auto; }
 .topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
@@ -1024,7 +1034,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* Footer oliva (cierra el marco) */
 .botbar { flex-shrink: 0; background: var(--olivebar); color: var(--oliveink);
   height: 62px; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 42px; font-family: 'Courier Prime', monospace; font-size: 10px;
+  padding: 0 42px; padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(62px + env(safe-area-inset-bottom, 0px));
+  font-family: 'Courier Prime', monospace; font-size: 10px;
   letter-spacing: .16em; text-transform: lowercase; opacity: .95;
   box-shadow: 0 -2px 10px rgba(23,21,15,.14); z-index: 5; position: relative; }
 

@@ -828,23 +828,24 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
 });
 
 // Módulo Limonadas: asistente paso a paso (nativo, sin scroll) que calcula la receta.
-test("limonadas: el asistente paso a paso calcula receta y extracciones", async ({ page }) => {
+test("limonadas: el escalador calcula las recetas cerradas por litros", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_limonadas());
-  // Paso 1: selección de tipo (tres tarjetas).
-  await expect(page.locator("#lim .lim-tipo")).toHaveCount(3);
-  // Elegir II · Casa y meter 20 L.
-  await page.evaluate(() => limSetTipo("ii"));
-  await expect(page.locator("#lim-l2")).toBeVisible();
-  await page.evaluate(() => { el("lim-l2").value = "20"; limLeerLitros(); });
-  // Paso Receta: aparece la tabla técnica con los ácidos.
-  await page.evaluate(() => limGo(1));
-  await expect(page.locator("#lim .lim-tab")).toContainText(/ácido cítrico/);
-  // Paso Extracciones: aparece el jengibre de la II.
-  await page.evaluate(() => limGo(1));
-  await expect(page.locator("#lim .lim-tab")).toContainText(/jengibre/i);
+  // Selector con las 3 recetas cerradas.
+  await expect(page.locator(".lim-tab")).toBeVisible();
+  await expect(page.locator("#lim-rsel option")).toHaveCount(3);
+  // R4 (lima·kaffir) a 5 L: el Super Juice de lima (196 ml/L) escala a 980 ml.
+  await page.evaluate(() => { limSetRec("R4"); limSetL(5); });
+  await expect(page.locator(".lim-tab")).toContainText(/Super Juice de lima/);
+  await expect(page.locator(".lim-tab")).toContainText(/196 ml\/L/);
+  await expect(page.locator(".lim-tab")).toContainText(/980 ml/);
+  // Cambiar a R5 (pomelo·romero·lapsang) muestra su fondo ahumado.
+  await page.evaluate(() => limSetRec("R5"));
+  await expect(page.locator(".lim-tab")).toContainText(/Agua de lapsang/);
+  // Las homemade a preparar antes aparecen listadas.
+  await expect(page.locator("body")).toContainText(/Cordial de hierbabuena/);
   expect(errors).toEqual([]);
 });
 

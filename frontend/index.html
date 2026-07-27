@@ -2841,6 +2841,7 @@ async function irA_lab(){
       ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
       ${tile("Burbujas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
+      ${tile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
       ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
       ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
       ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
@@ -3088,6 +3089,116 @@ function limBasesHTML(){
       <div style="color:var(--olive);margin-top:6px;font-size:12px;">${esc(b.receta)}</div>
       <div class="card-meta" style="margin-top:4px;">${esc(b.metodo)}</div>
     </div>`).join("");
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// MÓDULO SPRITZ · línea Origen · Equilibrio · Colección (cóctel embotellable)
+// Misma mecánica que Burbujas: eliges receta y litros de lote y escala solo.
+// Además calcula el ESCANDALLO (coste por servicio y por lata) desde el precio
+// por litro de cada ingrediente. Equilibrio y Colección quedan como plantilla
+// hasta cerrar su receta en cata.
+// ════════════════════════════════════════════════════════════════════════════
+const SPRITZ_DATA = {
+  // Precio por litro de cada materia (neto). iva:true = lleva IVA aparte.
+  ingredientes: {
+    aperol:     { nombre:"Aperol",              precioL: 12.00, iva:false },
+    chardonnay: { nombre:"Chardonnay Pernales", precioL: 5.64,  iva:true  },
+    agua:       { nombre:"Agua filtrada",       precioL: 0,     iva:false },
+  },
+  tecnicosServ: { co2: 0.02, agua: 0.01 }, // € por servicio de 120 ml
+  servingMl: 120,   // vaso/servicio de referencia
+  lataMl: 250,      // formato de lata
+  recetas: {
+    origen: {
+      nombre:"Origen", sabor:"Aperol · Chardonnay Pernales", prod:"Spritz Origen", pvp:"",
+      lineas: [
+        { n:"Aperol",              v:250, u:"ml", ing:"aperol" },     // 30 ml / 120 ml
+        { n:"Chardonnay Pernales", v:250, u:"ml", ing:"chardonnay" }, // 30 ml / 120 ml
+        { n:"Agua filtrada",       v:500, u:"ml", ing:"agua" },       // 60 ml / 120 ml
+      ],
+      nota:"Escandallo estimado ~0,56 €/120 ml (mezcla 0,53 € + CO₂ y agua ~0,03 €). En lata de 250 ml la bebida sale ~1,17 €; a eso hay que sumar lata, tapa, etiqueta, mano de obra y mermas. El Chardonnay lleva +21 % de IVA no incluido en estas cifras."
+    },
+    equilibrio: { nombre:"Equilibrio", sabor:"por definir", prod:"Spritz Equilibrio", pendiente:true },
+    coleccion:  { nombre:"Colección",  sabor:"por definir", prod:"Spritz Colección",  pendiente:true },
+  }
+};
+function spzEur(x){ return (Math.round((Number(x)||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
+function spzCosteMezclaL(r){ // €/L de mezcla (neto, criterio del escandallo)
+  return (r.lineas||[]).reduce((s,li)=>{ const ing=SPRITZ_DATA.ingredientes[li.ing]; return s+(ing?ing.precioL:0)*li.v/1000; },0);
+}
+function spzTecnicosL(){ const t=SPRITZ_DATA.tecnicosServ; return (t.co2+t.agua)/(SPRITZ_DATA.servingMl/1000); } // €/L
+
+function irA_spritz(){
+  navInto(()=>irA_mbds());
+  const keys=Object.keys(SPRITZ_DATA.recetas);
+  if(!window._spz || !window._spz.rk || !SPRITZ_DATA.recetas[window._spz.rk]) window._spz={ rk:keys[0], litros:16 };
+  openSection("spritz","Spritz");
+  spzRender();
+}
+function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; spzRender(); } }
+function spzSetL(n){ window._spz.litros=Math.max(0,n); spzRender(); }
+function spzLeerLitros(){ const i=el("spz-litros"); if(i) window._spz.litros=Math.max(0,parseFloat(i.value)||0); spzRender(); }
+async function spzVerEnCarta(){ await irA_menu(); menuNivel(["spritz"]); }
+async function spzVerProducto(nombreProd){
+  await irA_menu(); menuNivel(["spritz"]);
+  const node=menuNodoEn(["spritz"]);
+  const idx=node&&node.items?node.items.findIndex(it=>it.n===nombreProd):-1;
+  if(idx>=0) menuEditar(idx);
+}
+
+function spzRender(){
+  const s=window._spz, r=SPRITZ_DATA.recetas[s.rk], L=s.litros;
+  const recSel=Object.entries(SPRITZ_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.nombre)} · ${esc(x.sabor)}</option>`).join("");
+  const chips=[2,5,16].map(n=>`<button class="${L===n?"on":""}" onclick="spzSetL(${n})">${n} L</button>`).join("");
+  const head=`<div class="lim-head"><div><div class="lim-eyebrow">Control m · producción · carbonatado</div><div class="lim-h">Spritz · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${limFmt(L)} L</div></div>`;
+  const controles=`<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="spz-rsel" onchange="spzSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="spz-litros" type="number" min="0.5" step="0.5" value="${L}" inputmode="decimal" oninput="spzLeerLitros()" style="width:110px;"></div>
+      <div class="lim-presets" style="margin:0;">${chips}</div>
+    </div>`;
+
+  let cuerpo="";
+  if(r.pendiente){
+    cuerpo=`<div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Receta pendiente.</b> Pásame la receta de <b>Spritz ${esc(r.nombre)}</b> (ingredientes y cantidades por vaso) y la cierro aquí con su escandallo, igual que Origen.</div>`;
+  } else {
+    const costeL=spzCosteMezclaL(r), tecL=spzTecnicosL();
+    const coste120=(costeL+tecL)*SPRITZ_DATA.servingMl/1000;
+    const coste250=(costeL+tecL)*SPRITZ_DATA.lataMl/1000;
+    const rows=r.lineas.map(li=>{
+      const ing=SPRITZ_DATA.ingredientes[li.ing];
+      const total=li.v*L;
+      const costeComp=(ing?ing.precioL:0)*total/1000;
+      const ivaTag=ing&&ing.iva?`<small>+ IVA</small>`:"";
+      return `<tr><td class="n">${esc(li.n)}${ivaTag}</td><td class="q">${limFmt(li.v)} ${esc(li.u)}/L</td><td class="q big">${limFmt(total)} ${esc(li.u)}</td><td class="q">${costeComp>0?spzEur(costeComp):"—"}</td></tr>`;
+    }).join("");
+    const costeLoteMezcla=costeL*L;
+    const tabla=`<table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>lote ${limFmt(L)} L</th><th>coste lote</th></tr></thead><tbody>${rows}
+      <tr class="tot"><td class="n">Mezcla ${limFmt(L)} L</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td><td class="q">${spzEur(costeLoteMezcla)}</td></tr></tbody></table>`;
+    const param=`<div class="lim-param">
+      <div><b>${spzEur(coste120)}</b><span>coste /120 ml</span></div>
+      <div><b>${spzEur(coste250)}</b><span>coste /lata 250 ml</span></div>
+      <div><b>${spzEur(costeL)}</b><span>mezcla €/L</span></div>
+      <div><b>${r.pvp?esc(r.pvp):"—"}</b><span>pvp</span></div>
+    </div>`;
+    const escandallo=`<div class="section-label" style="margin-top:6px;">Escandallo</div>
+      <table class="lim-tab"><tbody>
+        <tr><td class="n">Mezcla · vaso 120 ml</td><td class="q big">${spzEur(costeL*0.120)}</td></tr>
+        <tr><td class="n">+ CO₂ y agua (técnicos)</td><td class="q">${spzEur(SPRITZ_DATA.tecnicosServ.co2+SPRITZ_DATA.tecnicosServ.agua)}</td></tr>
+        <tr class="tot"><td class="n">Coste servicio 120 ml</td><td class="q big">${spzEur(coste120)}</td></tr>
+        <tr><td class="n">Bebida en lata 250 ml</td><td class="q big">${spzEur(coste250)}</td></tr>
+      </tbody></table>
+      <div class="lim-nota" style="border-left-color:var(--muted);">La lata añade, además: <b>lata, tapa, etiqueta, mano de obra y mermas</b> (aún por cifrar). Cuando los tengas, los sumo para el coste real por lata y su PVP.</div>`;
+    const enlace=`<div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta${r.pvp?` · PVP ${esc(r.pvp)}`:" · falta PVP"}. Esta receta es su producción.</div>
+      <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
+        <button class="btn-primary" onclick="spzVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
+        <button class="btn-ghost" onclick="spzVerEnCarta()">Todas en carta · Spritz</button>
+      </div>`;
+    cuerpo=param+tabla+`<div class="lim-nota">${esc(r.nota)}</div>`+escandallo+enlace;
+  }
+  // Enlace a productos también para las recetas pendientes.
+  const enlacePend=r.pendiente?`<div class="card-actions" style="margin-top:14px;"><button class="btn-ghost" onclick="spzVerEnCarta()">Ver Spritz en productos →</button></div>`:"";
+  setInner(head+controles+cuerpo+enlacePend);
 }
 
 // ── Óleo saccharum · base de la limonada ──────────────────────────────────────
@@ -7106,6 +7217,11 @@ const CARTA_ARBOL = {
     { n:"Burbujas Origen",     cat:"burbujas", desc:"Carbonatada · lima · lima kaffir · PVP 2,30 €" },
     { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Carbonatada · fruta de la pasión · hierbabuena · PVP 2,90 €" },
     { n:"Burbujas Colección",  cat:"burbujas", desc:"Carbonatada · pomelo · romero · lapsang · PVP 2,50 €" },
+  ]},
+  spritz: { nombre:"Spritz", items:[
+    { n:"Spritz Origen",     cat:"spritz", desc:"Aperol · Chardonnay Pernales · coste ~0,56 €/120 ml" },
+    { n:"Spritz Equilibrio", cat:"spritz", desc:"Receta por definir" },
+    { n:"Spritz Colección",  cat:"spritz", desc:"Receta por definir" },
   ]},
   zumos: { nombre:"Zumos", items:[
     { n:"Zumo Origen",     cat:"zumos", desc:"Zumo · origen" },

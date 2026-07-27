@@ -1717,6 +1717,22 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-tab tr:last-child td { border-bottom: 0; }
 .lim-tab td.q { font-weight: 700; text-align: right; white-space: nowrap; width: 1%; font-variant-numeric: tabular-nums; padding-right: 12px; }
 .lim-tab td.n small { display: block; color: var(--muted); font-size: 10px; margin-top: 1px; letter-spacing: .01em; }
+/* Escalador de recetas (Super Juice + aguas): código de base, parámetros, nota. */
+.lim-cod { display:inline-block; font-size:9px; font-weight:700; background:var(--olive); color:var(--cream);
+  padding:1px 5px; margin-right:6px; letter-spacing:.06em; border-radius:2px; vertical-align:1px; }
+.lim-param { display:flex; flex-wrap:wrap; border:1px solid var(--line); margin:6px 0 14px; }
+.lim-param div { flex:1; min-width:60px; padding:8px 10px; border-right:1px solid var(--line); }
+.lim-param div:last-child { border-right:0; }
+.lim-param b { display:block; font-size:15px; color:var(--olive); font-weight:700; font-variant-numeric:tabular-nums; }
+.lim-param span { font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.lim-tab thead th { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:400;
+  text-align:right; padding:0 4px 7px; border-bottom:1px solid var(--ink); }
+.lim-tab thead th:first-child { text-align:left; }
+.lim-tab td.q.big { font-size:15px; color:var(--olive); }
+.lim-tab tr.tot td { border-top:1px solid var(--ink); font-weight:700; padding-top:9px; }
+.lim-nota { border-left:2px solid var(--olive); padding:8px 0 8px 12px; margin:14px 0; font-size:12px; color:var(--muted); line-height:1.55; }
+.lim-prem-row { font-size:12px; padding:3px 0; }
+.lim-prem-row b { color:var(--olive); }
 .lim-spec { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; border: 1px solid var(--line); background: var(--paper); padding: 12px 14px; margin-bottom: 12px; }
 .lim-spec dt { font-size: 9.5px; letter-spacing: .1em; text-transform: lowercase; color: var(--muted); align-self: center; }
 .lim-spec dd { font-size: 12px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -2950,7 +2966,7 @@ async function irA_lab(){
     <div class="appcc-grid">
       ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
-      ${tile("Limonadas", "Asistente de producción paso a paso", "irA_limonadas()", "")}
+      ${tile("Limonadas", "Recetas cerradas · escala por litros", "irA_limonadas()", "")}
       ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
       ${tile("Burbujas", "Formulación de lote · refrescos con gas", "irA_burbujas()", "")}
       ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
@@ -3042,142 +3058,149 @@ function mbdsIngNombre(id){ const l=window._mbdsIng||[]; const i=l.find(x=>x.id=
 // Eliges el tipo → litros → receta → extracciones → proceso. Cada paso cabe en
 // pantalla, sin scroll. Cálculo en vivo (no guarda datos).
 // ════════════════════════════════════════════════════════════════════════════
-const LIM_L1 = { citric:3.9, malic:2.0, lactic:0.6, salt:0.45, sugar:55, oleo:35 };
-const LIM_L2 = { citric:3.7, malic:1.9, lactic:0.6, salt:0.45, sugar:45, ginger:20, mint:50, menthol:0.75, oleo:10 };
-const LIM_TIPOS = {
-  i:     { rn:"I", nm:"Esencia", ds:"Limón puro. Aroma de citral al final, en frío. Sin gas. Ventana corta." },
-  ii:    { rn:"II", nm:"Casa", ds:"Jengibre, hierbabuena y mentol. Carbonatada, seca (6,0 °Bx). Vida larga." },
-  ambas: { rn:"I + II", nm:"Ambas líneas", ds:"Produces las dos a la vez. Recetas y compra combinadas." },
+// ── Datos: 3 recetas CERRADAS en cata. Cantidades POR LITRO; se escalan por los
+//    litros del lote. Homemade y premezclas = lo que se prepara antes.
+const LIMONADAS_DATA = {
+  homemade: {
+    SJL: { nombre: "Super Juice de lima", tipo: "cítrico",
+           receta: "piel 140 g · cítrico 150 g · málico 4 g · zumo 420 g · agua 2330 g",
+           metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7." },
+    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico",
+           receta: "piel 400 g · cítrico 362 g · málico 90 g · zumo 1332 g · agua 6664 g · glutamato 13 g",
+           metodo: "Igual que el de lima. Este lleva glutamato dentro." },
+    AK:  { nombre: "Agua de lima kaffir", tipo: "aromática",
+           receta: "12 g/L hoja · 60 °C · 45 min · sous vide sellado",
+           metodo: "Hoja rasgada, no triturada. Enfriar en hielo, filtrar 5 µm." },
+    AR:  { nombre: "Agua de romero", tipo: "aromática",
+           receta: "15 g/L · 65 °C · 40 min · sous vide sellado",
+           metodo: "Sin tallo leñoso. 15 g/L es el techo: pasado, sabe a ambientador." },
+    AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática",
+           receta: "6 g/L · 70 °C · ≤40 min · sous vide sellado",
+           metodo: "Catar a 25/30/40 min y CORTAR cuando la astringencia tape el ahumado. El tanino sale rápido a 70 °C." },
+    CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial",
+           receta: "hierbabuena 130 g · azúcar 500 g · agua 500 g · cítrico 15 g · tartárico 15 g",
+           metodo: "NO es agua: es un cordial. Aporta aroma + azúcar + ácido a la vez. Por eso la pasión lleva poco azúcar y nada de cítrico añadido." },
+    PB:  { nombre: "Purée Boiron fruta de la pasión", tipo: "comprado",
+           receta: "13 °Bx · comprado, no se prepara",
+           metodo: "Ya es puro y trae su propia acidez." }
+  },
+  premezclas: {
+    salina:    "5 g sal / 100 ml → 1 ml = 0,05 g",
+    glutamato: "2 g / 100 ml → 1 ml = 0,02 g",
+    malico:    "5 g / 100 ml → 1 ml = 0,05 g"
+  },
+  recetas: {
+    R4: {
+      nombre: "Lima · lima kaffir", fase: "Fase 1 · gancho", pvp: "2,30 €",
+      bx: "9,0", acidez: "0,82 %", co2: "3,2 vol",
+      lineas: [
+        { n: "Super Juice de lima", v: 196, u: "ml", cod: "SJL" },
+        { n: "Agua de lima kaffir", v: 153, u: "ml", cod: "AK" },
+        { n: "Azúcar",       v: 61,   u: "g" },
+        { n: "Fructosa",     v: 43,   u: "g" },
+        { n: "Glutamato",    v: 0.25, u: "g" },
+        { n: "Ácido málico", v: 0.92, u: "g" },
+        { n: "Sal",          v: 0.61, u: "g" }
+      ],
+      nota: "Reforzada: le faltaba intensidad y frescor. Se subió el alma y el kaffir, sin tocar la piel. El kaffir amplifica la lima. Cerrada en cata."
+    },
+    R5: {
+      nombre: "Pomelo · romero · lapsang", fase: "Fase 2 · centro", pvp: "2,50 €",
+      bx: "~8", acidez: "0,89 %", co2: "3,2 vol",
+      lineas: [
+        { n: "Super Juice de pomelo", v: 111, u: "ml", cod: "SJP" },
+        { n: "Super Juice de lima",   v: 49,  u: "ml", cod: "SJL" },
+        { n: "Agua de romero",        v: 185, u: "ml", cod: "AR" },
+        { n: "Agua de lapsang",       v: 309, u: "ml", cod: "AL" },
+        { n: "Agua filtrada",v: 309,  u: "ml" },
+        { n: "Azúcar",       v: 62,   u: "g" },
+        { n: "Fructosa",     v: 37,   u: "g" },
+        { n: "Glutamato",    v: 0.25, u: "g" },
+        { n: "Ácido málico", v: 0.62, u: "g" },
+        { n: "Sal",          v: 0.62, u: "g" }
+      ],
+      nota: "Tu reinvención: dos cítricos (pomelo+lima) y dos fondos (romero herbal + lapsang ahumado). El agua ya va dentro, no hay c.s.p. Nombre sugerido en carta: «pomelo ahumado». Cerrada en cata."
+    },
+    R6: {
+      nombre: "Fruta de la pasión · hierbabuena", fase: "Fase 3 · premium", pvp: "2,90 €",
+      bx: "~9", acidez: "alta", co2: "2,8 vol",
+      lineas: [
+        { n: "Purée Boiron maracuyá",  v: 150, u: "g",  cod: "PB" },
+        { n: "Cordial de hierbabuena", v: 150, u: "ml", cod: "CH", tardio: true },
+        { n: "Azúcar",       v: 10,   u: "g" },
+        { n: "Fructosa",     v: 15,   u: "g" },
+        { n: "Glutamato",    v: 0.20, u: "g" },
+        { n: "Ácido málico", v: 0.50, u: "g" },
+        { n: "Sal",          v: 0.50, u: "g" }
+      ],
+      nota: "El cordial de hierbabuena ya trae azúcar y ácido, por eso poco azúcar y NADA de cítrico añadido. El glutamato redondea la acidez del maracuyá. La hierbabuena (cordial) entra al final, en frío. Cerrada en cata."
+    }
+  }
 };
+
 function limNum(n,d){ if(!isFinite(n)) n=0; return n.toFixed(d==null?1:d).replace(".",","); }
 function limG(v){ return v>=1000 ? limNum(v/1000,2)+" kg" : limNum(v,1)+" g"; }
 function limMl(v){ return v>=1000 ? limNum(v/1000,2)+" L" : limNum(v,0)+" ml"; }
+// Redondeo de escala: grande→entero, medio→1 decimal, pequeño→2 (como en cata).
+function limFmt(x){
+  if(x>=100) return Math.round(x).toLocaleString("es-ES");
+  if(x>=10)  return (Math.round(x*10)/10).toLocaleString("es-ES");
+  return (Math.round(x*100)/100).toLocaleString("es-ES");
+}
 
 function irA_limonadas(){
   navInto(()=>irA_mbds());
-  window._lim={ tipo:null, l1:0, l2:0, step:1, sel:"i" };
+  const keys=Object.keys(LIMONADAS_DATA.recetas);
+  if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16 };
   openSection("limonadas","Limonadas");
   limRender();
 }
-// Pasos activos según el tipo (la I no se carbonata → sin paso Proceso).
-function limPasos(){
-  const t=window._lim.tipo;
-  const p=["tipo","litros","receta","extracciones"];
-  if(t==="ii"||t==="ambas") p.push("proceso");
-  return p;
-}
-function limSetTipo(t){ const s=window._lim; s.tipo=t; s.sel=(t==="ii")?"ii":"i"; if(t==="i"){s.l2=0;} if(t==="ii"){s.l1=0;} s.step=2; limRender(); }
-function limGo(dir){
-  const pasos=limPasos(); const s=window._lim;
-  const idx=pasos.indexOf(limPasoActual());
-  const ni=idx+dir;
-  if(ni<0){ return goBack(); }
-  if(ni>=pasos.length){ return; }
-  s.step=ni+1; limRender();
-}
-function limPasoActual(){ const pasos=limPasos(); return pasos[Math.min(window._lim.step-1,pasos.length-1)]; }
-function limLeerLitros(){ const s=window._lim; const a=el("lim-l1"), b=el("lim-l2"); if(a) s.l1=Math.max(0,parseFloat(a.value)||0); if(b) s.l2=Math.max(0,parseFloat(b.value)||0); }
-function limPreset(a,b){ const s=window._lim; if(s.tipo!=="ii") s.l1=a; if(s.tipo!=="i") s.l2=b; const A=el("lim-l1"),B=el("lim-l2"); if(A)A.value=s.l1; if(B)B.value=s.l2; }
-function limSel(x){ window._lim.sel=x; limRender(); }
-
-function limFilasReceta(line){
-  const L=line==="i"?LIM_L1:LIM_L2, lit=line==="i"?window._lim.l1:window._lim.l2, two=line==="ii";
-  let r=""; const add=(q,n,s)=> r+=`<tr><td class="q">${q}</td><td class="n">${esc(n)}${s?`<small>${esc(s)}</small>`:""}</td></tr>`;
-  add(limG(L.citric*lit),"ácido cítrico");
-  add(limG(L.malic*lit),"ácido málico");
-  add(limG(L.lactic*lit),"ácido láctico");
-  add(limG(L.salt*lit),"sal marina fina");
-  add(limG(L.sugar*lit),"azúcar", "ajustar a "+(two?"6,0":"7,0")+" °Bx");
-  add(limMl(L.oleo*lit),"oleosaccharum limón · E1", two?"estructura":"aroma · al final, en frío");
-  if(two){
-    add(limMl(L.ginger*lit),"zumo jengibre · E2","titrar el calor");
-    add(limMl(L.mint*lit),"infusión hierbabuena · E3","titrar el aroma");
-    add(limMl(L.menthol*lit),"solución mentol · E4","titrar desde casi cero");
-  }
-  add("enrasar","agua remineralizada","hasta "+limNum(lit,0)+" L final");
-  return r;
-}
-function limFilasExtracciones(){
-  const s=window._lim;
-  const oleoMl=LIM_L1.oleo*s.l1 + LIM_L2.oleo*s.l2;
-  const gingerMl=LIM_L2.ginger*s.l2, mintMl=LIM_L2.mint*s.l2, menthMl=LIM_L2.menthol*s.l2;
-  const oleoPeel=oleoMl*100/180, gingerRoot=gingerMl*2, mintLeaf=mintMl*0.04, menthMg=menthMl*10, gel=2.5*(gingerMl+mintMl)/1000;
-  let e=""; const row=(n,p,raw)=> e+=`<tr><td class="q">${esc(p)}</td><td class="n">${esc(n)}<small>${esc(raw)}</small></td></tr>`;
-  if(oleoMl>0) row("oleosaccharum · E1", limMl(oleoMl), "piel de limón "+limG(oleoPeel)+" · azúcar "+limG(oleoMl));
-  if(s.l2>0){
-    row("zumo jengibre · E2", limMl(gingerMl), "jengibre fresco "+limG(gingerRoot));
-    row("infusión menta · E3", limMl(mintMl), "hierbabuena "+limG(mintLeaf)+" · agua "+limMl(mintMl));
-    row("solución mentol · E4", limMl(menthMl), "mentol "+limNum(menthMg,0)+" mg · stock 10 mg/ml");
-    row("gelatina · E5", limG(gel), "clarifica E2 + E3");
-  }
-  return e||`<tr><td class="n" style="color:var(--muted)">Sin extracciones para esta selección.</td></tr>`;
-}
+function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; limRender(); } }
+function limSetL(n){ window._lim.litros=Math.max(0,n); limRender(); }
+function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); limRender(); }
 
 function limRender(){
-  const s=window._lim, pasos=limPasos(), paso=limPasoActual(), idx=pasos.indexOf(paso);
-  const t=s.tipo?LIM_TIPOS[s.tipo]:null;
-  const total=(s.tipo==="ii"?0:s.l1)+(s.tipo==="i"?0:s.l2);
-  const head=`<div class="lim-head">
-      <div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Limonadas${t?` · ${esc(t.rn)}`:""}</div></div>
-      <div class="lim-meta">Paso ${idx+1}/${pasos.length}${s.tipo?`<b id="lim-meta-total">${limNum(total,0)} L</b>`:""}</div>
+  const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk], L=s.litros;
+  const hayAgua = r.lineas.some(li=>li.n==="Agua filtrada");
+  const rows = r.lineas.map(li=>{
+    const total=li.v*L;
+    const cod=li.cod?`<span class="lim-cod">${esc(li.cod)}</span>`:"";
+    const tag=li.tardio?`<small>al final · en frío</small>`:"";
+    return `<tr><td class="n">${cod}${esc(li.n)}${tag}</td><td class="q">${limFmt(li.v)} ${esc(li.u)}/L</td><td class="q big">${limFmt(total)} ${esc(li.u)}</td></tr>`;
+  }).join("");
+  const cierre = hayAgua
+    ? `<tr class="tot"><td class="n">Total ≈</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td></tr>`
+    : `<tr class="tot"><td class="n">Agua c.s.p.</td><td class="q">—</td><td class="q big">hasta ${limFmt(L)} L</td></tr>`;
+  const chips=[2,5,16].map(n=>`<button class="${L===n?"on":""}" onclick="limSetL(${n})">${n} L</button>`).join("");
+  const recSel=Object.entries(LIMONADAS_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.fase)} · ${esc(x.nombre)}</option>`).join("");
+
+  setInner(`
+    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Limonadas · ${esc(r.nombre)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${limFmt(L)} L</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="lim-rsel" onchange="limSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="lim-litros" type="number" min="0.5" step="0.5" value="${L}" inputmode="decimal" oninput="limLeerLitros()" style="width:110px;"></div>
+      <div class="lim-presets" style="margin:0;">${chips}</div>
     </div>
-    <div class="lim-rail">${pasos.map((_,i)=>`<i class="${i<=idx?"on":""}"></i>`).join("")}</div>`;
-
-  let body="", foot="";
-  const btnPrev=`<button class="btn-ghost" onclick="limGo(-1)">← ${idx===0?"Salir":"Atrás"}</button>`;
-  const btnNext=(txt)=>`<button class="btn-primary" onclick="limGo(1)">${txt||"Siguiente →"}</button>`;
-
-  if(paso==="tipo"){
-    body=`<div class="lim-lead">¿Qué línea vas a producir? Cada una tiene su receta, su vida útil y su proceso.</div>
-      ${Object.entries(LIM_TIPOS).map(([k,v])=>`<button class="lim-tipo" onclick="limSetTipo('${k}')"><span class="rn">${esc(v.rn)}</span><div class="nm">${esc(v.nm)}</div><div class="ds">${esc(v.ds)}</div></button>`).join("")}
-      <button class="cc-link cc-link-wide" style="margin-top:10px" onclick="limOleo()">óleo saccharum · desde piel disponible →</button>`;
-    foot=btnPrev; // sin "siguiente": se avanza eligiendo tipo
-  } else if(paso==="litros"){
-    const campo=(id,rn,val,dis)=> `<div class="lim-lin"><div class="rn">${esc(rn)}</div><input id="${id}" type="number" min="0" step="1" value="${val}" ${dis?"disabled":""} inputmode="numeric" oninput="limLeerLitros();limTotalVivo()"><div class="u">litros</div></div>`;
-    body=`<div class="lim-lead">Litros de bebida <b>terminada</b> a producir. El resto se calcula solo.</div>
-      <div class="lim-liters">
-        ${s.tipo!=="ii"?campo("lim-l1","I · Esencia",s.l1||""):""}
-        ${s.tipo!=="i"?campo("lim-l2","II · Casa",s.l2||""):""}
-      </div>
-      <div class="lim-presets">
-        ${s.tipo==="ambas"?`<button onclick="limPreset(10,20)">semana · 10+20</button><button onclick="limPreset(40,80)">mes · 40+80</button>`:""}
-        ${s.tipo==="i"?`<button onclick="limPreset(10,0)">10 L</button><button onclick="limPreset(20,0)">20 L</button><button onclick="limPreset(40,0)">40 L</button>`:""}
-        ${s.tipo==="ii"?`<button onclick="limPreset(0,20)">20 L</button><button onclick="limPreset(0,40)">40 L</button><button onclick="limPreset(0,80)">80 L</button>`:""}
-      </div>
-      <div class="lim-lead" id="lim-total-vivo" style="text-align:center;margin:14px 0 0;"></div>`;
-    foot=btnPrev+btnNext("Ver receta →");
-  } else if(paso==="receta"){
-    const seg=s.tipo==="ambas"?`<div class="lim-seg"><button class="${s.sel==="i"?"on":""}" onclick="limSel('i')">I · Esencia</button><button class="${s.sel==="ii"?"on":""}" onclick="limSel('ii')">II · Casa</button></div>`:"";
-    const line=s.tipo==="ambas"?s.sel:s.tipo;
-    const lit=line==="i"?s.l1:s.l2;
-    body=`${seg}<div class="lim-eyebrow" style="margin-bottom:6px;">Receta terminada · ${line==="i"?"I · Esencia":"II · Casa"} · ${limNum(lit,0)} L · ${line==="i"?"7,0":"6,0"} °Bx</div>
-      <table class="lim-tab"><tbody>${limFilasReceta(line)}</tbody></table>`;
-    foot=btnPrev+btnNext("Extracciones →");
-  } else if(paso==="extracciones"){
-    body=`<div class="lim-eyebrow" style="margin-bottom:6px;">Extracciones a preparar · lista de compra</div>
-      <table class="lim-tab"><tbody>${limFilasExtracciones()}</tbody></table>
-      <div class="lim-lead" style="margin:12px 0 0;">Rendimientos aproximados. Enrasar a volumen final con agua tras añadir todo. Dosis de aroma = punto de partida, se cierran en cata.</div>`;
-    foot=btnPrev+(limPasos().includes("proceso")?btnNext("Proceso →"):`<button class="btn-primary" onclick="irA_limonadas()">Nuevo lote ↺</button>`);
-  } else if(paso==="proceso"){
-    body=`<div class="lim-eyebrow" style="margin-bottom:8px;">Carbonatación en frío · línea II</div>
-      <dl class="lim-spec"><dt>Temperatura</dt><dd>1–3 °C</dd><dt>Objetivo</dt><dd>2,0–2,5 vol · burbuja fina</dd><dt>Presión</dt><dd>0,8–0,9 bar · 11–13 psi</dd><dt>Método</dt><dd>paciente · 24–48 h</dd></dl>
-      <ol class="lim-steps">
-        <li>Enfriar el líquido a 1–3 °C — el CO₂ solo entra en frío.</li>
-        <li>Aromatizar antes de carbonatar (mentol, jengibre, menta ya dentro).</li>
-        <li>Llenar el barril con cámara de aire; purgar el O₂ (presurizar y ventear 2–3 veces).</li>
-        <li>Conectar CO₂ a presión de servicio y dejar 24–48 h en frío, sin agitar.</li>
-        <li>Servir siempre en frío. El CO₂ baja el pH ~0,1 · ya compensado en los ácidos.</li>
-      </ol>`;
-    foot=btnPrev+`<button class="btn-primary" onclick="irA_limonadas()">Nuevo lote ↺</button>`;
-  }
-  el("inner-content").innerHTML=`<div id="lim">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div>`;
-  if(paso==="litros") limTotalVivo();
+    <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
+    <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>lote ${limFmt(L)} L</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
+    <div class="lim-nota">${esc(r.nota)}</div>
+    <div class="section-label" style="margin-top:24px;">Homemade · preparar antes</div>
+    ${limBasesHTML()}
+    <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
+    <div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>
+    <div class="card-actions" style="margin-top:16px;"><button class="btn-ghost" onclick="limOleo()">Óleo saccharum · calculadora →</button></div>
+  `);
 }
-function limTotalVivo(){
-  const s=window._lim;
-  const total=(s.tipo==="ii"?0:s.l1)+(s.tipo==="i"?0:s.l2);
-  const out=el("lim-total-vivo"); if(out) out.innerHTML=`Total líquido final <b style="color:var(--ink);font-size:15px;">${limNum(total,0)} L</b>`;
-  const hm=el("lim-meta-total"); if(hm) hm.textContent=`${limNum(total,0)} L`;
+function limBasesHTML(){
+  return Object.entries(LIMONADAS_DATA.homemade).map(([k,b])=>`
+    <div class="card" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
+        <div class="card-name"><span class="lim-cod">${esc(k)}</span>${esc(b.nombre)}</div>
+        <span class="lim-eyebrow">${esc(b.tipo)}</span>
+      </div>
+      <div style="color:var(--olive);margin-top:6px;font-size:12px;">${esc(b.receta)}</div>
+      <div class="card-meta" style="margin-top:4px;">${esc(b.metodo)}</div>
+    </div>`).join("");
 }
 
 // ── Óleo saccharum · base de la limonada ──────────────────────────────────────
@@ -3191,7 +3214,7 @@ function limOleoDesdePiel(pielG){
   return { piel: p, azucar: p * OLEO.azucar / OLEO.piel, oleoMl: p * OLEO.rinde / OLEO.piel };
 }
 function limOleo(){
-  if(!window._lim) window._lim={ tipo:null, l1:0, l2:0, step:1, sel:"i" };
+  if(!window._lim) window._lim={};
   if(window._lim.peel==null) window._lim.peel=334; // lo que hay ahora en bandeja
   openSection("limonadas","Limonadas");
   limOleoRender();

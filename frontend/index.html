@@ -1770,74 +1770,6 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 #tpv-keypad .kp-wide { grid-column: span 1; }
 </style>
 
-<!-- ===== MÓDULO BURBUJAS · estilos (prefijo mdm-, no colisiona) =====
-     Sin fuentes externas (regla: cero dependencias nuevas). El módulo cae a su
-     propio stack: Courier Prime→monospace del sistema, Fraunces→Georgia. -->
-<style>
-/* ---------- CONTROL M · BURBUJAS · recetas de producción ---------- */
-#mdm-burbujas{
-  --ground:#ece2d0;
-  --paper:#f4ece0;
-  --olive:#4a5a2e;
-  --olive-soft:rgba(74,90,46,.14);
-  --hair:rgba(74,90,46,.30);
-  --ink:#23241c;
-  --muted:#6d7060;
-  --aviso:#9c5432;
-  --mono:'Courier Prime',ui-monospace,'SF Mono',Menlo,monospace;
-  --display:'Fraunces',Georgia,serif;
-  background:var(--ground);
-  color:var(--ink);
-  font-family:var(--mono);
-  font-size:13px;
-  line-height:1.55;
-  min-height:100vh;
-}
-#mdm-burbujas *{box-sizing:border-box}
-#mdm-burbujas .bur-wrap{max-width:900px;margin:0 auto;padding:26px 20px 70px}
-#mdm-burbujas h1.bur-title{font-family:var(--display);font-style:italic;font-weight:400;font-size:34px;margin:0 0 4px;letter-spacing:-.01em}
-#mdm-burbujas .bur-eyebrow{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted)}
-#mdm-burbujas .bur-rule{height:1.5px;background:var(--ink);margin:14px 0 22px}
-#mdm-burbujas .bur-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:22px}
-#mdm-burbujas .bur-controls label{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px}
-#mdm-burbujas select,#mdm-burbujas input[type=number]{font-family:var(--mono);font-size:15px;background:var(--paper);border:1px solid var(--hair);border-radius:0;padding:9px 11px;color:var(--ink)}
-#mdm-burbujas select{min-width:220px}
-#mdm-burbujas input[type=number]{width:110px}
-#mdm-burbujas .bur-chips{display:flex;gap:6px}
-#mdm-burbujas .bur-chip{font-size:12px;padding:8px 12px;border:1px solid var(--hair);background:var(--paper);cursor:pointer;user-select:none}
-#mdm-burbujas .bur-chip.on{background:var(--olive);color:var(--ground);border-color:var(--olive)}
-#mdm-burbujas .bur-head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:9px;margin:22px 0 12px;flex-wrap:wrap;gap:10px}
-#mdm-burbujas .bur-head h2{font-family:var(--display);font-style:italic;font-weight:400;font-size:23px;margin:0}
-#mdm-burbujas .bur-pilar{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--olive)}
-#mdm-burbujas .bur-param{display:flex;flex-wrap:wrap;border:1px solid var(--hair);margin-bottom:14px}
-#mdm-burbujas .bur-param div{flex:1;min-width:70px;padding:8px 10px;border-right:1px solid var(--hair)}
-#mdm-burbujas .bur-param div:last-child{border-right:none}
-#mdm-burbujas .bur-param b{display:block;font-size:15px;color:var(--olive)}
-#mdm-burbujas .bur-param span{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-#mdm-burbujas table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px}
-#mdm-burbujas th{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:400;text-align:right;padding:0 0 7px;border-bottom:1px solid var(--ink)}
-#mdm-burbujas th:first-child{text-align:left}
-#mdm-burbujas td{padding:7px 0;border-bottom:1px solid var(--olive-soft);text-align:right}
-#mdm-burbujas td:first-child{text-align:left}
-#mdm-burbujas td.big{font-size:16px;color:var(--olive);font-weight:700;font-variant-numeric:tabular-nums}
-#mdm-burbujas .cod{display:inline-block;font-size:9px;font-weight:700;background:var(--olive);color:var(--ground);padding:1px 5px;margin-right:6px;letter-spacing:.08em}
-#mdm-burbujas tr.tardia td{color:var(--aviso)}
-#mdm-burbujas tr.tardia .cod{background:var(--aviso)}
-#mdm-burbujas .bur-aviso{border-left:2px solid var(--aviso);padding:8px 0 8px 12px;margin:12px 0;color:var(--aviso);font-size:12px}
-#mdm-burbujas .bur-aviso b{display:block;font-size:8.5px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:2px}
-#mdm-burbujas .bur-compra{font-size:12px;color:var(--muted);margin:4px 0 18px}
-#mdm-burbujas .bur-bases{margin-top:34px}
-#mdm-burbujas .bcard{background:var(--paper);border:1px solid var(--hair);padding:13px 15px;margin-bottom:9px}
-#mdm-burbujas .bcard .bt{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
-#mdm-burbujas .bcard h3{font-family:var(--display);font-style:italic;font-weight:400;font-size:16px;margin:0}
-#mdm-burbujas .bcard .bp{font-size:11px;color:var(--olive)}
-#mdm-burbujas .bcard .bn{font-size:11.5px;color:var(--muted)}
-#mdm-burbujas :focus-visible{outline:2px solid var(--olive);outline-offset:3px}
-@media print{
-  #mdm-burbujas{background:#fff}
-  #mdm-burbujas .bur-controls{display:none}
-}
-</style>
 
 <!-- ===== MÓDULO MACERACIÓN · estilos (scopeados a #mdm-mac · sin CDN) ===== -->
 <style>
@@ -1928,42 +1860,6 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
   <!-- INNER SCREEN -->
   <div class="screen" id="screen-inner">
     <div id="inner-content"></div>
-  </div>
-  <!-- MÓDULO BURBUJAS · pantalla propia (su IIFE se autoinicializa al cargar) -->
-  <div class="screen" id="screen-burbujas">
-<div id="mdm-burbujas" data-rol="direccion">
-  <div class="bur-wrap">
-    <span class="bur-eyebrow">M de Materia · producción</span>
-    <h1 class="bur-title">Burbujas</h1>
-    <div class="bur-rule"></div>
-
-    <div class="bur-controls">
-      <div>
-        <label>Receta</label>
-        <select id="burSel"></select>
-      </div>
-      <div>
-        <label>Litros de lote</label>
-        <input id="burLitros" type="number" value="16" min="0.5" step="0.5">
-      </div>
-      <div>
-        <label>Rápido</label>
-        <div class="bur-chips">
-          <span class="bur-chip" data-l="2">2 L</span>
-          <span class="bur-chip" data-l="5">5 L</span>
-          <span class="bur-chip on" data-l="16">16 L</span>
-        </div>
-      </div>
-    </div>
-
-    <div id="burOut"></div>
-
-    <div class="bur-bases">
-      <div class="bur-head"><h2>Bases y corazones</h2><span class="bur-pilar">se elaboran antes · una vez</span></div>
-      <div id="burBout"></div>
-    </div>
-  </div>
-</div>
   </div>
   <!-- MÓDULO MACERACIÓN · pantalla propia (init diferido) -->
   <div class="screen" id="screen-maceracion">
@@ -2292,12 +2188,9 @@ function openSection(id, title) {
   }, 300);
 }
 
-// ── MÓDULO BURBUJAS ───────────────────────────────────
-// El módulo es un bloque persistente con su propia IIFE (se autoinicializa al
-// cargar la página). Aquí solo lo mostramos/ocultamos como una pantalla más y
-// le fijamos el data-rol de la sesión: "direccion" (Jon/Mónica) o "lara".
+// ── MÓDULO MACERACIÓN ─────────────────────────────────
 function _ocultaBurbujas() {
-  ["screen-burbujas", "screen-maceracion"].forEach(function (id) {
+  ["screen-maceracion"].forEach(function (id) {
     const sb = document.getElementById(id);
     if (sb) { sb.classList.remove("active"); sb.classList.add("exit"); }
   });
@@ -2312,31 +2205,12 @@ function irA_maceracion() {
   document.getElementById("screen-home").classList.add("exit");
   document.getElementById("screen-inner").classList.remove("active");
   document.getElementById("screen-inner").classList.add("exit");
-  document.getElementById("screen-burbujas").classList.remove("active");
-  document.getElementById("screen-burbujas").classList.add("exit");
   const sc = document.getElementById("screen-maceracion");
   sc.classList.add("active");
   sc.classList.remove("exit");
   if (window.__mdmMacInit) window.__mdmMacInit();
   if (window.__mdmMacRefresh) window.__mdmMacRefresh(); // inicio = hora real + recalcular
 }
-function irA_burbujas() {
-  navInto(() => irA_lab());           // "atrás" vuelve al hub de producción
-  currentSection = "burbujas";
-  _sectionTitle = "Burbujas";
-  document.getElementById("topbar-section").textContent = "Burbujas";
-  document.getElementById("topbar-back").classList.add("visible");
-  document.getElementById("screen-home").classList.remove("active");
-  document.getElementById("screen-home").classList.add("exit");
-  document.getElementById("screen-inner").classList.remove("active");
-  document.getElementById("screen-inner").classList.add("exit");
-  const sb = document.getElementById("screen-burbujas");
-  sb.classList.add("active");
-  sb.classList.remove("exit");
-  // Inicializa el módulo la 1ª vez (el shell ya tiene su markup en el DOM).
-  if (window.__mdmBurbujasInit) window.__mdmBurbujasInit();
-}
-
 // ── HELPERS ───────────────────────────────────────────
 async function api(path, opts = {}) {
   const headers = Object.assign({}, opts.headers || {});
@@ -2966,9 +2840,8 @@ async function irA_lab(){
     <div class="appcc-grid">
       ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
-      ${tile("Limonadas", "Recetas cerradas · escala por litros", "irA_limonadas()", "")}
+      ${tile("Burbujas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
       ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
-      ${tile("Burbujas", "Formulación de lote · refrescos con gas", "irA_burbujas()", "")}
       ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
       ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
     </div>`);
@@ -2994,7 +2867,7 @@ async function irA_mbds(){
       <div class="cc-links" style="margin-bottom:12px;">
         <button class="cc-link" onclick="irA_mbdsBiblioteca()">Biblioteca sensorial</button>
         <button class="cc-link" onclick="irA_mbdsCordiales()">Cordiales</button>
-        <button class="cc-link cc-link-wide" onclick="irA_limonadas()">Módulo Limonadas · producción →</button>
+        <button class="cc-link cc-link-wide" onclick="irA_burbujas()">Módulo Burbujas · producción →</button>
         ${admin?`<button class="cc-link cc-link-wide" onclick="formBebidaMBDS()">+ Nueva bebida</button>`:""}
       </div>
       <div class="section-label">Bebidas</div>
@@ -3091,7 +2964,7 @@ const LIMONADAS_DATA = {
   },
   recetas: {
     R4: {
-      nombre: "Lima · lima kaffir", fase: "Fase 1 · gancho", pvp: "2,30 €",
+      nombre: "Origen", sabor: "lima · lima kaffir", prod: "Burbujas Origen", fase: "carbonatada · lima · lima kaffir", pvp: "2,30 €",
       bx: "9,0", acidez: "0,82 %", co2: "3,2 vol",
       lineas: [
         { n: "Super Juice de lima", v: 196, u: "ml", cod: "SJL" },
@@ -3105,7 +2978,7 @@ const LIMONADAS_DATA = {
       nota: "Reforzada: le faltaba intensidad y frescor. Se subió el alma y el kaffir, sin tocar la piel. El kaffir amplifica la lima. Cerrada en cata."
     },
     R5: {
-      nombre: "Pomelo · romero · lapsang", fase: "Fase 2 · centro", pvp: "2,50 €",
+      nombre: "Colección", sabor: "pomelo · romero · lapsang", prod: "Burbujas Colección", fase: "carbonatada · pomelo · romero · lapsang", pvp: "2,50 €",
       bx: "~8", acidez: "0,89 %", co2: "3,2 vol",
       lineas: [
         { n: "Super Juice de pomelo", v: 111, u: "ml", cod: "SJP" },
@@ -3122,7 +2995,7 @@ const LIMONADAS_DATA = {
       nota: "Tu reinvención: dos cítricos (pomelo+lima) y dos fondos (romero herbal + lapsang ahumado). El agua ya va dentro, no hay c.s.p. Nombre sugerido en carta: «pomelo ahumado». Cerrada en cata."
     },
     R6: {
-      nombre: "Fruta de la pasión · hierbabuena", fase: "Fase 3 · premium", pvp: "2,90 €",
+      nombre: "Equilibrio", sabor: "fruta de la pasión · hierbabuena", prod: "Burbujas Equilibrio", fase: "carbonatada · fruta de la pasión · hierbabuena", pvp: "2,90 €",
       bx: "~9", acidez: "alta", co2: "2,8 vol",
       lineas: [
         { n: "Purée Boiron maracuyá",  v: 150, u: "g",  cod: "PB" },
@@ -3148,11 +3021,11 @@ function limFmt(x){
   return (Math.round(x*100)/100).toLocaleString("es-ES");
 }
 
-function irA_limonadas(){
+function irA_burbujas(){
   navInto(()=>irA_mbds());
   const keys=Object.keys(LIMONADAS_DATA.recetas);
   if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16 };
-  openSection("limonadas","Limonadas");
+  openSection("burbujas","Burbujas");
   limRender();
 }
 function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; limRender(); } }
@@ -3172,10 +3045,10 @@ function limRender(){
     ? `<tr class="tot"><td class="n">Total ≈</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td></tr>`
     : `<tr class="tot"><td class="n">Agua c.s.p.</td><td class="q">—</td><td class="q big">hasta ${limFmt(L)} L</td></tr>`;
   const chips=[2,5,16].map(n=>`<button class="${L===n?"on":""}" onclick="limSetL(${n})">${n} L</button>`).join("");
-  const recSel=Object.entries(LIMONADAS_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.fase)} · ${esc(x.nombre)}</option>`).join("");
+  const recSel=Object.entries(LIMONADAS_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.nombre)} · ${esc(x.sabor)}</option>`).join("");
 
   setInner(`
-    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Limonadas · ${esc(r.nombre)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${limFmt(L)} L</div></div>
+    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Burbujas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${limFmt(L)} L</div></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="lim-rsel" onchange="limSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="lim-litros" type="number" min="0.5" step="0.5" value="${L}" inputmode="decimal" oninput="limLeerLitros()" style="width:110px;"></div>
@@ -3188,8 +3061,22 @@ function limRender(){
     ${limBasesHTML()}
     <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
     <div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>
-    <div class="card-actions" style="margin-top:16px;"><button class="btn-ghost" onclick="limOleo()">Óleo saccharum · calculadora →</button></div>
+    <div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta · PVP ${esc(r.pvp)}. Esta receta es la producción de ese producto.</div>
+    <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
+      <button class="btn-primary" onclick="burVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
+      <button class="btn-ghost" onclick="burVerEnCarta()">Todas en carta · Burbujas</button>
+      <button class="btn-ghost" onclick="limOleo()">Óleo saccharum</button>
+    </div>
   `);
+}
+// Enlace con el apartado de Productos (carta): abre la categoría Burbujas y, si se
+// indica, deja resaltado el producto de esta receta (Origen/Equilibrio/Colección).
+async function burVerEnCarta(){ await irA_menu(); menuNivel(["burbujas"]); }
+async function burVerProducto(nombreProd){
+  await irA_menu(); menuNivel(["burbujas"]);
+  const node = menuNodoEn(["burbujas"]);
+  const idx = node && node.items ? node.items.findIndex(it=>it.n===nombreProd) : -1;
+  if(idx>=0) menuEditar(idx);
 }
 function limBasesHTML(){
   return Object.entries(LIMONADAS_DATA.homemade).map(([k,b])=>`
@@ -3216,7 +3103,7 @@ function limOleoDesdePiel(pielG){
 function limOleo(){
   if(!window._lim) window._lim={};
   if(window._lim.peel==null) window._lim.peel=334; // lo que hay ahora en bandeja
-  openSection("limonadas","Limonadas");
+  openSection("burbujas","Burbujas");
   limOleoRender();
 }
 function limLeerPeel(){ const a=el("lim-peel"); if(a) window._lim.peel=Math.max(0,parseFloat(a.value)||0); }
@@ -3248,7 +3135,7 @@ function limOleoRender(){
       <li>Tapar y macerar 4–24 h a temperatura ambiente.</li>
       <li>Colar y prensar. Guardar en frío.</li>
     </ol>`;
-  const foot=`<button class="btn-ghost" onclick="irA_limonadas()">← Volver</button>
+  const foot=`<button class="btn-ghost" onclick="irA_burbujas()">← Volver</button>
     <button class="btn-primary" onclick="etqDesdeOleo()">generar etiqueta →</button>`;
   el("inner-content").innerHTML=`<div id="lim">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div>`;
 }
@@ -7216,9 +7103,9 @@ const CARTA_ARBOL = {
     ]},
   }},
   burbujas: { nombre:"Burbujas", items:[
-    { n:"Burbujas Origen",     cat:"burbujas", desc:"Refresco de té · origen" },
-    { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Refresco de té · equilibrio" },
-    { n:"Burbujas Colección",  cat:"burbujas", desc:"Refresco de té · colección" },
+    { n:"Burbujas Origen",     cat:"burbujas", desc:"Carbonatada · lima · lima kaffir · PVP 2,30 €" },
+    { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Carbonatada · fruta de la pasión · hierbabuena · PVP 2,90 €" },
+    { n:"Burbujas Colección",  cat:"burbujas", desc:"Carbonatada · pomelo · romero · lapsang · PVP 2,50 €" },
   ]},
   zumos: { nombre:"Zumos", items:[
     { n:"Zumo Origen",     cat:"zumos", desc:"Zumo · origen" },
@@ -7879,189 +7766,6 @@ if ("serviceWorker" in navigator) {
 arrancar();
 </script>
 
-<!-- ===== MÓDULO BURBUJAS · script (init diferido · sin scope global) =====
-     El módulo se integra "tal cual": su lógica interna no se toca. Solo se
-     difiere la ejecución, porque esta app reconstruye el shell del <body>
-     (APP_SHELL) tras el splash/login; si corriese al cargar, el markup del
-     módulo aún no estaría en el DOM. Se inicializa la 1ª vez que se abre. -->
-<script>
-// Recetas de producción de Burbujas (sodas de té). Datos verificados POR LITRO;
-// el cliente multiplica por los litros del lote. Sin dependencias ni fetch.
-function _mdmBurbujasMain(){
-  'use strict';
-  var raiz = document.getElementById('mdm-burbujas');
-  if(!raiz) return;
-  var $ = function(id){ return document.getElementById(id); };
-
-  var DATA = {
-    // --- BASES (infusiones + jarabe) · dosis por litro de infusión ---
-    bases: {
-      B1: { nombre: "Infusión earl grey", temp: "55 °C", tiempo: "90 min",
-            dosis: "8 g/L hoja", nota: "La más fría y segura: la bergamota se pierde por encima de 60 °C." },
-      B2: { nombre: "Infusión chai de especias", temp: "68 °C", tiempo: "2 h",
-            dosis: "mezcla", nota: "Jengibre 8 · canela 3 · cardamomo 2 (últimos 30 min) · pimienta 1 · clavo 0,5 · té negro 2 (opc). Sin leche." },
-      B3: { nombre: "Infusión lapsang souchong", temp: "70 °C", tiempo: "≤ 40 min",
-            dosis: "6 g/L hoja", nota: "La del riesgo: catar a 25/30/40 y cortar en cuanto la astringencia tape el ahumado." },
-      B4: { nombre: "Infusión de pimienta", temp: "60 °C", tiempo: "45 min",
-            dosis: "15 g/L bayas majadas", nota: "Aparte, para dosificar el picante al gusto. Majar, no moler." },
-      B5: { nombre: "Jarabe", temp: "—", tiempo: "—",
-            dosis: "500 g azúcar / L", nota: "Vida 10 días a 2 °C." }
-    },
-    // --- CORAZONES (zumos clarificados) ---
-    corazones: {
-      C1: { nombre: "Manzana clarificada", tiempo: "45 min", rend: "85 %",
-            nota: "Ascórbico 0,5 g/L en el vaso ANTES de licuar. Pectinasa 1 g/kg 40 °C 30 min + diatomeas 1,5 g/L. Va entera, sin 20 % crudo." },
-      C2: { nombre: "Piña clarificada", tiempo: "45 min", rend: "85 %",
-            nota: "Su propia bromelina: 40 °C 30 min, sin enzima añadida. Diatomeas 1,5 g/L. Reservar 20 % crudo." },
-      C3: { nombre: "Melocotón clarificado", tiempo: "1 h", rend: "80 %",
-            nota: "Pulpa limpia (sin piel ni hueso). Pectinasa 1,5 g/kg 45 °C 40 min + diatomeas 2 g/L. Reservar 20 % crudo." }
-    },
-    // --- RECETAS · todas las cantidades POR LITRO ---
-    recetas: {
-      R1: {
-        nombre: "Manzana verde · earl grey", pilar: "I · ORIGEN",
-        bx: "6,5", acidez: "0,55 %", co2: "3,0 vol", bar: "1,04 bar", linea: "2,08 m",
-        compra: "≈ 5,2 kg manzana Granny Smith / 16 L",
-        lineas: [
-          { c: "C1", n: "Manzana clarificada",  v: 180,  u: "g",  cod: "C1" },
-          { c: "B1", n: "Infusión earl grey",   v: 300,  u: "ml", cod: "B1" },
-          { n: "Azúcar",            v: 45.2, u: "g" },
-          { n: "Ácido cítrico",     v: 2.76, u: "g" },
-          { n: "Ácido málico",      v: 1.84, u: "g" },
-          { n: "Sal sin yodar",     v: 0.50, u: "g" },
-          { n: "Citrato trisódico", v: 0.42, u: "g" },
-          { n: "Ácido ascórbico",   v: 0.35, u: "g" }
-        ],
-        aviso: "Corre contra el reloj: se oxida en montaje. Lote del tirón, zumo recién clarificado."
-      },
-      R2: {
-        nombre: "Melocotón · lapsang · picante", pilar: "II · EQUILIBRIO",
-        bx: "8,5", acidez: "0,59 %", co2: "3,0 vol", bar: "1,04 bar", linea: "2,08 m",
-        compra: "≈ 9,7 kg melocotón / 16 L · sin menta",
-        lineas: [
-          { c: "C3", n: "Melocotón clarificado", v: 260, u: "g", cod: "C3" },
-          { c: "B3", n: "Infusión lapsang",      v: 250, u: "ml", cod: "B3" },
-          { n: "Azúcar",            v: 56.0, u: "g" },
-          { n: "Ácido cítrico",     v: 2.15, u: "g" },
-          { n: "Ácido málico",      v: 2.15, u: "g" },
-          { n: "Sal sin yodar (declarada)", v: 1.00, u: "g" },
-          { n: "Citrato trisódico", v: 0.42, u: "g" },
-          { n: "Ácido ascórbico",   v: 0.35, u: "g" },
-          { c: "C3", n: "Melocotón crudo", v: 40,  u: "g",  cod: "C3", tardio: true },
-          { c: "B4", n: "Infusión de pimienta", v: 22.5, u: "ml", cod: "B4", tardio: true }
-        ],
-        aviso: "Sal a 0,10 %: declarable, 123 mg sodio/lata. Registro salino con el ahumado."
-      },
-      R3: {
-        nombre: "Piña · chai", pilar: "III · COLECCIÓN",
-        bx: "10,0", acidez: "0,65 %", co2: "2,8 vol", bar: "0,90 bar", linea: "1,53 m",
-        compra: "≈ 8,3 kg piña / 16 L · chai = infusión de especias",
-        lineas: [
-          { c: "C2", n: "Piña clarificada", v: 200, u: "g", cod: "C2" },
-          { c: "B2", n: "Infusión chai",    v: 280, u: "ml", cod: "B2" },
-          { n: "Azúcar",            v: 70.0, u: "g" },
-          { n: "Ácido cítrico",     v: 3.16, u: "g" },
-          { n: "Ácido málico",      v: 1.36, u: "g" },
-          { n: "Sal sin yodar",     v: 0.50, u: "g" },
-          { n: "Citrato trisódico", v: 0.42, u: "g" },
-          { n: "Ácido ascórbico",   v: 0.35, u: "g" },
-          { c: "C2", n: "Piña cruda", v: 50, u: "g", cod: "C2", tardio: true }
-        ],
-        aviso: "PENDIENTE: Bx 10 / ratio 15, dulce. Catar carbonatada; si empalaga, bajar azúcar a ~45 g/L (Bx 8, ratio 12)."
-      }
-    }
-  };
-
-  function fmt(x){
-    if(x>=100) return Math.round(x).toLocaleString('es-ES');
-    if(x>=10)  return (Math.round(x*10)/10).toLocaleString('es-ES');
-    return (Math.round(x*100)/100).toLocaleString('es-ES');
-  }
-
-  function initSel(){
-    var s = $('burSel');
-    Object.keys(DATA.recetas).forEach(function(k){
-      var r = DATA.recetas[k];
-      var o = document.createElement('option');
-      o.value = k; o.textContent = r.pilar + '  ·  ' + r.nombre;
-      s.appendChild(o);
-    });
-  }
-
-  function setL(n){ $('burLitros').value = n; sync(); render(); }
-
-  function sync(){
-    var L = parseFloat($('burLitros').value) || 0;
-    var chips = raiz.querySelectorAll('.bur-chip');
-    for(var i=0;i<chips.length;i++){
-      chips[i].classList.toggle('on', parseFloat(chips[i].getAttribute('data-l')) === L);
-    }
-  }
-
-  function render(){
-    var rk = $('burSel').value;
-    var L = parseFloat($('burLitros').value) || 0;
-    var r = DATA.recetas[rk];
-    if(!r) return;
-    var rows = r.lineas.map(function(li){
-      var total = li.v * L;
-      var cod = li.cod ? '<span class="cod">' + li.cod + '</span>' : '';
-      var cls = li.tardio ? ' class="tardia"' : '';
-      var tag = li.tardio ? ' <span style="font-size:8.5px;letter-spacing:.1em;text-transform:uppercase">tardío</span>' : '';
-      return '<tr' + cls + '><td>' + cod + li.n + tag + '</td><td>' + fmt(li.v) + ' ' + li.u + '/L</td><td class="big">' + fmt(total) + ' ' + li.u + '</td></tr>';
-    }).join('');
-    $('burOut').innerHTML =
-      '<div class="bur-head"><h2>' + r.nombre + '</h2><span class="bur-pilar">' + r.pilar + '</span></div>' +
-      '<div class="bur-param">' +
-        '<div><b>' + r.bx + '</b><span>°Bx</span></div>' +
-        '<div><b>' + r.acidez + '</b><span>acidez</span></div>' +
-        '<div><b>' + r.co2 + '</b><span>CO₂</span></div>' +
-        '<div><b>' + r.bar + '</b><span>2 °C</span></div>' +
-        '<div><b>' + r.linea + '</b><span>línea 3/16"</span></div>' +
-      '</div>' +
-      '<table><thead><tr><th>componente</th><th>por litro</th><th>lote ' + fmt(L) + ' L</th></tr></thead>' +
-      '<tbody>' + rows +
-      '<tr><td style="font-weight:700;color:var(--olive);border-top:1px solid var(--ink);padding-top:9px">Agua c.s.p.</td>' +
-      '<td style="border-top:1px solid var(--ink);padding-top:9px">—</td>' +
-      '<td class="big" style="border-top:1px solid var(--ink);padding-top:9px">hasta ' + fmt(L) + ' L</td></tr>' +
-      '</tbody></table>' +
-      '<div class="bur-aviso"><b>atención</b>' + r.aviso + '</div>' +
-      '<div class="bur-compra"><b>Compra:</b> ' + r.compra + ' · ' + Math.floor(L*1000/250*0.96) + ' latas vendibles</div>';
-  }
-
-  function renderBases(){
-    var h = '';
-    Object.keys(DATA.corazones).forEach(function(k){
-      var c = DATA.corazones[k];
-      h += '<div class="bcard"><div class="bt"><h3><span class="cod">' + k + '</span>' + c.nombre + '</h3>' +
-           '<span class="bp">' + c.tiempo + ' · rend. ' + c.rend + '</span></div><div class="bn">' + c.nota + '</div></div>';
-    });
-    Object.keys(DATA.bases).forEach(function(k){
-      var b = DATA.bases[k];
-      h += '<div class="bcard"><div class="bt"><h3><span class="cod">' + k + '</span>' + b.nombre + '</h3>' +
-           '<span class="bp">' + b.temp + (b.tiempo !== '—' ? ' · ' + b.tiempo : '') + ' · ' + b.dosis + '</span></div><div class="bn">' + b.nota + '</div></div>';
-    });
-    $('burBout').innerHTML = h;
-  }
-
-  $('burSel').addEventListener('change', render);
-  $('burLitros').addEventListener('input', function(){ sync(); render(); });
-  var chips = raiz.querySelectorAll('.bur-chip');
-  for(var i=0;i<chips.length;i++){
-    chips[i].addEventListener('click', function(){ setL(parseFloat(this.getAttribute('data-l'))); });
-  }
-
-  initSel(); renderBases(); sync(); render();
-}
-// Init bajo demanda: se ejecuta cuando el shell ya tiene el markup del módulo
-// (al abrir Burbujas). Reinicializa si el shell se reconstruyó (select vacío).
-window.__mdmBurbujasInit = function(){
-  var sel = document.getElementById('burSel');
-  if(!sel) return;                              // shell aún no presente
-  if(sel.options && sel.options.length) return; // ya inicializado
-  _mdmBurbujasMain();
-};
-</script>
 
 <!-- ===== MÓDULO MACERACIÓN · script (IIFE · scopeado a #mdm-mac · init diferido) =====
      Adaptado del módulo original: envuelto para no filtrar globals (render/calcular

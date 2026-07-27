@@ -5,6 +5,13 @@
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
+// Handler de fetch mínimo (passthrough puro): NO cachea nada, así que la app
+// sigue cargando siempre la última versión en vivo, igual que hasta ahora. Su
+// único fin es cumplir el criterio de instalabilidad de Android/Chrome: con un
+// service worker que escucha 'fetch', la web se instala como app real (WebAPK)
+// y el icono deja de llevar el sello de Chrome.
+self.addEventListener("fetch", () => {});
+
 self.addEventListener("push", (event) => {
   let data = {};
   try {

@@ -852,6 +852,28 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   expect(errors).toEqual([]);
 });
 
+test("spritz: Origen calcula escandallo y escala; pendientes y enlace a productos", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_spritz());
+  await expect(page.locator("#spz-rsel option")).toHaveCount(3);
+  // Origen a 5 L: Aperol 250 ml/L → 1.250 ml; escandallo ~0,56 €/120 ml.
+  await page.evaluate(() => { spzSetRec("origen"); spzSetL(5); });
+  await expect(page.locator(".lim-h")).toContainText(/Spritz · Origen/);
+  await expect(page.locator("body")).toContainText(/Aperol/);
+  await expect(page.locator("body")).toContainText(/250 ml\/L/);
+  await expect(page.locator("body")).toContainText(/15,00 €/); // Aperol · 250 ml/L × 5 L × 12 €/L
+  await expect(page.locator("body")).toContainText(/0,56 €/);  // escandallo /120 ml
+  // Colección aún es plantilla (receta pendiente).
+  await page.evaluate(() => spzSetRec("coleccion"));
+  await expect(page.locator("body")).toContainText(/Receta pendiente/);
+  // Enlace con productos: categoría Spritz de la carta.
+  await page.evaluate(() => spzVerEnCarta());
+  await expect(page.locator("body")).toContainText(/Spritz Origen/);
+  expect(errors).toEqual([]);
+});
+
 // Albarán de varias hojas: se acumulan fotos y se leen como un solo albarán.
 test("recepción: se pueden acumular varias hojas de un mismo albarán", async ({ page }) => {
   const errors = [];

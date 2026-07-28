@@ -2935,28 +2935,31 @@ function mbdsIngNombre(id){ const l=window._mbdsIng||[]; const i=l.find(x=>x.id=
 // ── Datos: 3 recetas CERRADAS en cata. Cantidades POR LITRO; se escalan por los
 //    litros del lote. Homemade y premezclas = lo que se prepara antes.
 const LIMONADAS_DATA = {
+  // Cada homemade escala con lo que pide la receta × litros de lote:
+  //  · rinde = ml que produce el lote base → factor = necesario / rinde.
+  //  · perLitro = receta por litro de agua (aguas aromáticas): agua = ml necesarios,
+  //    e ingredientes = g/L × ml/1000. No hay lote fijo, escala directo.
   homemade: {
-    SJL: { nombre: "Super Juice de lima", tipo: "cítrico",
-           receta: "piel 140 g · cítrico 150 g · málico 4 g · zumo 420 g · agua 2330 g",
+    SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044,
+           ing: [ {n:"piel de lima",v:140,u:"g"}, {n:"ácido cítrico",v:150,u:"g"}, {n:"ácido málico",v:4,u:"g"}, {n:"zumo de lima",v:420,u:"g"}, {n:"agua",v:2330,u:"g"} ],
            metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7." },
-    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico",
-           receta: "piel 400 g · cítrico 362 g · málico 90 g · zumo 1332 g · agua 6664 g · glutamato 13 g",
+    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861,
+           ing: [ {n:"piel de pomelo",v:400,u:"g"}, {n:"ácido cítrico",v:362,u:"g"}, {n:"ácido málico",v:90,u:"g"}, {n:"zumo de pomelo",v:1332,u:"g"}, {n:"agua",v:6664,u:"g"}, {n:"glutamato",v:13,u:"g"} ],
            metodo: "Igual que el de lima. Este lleva glutamato dentro." },
-    AK:  { nombre: "Agua de lima kaffir", tipo: "aromática",
-           receta: "12 g/L hoja · 60 °C · 45 min · sous vide sellado",
+    AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true,
+           ing: [ {n:"hoja de lima kaffir",v:12,u:"g"} ], params: "60 °C · 45 min · sous vide sellado",
            metodo: "Hoja rasgada, no triturada. Enfriar en hielo, filtrar 5 µm." },
-    AR:  { nombre: "Agua de romero", tipo: "aromática",
-           receta: "15 g/L · 65 °C · 40 min · sous vide sellado",
+    AR:  { nombre: "Agua de romero", tipo: "aromática", perLitro: true,
+           ing: [ {n:"romero",v:15,u:"g"} ], params: "65 °C · 40 min · sous vide sellado",
            metodo: "Sin tallo leñoso. 15 g/L es el techo: pasado, sabe a ambientador." },
-    AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática",
-           receta: "6 g/L · 70 °C · ≤40 min · sous vide sellado",
+    AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática", perLitro: true,
+           ing: [ {n:"lapsang souchong",v:6,u:"g"} ], params: "70 °C · ≤40 min · sous vide sellado",
            metodo: "Catar a 25/30/40 min y CORTAR cuando la astringencia tape el ahumado. El tanino sale rápido a 70 °C." },
-    CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial",
-           receta: "hierbabuena 130 g · azúcar 500 g · agua 500 g · cítrico 15 g · tartárico 15 g",
+    CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial", rinde: 1160,
+           ing: [ {n:"hierbabuena",v:130,u:"g"}, {n:"azúcar",v:500,u:"g"}, {n:"agua",v:500,u:"g"}, {n:"ácido cítrico",v:15,u:"g"}, {n:"ácido tartárico",v:15,u:"g"} ],
            metodo: "NO es agua: es un cordial. Aporta aroma + azúcar + ácido a la vez. Por eso la pasión lleva poco azúcar y nada de cítrico añadido." },
-    PB:  { nombre: "Purée Boiron fruta de la pasión", tipo: "comprado",
-           receta: "13 °Bx · comprado, no se prepara",
-           metodo: "Ya es puro y trae su propia acidez." }
+    PB:  { nombre: "Purée Boiron fruta de la pasión", tipo: "comprado", comprado: true,
+           metodo: "13 °Bx · ya es puro y trae su propia acidez. No se prepara: se compra la cantidad necesaria." }
   },
   premezclas: {
     salina:    "5 g sal / 100 ml → 1 ml = 0,05 g",
@@ -3058,8 +3061,8 @@ function limRender(){
     <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
     <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>lote ${limFmt(L)} L</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
     <div class="lim-nota">${esc(r.nota)}</div>
-    <div class="section-label" style="margin-top:24px;">Homemade · preparar antes</div>
-    ${limBasesHTML()}
+    <div class="section-label" style="margin-top:24px;">Homemade · preparar antes · para ${limFmt(L)} L</div>
+    ${limPrepHTML(r, L)}
     <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
     <div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>
     <div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta · PVP ${esc(r.pvp)}. Esta receta es la producción de ese producto.</div>
@@ -3079,16 +3082,38 @@ async function burVerProducto(nombreProd){
   const idx = node && node.items ? node.items.findIndex(it=>it.n===nombreProd) : -1;
   if(idx>=0) menuEditar(idx);
 }
-function limBasesHTML(){
-  return Object.entries(LIMONADAS_DATA.homemade).map(([k,b])=>`
-    <div class="card" style="margin-bottom:8px;">
+// Preparaciones previas ESCALADAS: para X litros de la receta seleccionada, cuánto
+// homemade hace falta y, sobre todo, cuánta materia prima preparar para producirlo.
+function limPrepHTML(r, L){
+  // Homemade que pide ESTA receta (líneas con código) y cuánto ml necesita.
+  const usados = (r.lineas||[]).filter(li=>li.cod && LIMONADAS_DATA.homemade[li.cod]);
+  if(!usados.length) return `<div class="card"><div class="card-meta">Esta receta no lleva preparaciones previas.</div></div>`;
+  return usados.map(li=>{
+    const b = LIMONADAS_DATA.homemade[li.cod];
+    const necesario = li.v * L;                 // ml (o g para el purée) que hacen falta
+    let prep = "";
+    if(b.comprado){
+      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">Comprar ${limG(necesario)} · no se prepara.</div>`;
+    } else if(b.perLitro){
+      // Agua aromática: agua = ml necesarios; ingredientes = g/L × ml/1000.
+      const litros = necesario/1000;
+      const ings = (b.ing||[]).map(x=>`${esc(x.n)} ${limG(x.v*litros)}`).join(" · ");
+      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">agua ${limMl(necesario)} + ${ings}${b.params?` · ${esc(b.params)}`:""}</div>`;
+    } else {
+      // Lote fijo: escala toda la receta por factor = necesario / rinde.
+      const factor = b.rinde>0 ? necesario/b.rinde : 1;
+      const ings = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}`).join(" · ");
+      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">${ings}</div>`;
+    }
+    return `<div class="card" style="margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
-        <div class="card-name"><span class="lim-cod">${esc(k)}</span>${esc(b.nombre)}</div>
-        <span class="lim-eyebrow">${esc(b.tipo)}</span>
+        <div class="card-name"><span class="lim-cod">${esc(li.cod)}</span>${esc(b.nombre)}</div>
+        <span style="font-size:12px;font-weight:700;color:var(--olive);white-space:nowrap;">necesitas ${b.comprado?limG(necesario):limMl(necesario)}</span>
       </div>
-      <div style="color:var(--olive);margin-top:6px;font-size:12px;">${esc(b.receta)}</div>
+      ${prep}
       <div class="card-meta" style="margin-top:4px;">${esc(b.metodo)}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 

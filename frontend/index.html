@@ -3131,18 +3131,18 @@ const SPRITZ_DATA = {
     chardonnay: { nombre:"Chardonnay Pernales", precioL: 5.64,  iva:true  },
     agua:       { nombre:"Agua filtrada",       precioL: 0,     iva:false },
   },
-  tecnicosServ: { co2: 0.02, agua: 0.01 }, // € por servicio de 120 ml
-  servingMl: 120,   // vaso/servicio de referencia
-  lataMl: 250,      // formato de lata
+  tecnicosL: 0.25, // € por litro de mezcla (CO₂ + agua filtrada, técnicos)
+  lataMl: 250,     // formato de lata (unidad de venta)
   recetas: {
     origen: {
       nombre:"Origen", sabor:"Aperol · Chardonnay Pernales", prod:"Spritz Origen", pvp:"",
+      // Proporción 35 Aperol : 35 vino : 20 agua (total 90) → por litro de mezcla.
       lineas: [
-        { n:"Aperol",              v:250, u:"ml", ing:"aperol" },     // 30 ml / 120 ml
-        { n:"Chardonnay Pernales", v:250, u:"ml", ing:"chardonnay" }, // 30 ml / 120 ml
-        { n:"Agua filtrada",       v:500, u:"ml", ing:"agua" },       // 60 ml / 120 ml
+        { n:"Aperol",              v:388.89, u:"ml", ing:"aperol" },     // 97,2 ml / lata 250
+        { n:"Chardonnay Pernales", v:388.89, u:"ml", ing:"chardonnay" }, // 97,2 ml / lata 250
+        { n:"Agua filtrada",       v:222.22, u:"ml", ing:"agua" },       // 55,6 ml / lata 250
       ],
-      nota:"Escandallo estimado ~0,56 €/120 ml (mezcla 0,53 € + CO₂ y agua ~0,03 €). En lata de 250 ml la bebida sale ~1,17 €; a eso hay que sumar lata, tapa, etiqueta, mano de obra y mermas. El Chardonnay lleva +21 % de IVA no incluido en estas cifras."
+      nota:"Proporción 35 : 35 : 20 (Aperol · vino · agua). En lata de 250 ml: Aperol 97,2 ml + vino 97,2 ml + agua 55,6 ml. Bebida ~1,78 €/lata (mezcla 1,71 € + CO₂ y agua ~0,06 €); a eso hay que sumar lata, tapa, etiqueta, mano de obra y mermas. El Chardonnay lleva +21 % de IVA no incluido en estas cifras."
     },
     equilibrio: { nombre:"Equilibrio", sabor:"por definir", prod:"Spritz Equilibrio", pendiente:true },
     coleccion:  { nombre:"Colección",  sabor:"por definir", prod:"Spritz Colección",  pendiente:true },
@@ -3152,7 +3152,7 @@ function spzEur(x){ return (Math.round((Number(x)||0)*100)/100).toFixed(2).repla
 function spzCosteMezclaL(r){ // €/L de mezcla (neto, criterio del escandallo)
   return (r.lineas||[]).reduce((s,li)=>{ const ing=SPRITZ_DATA.ingredientes[li.ing]; return s+(ing?ing.precioL:0)*li.v/1000; },0);
 }
-function spzTecnicosL(){ const t=SPRITZ_DATA.tecnicosServ; return (t.co2+t.agua)/(SPRITZ_DATA.servingMl/1000); } // €/L
+function spzTecnicosL(){ return SPRITZ_DATA.tecnicosL || 0; } // €/L (CO₂ + agua)
 
 function irA_spritz(){
   navInto(()=>irA_mbds());
@@ -3188,32 +3188,41 @@ function spzRender(){
     cuerpo=`<div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Receta pendiente.</b> Pásame la receta de <b>Spritz ${esc(r.nombre)}</b> (ingredientes y cantidades por vaso) y la cierro aquí con su escandallo, igual que Origen.</div>`;
   } else {
     const costeL=spzCosteMezclaL(r), tecL=spzTecnicosL();
-    const coste120=(costeL+tecL)*SPRITZ_DATA.servingMl/1000;
-    const coste250=(costeL+tecL)*SPRITZ_DATA.lataMl/1000;
+    const lataL=(SPRITZ_DATA.lataMl||250)/1000;                 // 0,25 L por lata
+    const costeLata=(costeL+tecL)*lataL;                        // bebida por lata 250 ml
+    const nLatas=lataL>0?L/lataL:0;                             // latas que salen del lote
     const rows=r.lineas.map(li=>{
       const ing=SPRITZ_DATA.ingredientes[li.ing];
+      const porLata=li.v*lataL;                                 // ml por lata 250
       const total=li.v*L;
       const costeComp=(ing?ing.precioL:0)*total/1000;
       const ivaTag=ing&&ing.iva?`<small>+ IVA</small>`:"";
-      return `<tr><td class="n">${esc(li.n)}${ivaTag}</td><td class="q">${limFmt(li.v)} ${esc(li.u)}/L</td><td class="q big">${limFmt(total)} ${esc(li.u)}</td><td class="q">${costeComp>0?spzEur(costeComp):"—"}</td></tr>`;
+      return `<tr><td class="n">${esc(li.n)}${ivaTag}</td><td class="q">${limFmt(porLata)} ${esc(li.u)}</td><td class="q big">${limFmt(total)} ${esc(li.u)}</td><td class="q">${costeComp>0?spzEur(costeComp):"—"}</td></tr>`;
     }).join("");
     const costeLoteMezcla=costeL*L;
-    const tabla=`<table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>lote ${limFmt(L)} L</th><th>coste lote</th></tr></thead><tbody>${rows}
-      <tr class="tot"><td class="n">Mezcla ${limFmt(L)} L</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td><td class="q">${spzEur(costeLoteMezcla)}</td></tr></tbody></table>`;
+    const tabla=`<table class="lim-tab"><thead><tr><th>componente</th><th>por lata 250</th><th>lote ${limFmt(L)} L</th><th>coste lote</th></tr></thead><tbody>${rows}
+      <tr class="tot"><td class="n">Mezcla ${limFmt(L)} L</td><td class="q">≈ ${limFmt(nLatas)} latas</td><td class="q big">${limFmt(L)} L</td><td class="q">${spzEur(costeLoteMezcla)}</td></tr></tbody></table>`;
     const param=`<div class="lim-param">
-      <div><b>${spzEur(coste120)}</b><span>coste /120 ml</span></div>
-      <div><b>${spzEur(coste250)}</b><span>coste /lata 250 ml</span></div>
-      <div><b>${spzEur(costeL)}</b><span>mezcla €/L</span></div>
+      <div><b>${spzEur(costeLata)}</b><span>coste bebida /lata 250</span></div>
+      <div><b>${spzEur(costeL*lataL)}</b><span>mezcla /lata</span></div>
+      <div><b>${limFmt(nLatas)}</b><span>latas del lote</span></div>
       <div><b>${r.pvp?esc(r.pvp):"—"}</b><span>pvp</span></div>
     </div>`;
-    const escandallo=`<div class="section-label" style="margin-top:6px;">Escandallo</div>
+    // Escandallo POR LATA de 250 ml (unidad de venta).
+    const escFilas=r.lineas.map(li=>{
+      const ing=SPRITZ_DATA.ingredientes[li.ing];
+      const c=(ing?ing.precioL:0)*li.v*lataL/1000;
+      const ivaTag=ing&&ing.iva?`<small>+ IVA</small>`:"";
+      return `<tr><td class="n">${esc(li.n)} <small>${limFmt(li.v*lataL)} ml</small>${ivaTag}</td><td class="q">${c>0?spzEur(c):"—"}</td></tr>`;
+    }).join("");
+    const escandallo=`<div class="section-label" style="margin-top:6px;">Escandallo · lata 250 ml</div>
       <table class="lim-tab"><tbody>
-        <tr><td class="n">Mezcla · vaso 120 ml</td><td class="q big">${spzEur(costeL*0.120)}</td></tr>
-        <tr><td class="n">+ CO₂ y agua (técnicos)</td><td class="q">${spzEur(SPRITZ_DATA.tecnicosServ.co2+SPRITZ_DATA.tecnicosServ.agua)}</td></tr>
-        <tr class="tot"><td class="n">Coste servicio 120 ml</td><td class="q big">${spzEur(coste120)}</td></tr>
-        <tr><td class="n">Bebida en lata 250 ml</td><td class="q big">${spzEur(coste250)}</td></tr>
+        ${escFilas}
+        <tr class="tot"><td class="n">Mezcla</td><td class="q big">${spzEur(costeL*lataL)}</td></tr>
+        <tr><td class="n">+ CO₂ y agua (técnicos)</td><td class="q">${spzEur(tecL*lataL)}</td></tr>
+        <tr class="tot"><td class="n">Bebida en lata 250 ml</td><td class="q big">${spzEur(costeLata)}</td></tr>
       </tbody></table>
-      <div class="lim-nota" style="border-left-color:var(--muted);">La lata añade, además: <b>lata, tapa, etiqueta, mano de obra y mermas</b> (aún por cifrar). Cuando los tengas, los sumo para el coste real por lata y su PVP.</div>`;
+      <div class="lim-nota" style="border-left-color:var(--muted);">Falta sumar por lata: <b>lata, tapa, etiqueta, mano de obra y mermas</b> (aún por cifrar). Cuando los tengas, cierro el coste real por lata y su PVP.</div>`;
     const enlace=`<div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta${r.pvp?` · PVP ${esc(r.pvp)}`:" · falta PVP"}. Esta receta es su producción.</div>
       <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
         <button class="btn-primary" onclick="spzVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
@@ -7244,7 +7253,7 @@ const CARTA_ARBOL = {
     { n:"Burbujas Colección",  cat:"burbujas", desc:"Carbonatada · pomelo · romero · lapsang · PVP 2,50 €" },
   ]},
   spritz: { nombre:"Spritz", items:[
-    { n:"Spritz Origen",     cat:"spritz", desc:"Aperol · Chardonnay Pernales · coste ~0,56 €/120 ml" },
+    { n:"Spritz Origen",     cat:"spritz", desc:"Aperol · Chardonnay Pernales · 35:35:20 · bebida ~1,78 €/lata 250 ml" },
     { n:"Spritz Equilibrio", cat:"spritz", desc:"Receta por definir" },
     { n:"Spritz Colección",  cat:"spritz", desc:"Receta por definir" },
   ]},

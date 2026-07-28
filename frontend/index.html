@@ -3136,13 +3136,13 @@ const SPRITZ_DATA = {
   recetas: {
     origen: {
       nombre:"Origen", sabor:"Aperol · Chardonnay Pernales", prod:"Spritz Origen", pvp:"",
-      // Proporción 35 Aperol : 35 vino : 20 agua (total 90) → por litro de mezcla.
+      // Proporción 400 Aperol : 600 vino : 3000 agua (total 4000) → por litro de mezcla.
       lineas: [
-        { n:"Aperol",              v:388.89, u:"ml", ing:"aperol" },     // 97,2 ml / lata 250
-        { n:"Chardonnay Pernales", v:388.89, u:"ml", ing:"chardonnay" }, // 97,2 ml / lata 250
-        { n:"Agua filtrada",       v:222.22, u:"ml", ing:"agua" },       // 55,6 ml / lata 250
+        { n:"Aperol",              v:100, u:"ml", ing:"aperol" },     // 25 ml / lata 250
+        { n:"Chardonnay Pernales", v:150, u:"ml", ing:"chardonnay" }, // 37,5 ml / lata 250
+        { n:"Agua filtrada",       v:750, u:"ml", ing:"agua" },       // 187,5 ml / lata 250
       ],
-      nota:"Proporción 35 : 35 : 20 (Aperol · vino · agua). En lata de 250 ml: Aperol 97,2 ml + vino 97,2 ml + agua 55,6 ml. Bebida ~1,78 €/lata (mezcla 1,71 € + CO₂ y agua ~0,06 €); a eso hay que sumar lata, tapa, etiqueta, mano de obra y mermas. El Chardonnay lleva +21 % de IVA no incluido en estas cifras."
+      nota:"Proporción 400 : 600 : 3000 (Aperol · vino · agua). En lata de 250 ml: Aperol 25 ml + vino 37,5 ml + agua 187,5 ml. Bebida ~0,57 €/lata (mezcla 0,51 € + CO₂ y agua ~0,06 €); a eso hay que sumar lata, tapa, etiqueta, mano de obra y mermas. El Chardonnay lleva +21 % de IVA no incluido en estas cifras."
     },
     equilibrio: { nombre:"Equilibrio", sabor:"por definir", prod:"Spritz Equilibrio", pendiente:true },
     coleccion:  { nombre:"Colección",  sabor:"por definir", prod:"Spritz Colección",  pendiente:true },
@@ -7253,7 +7253,7 @@ const CARTA_ARBOL = {
     { n:"Burbujas Colección",  cat:"burbujas", desc:"Carbonatada · pomelo · romero · lapsang · PVP 2,50 €" },
   ]},
   spritz: { nombre:"Spritz", items:[
-    { n:"Spritz Origen",     cat:"spritz", desc:"Aperol · Chardonnay Pernales · 35:35:20 · bebida ~1,78 €/lata 250 ml" },
+    { n:"Spritz Origen",     cat:"spritz", desc:"Aperol · Chardonnay Pernales · 400:600:3000 · bebida ~0,57 €/lata 250 ml" },
     { n:"Spritz Equilibrio", cat:"spritz", desc:"Receta por definir" },
     { n:"Spritz Colección",  cat:"spritz", desc:"Receta por definir" },
   ]},

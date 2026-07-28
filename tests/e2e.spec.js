@@ -842,6 +842,12 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await expect(page.locator(".lim-tab")).toContainText(/Super Juice de lima/);
   await expect(page.locator(".lim-tab")).toContainText(/196 ml\/L/);
   await expect(page.locator(".lim-tab")).toContainText(/980 ml/);
+  // Las preparaciones previas ESCALAN con los litros: a 16 L de Origen hacen
+  // falta 3,14 L de Super Juice de lima (no la cantidad base fija).
+  await page.evaluate(() => limSetL(16));
+  await expect(page.locator("body")).toContainText(/necesitas 3,14 L/);
+  await expect(page.locator("body")).toContainText(/hoja de lima kaffir 29,4 g/);
+  await page.evaluate(() => limSetL(5));
   // Colección (pomelo·romero·lapsang) muestra su fondo ahumado.
   await page.evaluate(() => limSetRec("R5"));
   await expect(page.locator(".lim-h")).toContainText(/Burbujas · Colección/);

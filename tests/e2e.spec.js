@@ -868,9 +868,8 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
   await page.evaluate(() => { spzSetRec("origen"); spzSetL(5); });
   await expect(page.locator(".lim-h")).toContainText(/Spritz · Origen/);
   await expect(page.locator("body")).toContainText(/Aperol/);
-  await expect(page.locator("body")).toContainText(/250 ml\/L/);
-  await expect(page.locator("body")).toContainText(/15,00 €/); // Aperol · 250 ml/L × 5 L × 12 €/L
-  await expect(page.locator("body")).toContainText(/0,56 €/);  // escandallo /120 ml
+  await expect(page.locator("body")).toContainText(/97,2 ml/); // Aperol por lata 250 (35:35:20)
+  await expect(page.locator("body")).toContainText(/1,78 €/);  // bebida por lata 250 ml
   // Colección aún es plantilla (receta pendiente).
   await page.evaluate(() => spzSetRec("coleccion"));
   await expect(page.locator("body")).toContainText(/Receta pendiente/);

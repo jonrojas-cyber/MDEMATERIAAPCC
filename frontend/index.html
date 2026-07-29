@@ -1767,6 +1767,15 @@ button.cc-card:hover { border-color: var(--ink); }
 .cja-mov:last-child { border-bottom:0; }
 .cja-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
 .cja-actions button { flex:1; min-width:130px; }
+.cja-cal { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.cja-cal-h { text-align:center; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; padding:4px 0; }
+.cja-cal-d { border:1px solid var(--line); border-radius:8px; min-height:64px; padding:6px; display:flex; flex-direction:column; gap:3px; }
+.cja-cal-d.on { cursor:pointer; }
+.cja-cal-d.on:hover { border-color:var(--ink); }
+.cja-cal-n { font-size:12px; font-weight:700; color:var(--muted); }
+.cja-cal-d.on .cja-cal-n { color:var(--ink); }
+.cja-cal-dot { width:9px; height:9px; border-radius:50%; }
+.cja-cal-v { font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:auto; }
 .lim-spec { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; border: 1px solid var(--line); background: var(--paper); padding: 12px 14px; margin-bottom: 12px; }
 .lim-spec dt { font-size: 9.5px; letter-spacing: .1em; text-transform: lowercase; color: var(--muted); align-self: center; }
 .lim-spec dd { font-size: 12px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -7188,6 +7197,8 @@ function cjaRender(c){
     <button class="btn-primary" onclick="cjaCerrar()">cerrar caja</button>`}
     ${(c.estado==="cerrado"&&cjaAdmin())?`<button class="btn-primary" onclick="cjaValidar()">validar cierre</button>`:""}
     ${(bloqueado&&cjaAdmin())?`<button class="btn-ghost" onclick="cjaReabrir()">reabrir cierre</button>`:""}
+    <button class="btn-ghost" onclick="cjaWhatsApp()">enviar por whatsapp</button>
+    <button class="btn-ghost" onclick="cjaCalendario()">calendario →</button>
     <button class="btn-ghost" onclick="irA_cierreHistorico()">histórico →</button>
   </div>`;
 
@@ -7293,8 +7304,10 @@ async function irA_cierreHistorico(){
     const filas=lista.map(c=>card(
       `${esc(c.fecha)} · ${esc(c.turno||"—")} — ${esc(c.responsable_nombre||"—")}`,
       `Neta ${cjaE(c.venta_neta)} · efectivo ${cjaE(c.efectivo)} · tarjetas ${cjaE(c.tarjetas)} · pagos ${cjaE(c.pagos)} · <b style="color:${Math.abs(c.descuadre)>1?"var(--alert)":"var(--olive)"}">descuadre ${cjaE(c.descuadre)}</b>`,
+      `<button class="btn-primary" onclick="cjaAbrir('${c.id}')">Abrir</button><button class="btn-ghost" onclick="cjaWhatsApp('${c.id}')">WhatsApp</button>`,
       `${cjaBadgeEstado(c.estado)}${c.hora_cierre?` · ${esc(c.hora_cierre)}`:""}${c.validado_por?` · ✓ ${esc(c.validado_por)}`:""}`
     )).join("")||`<div class="empty">Aún no hay cierres registrados.</div>`;
+    const topBtn=`<div class="card-actions" style="margin-bottom:12px"><button class="btn-ghost" onclick="cjaCalendario()">calendario →</button><button class="btn-ghost" onclick="irA_cierreCaja()">← cierre de hoy</button></div>`;
     const anaHTML=(ana&&cjaAdmin())?`<div class="section-label">Análisis</div><div class="cja-card"><div class="cja-grid4">
       <div><div class="cja-k">Cierres</div><div class="cja-big">${ana.cierres_total}</div></div>
       <div><div class="cja-k">Descuadre acumulado</div><div class="cja-big" style="color:${Math.abs(ana.descuadre_acumulado)>1?"var(--alert)":"var(--olive)"}">${cjaE(ana.descuadre_acumulado)}</div></div>
@@ -7304,8 +7317,92 @@ async function irA_cierreHistorico(){
     <div class="cja-mini" style="margin-top:8px">Descuadre efectivo ${cjaE(ana.descuadre_efectivo)} · tarjetas ${cjaE(ana.descuadre_tarjetas)}</div>
     ${(ana.por_responsable||[]).map(r=>`<div class="cja-line"><span>${esc(r.responsable)} · ${r.cierres} cierres</span><b style="color:${Math.abs(r.descuadre_medio)>1?"var(--alert)":"var(--olive)"}">medio ${cjaE(r.descuadre_medio)}</b></div>`).join("")}
     </div>`:"";
-    setInner(anaHTML+`<div class="section-label">Cierres</div>`+filas);
+    setInner(topBtn+anaHTML+`<div class="section-label">Cierres</div>`+filas);
   }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+
+// Abrir un cierre concreto (del calendario o del histórico). Si está cerrado se
+// ve en solo lectura; si es editable, permite continuar.
+async function cjaAbrir(id){
+  navInto(()=>irA_cierreHistorico());
+  openSection("cierreCaja","Cierre de caja");
+  try{
+    if(!window._cjaCfg){ const [cfg,prov]=await Promise.all([api("/cierre-caja/config"),api("/proveedores").catch(()=>[])]); window._cjaCfg=cfg; window._cjaProv=(prov||[]).filter(p=>!p.estado||p.estado==="Activo"); }
+    const c=await api(`/cierre-caja/${id}`); window._cja=c; cjaRender(c);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+
+// ── EXPORTAR POR WHATSAPP (patrón wa.me · abre WhatsApp con el resumen escrito) ─
+function cjaResumenTexto(c){
+  const con=c.conciliacion||{}, ag=c.agora||{};
+  const L=[];
+  L.push("🧾 Cierre de caja · m de materia");
+  L.push(`${c.fecha} · ${c.turno||"turno único"} · ${c.responsable_nombre||"—"}`);
+  if(c.codigo) L.push(`Código: ${c.codigo}`);
+  L.push(`Estado: ${(cjaBadgeEstado(c.estado).match(/>([^<]+)</)||[])[1]||c.estado}`);
+  L.push("——");
+  L.push(`Venta neta (Ágora): ${cjaE(ag.venta_neta)}`);
+  if(ag.tickets) L.push(`Tickets: ${ag.tickets} · medio ${cjaE(ag.ticket_medio)}`);
+  L.push(`Efectivo contado: ${cjaE(con.contado)}`);
+  L.push(`Tarjetas (datáfonos): ${cjaE(con.tarjetas_datafonos)}`);
+  if(con.otros_total) L.push(`Otros cobros: ${cjaE(con.otros_total)}`);
+  if(con.pagos_efectivo) L.push(`Pagos/salidas efectivo: ${cjaE(con.pagos_efectivo)}`);
+  if(con.propinas_efectivo) L.push(`Propinas efectivo: ${cjaE(con.propinas_efectivo)}`);
+  L.push("——");
+  L.push(`Descuadre efectivo: ${cjaE(con.descuadre_efectivo)}`);
+  L.push(`Descuadre tarjetas: ${cjaE(con.descuadre_tarjetas)}`);
+  L.push(`Descuadre TOTAL: ${con.descuadre_total>0?"+":""}${cjaE(con.descuadre_total)} (${con.clasificacion})`);
+  if(c.incidencia&&c.incidencia.tipo) L.push(`Incidencia: ${c.incidencia.tipo}${c.incidencia.obs?" · "+c.incidencia.obs:""}`);
+  if(c.efectivo){ if(c.efectivo.fondo_siguiente) L.push(`Fondo día siguiente: ${cjaE(c.efectivo.fondo_siguiente)}`); if(c.efectivo.a_caja_fuerte) L.push(`A caja fuerte/banco: ${cjaE(c.efectivo.a_caja_fuerte)}`); }
+  return L.join("\n");
+}
+async function cjaWhatsApp(id){
+  let c=window._cja;
+  if(id && (!c || c.id!==id)){ try{ c=await api(`/cierre-caja/${id}`); }catch(e){ alert(e.message); return; } }
+  if(!c){ alert("No hay cierre para enviar."); return; }
+  const tel=String((window._cjaCfg&&window._cjaCfg.whatsapp_destino)||"34682250373").replace(/[^0-9]/g,"");
+  const url=`https://wa.me/${tel}?text=${encodeURIComponent(cjaResumenTexto(c))}`;
+  window.open(url,"_blank");
+}
+
+// ── CALENDARIO HISTÓRICO (rejilla mensual · color por estado/descuadre) ─────
+function cjaCalendario(y,m){
+  navInto(()=>irA_cierreCaja());
+  openSection("cierreCal","Calendario de cierres");
+  const hoy=new Date();
+  let year=(y!=null)?y:hoy.getFullYear(), month=(m!=null)?m:hoy.getMonth(); // month 0-11
+  api("/cierre-caja").then(lista=>{
+    const porFecha={};
+    lista.forEach(c=>{ (porFecha[c.fecha]=porFecha[c.fecha]||[]).push(c); });
+    const MES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const primero=new Date(Date.UTC(year,month,1));
+    const diaSemana=(primero.getUTCDay()+6)%7; // lunes=0
+    const diasMes=new Date(Date.UTC(year,month+1,0)).getUTCDate();
+    const color=(c)=>{ if(!c) return "transparent"; if(c.estado==="incidencia"||Math.abs(c.descuadre)>(window._cjaCfg&&window._cjaCfg.tolerancia_revisar||5)) return "var(--alert)"; if(c.estado==="validado"||c.estado==="cuadrado"||c.estado==="cerrado") return "var(--olive)"; return "#9c7a2e"; };
+    let celdas="";
+    ["L","M","X","J","V","S","D"].forEach(d=>celdas+=`<div class="cja-cal-h">${d}</div>`);
+    for(let i=0;i<diaSemana;i++) celdas+=`<div></div>`;
+    for(let d=1;d<=diasMes;d++){
+      const fecha=`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const cs=porFecha[fecha]||[];
+      const c=cs[0];
+      const desc=cs.reduce((s,x)=>s+(x.descuadre||0),0);
+      celdas+=`<div class="cja-cal-d${c?" on":""}" ${c?`onclick="cjaAbrir('${c.id}')"`:""} title="${fecha}">
+        <span class="cja-cal-n">${d}</span>
+        ${c?`<span class="cja-cal-dot" style="background:${color({estado:c.estado,descuadre:desc})}"></span><span class="cja-cal-v">${cjaE(desc)}</span>`:""}
+      </div>`;
+    }
+    const prevY=month===0?year-1:year, prevM=month===0?11:month-1;
+    const nextY=month===11?year+1:year, nextM=month===11?0:month+1;
+    setInner(`<div class="card-actions" style="margin-bottom:12px">
+        <button class="btn-ghost" onclick="cjaCalendario(${prevY},${prevM})">← ${MES[prevM]}</button>
+        <button class="btn-ghost" style="flex:0" disabled>${MES[month]} ${year}</button>
+        <button class="btn-ghost" onclick="cjaCalendario(${nextY},${nextM})">${MES[nextM]} →</button>
+        <button class="btn-ghost" onclick="irA_cierreHistorico()">lista →</button>
+      </div>
+      <div class="cja-cal">${celdas}</div>
+      <div class="cja-mini"><span style="color:var(--olive)">■</span> cuadrado/validado · <span style="color:#9c7a2e">■</span> revisar/pendiente · <span style="color:var(--alert)">■</span> descuadre/incidencia · toca un día para abrir su cierre</div>`);
+  }).catch(e=>setInner(`<div class="err">${esc(e.message)}</div>`));
 }
 
 

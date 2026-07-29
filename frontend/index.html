@@ -1733,6 +1733,40 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-nota { border-left:2px solid var(--olive); padding:8px 0 8px 12px; margin:14px 0; font-size:12px; color:var(--muted); line-height:1.55; }
 .lim-prem-row { font-size:12px; padding:3px 0; }
 .lim-prem-row b { color:var(--olive); }
+/* ── Cierre de caja · minimalista, líneas finas, mucho espacio ── */
+.cja-head { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:14px;
+  border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+.cja-k { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:3px; }
+.cja-k small { text-transform:none; letter-spacing:0; }
+.cja-v { font-size:14px; font-weight:700; }
+.cja-v select { font-size:13px; }
+.cja-big { font-size:20px; font-weight:700; color:var(--olive); font-variant-numeric:tabular-nums; }
+.cja-mini { font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5; }
+.cja-card { border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+.cja-row { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.cja-grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+.cja-grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
+.cja-grid4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:14px; }
+.cja-line { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:4px 0;
+  border-bottom:1px solid var(--line); }
+.cja-line:last-child { border-bottom:0; }
+.cja-line b { font-variant-numeric:tabular-nums; }
+.cja-result { border:2px solid var(--muted); border-radius:12px; padding:16px; text-align:center;
+  font-size:22px; font-weight:700; letter-spacing:.02em; }
+.cja-det { margin-top:12px; }
+.cja-det summary { cursor:pointer; font-size:12px; color:var(--olive); font-weight:700; }
+.cja-denom { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 18px; margin:12px 0 4px; }
+.cja-den { display:flex; align-items:center; gap:8px; }
+.cja-den-l { min-width:56px; font-size:12px; color:var(--muted); }
+.cja-den-s { font-size:12px; color:var(--olive); font-weight:700; min-width:56px; }
+.cja-tarj { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.cja-tarj:last-child { border-bottom:0; }
+.cja-movform { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px; }
+.cja-mov { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12px;
+  padding:6px 0; border-bottom:1px solid var(--line); }
+.cja-mov:last-child { border-bottom:0; }
+.cja-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.cja-actions button { flex:1; min-width:130px; }
 .lim-spec { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; border: 1px solid var(--line); background: var(--paper); padding: 12px 14px; margin-bottom: 12px; }
 .lim-spec dt { font-size: 9.5px; letter-spacing: .1em; text-transform: lowercase; color: var(--muted); align-self: center; }
 .lim-spec dd { font-size: 12px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -2343,6 +2377,7 @@ function modulosMeta(d) {
     preparaciones:{ num:"01", name:"Producción", badge: enCurso?`${enCurso} en curso`:(pendPrep?`${pendPrep} recomendadas`:"Al día"), urgent: !!(enCurso||pendPrep) },
     revisiones:   { num:"02", name:"Revisiones", badge: pendRevisar?`${pendRevisar} pendientes`:"Completadas", urgent: !!pendRevisar },
     ajustes:      { num:"03", name:"Ajustes y mermas", badge:`${k.ajustes_hoy||0} registrados hoy`, urgent:false },
+    cierreCaja:   { num:"04", name:"Cierre de caja", badge:"Arqueo y conciliación · Ágora", urgent:false },
     // Materia
     materias:     { num:"01", name:"Almacén", badge: pendPedir?`${pendPedir} con disponibilidad baja`:"Stock correcto", urgent: !!pendPedir },
     pedidos:      { num:"02", name:"Pedidos", badge:"Crear y enviar a proveedores", urgent:false },
@@ -2369,7 +2404,7 @@ function modulosMeta(d) {
 // Dashboard de 6 bloques. Tareas, Producción, APPCC y Etiquetas abren pantalla
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
-  produccion: { name:"Producción", desc:"Producir ahora · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
+  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes · Cierre de caja", ids:["preparaciones","revisiones","ajustes","cierreCaja"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario", ids:["materias","pedidos","proveedores","recepcion","inventario"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
   informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Ventas · Config", ids:["menu","cafes","carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
@@ -6985,6 +7020,294 @@ async function confirmarRcp(id){
     irA_recepcion();
   }catch(e){alert(e.message);}
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// MÓDULO CIERRE DE CAJA · arqueo diario y conciliación Ágora/efectivo/tarjetas.
+// Reutiliza la integración de Ágora existente (agrega ventas ya importadas),
+// proveedores, usuarios y auditoría. La aritmética vive en el backend
+// (cierre-caja.js): aquí solo se pinta y se guardan los importes físicos.
+// ══════════════════════════════════════════════════════════════════════════
+const CJA_DENOM = [0.01,0.02,0.05,0.10,0.20,0.50,1,2,5,10,20,50,100,200];
+const CJA_TIPOS_MOV = [
+  ["pago_proveedor","Pago a proveedor"],["compra_urgente","Compra urgente"],["retirada","Retirada de efectivo"],
+  ["ingreso","Ingreso manual"],["devolucion","Devolución a cliente"],["adelanto","Adelanto"],
+  ["gasto_autorizado","Gasto autorizado"],["cambio_entregado","Cambio entregado"],["otro","Otro movimiento"],
+];
+const CJA_TIPOS_INC = [
+  ["error_cambio","Error al dar cambio"],["pago_no_registrado","Pago no registrado"],["cobro_no_registrado","Cobro no registrado"],
+  ["ticket_pendiente","Ticket pendiente"],["ticket_anulado","Ticket anulado incorrectamente"],["propina_mal_imputada","Propina mal imputada"],
+  ["diferencia_datafono","Diferencia de datáfono"],["devolucion_no_registrada","Devolución no registrada"],["retirada_no_registrada","Retirada no registrada"],
+  ["invitacion_no_autorizada","Invitación no autorizada"],["error_sync_agora","Error de sincronización con Ágora"],["otra","Otra incidencia"],
+];
+const CJA_RESULT_COLOR = {
+  "cierre correcto":"var(--olive)","cierre validado":"var(--olive)","revisar cierre":"#9c7a2e",
+  "descuadre detectado":"var(--alert)","datos incompletos":"var(--muted)","pendiente de validación":"var(--muted)",
+};
+function cjaE(n){ return (Math.round((Number(n)||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
+function cjaAdmin(){ const u=getUser(); return u && u.rol==="admin"; }
+function cjaNum(v){ const n=parseFloat(String(v).replace(",",".")); return Number.isFinite(n)?n:0; }
+let _cjaSaveT=null;
+
+async function irA_cierreCaja(){
+  openSection("cierreCaja","Cierre de caja");
+  try{
+    const hoy=new Date().toISOString().slice(0,10);
+    const [cfg,prov]=await Promise.all([api("/cierre-caja/config"),api("/proveedores").catch(()=>[])]);
+    window._cjaCfg=cfg; window._cjaProv=(prov||[]).filter(p=>!p.estado||p.estado==="Activo");
+    const turno=(cfg.turnos&&cfg.turnos[0])||"";
+    const c=await api("/cierre-caja",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fecha:hoy,turno})});
+    window._cja=c; cjaRender(c);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+
+function cjaBadgeEstado(est){
+  const map={pendiente:["pendiente","var(--muted)"],revisando:["revisando","#9c7a2e"],cuadrado:["cuadrado","var(--olive)"],
+    validado:["validado","var(--olive)"],cerrado:["cerrado","var(--ink)"],incidencia:["cerrado con incidencia","var(--alert)"]};
+  const [t,col]=map[est]||[est,"var(--muted)"];
+  return `<span style="display:inline-block;background:${col};color:#fff;font-weight:700;font-size:11px;padding:3px 12px;border-radius:20px;">${t}</span>`;
+}
+
+function cjaRender(c){
+  const cfg=window._cjaCfg||{}, con=c.conciliacion||{}, u=getUser()||{};
+  const bloqueado=(c.estado==="cerrado"||c.estado==="validado");
+  const dis=bloqueado?"disabled":"";
+  const ef=c.efectivo||{}, am=c.agora_manual||{}, ag=c.agora||null;
+  const inp=(path,val,extra="")=>`<input type="number" step="0.01" inputmode="decimal" value="${val!=null&&val!==0?val:""}" oninput="cjaField('${path}',this.value)" ${dis} style="width:110px" ${extra}>`;
+
+  // Cabecera
+  const cab=`<div class="cja-head">
+    <div><div class="cja-k">Fecha</div><div class="cja-v">${esc(c.fecha)}</div></div>
+    <div><div class="cja-k">Local</div><div class="cja-v">${esc(c.local_id||"principal")}</div></div>
+    <div><div class="cja-k">Turno</div><div class="cja-v"><select onchange="cjaField('turno',this.value)" ${dis}>${(cfg.turnos||[]).map(t=>`<option ${t===c.turno?"selected":""}>${esc(t)}</option>`).join("")}</select></div></div>
+    <div><div class="cja-k">Responsable</div><div class="cja-v">${esc(c.responsable_nombre||u.nombre||"—")}</div></div>
+    <div><div class="cja-k">Apertura</div><div class="cja-v">${esc(c.hora_apertura||"—")}</div></div>
+    <div><div class="cja-k">Cierre</div><div class="cja-v">${esc(c.hora_cierre||"—")}</div></div>
+    <div><div class="cja-k">Estado</div><div class="cja-v" id="cja-estado">${cjaBadgeEstado(c.estado)}</div></div>
+  </div>`;
+
+  // Ágora
+  const noDisp=(ag&&ag.no_disponible)||[];
+  const agBlock=`<div class="cja-card">
+    <div class="cja-row"><div class="section-label" style="margin:0">Datos de Ágora</div>
+      <button class="btn-primary" onclick="cjaSincronizar()" ${dis}>sincronizar con ágora</button></div>
+    ${ag?`<div class="cja-grid4">
+        <div><div class="cja-k">Venta neta</div><div class="cja-big">${cjaE(ag.venta_neta)}</div></div>
+        <div><div class="cja-k">Tickets</div><div class="cja-big">${ag.tickets||0}</div></div>
+        <div><div class="cja-k">Ticket medio</div><div class="cja-big">${cjaE(ag.ticket_medio)}</div></div>
+        <div><div class="cja-k">Unidades</div><div class="cja-big">${eur0(ag.unidades)}</div></div>
+      </div>
+      <div class="cja-mini">Última sync: ${esc((ag.sincronizado_en||"").replace("T"," ").slice(0,16))} · por ${esc(ag.sincronizado_por||"—")} · ${esc(ag.resultado||"")}${ag.nuevas_operaciones?` · <b style="color:var(--alert)">${ag.nuevas_operaciones} nuevas</b>`:""}</div>
+      ${ag.error?`<div class="cja-mini" style="color:var(--alert)">Error: ${esc(ag.error)}</div>`:""}
+      <div class="cja-mini" style="color:var(--muted)">No disponible en Ágora (la integración actual no lo expone): ${noDisp.slice(0,8).join(", ")}…</div>`
+    :`<div class="cja-mini">Pulsa «sincronizar con ágora» para cargar la venta del día desde la integración existente.</div>`}
+    <div class="cja-grid3" style="margin-top:10px">
+      <div><div class="cja-k">Según Ágora · efectivo <small>(del Z)</small></div>${inp("agora_manual.ventas_efectivo",am.ventas_efectivo)}</div>
+      <div><div class="cja-k">Según Ágora · tarjeta <small>(del Z)</small></div>${inp("agora_manual.ventas_tarjeta",am.ventas_tarjeta)}</div>
+      <div><div class="cja-k">Según Ágora · otros</div>${inp("agora_manual.ventas_otros",am.ventas_otros)}</div>
+    </div></div>`;
+
+  // Efectivo + arqueo
+  const arqueo=ef.arqueo||{};
+  const denomRows=CJA_DENOM.map(d=>{
+    const units=arqueo[String(d)]||"";
+    return `<div class="cja-den"><span class="cja-den-l">${d>=1?d+" €":(d*100)+" cts"}</span>
+      <input type="number" min="0" step="1" value="${units}" oninput="cjaDenom(${d},this.value)" ${dis} style="width:70px">
+      <span class="cja-den-s" id="cja-den-${String(d).replace('.','_')}">${units?cjaE(units*d):""}</span></div>`;
+  }).join("");
+  const efBlock=`<div class="cja-card">
+    <div class="section-label" style="margin-top:0">Efectivo</div>
+    <div class="cja-grid3">
+      <div><div class="cja-k">Fondo inicial</div>${inp("efectivo.fondo_inicial",ef.fondo_inicial)}</div>
+      <div><div class="cja-k">Retiradas</div>${inp("efectivo.retiradas",ef.retiradas)}</div>
+      <div><div class="cja-k">Ingresos manuales</div>${inp("efectivo.ingresos",ef.ingresos)}</div>
+      <div><div class="cja-k">Propinas en efectivo</div>${inp("efectivo.propinas_efectivo",ef.propinas_efectivo)}</div>
+      <div><div class="cja-k">Fondo día siguiente</div>${inp("efectivo.fondo_siguiente",ef.fondo_siguiente)}</div>
+      <div><div class="cja-k">A caja fuerte / banco</div>${inp("efectivo.a_caja_fuerte",ef.a_caja_fuerte)}</div>
+    </div>
+    <div class="cja-row" style="margin-top:12px"><div class="cja-k">Efectivo total contado (rápido)</div>${inp("efectivo.contado",ef.contado)}</div>
+    <details class="cja-det"><summary>Arqueo por monedas y billetes → <b id="cja-arqueo-total">${cjaE(con.contado)}</b></summary>
+      <div class="cja-denom">${denomRows}</div>
+      <div class="cja-mini">Si introduces unidades, el arqueo manda sobre el importe rápido.</div>
+    </details></div>`;
+
+  // Tarjetas
+  const tarj=(c.tarjetas||[]);
+  const tarjRows=tarj.map((t,i)=>`<div class="cja-tarj">
+    <div class="cja-den-l" style="min-width:130px">${esc(t.nombre)}</div>
+    <label class="cja-mini">Total<br><input type="number" step="0.01" value="${t.total||""}" oninput="cjaTarj(${i},'total',this.value)" ${dis} style="width:100px"></label>
+    <label class="cja-mini">Operaciones<br><input type="number" step="1" value="${t.operaciones||""}" oninput="cjaTarj(${i},'operaciones',this.value)" ${dis} style="width:80px"></label>
+    <label class="cja-mini">Comisión<br><input type="number" step="0.01" value="${t.comisiones!=null?t.comisiones:""}" oninput="cjaTarj(${i},'comisiones',this.value)" ${dis} style="width:80px"></label>
+    <label class="cja-mini" style="flex:1">Observaciones<br><input value="${esc(t.obs||"")}" oninput="cjaTarj(${i},'obs',this.value)" ${dis} style="width:100%"></label>
+  </div>`).join("")||`<div class="cja-mini">Configura los datáfonos en ajustes.</div>`;
+  const tarjBlock=`<div class="cja-card"><div class="section-label" style="margin-top:0">Tarjetas · por datáfono</div>${tarjRows}</div>`;
+
+  // Otros cobros
+  const otros=(cfg.otros_metodos||[]);
+  const otrosRows=otros.map((m)=>{
+    const val=((c.otros||[]).find(o=>o.metodo_id===m.id)||{}).importe||"";
+    return `<div><div class="cja-k">${esc(m.nombre)}</div><input type="number" step="0.01" value="${val}" oninput="cjaOtro('${m.id}','${esc(m.nombre)}',this.value)" ${dis} style="width:110px"></div>`;
+  }).join("");
+  const otrosBlock=otros.length?`<div class="cja-card"><div class="section-label" style="margin-top:0">Otros cobros</div><div class="cja-grid3">${otrosRows}</div></div>`:"";
+
+  // Pagos y movimientos
+  const provOpts=`<option value="">— proveedor / concepto —</option>`+(window._cjaProv||[]).map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join("")+`<option value="__otros">Otros (escribir)…</option>`;
+  const movList=(c.movimientos||[]).map(m=>{
+    const prov=(window._cjaProv||[]).find(p=>p.id===m.proveedor_id);
+    const lbl=(CJA_TIPOS_MOV.find(t=>t[0]===m.tipo)||[])[1]||m.tipo;
+    return `<div class="cja-mov"><span>${esc(m.hora)} · <b>${esc(lbl)}</b> · ${esc(prov?prov.nombre:m.concepto||"—")}${m.doc_ref?` · ${esc(m.doc_ref)}`:""} · ${m.afecta_efectivo?"efectivo":esc(m.metodo)}</span>
+      <span><b>${cjaE(m.importe)}</b>${bloqueado?"":` <button class="btn-ghost" style="padding:2px 8px" onclick="cjaMovDel('${m.id}')">✕</button>`}</span></div>`;
+  }).join("")||`<div class="cja-mini">Sin movimientos registrados en el turno.</div>`;
+  const movForm=bloqueado?"":`<div class="cja-movform">
+    <select id="cja-mv-tipo">${CJA_TIPOS_MOV.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join("")}</select>
+    <select id="cja-mv-prov">${provOpts}</select>
+    <input id="cja-mv-concepto" placeholder="concepto (si otros)" style="width:150px">
+    <input id="cja-mv-importe" type="number" step="0.01" placeholder="importe €" style="width:100px">
+    <select id="cja-mv-metodo"><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option></select>
+    <input id="cja-mv-autoriza" placeholder="autoriza" style="width:110px">
+    <input id="cja-mv-doc" placeholder="nº factura/albarán" style="width:130px">
+    <input id="cja-mv-obs" placeholder="observaciones" style="width:150px">
+    <button class="btn-primary" onclick="cjaMovAdd()">+ registrar</button></div>`;
+  const movBlock=`<div class="cja-card"><div class="section-label" style="margin-top:0">Pagos y movimientos</div>${movForm}<div id="cja-mov-list" style="margin-top:8px">${movList}</div></div>`;
+
+  // Incidencia (obligatoria si descuadre supera tolerancia)
+  const incBlock=`<div class="cja-card" id="cja-inc-block" style="${con.requiere_incidencia?"":"display:none"}">
+    <div class="section-label" style="margin-top:0;color:var(--alert)">Incidencia obligatoria · descuadre &gt; tolerancia</div>
+    <div class="cja-grid2">
+      <select onchange="cjaInc('tipo',this.value)" ${dis}><option value="">— tipo de incidencia —</option>${CJA_TIPOS_INC.map(t=>`<option value="${t[0]}" ${(c.incidencia&&c.incidencia.tipo===t[0])?"selected":""}>${t[1]}</option>`).join("")}</select>
+      <input placeholder="observaciones (obligatorio si «otra»)" value="${esc(c.incidencia&&c.incidencia.obs||"")}" oninput="cjaInc('obs',this.value)" ${dis}>
+    </div></div>`;
+
+  // Conciliación + resultado
+  const conBlock=`<div class="cja-card" id="cja-concil">${cjaConcilHTML(c)}</div>`;
+
+  // Botones
+  const btns=`<div class="cja-actions">
+    ${bloqueado?"":`<button class="btn-ghost" onclick="cjaGuardar(true)">guardar borrador</button>
+    <button class="btn-ghost" onclick="cjaSincronizar()">volver a sincronizar</button>
+    <button class="btn-ghost" onclick="cjaRevisar()">revisar cierre</button>
+    <button class="btn-primary" onclick="cjaCerrar()">cerrar caja</button>`}
+    ${(c.estado==="cerrado"&&cjaAdmin())?`<button class="btn-primary" onclick="cjaValidar()">validar cierre</button>`:""}
+    ${(bloqueado&&cjaAdmin())?`<button class="btn-ghost" onclick="cjaReabrir()">reabrir cierre</button>`:""}
+    <button class="btn-ghost" onclick="irA_cierreHistorico()">histórico →</button>
+  </div>`;
+
+  setInner(cab+conBlock+agBlock+efBlock+tarjBlock+otrosBlock+movBlock+incBlock+btns);
+}
+
+function cjaConcilHTML(c){
+  const con=c.conciliacion||{}, res=c.resultado||"pendiente de validación";
+  const col=CJA_RESULT_COLOR[res]||"var(--muted)";
+  const line=(l,v,neg)=>`<div class="cja-line"><span>${l}</span><b>${neg&&v>0?"−":""}${cjaE(Math.abs(v))}</b></div>`;
+  const dif=(l,v)=>`<div class="cja-line"><span>${l}</span><b style="color:${Math.abs(v)<=(con.tolerancia?con.tolerancia.cuadrado:1)?"var(--olive)":"var(--alert)"}">${v>0?"+":""}${cjaE(v)}</b></div>`;
+  return `<div class="cja-result" style="border-color:${col};color:${col}">${res.toUpperCase()}</div>
+    <div class="cja-grid2" style="margin-top:12px">
+      <div>
+        <div class="cja-k">Efectivo</div>
+        ${line("Fondo + ventas efectivo + ingresos",con.efectivo_esperado)}
+        ${line("− pagos, retiradas y devoluciones",con.pagos_efectivo+con.retiradas+con.devoluciones_efectivo,true)}
+        <div class="cja-line"><span><b>Efectivo esperado</b></span><b>${cjaE(con.efectivo_esperado)}</b></div>
+        <div class="cja-line"><span>Efectivo contado</span><b>${cjaE(con.contado)}</b></div>
+        ${dif("Descuadre efectivo",con.descuadre_efectivo)}
+      </div>
+      <div>
+        <div class="cja-k">Tarjetas y total</div>
+        <div class="cja-line"><span>Datáfonos</span><b>${cjaE(con.tarjetas_datafonos)}</b></div>
+        <div class="cja-line"><span>Según Ágora</span><b>${cjaE(con.tarjetas_agora)}</b></div>
+        ${dif("Descuadre tarjetas",con.descuadre_tarjetas)}
+        <div class="cja-line" style="border-top:1px solid var(--ink);margin-top:6px;padding-top:6px"><span><b>Descuadre total</b></span><b style="color:${con.clasificacion==="cuadrado"?"var(--olive)":"var(--alert)"};font-size:16px">${con.descuadre_total>0?"+":""}${cjaE(con.descuadre_total)}</b></div>
+        <div class="cja-mini">Tolerancia: ≤${cjaE(con.tolerancia&&con.tolerancia.cuadrado)} cuadrado · ≤${cjaE(con.tolerancia&&con.tolerancia.revisar)} revisar</div>
+      </div>
+    </div>${(c.faltan&&c.faltan.length)?`<div class="cja-mini" style="color:var(--alert);margin-top:8px">Faltan: ${c.faltan.map(esc).join(" · ")}</div>`:""}`;
+}
+
+// ── Edición de campos (guardado con debounce; la aritmética la hace el backend) ─
+function cjaField(path,val){ cjaSetPath(window._cja,path,cjaNum(val)); cjaGuardar(); }
+function cjaSetPath(obj,path,val){ const ks=path.split("."); let o=obj; for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null)o[ks[i]]={}; o=o[ks[i]]; } o[ks[ks.length-1]]=val; }
+function cjaDenom(d,val){ const c=window._cja; c.efectivo=c.efectivo||{}; c.efectivo.arqueo=c.efectivo.arqueo||{}; c.efectivo.arqueo[String(d)]=Math.max(0,parseInt(val||0,10)||0);
+  const sub=el("cja-den-"+String(d).replace(".","_")); if(sub) sub.textContent=c.efectivo.arqueo[String(d)]?cjaE(c.efectivo.arqueo[String(d)]*d):"";
+  let t=0; CJA_DENOM.forEach(x=>t+=(c.efectivo.arqueo[String(x)]||0)*x); const tot=el("cja-arqueo-total"); if(tot) tot.textContent=cjaE(t);
+  cjaGuardar(); }
+function cjaTarj(i,campo,val){ const c=window._cja; c.tarjetas=c.tarjetas||[]; if(c.tarjetas[i]) c.tarjetas[i][campo]=(campo==="obs")?val:cjaNum(val); cjaGuardar(); }
+function cjaOtro(id,nombre,val){ const c=window._cja; c.otros=c.otros||[]; let o=c.otros.find(x=>x.metodo_id===id); if(!o){ o={metodo_id:id,nombre}; c.otros.push(o); } o.importe=cjaNum(val); cjaGuardar(); }
+function cjaInc(campo,val){ const c=window._cja; c.incidencia=c.incidencia||{}; c.incidencia[campo]=val; cjaGuardar(); }
+
+function cjaGuardar(inmediato){
+  clearTimeout(_cjaSaveT);
+  const doSave=async()=>{
+    try{
+      const c=window._cja;
+      const body={efectivo:c.efectivo,tarjetas:c.tarjetas,otros:c.otros,agora_manual:c.agora_manual,propinas:c.propinas,incidencia:c.incidencia,turno:c.turno};
+      const r=await api(`/cierre-caja/${c.id}/guardar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      window._cja.conciliacion=r.conciliacion; window._cja.resultado=r.resultado; window._cja.faltan=r.faltan;
+      const cb=el("cja-concil"); if(cb) cb.innerHTML=cjaConcilHTML(window._cja);
+      const ib=el("cja-inc-block"); if(ib) ib.style.display=r.conciliacion.requiere_incidencia?"":"none";
+    }catch(e){ /* silencioso: se reintenta al siguiente cambio */ }
+  };
+  if(inmediato){ doSave(); } else { _cjaSaveT=setTimeout(doSave,600); }
+}
+
+async function cjaSincronizar(){
+  try{ const c=window._cja; const r=await api(`/cierre-caja/${c.id}/sincronizar`,{method:"POST"});
+    window._cja=r; cjaRender(r);
+    if(r.agora&&r.agora.nuevas_operaciones){ alert(`Han aparecido ${r.agora.nuevas_operaciones} operaciones nuevas en Ágora desde la última sincronización.`); }
+  }catch(e){ alert("No se pudo sincronizar: "+e.message); }
+}
+async function cjaRevisar(){
+  try{ const c=window._cja; const r=await api(`/cierre-caja/${c.id}/revisar`,{method:"POST"}); window._cja=r; cjaRender(r);
+    if(r.faltan&&r.faltan.length) alert("Revisar cierre:\n· "+r.faltan.join("\n· ")); else alert("Cierre revisado: sin datos pendientes.");
+  }catch(e){ alert(e.message); }
+}
+async function cjaCerrar(){
+  if(!confirm("¿Cerrar la caja definitivamente? Se volverá a sincronizar con Ágora y quedará bloqueado.")) return;
+  try{ const c=window._cja; const r=await api(`/cierre-caja/${c.id}/cerrar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({})});
+    window._cja=r; cjaRender(r); alert(`Caja cerrada · ${r.codigo}\nDescuadre: ${cjaE(r.conciliacion.descuadre_total)}`);
+  }catch(e){
+    let msg=e.message; try{ const j=JSON.parse(e.body||"{}"); if(j.faltan) msg="Faltan datos:\n· "+j.faltan.join("\n· "); }catch(_){}
+    alert("No se pudo cerrar: "+msg);
+    // recargar para reflejar nuevas operaciones/estado
+    try{ const r=await api(`/cierre-caja/${window._cja.id}`); window._cja=r; cjaRender(r); }catch(_){}
+  }
+}
+async function cjaValidar(){ try{ const r=await api(`/cierre-caja/${window._cja.id}/validar`,{method:"POST"}); window._cja=r; cjaRender(r); }catch(e){ alert(e.message); } }
+async function cjaReabrir(){
+  const motivo=prompt("Motivo de la reapertura (obligatorio):"); if(!motivo) return;
+  try{ const r=await api(`/cierre-caja/${window._cja.id}/reabrir`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({motivo})}); window._cja=r; cjaRender(r); }catch(e){ alert(e.message); }
+}
+async function cjaMovAdd(){
+  const prov=el("cja-mv-prov").value;
+  const body={ tipo:el("cja-mv-tipo").value, proveedor_id:(prov&&prov!=="__otros")?prov:null,
+    concepto:el("cja-mv-concepto").value, importe:cjaNum(el("cja-mv-importe").value),
+    metodo:el("cja-mv-metodo").value, autoriza:el("cja-mv-autoriza").value, doc_ref:el("cja-mv-doc").value, obs:el("cja-mv-obs").value };
+  if(!(body.importe>0)){ alert("Indica un importe."); return; }
+  try{ const r=await api(`/cierre-caja/${window._cja.id}/movimiento`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); window._cja=r; cjaRender(r); }
+  catch(e){ alert(e.message); }
+}
+async function cjaMovDel(mid){ try{ const r=await api(`/cierre-caja/${window._cja.id}/movimiento/${mid}`,{method:"DELETE"}); window._cja=r; cjaRender(r); }catch(e){ alert(e.message); } }
+
+// ── HISTÓRICO ───────────────────────────────────────────────────────────────
+async function irA_cierreHistorico(){
+  navInto(()=>irA_cierreCaja());
+  openSection("cierreHist","Histórico de cierres");
+  try{
+    const [lista,ana]=await Promise.all([api("/cierre-caja"),api("/cierre-caja/analitica").catch(()=>null)]);
+    const filas=lista.map(c=>card(
+      `${esc(c.fecha)} · ${esc(c.turno||"—")} — ${esc(c.responsable_nombre||"—")}`,
+      `Neta ${cjaE(c.venta_neta)} · efectivo ${cjaE(c.efectivo)} · tarjetas ${cjaE(c.tarjetas)} · pagos ${cjaE(c.pagos)} · <b style="color:${Math.abs(c.descuadre)>1?"var(--alert)":"var(--olive)"}">descuadre ${cjaE(c.descuadre)}</b>`,
+      `${cjaBadgeEstado(c.estado)}${c.hora_cierre?` · ${esc(c.hora_cierre)}`:""}${c.validado_por?` · ✓ ${esc(c.validado_por)}`:""}`
+    )).join("")||`<div class="empty">Aún no hay cierres registrados.</div>`;
+    const anaHTML=(ana&&cjaAdmin())?`<div class="section-label">Análisis</div><div class="cja-card"><div class="cja-grid4">
+      <div><div class="cja-k">Cierres</div><div class="cja-big">${ana.cierres_total}</div></div>
+      <div><div class="cja-k">Descuadre acumulado</div><div class="cja-big" style="color:${Math.abs(ana.descuadre_acumulado)>1?"var(--alert)":"var(--olive)"}">${cjaE(ana.descuadre_acumulado)}</div></div>
+      <div><div class="cja-k">Cierres con incidencia</div><div class="cja-big">${ana.cierres_incorrectos}</div></div>
+      <div><div class="cja-k">Reabiertos</div><div class="cja-big">${ana.cierres_reabiertos}</div></div>
+    </div>
+    <div class="cja-mini" style="margin-top:8px">Descuadre efectivo ${cjaE(ana.descuadre_efectivo)} · tarjetas ${cjaE(ana.descuadre_tarjetas)}</div>
+    ${(ana.por_responsable||[]).map(r=>`<div class="cja-line"><span>${esc(r.responsable)} · ${r.cierres} cierres</span><b style="color:${Math.abs(r.descuadre_medio)>1?"var(--alert)":"var(--olive)"}">medio ${cjaE(r.descuadre_medio)}</b></div>`).join("")}
+    </div>`:"";
+    setInner(anaHTML+`<div class="section-label">Cierres</div>`+filas);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+
 
 // ── PAGOS ─────────────────────────────────────────────
 async function irA_pagos(){

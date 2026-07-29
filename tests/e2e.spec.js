@@ -879,6 +879,35 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
   expect(errors).toEqual([]);
 });
 
+test("cierre de caja: sincroniza, concilia en vivo, cuadra y cierra idempotente", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_cierreCaja());
+  await page.waitForSelector(".cja-head", { timeout: 10000 });
+  // El crear es idempotente por fecha+local+turno.
+  const idem = await page.evaluate(async () => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const a = await api("/cierre-caja", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fecha: hoy, turno: "Mañana" }) });
+    const b = await api("/cierre-caja", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fecha: hoy, turno: "Mañana" }) });
+    return a.id === b.id;
+  });
+  expect(idem).toBe(true);
+  // Sincroniza con Ágora (agrega ventas ya importadas; no duplica).
+  await page.evaluate(() => cjaSincronizar());
+  await page.waitForTimeout(500);
+  await expect(page.locator("body")).toContainText(/No disponible en Ágora/);
+  // Conciliación en vivo: fondo 150 + efectivo Ágora 300 = esperado 450; contado 450 → cuadra.
+  await page.evaluate(() => { cjaField("efectivo.fondo_inicial", "150"); cjaField("agora_manual.ventas_efectivo", "300"); cjaField("efectivo.contado", "450"); });
+  await page.waitForTimeout(900);
+  await expect(page.locator(".cja-result")).toContainText(/CIERRE CORRECTO/);
+  // Descuadre fuera de tolerancia obliga a incidencia (bloque visible).
+  await page.evaluate(() => cjaField("efectivo.contado", "430"));
+  await page.waitForTimeout(900);
+  await expect(page.locator("#cja-inc-block")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 // Albarán de varias hojas: se acumulan fotos y se leen como un solo albarán.
 test("recepción: se pueden acumular varias hojas de un mismo albarán", async ({ page }) => {
   const errors = [];

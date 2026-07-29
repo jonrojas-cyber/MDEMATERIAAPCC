@@ -57,6 +57,7 @@ const EQUIPO_ALLOWED = new Set([
   "recetas",
   "carta",
   "etiquetas",
+  "cierre-caja", // cierre de caja: responsable/empleado cuentan y cierran (acciones sensibles gated dentro)
 ]);
 
 // ── Hash de PIN (scrypt, sin dependencias externas) ─────────────────────────

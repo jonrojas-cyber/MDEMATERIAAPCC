@@ -265,6 +265,7 @@ app.use("/api/etiquetas", require("./routes/etiquetas"));
 app.use("/api/carta", require("./routes/carta"));
 app.use("/api/reportes", require("./routes/reportes"));
 app.use("/api/ventas", require("./routes/ventas"));
+app.use("/api/cierre-caja", require("./routes/cierre-caja"));
 app.use("/api/avisos", require("./routes/avisos"));
 app.use("/api/mbds", require("./routes/mbds")); // laboratorio de bebidas (MBDS)
 

@@ -905,6 +905,18 @@ test("cierre de caja: sincroniza, concilia en vivo, cuadra y cierra idempotente"
   await page.evaluate(() => cjaField("efectivo.contado", "430"));
   await page.waitForTimeout(900);
   await expect(page.locator("#cja-inc-block")).toBeVisible();
+  // Exportación por WhatsApp: resumen con el número destino configurado.
+  const wa = await page.evaluate(() => ({
+    tel: String((window._cjaCfg && window._cjaCfg.whatsapp_destino) || "").replace(/[^0-9]/g, ""),
+    texto: cjaResumenTexto(window._cja),
+  }));
+  expect(wa.tel).toBe("34682250373");
+  expect(wa.texto).toMatch(/Cierre de caja/);
+  expect(wa.texto).toMatch(/Descuadre TOTAL/);
+  // Calendario histórico: rejilla mensual con el día de hoy marcado.
+  await page.evaluate(() => cjaCalendario());
+  await page.waitForSelector(".cja-cal", { timeout: 8000 });
+  expect(await page.locator(".cja-cal-d.on").count()).toBeGreaterThanOrEqual(1);
   expect(errors).toEqual([]);
 });
 

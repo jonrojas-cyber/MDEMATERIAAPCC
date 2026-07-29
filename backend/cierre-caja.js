@@ -40,6 +40,7 @@ function configDefault() {
   return {
     tolerancia_cuadrado: 1,   // 0..1 € → cuadrado
     tolerancia_revisar: 5,    // 1,01..5 € → revisar; > → incidencia obligatoria
+    whatsapp_destino: "34682250373", // teléfono al que se envía el resumen del cierre
     turnos: ["Mañana", "Tarde", "Partido"],
     datafonos: [
       { id: "df-principal", nombre: "Datáfono principal", numero: "" },

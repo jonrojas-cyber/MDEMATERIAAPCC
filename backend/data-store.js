@@ -64,6 +64,8 @@ const ENTITIES = [
   "mbds_bebidas",      // bebidas finales (alcohólica / 0.0) con validación Materia
   "mbds_catas",        // catas: puntuación sensorial por bebida
   "mbds_lotes",        // control de producción por lote
+  // ── Cierre de caja (arqueo diario · conciliación Ágora/efectivo/tarjetas) ──
+  "cierres_caja",      // cierres de caja por día/local/turno (estados + versiones, nunca se borran)
 ];
 
 const cache = {};

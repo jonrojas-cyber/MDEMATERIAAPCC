@@ -1737,18 +1737,20 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-bolsas b { color:var(--olive); }
 .lim-dilu { margin-top:6px; font-size:12px; padding:6px 10px; border-left:2px solid var(--olive); }
 .lim-dilu b { color:var(--olive); }
-/* Barra flotante de temporizadores de producción (persiste entre pantallas). */
-#cronos-bar { position:fixed; left:0; right:0; bottom:calc(74px + env(safe-area-inset-bottom,0px)); z-index:60;
-  display:none; padding:0 12px; pointer-events:none; }
-.crono-item { pointer-events:auto; max-width:640px; margin:6px auto 0; display:flex; align-items:center; gap:10px;
-  background:var(--olivebar); color:var(--oliveink); border:1px solid var(--olive); border-radius:10px;
-  padding:8px 12px; box-shadow:0 6px 20px -8px rgba(0,0,0,.6); font-family:'Courier Prime',monospace; }
-.crono-item .crono-lbl { flex:1; font-size:12px; font-weight:700; text-transform:lowercase; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.crono-item .crono-time { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--olive); }
-.crono-item button { background:none; border:1px solid var(--olive); color:var(--oliveink); border-radius:6px; padding:2px 9px; cursor:pointer; font-weight:700; }
+/* Temporizadores de producción: píldoras compactas abajo-derecha (persisten entre pantallas). */
+#cronos-bar { position:fixed; right:10px; bottom:calc(76px + env(safe-area-inset-bottom,0px)); z-index:60;
+  display:none; flex-direction:column; align-items:flex-end; gap:5px; pointer-events:none; max-width:min(72vw,240px); }
+.crono-item { pointer-events:auto; display:inline-flex; align-items:center; gap:7px;
+  background:var(--olivebar); color:var(--oliveink); border:1px solid var(--olive); border-radius:999px;
+  padding:3px 4px 3px 10px; box-shadow:0 4px 14px -6px rgba(0,0,0,.6); font-family:'Courier Prime',monospace; max-width:100%; }
+.crono-item .crono-lbl { font-size:10px; font-weight:700; text-transform:lowercase; min-width:0; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.85; }
+.crono-item .crono-time { font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--olive); letter-spacing:.02em; }
+.crono-item button { background:none; border:none; color:var(--oliveink); border-radius:50%; width:18px; height:18px; line-height:1; padding:0; cursor:pointer; font-weight:700; font-size:11px; opacity:.7; }
+.crono-item button:hover { opacity:1; }
 .crono-item.done { border-color:var(--alert); background:var(--alert); color:#fff; animation:cronoFlash .8s steps(1) infinite; }
-.crono-item.done .crono-time { color:#fff; }
-.crono-item.done button { border-color:#fff; color:#fff; }
+.crono-item.done .crono-lbl { opacity:1; }
+.crono-item.done .crono-time { color:#fff; font-size:11px; }
+.crono-item.done button { color:#fff; opacity:1; }
 @keyframes cronoFlash { 50% { opacity:.55; } }
 @media (prefers-reduced-motion: reduce){ .crono-item.done { animation:none; } }
 /* ── Cierre de caja · minimalista, líneas finas, mucho espacio ── */
@@ -3231,13 +3233,35 @@ function svtAudioInit(){
 }
 function svtStart(min, label){
   svtAudioInit();                                   // se llama desde el click → desbloquea el sonido
-  if("Notification" in window && Notification.permission === "default"){ try{ Notification.requestPermission(); }catch(e){} }
   window._svt = window._svt || [];
-  window._svt.push({ id: "sv"+(++_svtN), label, endsAt: Date.now() + min*60000, disparada: false });
+  const t = { id: "sv"+(++_svtN), label, short: String(label).split(" · ")[0], endsAt: Date.now() + min*60000, disparada: false, pushId: null };
+  window._svt.push(t);
   svtRender();
   if(!window._svtInt) window._svtInt = setInterval(svtTick, 1000);
+  // Aviso PUSH programado en el servidor: notifica "retira X" a la hora de fin
+  // AUNQUE la app esté cerrada o en segundo plano. Requiere avisos activados.
+  svtEnsurePush();
+  api("/avisos/temporizador",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({label,minutos:min})})
+    .then(r=>{ t.pushId = r.id; }).catch(()=>{});
 }
-function svtStop(id){ window._svt = (window._svt||[]).filter(c=>c.id!==id); svtRender(); }
+function svtStop(id){
+  const t = (window._svt||[]).find(x=>x.id===id);
+  if(t && t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+  window._svt = (window._svt||[]).filter(c=>c.id!==id); svtRender();
+}
+// Asegura la suscripción push del dispositivo (para el aviso con la app cerrada).
+async function svtEnsurePush(){
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const reg = await navigator.serviceWorker.ready;
+    if(await reg.pushManager.getSubscription()) return;         // ya suscrito
+    if(Notification.permission !== "granted"){ const p = await Notification.requestPermission(); if(p!=="granted") return; }
+    if(!window._vapidKey){ try{ const d = await api("/avisos"); window._vapidKey = d.push && d.push.vapid_public_key || ""; }catch(e){} }
+    if(!window._vapidKey) return;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(window._vapidKey) });
+    await api("/avisos/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sub)});
+  }catch(e){}
+}
 function svtTick(){
   const now = Date.now();
   (window._svt||[]).forEach(c=>{ if(!c.disparada && now >= c.endsAt){ c.disparada = true; svtAlarma(c); } });
@@ -3247,16 +3271,16 @@ function svtTick(){
 function svtRender(){
   const bar = svtBarEl(); const cs = window._svt||[];
   if(!cs.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
-  bar.style.display = "block";
+  bar.style.display = "flex";
   const now = Date.now();
   bar.innerHTML = cs.map(c=>{
     const rem = Math.max(0, c.endsAt - now);
     const mm = String(Math.floor(rem/60000)).padStart(2,"0");
     const ss = String(Math.floor(rem/1000)%60).padStart(2,"0");
     return `<div class="crono-item${c.disparada?' done':''}">
-      <span class="crono-lbl">${esc(c.label)}</span>
-      <span class="crono-time">${c.disparada?'RETIRAR':mm+':'+ss}</span>
-      <button onclick="svtStop('${c.id}')">${c.disparada?'ok':'✕'}</button>
+      <span class="crono-lbl">${esc(c.short||c.label)}</span>
+      <span class="crono-time">${c.disparada?'⏰ RETIRA':mm+':'+ss}</span>
+      <button onclick="svtStop('${c.id}')" aria-label="quitar">${c.disparada?'✓':'✕'}</button>
     </div>`;
   }).join("");
 }

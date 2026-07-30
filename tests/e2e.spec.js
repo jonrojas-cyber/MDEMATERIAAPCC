@@ -860,7 +860,7 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await page.evaluate(() => svtStart(0.02, "AL · test"));
   await expect(page.locator("#cronos-bar .crono-item")).toBeVisible();
   await page.waitForTimeout(1600);
-  await expect(page.locator("#cronos-bar .crono-item.done")).toContainText(/RETIRAR/);
+  await expect(page.locator("#cronos-bar .crono-item.done")).toContainText(/RETIRA/);
   expect(errors).toEqual([]);
 });
 

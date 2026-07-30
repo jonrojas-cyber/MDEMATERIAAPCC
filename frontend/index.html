@@ -1733,6 +1733,8 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-nota { border-left:2px solid var(--olive); padding:8px 0 8px 12px; margin:14px 0; font-size:12px; color:var(--muted); line-height:1.55; }
 .lim-prem-row { font-size:12px; padding:3px 0; }
 .lim-prem-row b { color:var(--olive); }
+.lim-bolsas { margin-top:8px; font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; display:inline-block; }
+.lim-bolsas b { color:var(--olive); }
 /* ── Cierre de caja · minimalista, líneas finas, mucho espacio ── */
 .cja-head { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:14px;
   border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
@@ -3128,6 +3130,9 @@ async function burVerProducto(nombreProd){
 }
 // Preparaciones previas ESCALADAS: para X litros de la receta seleccionada, cuánto
 // homemade hace falta y, sobre todo, cuánta materia prima preparar para producirlo.
+// Máximo de líquido por bolsa de vacío. Cada producción se reparte en bolsas de
+// ≤500 ml para que el vacío/sous-vide sea uniforme.
+const LIM_MAX_BOLSA = 500;
 function limPrepHTML(r, L){
   // Homemade que pide ESTA receta (líneas con código) y cuánto ml necesita.
   const usados = (r.lineas||[]).filter(li=>li.cod && LIMONADAS_DATA.homemade[li.cod]);
@@ -3135,19 +3140,27 @@ function limPrepHTML(r, L){
   return usados.map(li=>{
     const b = LIMONADAS_DATA.homemade[li.cod];
     const necesario = li.v * L;                 // ml (o g para el purée) que hacen falta
-    let prep = "";
+    let prep = "", bolsasHTML = "";
     if(b.comprado){
       prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">Comprar ${limG(necesario)} · no se prepara.</div>`;
-    } else if(b.perLitro){
-      // Agua aromática: agua = ml necesarios; ingredientes = g/L × ml/1000.
-      const litros = necesario/1000;
-      const ings = (b.ing||[]).map(x=>`${esc(x.n)} ${limG(x.v*litros)}`).join(" · ");
-      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">agua ${limMl(necesario)} + ${ings}${b.params?` · ${esc(b.params)}`:""}</div>`;
     } else {
-      // Lote fijo: escala toda la receta por factor = necesario / rinde.
-      const factor = b.rinde>0 ? necesario/b.rinde : 1;
-      const ings = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}`).join(" · ");
-      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">${ings}</div>`;
+      // Reparto en bolsas de vacío de ≤500 ml (mismo llenado en cada bolsa).
+      const bolsas = Math.max(1, Math.ceil(necesario / LIM_MAX_BOLSA));
+      const mlBolsa = necesario / bolsas;
+      let ingsTotal, ingsBolsa;
+      if(b.perLitro){
+        // Agua aromática: agua = ml; ingredientes = g/L × ml/1000.
+        ingsTotal = [`agua ${limMl(necesario)}`].concat((b.ing||[]).map(x=>`${esc(x.n)} ${limG(x.v*necesario/1000)}`));
+        ingsBolsa = [`agua ${limMl(mlBolsa)}`].concat((b.ing||[]).map(x=>`${esc(x.n)} ${limG(x.v*mlBolsa/1000)}`));
+      } else {
+        // Lote fijo: escala la receta por factor = necesario / rinde; por bolsa = /bolsas.
+        const factor = b.rinde>0 ? necesario/b.rinde : 1;
+        ingsTotal = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}`);
+        ingsBolsa = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor/bolsas):limMl(x.v*factor/bolsas)}`);
+      }
+      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">Total: ${ingsTotal.join(" · ")}${b.params?` · ${esc(b.params)}`:""}</div>`;
+      bolsasHTML = `<div class="lim-bolsas"><b>${bolsas} bolsa${bolsas===1?"":"s"} de vacío</b> · ≤500 ml · ~${limMl(mlBolsa)}/bolsa</div>
+        <div class="card-meta" style="margin-top:2px;">Por bolsa: ${ingsBolsa.join(" · ")}</div>`;
     }
     return `<div class="card" style="margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
@@ -3155,6 +3168,7 @@ function limPrepHTML(r, L){
         <span style="font-size:12px;font-weight:700;color:var(--olive);white-space:nowrap;">necesitas ${b.comprado?limG(necesario):limMl(necesario)}</span>
       </div>
       ${prep}
+      ${bolsasHTML}
       <div class="card-meta" style="margin-top:4px;">${esc(b.metodo)}</div>
     </div>`;
   }).join("");

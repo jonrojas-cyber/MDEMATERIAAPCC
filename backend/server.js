@@ -331,6 +331,8 @@ store
     require("./seed-cafe").seedCafe().catch(() => {});
     // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
     require("./seed-negocio").seedNegocio().catch(() => {});
+    // Reprograma los temporizadores de producción pendientes (avisos push).
+    try { require("./sv-timers").init(); } catch (e) {}
 
     app.listen(PORT, () => {
       console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);

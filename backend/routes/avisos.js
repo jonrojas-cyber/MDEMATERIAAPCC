@@ -57,4 +57,22 @@ router.post("/probar", async (req, res) => {
   }
 });
 
+// ── Temporizadores de producción (sous-vide) con aviso push programado ──────
+// Notifica "retira [producto]" a la hora de fin aunque la app esté cerrada.
+const svTimers = require("../sv-timers");
+router.post("/temporizador", async (req, res) => {
+  const { label, minutos } = req.body || {};
+  if (!(Number(minutos) > 0)) return res.status(400).json({ error: "Indica los minutos del temporizador." });
+  try {
+    const t = await svTimers.programar(label, minutos);
+    res.json({ ok: true, id: t.id, fire_at: t.fireAt });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+router.delete("/temporizador/:id", async (req, res) => {
+  try { await svTimers.cancelar(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

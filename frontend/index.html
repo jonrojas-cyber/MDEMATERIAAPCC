@@ -1737,6 +1737,20 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-bolsas b { color:var(--olive); }
 .lim-dilu { margin-top:6px; font-size:12px; padding:6px 10px; border-left:2px solid var(--olive); }
 .lim-dilu b { color:var(--olive); }
+/* Barra flotante de temporizadores de producción (persiste entre pantallas). */
+#cronos-bar { position:fixed; left:0; right:0; bottom:calc(74px + env(safe-area-inset-bottom,0px)); z-index:60;
+  display:none; padding:0 12px; pointer-events:none; }
+.crono-item { pointer-events:auto; max-width:640px; margin:6px auto 0; display:flex; align-items:center; gap:10px;
+  background:var(--olivebar); color:var(--oliveink); border:1px solid var(--olive); border-radius:10px;
+  padding:8px 12px; box-shadow:0 6px 20px -8px rgba(0,0,0,.6); font-family:'Courier Prime',monospace; }
+.crono-item .crono-lbl { flex:1; font-size:12px; font-weight:700; text-transform:lowercase; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.crono-item .crono-time { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--olive); }
+.crono-item button { background:none; border:1px solid var(--olive); color:var(--oliveink); border-radius:6px; padding:2px 9px; cursor:pointer; font-weight:700; }
+.crono-item.done { border-color:var(--alert); background:var(--alert); color:#fff; animation:cronoFlash .8s steps(1) infinite; }
+.crono-item.done .crono-time { color:#fff; }
+.crono-item.done button { border-color:#fff; color:#fff; }
+@keyframes cronoFlash { 50% { opacity:.55; } }
+@media (prefers-reduced-motion: reduce){ .crono-item.done { animation:none; } }
 /* ── Cierre de caja · minimalista, líneas finas, mucho espacio ── */
 .cja-head { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:14px;
   border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
@@ -2988,19 +3002,19 @@ const LIMONADAS_DATA = {
   //  · perLitro = receta por litro de agua (aguas aromáticas): agua = ml necesarios,
   //    e ingredientes = g/L × ml/1000. No hay lote fijo, escala directo.
   homemade: {
-    SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044, merma: 0.15,
+    SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044, merma: 0.15, minutos: 120,
            ing: [ {n:"piel de lima",v:140,u:"g"}, {n:"ácido cítrico",v:150,u:"g"}, {n:"ácido málico",v:4,u:"g"}, {n:"zumo de lima",v:420,u:"g"}, {n:"agua",v:2330,u:"g"} ],
            metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7." },
-    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861, merma: 0.15,
+    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861, merma: 0.15, minutos: 120,
            ing: [ {n:"piel de pomelo",v:400,u:"g"}, {n:"ácido cítrico",v:362,u:"g"}, {n:"ácido málico",v:90,u:"g"}, {n:"zumo de pomelo",v:1332,u:"g"}, {n:"agua",v:6664,u:"g"}, {n:"glutamato",v:13,u:"g"} ],
            metodo: "Igual que el de lima. Este lleva glutamato dentro." },
-    AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true, concentra: 4,
+    AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"hoja de lima kaffir",v:12,u:"g"} ], params: "60 °C · 25-30 min · sous vide sellado",
            metodo: "Hoja rasgada, no triturada. Concentrado ×4: menos agua, mismo tiempo corto. Enfriar en hielo, filtrar 5 µm y diluir." },
-    AR:  { nombre: "Agua de romero", tipo: "aromática", perLitro: true, concentra: 4,
+    AR:  { nombre: "Agua de romero", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"romero",v:15,u:"g"} ], params: "65 °C · 25-30 min · sous vide sellado",
            metodo: "Sin tallo leñoso. Concentrado ×4: aguanta bien, es aromático más que tánico. Enfriar, filtrar y diluir." },
-    AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática", perLitro: true, concentra: 3,
+    AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática", perLitro: true, concentra: 3, minutos: 20,
            ing: [ {n:"lapsang souchong",v:6,u:"g"} ], params: "70 °C · ~20 min (CORTA a tiempo) · sous vide sellado",
            metodo: "Concentrado solo ×3 (el tanino sale rápido): corta a los ~20 min catando; cuando la astringencia tape el ahumado, para. Enfriar, filtrar y diluir." },
     CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial", rinde: 1160,
@@ -3191,10 +3205,81 @@ function limPrepHTML(r, L){
       ${bolsasHTML}
       ${dilucionHTML}
       <div class="card-meta" style="margin-top:4px;">${esc(b.metodo)}</div>
+      ${b.minutos?`<div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="svtStart(${b.minutos},'${esc(li.cod)} · ${esc(b.nombre)}')">▶ temporizador ${b.minutos>=60?(b.minutos/60)+" h":b.minutos+" min"}</button></div>`:""}
     </div>`;
   }).join("");
 }
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// TEMPORIZADORES DE PRODUCCIÓN (sous-vide / vacío) · cuenta atrás + alarma.
+// Le das al play, cuenta hacia atrás y al llegar a cero suena, vibra y avisa
+// "retira [producto]". La barra vive en <body>, así que sigue corriendo aunque
+// cambies de pantalla. El sonido se prepara con el gesto de pulsar (autoplay).
+// ════════════════════════════════════════════════════════════════════════════
+let _svtN = 0;
+function svtBarEl(){
+  let bar = document.getElementById("cronos-bar");
+  if(!bar){ bar = document.createElement("div"); bar.id = "cronos-bar"; document.body.appendChild(bar); }
+  return bar;
+}
+function svtAudioInit(){
+  try{
+    if(!window._actx) window._actx = new (window.AudioContext||window.webkitAudioContext)();
+    if(window._actx.state === "suspended") window._actx.resume();
+  }catch(e){}
+}
+function svtStart(min, label){
+  svtAudioInit();                                   // se llama desde el click → desbloquea el sonido
+  if("Notification" in window && Notification.permission === "default"){ try{ Notification.requestPermission(); }catch(e){} }
+  window._svt = window._svt || [];
+  window._svt.push({ id: "sv"+(++_svtN), label, endsAt: Date.now() + min*60000, disparada: false });
+  svtRender();
+  if(!window._svtInt) window._svtInt = setInterval(svtTick, 1000);
+}
+function svtStop(id){ window._svt = (window._svt||[]).filter(c=>c.id!==id); svtRender(); }
+function svtTick(){
+  const now = Date.now();
+  (window._svt||[]).forEach(c=>{ if(!c.disparada && now >= c.endsAt){ c.disparada = true; svtAlarma(c); } });
+  svtRender();
+  if(!(window._svt||[]).length){ clearInterval(window._svtInt); window._svtInt = null; }
+}
+function svtRender(){
+  const bar = svtBarEl(); const cs = window._svt||[];
+  if(!cs.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
+  bar.style.display = "block";
+  const now = Date.now();
+  bar.innerHTML = cs.map(c=>{
+    const rem = Math.max(0, c.endsAt - now);
+    const mm = String(Math.floor(rem/60000)).padStart(2,"0");
+    const ss = String(Math.floor(rem/1000)%60).padStart(2,"0");
+    return `<div class="crono-item${c.disparada?' done':''}">
+      <span class="crono-lbl">${esc(c.label)}</span>
+      <span class="crono-time">${c.disparada?'RETIRAR':mm+':'+ss}</span>
+      <button onclick="svtStop('${c.id}')">${c.disparada?'ok':'✕'}</button>
+    </div>`;
+  }).join("");
+}
+function svtBeep(){
+  try{
+    svtAudioInit(); const ctx = window._actx; if(!ctx) return;
+    let t = ctx.currentTime;
+    for(let i=0;i<6;i++){
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = i%2?988:1319;
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.35, t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.28);
+      o.start(t); o.stop(t+0.3); t += 0.42;
+    }
+  }catch(e){}
+}
+function svtAlarma(c){
+  svtBeep();
+  try{ if(navigator.vibrate) navigator.vibrate([400,150,400,150,400]); }catch(e){}
+  try{ if("Notification" in window && Notification.permission === "granted") new Notification("⏰ Retira: "+c.label, { body:"Tiempo cumplido. Retira el producto del sous-vide.", tag:c.id, requireInteraction:true }); }catch(e){}
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // MÓDULO SPRITZ · línea Origen · Equilibrio · Colección (cóctel embotellable)

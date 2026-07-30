@@ -855,6 +855,12 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   // Enlace con productos: lleva a la categoría Burbujas de la carta.
   await page.evaluate(() => burVerEnCarta());
   await expect(page.locator("body")).toContainText(/Burbujas Origen/);
+  // Temporizador de sous-vide: arranca la cuenta atrás y muestra la barra flotante,
+  // que persiste aunque cambies de pantalla; dispara al llegar a cero.
+  await page.evaluate(() => svtStart(0.02, "AL · test"));
+  await expect(page.locator("#cronos-bar .crono-item")).toBeVisible();
+  await page.waitForTimeout(1600);
+  await expect(page.locator("#cronos-bar .crono-item.done")).toContainText(/RETIRAR/);
   expect(errors).toEqual([]);
 });
 

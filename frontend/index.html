@@ -3848,8 +3848,8 @@ const LAB_DATA = {
       ingredientes:[
         { n:"Pan cristal trigo-centeno", q:"1 pieza (~90 g)", c:0.35 },
         { n:"Mantequilla (cara exterior)", q:"8 g", c:0.06 },
-        { n:"Queso de fundido (Mahón joven)", q:"35 g", c:0.35 },
-        { n:"Payoyo semicurado rallado", q:"10 g", c:0.37 },
+        { n:"Queso de fundido (Mahón joven)", q:"32 g", c:0.32 },
+        { n:"Payoyo semicurado rallado", q:"8 g", c:0.30 },
         { n:"Jamón cocido extra", q:"1 loncha (~30 g)", c:0.45 },
       ],
       montaje:[
@@ -3867,7 +3867,7 @@ const LAB_DATA = {
       vidaUtil:"pollo cocido 3 días en frío · montar al momento", mermas:"baja · aprovechar recortes del muslo",
       ingredientes:[
         { n:"Muslo de pollo deshuesado (sous-vide 64 °C)", q:"100 g cocido", c:0.70 },
-        { n:"Salsa Verde Materia (compartida)", q:"25 g", c:0.20 },
+        { n:"Salsa Verde Materia (compartida)", q:"25 g", c:0.30 },
         { n:"Pepinillo encurtido en casa", q:"15 g", c:0.10 },
         { n:"Cebolla crujiente premium", q:"8 g", c:0.20 },
         { n:"Pan cristal trigo-centeno", q:"1 pieza (~90 g)", c:0.35 },
@@ -3900,7 +3900,7 @@ const LAB_DATA = {
       ],
       cata:[ { f:"cata 1", punt:8, nota:"El ajo frotado y el tomate RALLADO (no en rodajas) la suben de nivel sin romper la pureza. El AOVE es el producto." } ],
       versiones:[ { v:"v1.0", f:"cierre", cambio:"Tomate rallado y sazonado + ajo frotado. AOVE como protagonista. Extras opcionales: jamón / anchoa / payoyo." } ] },
-    TE: { cod:"TE", tipo:"tosta", nombre:"Tosta Equilibrio", linea:"Equilibrio", estado:"prueba", pvp:5.50,
+    TE: { cod:"TE", tipo:"tosta", nombre:"Tosta Equilibrio", linea:"Equilibrio", estado:"carta", pvp:5.50,
       carta:"labneh, edamame, salsa verde, huevo, dukkah.",
       perfil:{ grasa:3, acidez:3, dulzor:1, salinidad:3, umami:3, textura:"cremoso + crujiente", temp:"templado" },
       tiempoMontaje:"50 s", miseEnPlace:"labneh · smash de edamame/guisante · salsa verde · dukkah · huevo mollet",
@@ -3909,9 +3909,9 @@ const LAB_DATA = {
         { n:"Pan multicereales", q:"1 rebanada", c:0.30 },
         { n:"Labneh (compartido)", q:"25 g", c:0.25 },
         { n:"Smash de edamame + guisante + hierbas + lima", q:"40 g", c:0.35 },
-        { n:"Salsa Verde Materia (compartida)", q:"15 g", c:0.12 },
+        { n:"Salsa Verde Materia (compartida)", q:"15 g", c:0.18 },
         { n:"Huevo mollet", q:"1 ud", c:0.25 },
-        { n:"Dukkah / semillas tostadas", q:"5 g", c:0.12 },
+        { n:"Dukkah Materia (compartida)", q:"5 g", c:0.05 },
         { n:"AOVE + sal en escamas", q:"c/s", c:0.20 },
       ],
       montaje:[
@@ -3921,7 +3921,7 @@ const LAB_DATA = {
         "Hilo de salsa verde, dukkah por encima y sal en escamas.",
       ],
       cata:[ { f:"cata 1", punt:9, nota:"La alternativa al avo toast: más proteína, coste estable (edamame congelado), verde brutal. La yema cierra el bocado." } ],
-      versiones:[ { v:"v0.9", f:"prueba", cambio:"NO es avo toast: base de edamame/guisante + labneh. Aguacate solo como extra opcional." } ] },
+      versiones:[ { v:"v1.0", f:"cierre · a carta", cambio:"NO es avo toast: edamame/guisante + labneh + huevo + salsa verde + dukkah. Aguacate como extra opcional. Aprobada a carta." } ] },
     TC: { cod:"TC", tipo:"tosta", nombre:"Tosta Colección", linea:"Colección", estado:"carta", pvp:4.90,
       carta:"crema de queso y yogur, fruta caramelizada, lima, agave.",
       perfil:{ grasa:3, acidez:3, dulzor:3, salinidad:1, umami:1, textura:"cremoso + fruta + crunch", temp:"contraste frío/caliente" },
@@ -3943,6 +3943,50 @@ const LAB_DATA = {
       cata:[ { f:"cata 1", punt:9, nota:"Contraste tibio/frío + crujiente del fruto seco. Caramelizar a fuego alto y corto: nada de compota, fruta viva." } ],
       versiones:[ { v:"v1.0", f:"cierre", cambio:"Base queso+yogur (más ligera). Caramelizado a plancha/soplete, no compota. Crumble por textura. Fruta de TEMPORADA (evergreen)." } ] },
   },
+  base: {
+    SV: { cod:"SV", tipo:"base", esBase:true, nombre:"Salsa Verde Materia", estado:"aprobado",
+      carta:"labneh, hierbas, aove, lima, ajo, un punto de verde picante.",
+      rinde:"~515 g / lote (~20 raciones de 25 g)", usadaEn:"Sándwich Equilibrio · Tosta Equilibrio",
+      tiempoMontaje:"5 min / lote", vidaUtil:"4-5 días en frío, tapada a piel", mermas:"mínima",
+      ingredientes:[
+        { n:"Labneh (o yogur griego)", q:"200 g", c:2.00 },
+        { n:"Perejil", q:"40 g", c:0.40 },
+        { n:"Cilantro", q:"15 g", c:0.20 },
+        { n:"Hierbabuena", q:"10 g", c:0.15 },
+        { n:"AOVE", q:"120 ml", c:3.00 },
+        { n:"Zumo de lima", q:"30 ml", c:0.30 },
+        { n:"Ajo", q:"1 diente (~5 g)", c:0.05 },
+        { n:"Chile verde", q:"10 g", c:0.15 },
+        { n:"Sal", q:"5 g", c:0.02 },
+      ],
+      montaje:[
+        "Lava y escurre bien las hierbas (perejil, cilantro, hierbabuena).",
+        "Tritura todo con el labneh, el AOVE, la lima, el ajo, el chile y la sal.",
+        "Emulsiona hasta una salsa verde lisa y brillante. Rectifica de sal y lima.",
+        "Guarda en frío, tapada a piel. Aguanta 4-5 días.",
+      ],
+      cata:[ { f:"cata 1", punt:9, nota:"El héroe compartido: viste el pollo y la tosta verde. Verde vivo, ácido y con un punto picante que engancha." } ],
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Base labneh (no mayonesa): más ligera y ácida. Compartida entre sándwich y tosta." } ] },
+    DK: { cod:"DK", tipo:"base", esBase:true, nombre:"Dukkah Materia", estado:"aprobado",
+      carta:"frutos secos y semillas tostadas, cilantro, comino, sal.",
+      rinde:"~270 g / lote (semanas de servicio)", usadaEn:"Tosta Equilibrio · topping de textura en tostas",
+      tiempoMontaje:"15 min / lote", vidaUtil:"3-4 semanas en tarro cerrado (seco)", mermas:"mínima (producto seco)",
+      ingredientes:[
+        { n:"Avellana/almendra tostada", q:"120 g", c:1.80 },
+        { n:"Sésamo", q:"80 g", c:0.60 },
+        { n:"Semilla de cilantro", q:"40 g", c:0.40 },
+        { n:"Comino", q:"20 g", c:0.30 },
+        { n:"Sal", q:"10 g", c:0.02 },
+      ],
+      montaje:[
+        "Tuesta por separado los frutos secos y las semillas hasta que huelan (sin quemar).",
+        "Machaca el cilantro y el comino en mortero.",
+        "Tritura todo grueso: debe quedar arenoso, nunca polvo.",
+        "Enfría del todo y guarda en tarro cerrado. Aguanta semanas.",
+      ],
+      cata:[ { f:"cata 1", punt:8, nota:"El crujiente aromático que remata las tostas. Grueso, nunca polvo." } ],
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Dukkah de casa como topping compartido de textura." } ] },
+  },
 };
 function labEur(n){ return (Math.round((n||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
 function labProd(tipo,cod){ return (LAB_DATA[tipo]||{})[cod]; }
@@ -3957,12 +4001,36 @@ function labRender(){
   const admin = mbdsEsAdmin();
   const { tipo, cod } = window._labc, p = labProd(tipo,cod);
   const est = LAB_ESTADOS[p.estado] || LAB_ESTADOS.prueba;
-  const seg = `<div class="lim-seg" style="max-width:260px;">
+  const tipoTxt = tipo==='sandwich'?'sándwiches':tipo==='tosta'?'tostas':'bases';
+  const seg = `<div class="lim-seg" style="max-width:340px;">
     <button class="${tipo==='sandwich'?'on':''}" onclick="labSet('sandwich','${Object.keys(LAB_DATA.sandwich)[0]}')">Sándwiches</button>
-    <button class="${tipo==='tosta'?'on':''}" onclick="labSet('tosta','${Object.keys(LAB_DATA.tosta)[0]}')">Tostas</button></div>`;
+    <button class="${tipo==='tosta'?'on':''}" onclick="labSet('tosta','${Object.keys(LAB_DATA.tosta)[0]}')">Tostas</button>
+    <button class="${tipo==='base'?'on':''}" onclick="labSet('base','${Object.keys(LAB_DATA.base)[0]}')">Bases</button></div>`;
   const opts = Object.values(LAB_DATA[tipo]).map(x=>`<option value="${x.cod}" ${x.cod===cod?'selected':''}>${esc(x.nombre)}</option>`).join("");
-  const head = `<div class="lim-head"><div><div class="lim-eyebrow">Control M · cocina · ${tipo==='sandwich'?'sándwiches':'tostas'}</div><div class="lim-h">${esc(p.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(p.carta)}</div></div><span class="lab-estado" style="background:${est.c};">${est.t}</span></div>`;
-  const controles = `<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:14px 0;">${seg}<div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Producto</label><select onchange="labSet('${tipo}',this.value)" style="min-width:200px;">${opts}</select></div></div>`;
+  const head = `<div class="lim-head"><div><div class="lim-eyebrow">Control M · cocina · ${tipoTxt}</div><div class="lim-h">${esc(p.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(p.carta)}</div></div><span class="lab-estado" style="background:${est.c};">${est.t}</span></div>`;
+  const controles = `<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:14px 0;">${seg}<div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">${tipo==='base'?'Elaboración':'Producto'}</label><select onchange="labSet('${tipo}',this.value)" style="min-width:200px;">${opts}</select></div></div>`;
+  // Bloques comunes (montaje guiado, cata, versiones).
+  const montaje = `<div class="section-label">${p.esBase?"Elaboración":"Montaje"}</div><ol class="prep-steps">${p.montaje.map(m=>`<li>${esc(m)}</li>`).join("")}</ol>
+    <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="labMontaje('${cod}','${tipo}')">▶ ${p.esBase?"Elaboración guiada":"Montaje guiado"}</button></div>`;
+  const cata = `<div class="section-label">Notas de cata</div>${p.cata.map(c=>`<div class="card"><div class="lim-prem-row"><b>${esc(c.f)}</b> · ${c.punt?`<span style="color:var(--olive);font-weight:700;">${c.punt}/10</span> · `:""}${esc(c.nota)}</div></div>`).join("")}`;
+  const vers = admin?`<div class="section-label">Versiones · historial</div>${p.versiones.map(v=>`<div class="card"><div class="lim-prem-row"><b>${esc(v.v)}</b> · ${esc(v.f)} · ${esc(v.cambio)}</div></div>`).join("")}`:"";
+  const ingRowsGen = ()=>p.ingredientes.map(i=>`<tr><td class="n">${esc(i.n)} <small>${esc(i.q)}</small></td>${admin?`<td class="q">${labEur(i.c)}</td>`:""}</tr>`).join("");
+  // ── Elaboración compartida (base): sin PVP ni perfil; rinde + coste de lote. ──
+  if(p.esBase){
+    const coste = p.ingredientes.reduce((s,i)=>s+(i.c||0),0);
+    const ficha = `<div class="section-label">Ficha · elaboración compartida</div><table class="lim-tab"><tbody>
+      <tr><td class="n">Rinde</td><td class="q">${esc(p.rinde)}</td></tr>
+      <tr><td class="n">Se usa en</td><td class="q">${esc(p.usadaEn)}</td></tr>
+      <tr><td class="n">Preparación</td><td class="q">${esc(p.tiempoMontaje)}</td></tr>
+      <tr><td class="n">Vida útil</td><td class="q">${esc(p.vidaUtil)}</td></tr>
+      <tr><td class="n">Mermas</td><td class="q">${esc(p.mermas)}</td></tr></tbody></table>`;
+    const escand = `<div class="section-label">${admin?"Escandallo · lote":"Ingredientes"}</div>
+      <table class="lim-tab">${admin?"<thead><tr><th>ingrediente</th><th>coste</th></tr></thead>":""}<tbody>${ingRowsGen()}
+        ${admin?`<tr class="tot"><td class="n">Coste lote</td><td class="q big">${labEur(coste)}</td></tr>`:""}</tbody></table>`;
+    const nota = `<div class="lim-nota" style="border-left-color:var(--muted);">Elaboración compartida: se prepara en lote y se reutiliza en varios productos.${admin?" Los costes solo los ves tú (admin).":""}</div>`;
+    setInner(head+controles+ficha+escand+montaje+cata+vers+nota);
+    return;
+  }
   const bar = (k,v)=>`<div class="lab-perf"><span>${k}</span><i><b style="width:${Math.max(0,Math.min(5,v))/5*100}%"></b></i></div>`;
   const perfil = `<div class="section-label">Perfil sensorial</div><div class="card">
     ${bar("grasa",p.perfil.grasa)}${bar("acidez",p.perfil.acidez)}${bar("dulzor",p.perfil.dulzor)}${bar("salinidad",p.perfil.salinidad)}${bar("umami",p.perfil.umami)}
@@ -3974,15 +4042,10 @@ function labRender(){
     <tr><td class="n">Mermas</td><td class="q">${esc(p.mermas)}</td></tr></tbody></table>`;
   const coste = p.ingredientes.reduce((s,i)=>s+(i.c||0),0);
   const pvpNeto = p.pvp/(1+LAB_IVA_FOOD), fc = pvpNeto>0?coste/pvpNeto*100:0, margen = pvpNeto-coste;
-  const ingRows = p.ingredientes.map(i=>`<tr><td class="n">${esc(i.n)} <small>${esc(i.q)}</small></td>${admin?`<td class="q">${labEur(i.c)}</td>`:""}</tr>`).join("");
   const escand = `<div class="section-label">${admin?"Escandallo · por unidad":"Ingredientes"}</div>
-    <table class="lim-tab">${admin?"<thead><tr><th>ingrediente</th><th>coste</th></tr></thead>":""}<tbody>${ingRows}
+    <table class="lim-tab">${admin?"<thead><tr><th>ingrediente</th><th>coste</th></tr></thead>":""}<tbody>${ingRowsGen()}
       ${admin?`<tr class="tot"><td class="n">Coste unidad</td><td class="q big">${labEur(coste)}</td></tr>`:""}</tbody></table>
     ${admin?`<div class="lim-param"><div><b>${labEur(coste)}</b><span>coste unidad</span></div><div><b>${labEur(p.pvp)}</b><span>pvp</span></div><div><b>${Math.round(fc)}%</b><span>food cost</span></div><div><b>${labEur(margen)}</b><span>margen</span></div></div>`:""}`;
-  const montaje = `<div class="section-label">Montaje</div><ol class="prep-steps">${p.montaje.map(m=>`<li>${esc(m)}</li>`).join("")}</ol>
-    <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="labMontaje('${cod}','${tipo}')">▶ Montaje guiado</button></div>`;
-  const cata = `<div class="section-label">Notas de cata</div>${p.cata.map(c=>`<div class="card"><div class="lim-prem-row"><b>${esc(c.f)}</b> · ${c.punt?`<span style="color:var(--olive);font-weight:700;">${c.punt}/10</span> · `:""}${esc(c.nota)}</div></div>`).join("")}`;
-  const vers = admin?`<div class="section-label">Versiones · historial</div>${p.versiones.map(v=>`<div class="card"><div class="lim-prem-row"><b>${esc(v.v)}</b> · ${esc(v.f)} · ${esc(v.cambio)}</div></div>`).join("")}`:"";
   const nota = `<div class="lim-nota" style="border-left-color:var(--muted);">Estado <b>${est.t}</b> · flujo Prueba → Aprobado → Carta → Archivado.${admin?" Los costes solo los ves tú (admin); el equipo ve ficha, perfil y montaje.":""}</div>`;
   setInner(head+controles+perfil+ficha+escand+montaje+cata+vers+nota);
 }

@@ -2988,10 +2988,10 @@ const LIMONADAS_DATA = {
   //  · perLitro = receta por litro de agua (aguas aromáticas): agua = ml necesarios,
   //    e ingredientes = g/L × ml/1000. No hay lote fijo, escala directo.
   homemade: {
-    SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044,
+    SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044, merma: 0.15,
            ing: [ {n:"piel de lima",v:140,u:"g"}, {n:"ácido cítrico",v:150,u:"g"}, {n:"ácido málico",v:4,u:"g"}, {n:"zumo de lima",v:420,u:"g"}, {n:"agua",v:2330,u:"g"} ],
            metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7." },
-    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861,
+    SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861, merma: 0.15,
            ing: [ {n:"piel de pomelo",v:400,u:"g"}, {n:"ácido cítrico",v:362,u:"g"}, {n:"ácido málico",v:90,u:"g"}, {n:"zumo de pomelo",v:1332,u:"g"}, {n:"agua",v:6664,u:"g"}, {n:"glutamato",v:13,u:"g"} ],
            metodo: "Igual que el de lima. Este lleva glutamato dentro." },
     AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true, concentra: 4,
@@ -3160,16 +3160,21 @@ function limPrepHTML(r, L){
         ingsBolsa = [`agua ${limMl(mlBolsaC)}`].concat(herb.map(h=>`${esc(h.n)} ${limG(h.g/bolsasC)}`));
         if(factor>1) dilucionHTML = `<div class="lim-dilu">Diluir después: <b>+ agua filtrada ${limMl(necesario-concentradoMl)}</b> → ${limMl(necesario)} de agua final</div>`;
       } else {
-        // Lote fijo (Super Juice, cordial): escala la receta por factor = necesario / rinde.
-        const factor = b.rinde>0 ? necesario/b.rinde : 1;
+        // Lote fijo (Super Juice, cordial): escala por factor = producción / rinde.
+        // Los Super Juice se producen con +merma (se pierde líquido al colar), así
+        // que hay que preparar de más para que quede el líquido necesario.
+        const merma = b.merma || 0;
+        const produccion = necesario * (1 + merma);
+        volBolsas = produccion;
+        const factor = b.rinde>0 ? produccion/b.rinde : 1;
         ingsTotal = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}`);
-        // se reparte por el número de bolsas calculado abajo
+        if(merma>0) dilucionHTML = `<div class="lim-dilu">Produces <b>${limMl(produccion)}</b> para que queden ${limMl(necesario)} tras colar (+${Math.round(merma*100)}% merma).</div>`;
         ingsBolsa = null;
       }
       const bolsas = Math.max(1, Math.ceil(volBolsas / LIM_MAX_BOLSA));
       const mlBolsa = volBolsas / bolsas;
       if(ingsBolsa==null){
-        const factor = b.rinde>0 ? necesario/b.rinde : 1;
+        const factor = b.rinde>0 ? volBolsas/b.rinde : 1;
         ingsBolsa = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor/bolsas):limMl(x.v*factor/bolsas)}`);
       }
       const conc = (b.perLitro && b.concentra>1) ? `Concentrado ×${b.concentra}: ` : "";

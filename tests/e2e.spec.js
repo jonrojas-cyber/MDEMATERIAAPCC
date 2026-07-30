@@ -851,7 +851,9 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   // Colección (pomelo·romero·lapsang) muestra su fondo ahumado.
   await page.evaluate(() => limSetRec("R5"));
   await expect(page.locator(".lim-h")).toContainText(/Burbujas · Colección/);
-  await expect(page.locator(".lim-tab")).toContainText(/Agua de lapsang/);
+  // Aromáticos como CONCENTRADO y el agua junta en un «agua de rebache» al final.
+  await expect(page.locator(".lim-tab")).toContainText(/Agua de lapsang · concentrado/);
+  await expect(page.locator(".lim-tab")).toContainText(/Agua de rebache/);
   // Paso a paso a pantalla completa: pulsar una preparación abre la vista con
   // los ingredientes escalados y los pasos numerados; «volver» la cierra.
   await page.evaluate(() => { limSetRec("R6"); limSetL(8); });        // Equilibrio → cordial de hierbabuena

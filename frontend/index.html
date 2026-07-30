@@ -3059,29 +3059,27 @@ const LIMONADAS_DATA = {
   //    e ingredientes = g/L × ml/1000. No hay lote fijo, escala directo.
   homemade: {
     SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044, merma: 0.15, minutos: 120,
-           ing: [ {n:"piel de lima",v:140,u:"g"}, {n:"ácido cítrico",v:150,u:"g"}, {n:"ácido málico",v:4,u:"g"}, {n:"zumo de lima",v:420,u:"g"}, {n:"agua",v:2330,u:"g"} ],
-           metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7.",
+           ing: [ {n:"piel de lima",v:140,u:"g"}, {n:"ácido cítrico",v:150,u:"g"}, {n:"ácido málico",v:4,u:"g"}, {n:"zumo de lima",v:420,u:"g",despues:true}, {n:"agua",v:2330,u:"g",despues:true} ],
+           metodo: "Al vacío SOLO la piel + ácidos, 2 h. Se añade el zumo y se tritura, se añade el agua y se tritura, se filtra en V60. Rinde ×6,7.",
            pasos: [
              "Pela la lima con pelador quitando SOLO la capa verde. Deja el albedo blanco en la fruta (amarga).",
-             "Pesa la piel, añádele el ácido cítrico y el ácido málico y mézclalos para que la piel empiece a soltar el aceite.",
-             "Envasa la piel con los ácidos en bolsa(s) de vacío (≤500 ml) y sella al vacío.",
-             "Deja macerar al vacío 2 h (arranca el temporizador). Se extrae el aceite esencial de la piel.",
-             "Mientras, exprime las limas ya peladas y reserva el zumo.",
-             "Abre las bolsas, junta la piel macerada con el zumo y el agua y tritura con túrmix.",
-             "Cuela fino: primero un colador y luego filtro V60. Aquí se pierde ~15 % (la merma ya está calculada).",
-             "Enfría y reserva en frío. Rinde ~×6,7 sobre el peso de la piel." ] },
+             "Envasa AL VACÍO solo la piel y los ácidos (cítrico y málico), bolsa a bolsa, y sella.",
+             "Deja reposar la piel y los ácidos al vacío 2 h (arranca el temporizador).",
+             "Exprime las limas ya peladas y reserva el zumo.",
+             "Abre las bolsas, añade el zumo y tritura con túrmix.",
+             "Añade el agua y vuelve a triturar; mézclalo todo.",
+             "Filtra en V60. Ya tienes el super juice (~15 % de merma al colar, ya prevista)." ] },
     SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861, merma: 0.15, minutos: 120,
-           ing: [ {n:"piel de pomelo",v:400,u:"g"}, {n:"ácido cítrico",v:362,u:"g"}, {n:"ácido málico",v:90,u:"g"}, {n:"zumo de pomelo",v:1332,u:"g"}, {n:"agua",v:6664,u:"g"}, {n:"glutamato",v:13,u:"g"} ],
-           metodo: "Igual que el de lima. Este lleva glutamato dentro.",
+           ing: [ {n:"piel de pomelo",v:400,u:"g"}, {n:"ácido cítrico",v:362,u:"g"}, {n:"ácido málico",v:90,u:"g"}, {n:"zumo de pomelo",v:1332,u:"g",despues:true}, {n:"agua",v:6664,u:"g",despues:true}, {n:"glutamato",v:13,u:"g",despues:true} ],
+           metodo: "Igual que el de lima. El glutamato entra al triturar con el zumo.",
            pasos: [
              "Pela el pomelo quitando solo la capa amarilla, sin el albedo blanco.",
-             "Añade a la piel el ácido cítrico, el ácido málico y el glutamato y mézclalos.",
-             "Envasa la piel con los ácidos y el glutamato en bolsa(s) de vacío (≤500 ml) y sella.",
-             "Deja macerar al vacío 2 h (arranca el temporizador).",
-             "Mientras, exprime el pomelo y reserva el zumo.",
-             "Junta la piel macerada con el zumo y el agua y tritura con túrmix.",
-             "Cuela fino (colador + V60); ~15 % de merma ya prevista.",
-             "Enfría y reserva en frío." ] },
+             "Envasa AL VACÍO solo la piel y los ácidos (cítrico y málico), bolsa a bolsa, y sella.",
+             "Deja reposar la piel y los ácidos al vacío 2 h (arranca el temporizador).",
+             "Exprime el pomelo y reserva el zumo.",
+             "Abre las bolsas, añade el zumo y el glutamato y tritura con túrmix.",
+             "Añade el agua y vuelve a triturar; mézclalo todo.",
+             "Filtra en V60. Ya tienes el super juice (~15 % de merma al colar, ya prevista)." ] },
     AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"hoja de lima kaffir",v:12,u:"g"} ], params: "60 °C · 25-30 min · sous vide sellado",
            metodo: "Hoja rasgada, no triturada. Concentrado ×4: menos agua, mismo tiempo corto. Enfriar en hielo, filtrar 5 µm y diluir.",
@@ -3257,7 +3255,7 @@ const LIM_MAX_BOLSA = 500;
 // Escala UNA preparación a los ml (o g) que hace falta producir. Única fuente de
 // verdad de las cantidades: la usan tanto la tarjeta resumen como el paso a paso.
 function limScale(b, necesario){
-  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], bolsas:1, mlBolsa:necesario, dilu:"", concentra:0,
+  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], ingsVacio:[], ingsDespues:[], bolsas:1, mlBolsa:necesario, bagUnit:"ml", dilu:"", concentra:0,
     // Solo las preparaciones al vacío/sous-vide se hacen «de bolsa en bolsa».
     // El cordial es de cazuela: se pesa y prepara en un solo lote.
     bagBased: !b.comprado && !!(b.minutos || b.perLitro) };
@@ -3271,9 +3269,10 @@ function limScale(b, necesario){
     volBolsas = concentradoMl;                 // solo el concentrado va al vacío
     const herb = (b.ing||[]).map(x=>({ n:x.n, g:x.v*necesario/1000 })); // hoja total (no cambia)
     const bolsas = Math.max(1, Math.ceil(concentradoMl / LIM_MAX_BOLSA));
-    out.bolsas = bolsas; out.mlBolsa = concentradoMl / bolsas; out.concentra = factor;
+    out.bolsas = bolsas; out.mlBolsa = concentradoMl / bolsas; out.concentra = factor; out.bagUnit = "ml";
     out.ingsTotal = [{n:"agua", q:limMl(concentradoMl)}].concat(herb.map(h=>({n:h.n, q:limG(h.g)})));
     out.ingsBolsa = [{n:"agua", q:limMl(out.mlBolsa)}].concat(herb.map(h=>({n:h.n, q:limG(h.g/bolsas)})));
+    out.ingsVacio = out.ingsTotal;
     if(factor>1) out.dilu = `Diluir después: + agua filtrada ${limMl(necesario-concentradoMl)} → ${limMl(necesario)} de agua final`;
   } else {
     // Lote fijo (Super Juice, cordial): escala por factor = producción / rinde.
@@ -3282,11 +3281,26 @@ function limScale(b, necesario){
     const produccion = necesario * (1 + merma);
     volBolsas = produccion;
     const factor = b.rinde>0 ? produccion/b.rinde : 1;
-    out.ingsTotal = (b.ing||[]).map(x=>({n:x.n, q:x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}));
-    const bolsas = Math.max(1, Math.ceil(produccion / LIM_MAX_BOLSA));
-    out.bolsas = bolsas; out.mlBolsa = produccion / bolsas;
-    out.ingsBolsa = (b.ing||[]).map(x=>({n:x.n, q:x.u==="g"?limG(x.v*factor/bolsas):limMl(x.v*factor/bolsas)}));
+    const scaled = (b.ing||[]).map(x=>({ n:x.n, u:x.u, val:x.v*factor, despues:!!x.despues,
+      q: x.u==="g"?limG(x.v*factor):limMl(x.v*factor) }));
+    out.ingsTotal = scaled.map(o=>({n:o.n, q:o.q}));
     if(merma>0) out.dilu = `Produces ${limMl(produccion)} para que queden ${limMl(necesario)} tras colar (+${Math.round(merma*100)}% merma).`;
+    if(out.bagBased){
+      // SUPER JUICE: al vacío SOLO piel + ácidos; el zumo y el agua se añaden
+      // después de macerar (se tritura), y se filtra. Las bolsas se dimensionan
+      // por el peso de lo que va al vacío, no por el volumen final.
+      const bag = scaled.filter(o=>!o.despues);
+      const bagMass = bag.reduce((s,o)=>s+o.val, 0);         // g de piel + ácidos
+      const bolsas = Math.max(1, Math.ceil(bagMass / LIM_MAX_BOLSA));
+      out.bolsas = bolsas; out.mlBolsa = bagMass / bolsas; out.bagUnit = "g";
+      out.ingsVacio  = bag.map(o=>({ n:o.n, q:o.u==="g"?limG(o.val):limMl(o.val) }));
+      out.ingsBolsa  = bag.map(o=>({ n:o.n, q:o.u==="g"?limG(o.val/bolsas):limMl(o.val/bolsas) }));
+      out.ingsDespues = scaled.filter(o=>o.despues).map(o=>({n:o.n, q:o.q}));
+    } else {
+      // Lote único (cordial): sin bolsas, se pesa todo junto.
+      out.bolsas = 1; out.mlBolsa = produccion; out.bagUnit = "ml";
+      out.ingsBolsa = out.ingsTotal; out.ingsVacio = out.ingsTotal;
+    }
   }
   return out;
 }
@@ -3306,8 +3320,12 @@ function limPrepHTML(r, L){
     } else {
       const conc = (b.perLitro && b.concentra>1) ? `Concentrado ×${b.concentra}: ` : "";
       prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">${conc}${sc.ingsTotal.map(o=>esc(limIngTxt(o))).join(" · ")}${b.params?` · ${esc(b.params)}`:""}</div>`;
-      if(sc.bagBased) bolsasHTML = `<div class="lim-bolsas"><b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío</b> · ≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa</div>
-        <div class="card-meta" style="margin-top:2px;">Por bolsa: ${sc.ingsBolsa.map(o=>esc(limIngTxt(o))).join(" · ")}</div>`;
+      if(sc.bagBased){
+        const bagQ = sc.bagUnit==="g" ? `solo piel + ácidos · ~${limG(sc.mlBolsa)}/bolsa` : `≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa`;
+        bolsasHTML = `<div class="lim-bolsas"><b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío</b> · ${bagQ}</div>
+          <div class="card-meta" style="margin-top:2px;">Por bolsa: ${sc.ingsBolsa.map(o=>esc(limIngTxt(o))).join(" · ")}</div>
+          ${sc.ingsDespues.length?`<div class="card-meta" style="margin-top:2px;">Después, al triturar: ${sc.ingsDespues.map(o=>esc(limIngTxt(o))).join(" · ")}</div>`:""}`;
+      }
       if(sc.dilu) dilucionHTML = `<div class="lim-dilu">${esc(sc.dilu)}</div>`;
     }
     // Toda la tarjeta es pulsable → abre el paso a paso a pantalla completa.
@@ -3334,20 +3352,37 @@ function limPrepHTML(r, L){
 function limPrepBtnTimer(cod, b){
   return b.minutos ? `<button class="btn-primary pwz-timer" onclick="svtStart(${b.minutos},'${esc(cod)} · ${esc(b.nombre)}')">▶ iniciar temporizador · ${b.minutos>=60?(b.minutos/60)+" h":b.minutos+" min"}</button>` : "";
 }
-// Construye la lista lineal de pasos de la guía (pesajes por bolsa + método).
+// Construye la lista lineal de pasos de la guía.
 function limPrepSteps(cod, necesario){
   const b = LIMONADAS_DATA.homemade[cod], sc = limScale(b, necesario), steps = [];
+  const pasos = b.pasos||[];
   if(b.comprado){
     steps.push({ t:"comprar", n:b.nombre, q:limG(necesario) });
-  } else if(sc.bagBased){
+    pasos.forEach((p,idx)=> steps.push({ t:"metodo", texto:p, idx:idx+1, total:pasos.length }));
+    return { b, sc, steps };
+  }
+  const esSuperJuice = sc.bagBased && sc.ingsDespues.length>0;
+  if(esSuperJuice){
+    // Envasa AL VACÍO solo piel + ácidos, bolsa a bolsa; reposa; añade zumo y
+    // agua triturando; filtra. El paso a paso ES el método (no se repite texto).
+    for(let k=1;k<=sc.bolsas;k++){
+      sc.ingsBolsa.forEach(o=> steps.push({ t:"pesar", n:o.n, q:o.q, bolsa:k, bolsas:sc.bolsas }));
+      steps.push({ t:"sellar", bolsa:k, bolsas:sc.bolsas });
+    }
+    steps.push({ t:"reposar", texto:"Deja reposar la piel y los ácidos al vacío 2 h.", timer:!!b.minutos });
+    sc.ingsDespues.forEach(o=> steps.push({ t:"anadir", n:o.n, q:o.q }));
+    steps.push({ t:"filtrar", texto:"Mézclalo todo y filtra en V60. Ya tienes el super juice." });
+    return { b, sc, steps };
+  }
+  // Aromáticas (bolsa de concentrado) y cordial (lote único): pesar + método.
+  if(sc.bagBased){
     for(let k=1;k<=sc.bolsas;k++){
       sc.ingsBolsa.forEach(o=> steps.push({ t:"pesar", n:o.n, q:o.q, bolsa:k, bolsas:sc.bolsas }));
       steps.push({ t:"sellar", bolsa:k, bolsas:sc.bolsas });
     }
   } else {
-    sc.ingsTotal.forEach(o=> steps.push({ t:"pesar", n:o.n, q:o.q }));
+    sc.ingsBolsa.forEach(o=> steps.push({ t:"pesar", n:o.n, q:o.q }));
   }
-  const pasos = b.pasos||[];
   pasos.forEach((p,idx)=> steps.push({ t:"metodo", texto:p, idx:idx+1, total:pasos.length, timer:/temporizador/i.test(p)&&!!b.minutos }));
   return { b, sc, steps };
 }
@@ -3367,12 +3402,21 @@ function limAbrirPrep(cod, necesario){
 function limPrepIntroHTML(cod, necesario){
   const b = LIMONADAS_DATA.homemade[cod], sc = limScale(b, necesario);
   const conc = (b.perLitro && b.concentra>1) ? ` · concentrado ×${b.concentra}` : "";
-  const ingsHTML = b.comprado
-    ? `<div class="prep-ing-row"><span>Comprar</span><b>${limG(necesario)}</b></div>`
-    : sc.ingsTotal.map(o=>`<div class="prep-ing-row"><span>${esc(o.n)}</span><b>${esc(o.q)}</b></div>`).join("");
+  const row = o=>`<div class="prep-ing-row"><span>${esc(o.n)}</span><b>${esc(o.q)}</b></div>`;
+  const tieneDespues = sc.ingsDespues.length>0;
+  let ingsSec;
+  if(b.comprado){
+    ingsSec = `<div class="prep-sec-t">Ingredientes · para este lote</div><div class="prep-ings"><div class="prep-ing-row"><span>Comprar</span><b>${limG(necesario)}</b></div></div>`;
+  } else if(tieneDespues){
+    // Super juice: separa lo que va AL VACÍO de lo que se añade DESPUÉS.
+    ingsSec = `<div class="prep-sec-t">Al vacío · solo piel + ácidos</div><div class="prep-ings">${sc.ingsVacio.map(row).join("")}</div>
+      <div class="prep-sec-t">Añadir después · al triturar</div><div class="prep-ings">${sc.ingsDespues.map(row).join("")}</div>`;
+  } else {
+    ingsSec = `<div class="prep-sec-t">Ingredientes · para este lote</div><div class="prep-ings">${sc.ingsTotal.map(row).join("")}</div>`;
+  }
   const produce = b.comprado
     ? `Comprar <b>${limG(necesario)}</b> · no se prepara`
-    : `Vas a preparar <b>${limMl(necesario)}</b>${sc.bagBased?` · <b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"}</b> de ≤500 ml`:` · lote único`}`;
+    : `Vas a preparar <b>${limMl(necesario)}</b>${sc.bagBased?` · <b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"}</b> ${sc.bagUnit==="g"?"(piel + ácidos)":"de ≤500 ml"}`:` · lote único`}`;
   const pasos = b.pasos||[];
   const pasosHTML = pasos.length
     ? `<ol class="prep-steps">${pasos.map(p=>`<li>${esc(p)}</li>`).join("")}</ol>`
@@ -3385,8 +3429,7 @@ function limPrepIntroHTML(cod, necesario){
     </div>
     <div class="prep-fs-body">
       <div class="prep-produce">${produce}</div>
-      <div class="prep-sec-t">Ingredientes · para este lote</div>
-      <div class="prep-ings">${ingsHTML}</div>
+      ${ingsSec}
       ${sc.dilu?`<div class="lim-dilu" style="margin-top:8px;">${esc(sc.dilu)}</div>`:""}
       <button class="prep-start" onclick="limPrepIniciar()">▶ Iniciar preparación</button>
       <div class="prep-sec-t">Método · referencia</div>
@@ -3419,6 +3462,18 @@ function limPrepWizHTML(){
     tag = `Bolsa ${s.bolsa} de ${s.bolsas}`;
     main = `<div class="pwz-ing">Sella la bolsa al vacío</div>`;
     nextLbl = "✓ Sellada";
+  } else if(s.t==="anadir"){
+    tag = "Añade y tritura";
+    main = `<div class="pwz-ing">${esc(s.n)}</div><div class="pwz-q">${esc(s.q)}</div>`;
+    nextLbl = "✓ Añadido";
+  } else if(s.t==="reposar"){
+    tag = "Reposo · al vacío";
+    main = `<div class="pwz-step">${esc(s.texto)}</div>`;
+    nextLbl = "Hecho →";
+  } else if(s.t==="filtrar"){
+    tag = "Filtrado · V60";
+    main = `<div class="pwz-step">${esc(s.texto)}</div>`;
+    nextLbl = "Hecho →";
   } else if(s.t==="comprar"){
     tag = "Compra";
     main = `<div class="pwz-ing">${esc(s.n)}</div><div class="pwz-q">${esc(s.q)}</div>`;
@@ -3428,7 +3483,7 @@ function limPrepWizHTML(){
     main = `<div class="pwz-step">${esc(s.texto)}</div>`;
     nextLbl = "Hecho →";
   }
-  const timerBtn = (s.t==="metodo" && s.timer) ? limPrepBtnTimer(P.cod, b) : "";
+  const timerBtn = ((s.t==="metodo"||s.t==="reposar") && s.timer) ? limPrepBtnTimer(P.cod, b) : "";
   const lbl = num===n ? "✓ Finalizar" : nextLbl;
   return `
     <div class="pwz-prog"><i style="width:${pct}%"></i></div>

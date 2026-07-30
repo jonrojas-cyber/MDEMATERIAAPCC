@@ -3901,28 +3901,14 @@ const LAB_DATA = {
       ],
       cata:[ { f:"cata 1", punt:8, nota:"Huevo de toro en dados y ESCURRIDO: sabor a tomate concentrado sin encharcar el pan. Aliñar al momento con sal. El AOVE es el producto." } ],
       versiones:[ { v:"v1.1", f:"ajuste", cambio:"Tomate huevo de toro en dados finos y ESCURRIDO (no rallado), aliñado al momento con sal. Sin ajo. AOVE por encima. Es el origen: nada más." } ] },
-    TE: { cod:"TE", tipo:"tosta", nombre:"Tosta Equilibrio", linea:"Equilibrio", estado:"carta", pvp:5.50,
-      carta:"labneh, edamame, salsa verde, huevo, dukkah.",
-      perfil:{ grasa:3, acidez:3, dulzor:1, salinidad:3, umami:3, textura:"cremoso + crujiente", temp:"templado" },
-      tiempoMontaje:"50 s", miseEnPlace:"labneh · smash de edamame/guisante · salsa verde · dukkah · huevo mollet",
-      vidaUtil:"smash mismo día · labneh 5 días", mermas:"baja (edamame congelado = sin merma de aguacate)",
-      ingredientes:[
-        { n:"Pan multicereales", q:"1 rebanada", c:0.30 },
-        { n:"Labneh (compartido)", q:"25 g", c:0.25 },
-        { n:"Smash de edamame + guisante + hierbas + lima", q:"40 g", c:0.35 },
-        { n:"Salsa Verde Materia (compartida)", q:"15 g", c:0.18 },
-        { n:"Huevo mollet", q:"1 ud", c:0.25 },
-        { n:"Dukkah Materia (compartida)", q:"5 g", c:0.05 },
-        { n:"AOVE + sal en escamas", q:"c/s", c:0.20 },
-      ],
-      montaje:[
-        "Tuesta el pan y extiende una base de labneh sazonado.",
-        "Añade el smash verde de edamame y guisante (con lima y AOVE).",
-        "Corona con el huevo mollet abierto (la yema es la foto).",
-        "Hilo de salsa verde, dukkah por encima y sal en escamas.",
-      ],
-      cata:[ { f:"cata 1", punt:9, nota:"La alternativa al avo toast: más proteína, coste estable (edamame congelado), verde brutal. La yema cierra el bocado." } ],
-      versiones:[ { v:"v1.0", f:"cierre · a carta", cambio:"NO es avo toast: edamame/guisante + labneh + huevo + salsa verde + dukkah. Aguacate como extra opcional. Aprobada a carta." } ] },
+    TE: { cod:"TE", tipo:"tosta", nombre:"Tosta Equilibrio", linea:"Equilibrio", estado:"prueba", pvp:5.50, pendiente:true,
+      carta:"receta por definir.",
+      perfil:{ grasa:0, acidez:0, dulzor:0, salinidad:0, umami:0, textura:"—", temp:"—" },
+      tiempoMontaje:"—", miseEnPlace:"—", vidaUtil:"—", mermas:"—",
+      ingredientes:[],
+      montaje:[],
+      cata:[],
+      versiones:[ { v:"—", f:"pendiente", cambio:"Pendiente de tu receta. No invento ingredientes." } ] },
     TC: { cod:"TC", tipo:"tosta", nombre:"Tosta Colección", linea:"Colección", estado:"carta", pvp:4.90,
       carta:"crema de queso y yogur con tajín, nectarina caramelizada al soplete, lima, agave.",
       perfil:{ grasa:3, acidez:3, dulzor:3, salinidad:1, umami:1, textura:"cremoso + fruta + crunch", temp:"contraste frío/caliente" },
@@ -3947,7 +3933,7 @@ const LAB_DATA = {
   base: {
     SV: { cod:"SV", tipo:"base", esBase:true, nombre:"Salsa Verde Materia", estado:"aprobado",
       carta:"labneh, hierbas, aove, lima, ajo, un punto de verde picante.",
-      rinde:"~515 g / lote (~20 raciones de 25 g)", usadaEn:"Tosta Equilibrio",
+      rinde:"~515 g / lote (~20 raciones de 25 g)", usadaEn:"por asignar",
       tiempoMontaje:"5 min / lote", vidaUtil:"4-5 días en frío, tapada a piel", mermas:"mínima",
       ingredientes:[
         { n:"Labneh (o yogur griego)", q:"200 g", c:2.00 },
@@ -3967,26 +3953,7 @@ const LAB_DATA = {
         "Guarda en frío, tapada a piel. Aguanta 4-5 días.",
       ],
       cata:[ { f:"cata 1", punt:9, nota:"El héroe compartido: viste el pollo y la tosta verde. Verde vivo, ácido y con un punto picante que engancha." } ],
-      versiones:[ { v:"v1.0", f:"cierre", cambio:"Base labneh (no mayonesa): más ligera y ácida. Compartida entre sándwich y tosta." } ] },
-    DK: { cod:"DK", tipo:"base", esBase:true, nombre:"Dukkah Materia", estado:"aprobado",
-      carta:"frutos secos y semillas tostadas, cilantro, comino, sal.",
-      rinde:"~270 g / lote (semanas de servicio)", usadaEn:"Tosta Equilibrio · topping de textura en tostas",
-      tiempoMontaje:"15 min / lote", vidaUtil:"3-4 semanas en tarro cerrado (seco)", mermas:"mínima (producto seco)",
-      ingredientes:[
-        { n:"Avellana/almendra tostada", q:"120 g", c:1.80 },
-        { n:"Sésamo", q:"80 g", c:0.60 },
-        { n:"Semilla de cilantro", q:"40 g", c:0.40 },
-        { n:"Comino", q:"20 g", c:0.30 },
-        { n:"Sal", q:"10 g", c:0.02 },
-      ],
-      montaje:[
-        "Tuesta por separado los frutos secos y las semillas hasta que huelan (sin quemar).",
-        "Machaca el cilantro y el comino en mortero.",
-        "Tritura todo grueso: debe quedar arenoso, nunca polvo.",
-        "Enfría del todo y guarda en tarro cerrado. Aguanta semanas.",
-      ],
-      cata:[ { f:"cata 1", punt:8, nota:"El crujiente aromático que remata las tostas. Grueso, nunca polvo." } ],
-      versiones:[ { v:"v1.0", f:"cierre", cambio:"Dukkah de casa como topping compartido de textura." } ] },
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Base labneh (no mayonesa): más ligera y ácida." } ] },
     MC: { cod:"MC", tipo:"base", esBase:true, nombre:"Mayonesa de Chimichurri", estado:"aprobado",
       carta:"chimichurri argentino integrado en mayonesa. cremosa y herbal.",
       rinde:"~360 g / lote (~14 raciones de 25 g)", usadaEn:"Sándwich Equilibrio",
@@ -4032,6 +3999,12 @@ function labRender(){
   const opts = Object.values(LAB_DATA[tipo]).map(x=>`<option value="${x.cod}" ${x.cod===cod?'selected':''}>${esc(x.nombre)}</option>`).join("");
   const head = `<div class="lim-head"><div><div class="lim-eyebrow">Control M · cocina · ${tipoTxt}</div><div class="lim-h">${esc(p.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(p.carta)}</div></div><span class="lab-estado" style="background:${est.c};">${est.t}</span></div>`;
   const controles = `<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:14px 0;">${seg}<div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">${tipo==='base'?'Elaboración':'Producto'}</label><select onchange="labSet('${tipo}',this.value)" style="min-width:200px;">${opts}</select></div></div>`;
+  // Receta pendiente: no se inventa nada; se espera la receta real.
+  if(p.pendiente){
+    const nota = `<div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Receta por definir.</b> Pásame los ingredientes y cantidades de <b>${esc(p.nombre)}</b> y la cierro aquí (ficha, escandallo y montaje). No invento nada.</div>`;
+    setInner(head+controles+nota);
+    return;
+  }
   // Bloques comunes (montaje guiado, cata, versiones).
   const montaje = `<div class="section-label">${p.esBase?"Elaboración":"Montaje"}</div><ol class="prep-steps">${p.montaje.map(m=>`<li>${esc(m)}</li>`).join("")}</ol>
     <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="labMontaje('${cod}','${tipo}')">▶ ${p.esBase?"Elaboración guiada":"Montaje guiado"}</button></div>`;

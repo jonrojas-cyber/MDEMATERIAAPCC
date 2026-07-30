@@ -852,6 +852,19 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await page.evaluate(() => limSetRec("R5"));
   await expect(page.locator(".lim-h")).toContainText(/Burbujas · Colección/);
   await expect(page.locator(".lim-tab")).toContainText(/Agua de lapsang/);
+  // Paso a paso a pantalla completa: pulsar una preparación abre la vista con
+  // los ingredientes escalados y los pasos numerados; «volver» la cierra.
+  await page.evaluate(() => { limSetRec("R6"); limSetL(8); });        // Equilibrio → cordial de hierbabuena
+  await page.locator(".lim-prep-card").first().click();
+  await expect(page.locator("#prep-fs.show")).toBeVisible();
+  await expect(page.locator(".prep-fs-title")).toContainText(/Purée Boiron/);
+  await page.evaluate(() => limAbrirPrep("CH", 1200));
+  await expect(page.locator(".prep-fs-title")).toContainText(/Cordial de hierbabuena/);
+  await expect(page.locator(".prep-steps li")).toHaveCount(6);
+  await expect(page.locator(".prep-ings")).toContainText(/hierbabuena/);
+  await page.locator(".prep-fs-back").click();
+  await expect(page.locator("#prep-fs")).toBeHidden();
+  await page.evaluate(() => limSetRec("R5"));
   // Enlace con productos: lleva a la categoría Burbujas de la carta.
   await page.evaluate(() => burVerEnCarta());
   await expect(page.locator("body")).toContainText(/Burbujas Origen/);

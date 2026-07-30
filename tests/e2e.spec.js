@@ -873,6 +873,16 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await expect(page.locator(".pwz-check")).toBeVisible();               // pantalla «listo»
   await page.locator(".pwz-next").click();                             // Cerrar
   await expect(page.locator("#prep-fs")).toBeHidden();
+  // Super Juice: al vacío SOLO piel + ácidos; zumo y agua se añaden después.
+  await page.evaluate(() => limAbrirPrep("SJL", 196 * 16));
+  await expect(page.locator(".prep-fs-body")).toContainText(/Al vacío · solo piel \+ ácidos/);
+  await expect(page.locator(".prep-fs-body")).toContainText(/Añadir después/);
+  await page.locator(".prep-start").click();
+  await expect(page.locator(".pwz-ing")).toContainText(/piel de lima/i);   // primer pesaje = piel
+  const hayAnadir = await page.evaluate(() => window._prep.steps.some(s => s.t === "anadir"));
+  expect(hayAnadir).toBe(true);
+  await page.evaluate(() => limCerrarPrep());
+  await expect(page.locator("#prep-fs")).toBeHidden();
   await page.evaluate(() => limSetRec("R5"));
   // Enlace con productos: lleva a la categoría Burbujas de la carta.
   await page.evaluate(() => burVerEnCarta());

@@ -1737,6 +1737,35 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-bolsas b { color:var(--olive); }
 .lim-dilu { margin-top:6px; font-size:12px; padding:6px 10px; border-left:2px solid var(--olive); }
 .lim-dilu b { color:var(--olive); }
+/* Tarjeta de preparación pulsable → abre el paso a paso a pantalla completa. */
+.lim-prep-card { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:border-color .12s ease, transform .06s ease; }
+.lim-prep-card:hover { border-color:var(--olive); }
+.lim-prep-card:active { transform:scale(.995); }
+.lim-vermas { margin-top:8px; font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--olive); }
+/* Paso a paso a pantalla completa. */
+#prep-fs { position:fixed; inset:0; z-index:200; background:var(--cream); color:var(--ink);
+  display:none; overflow-y:auto; -webkit-overflow-scrolling:touch; opacity:0; transition:opacity .16s ease; }
+#prep-fs.show { opacity:1; }
+.prep-fs-head { position:sticky; top:0; z-index:2; background:var(--cream); border-bottom:1px solid var(--line);
+  padding:calc(12px + env(safe-area-inset-top,0px)) 18px 12px; }
+.prep-fs-back { background:none; border:none; color:var(--olive); font-weight:800; font-size:14px; padding:4px 0; cursor:pointer; margin-bottom:6px; }
+.prep-fs-title { font-size:22px; font-weight:800; line-height:1.15; letter-spacing:-.01em; }
+.prep-fs-need { color:var(--olive); font-weight:700; font-size:13px; margin-top:4px; }
+.prep-fs-body { padding:6px 18px calc(44px + env(safe-area-inset-bottom,0px)); max-width:640px; margin:0 auto; }
+.prep-sec-t { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:800; margin:22px 0 10px; }
+.prep-ings { display:flex; flex-direction:column; gap:4px; }
+.prep-ing-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  padding:9px 13px; border:1px solid var(--line); border-radius:9px; font-size:15px; }
+.prep-ing-row span { font-weight:600; }
+.prep-ing-row b { color:var(--olive); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.prep-bags { margin-top:10px; font-size:13px; font-weight:700; color:var(--olive); }
+.prep-steps { list-style:none; counter-reset:step; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; }
+.prep-steps li { counter-increment:step; position:relative; padding:13px 15px 13px 48px;
+  border:1px solid var(--line); border-radius:11px; font-size:15px; line-height:1.45; }
+.prep-steps li::before { content:counter(step); position:absolute; left:12px; top:11px; width:26px; height:26px; border-radius:50%;
+  background:var(--olive); color:var(--cream); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+.prep-params { margin-top:16px; font-size:13px; color:var(--muted); border-left:2px solid var(--olive); padding-left:11px; line-height:1.4; }
+.prep-params b { color:var(--olive); }
 /* Temporizadores de producción: píldoras compactas abajo-derecha (persisten entre pantallas). */
 #cronos-bar { position:fixed; right:10px; bottom:calc(76px + env(safe-area-inset-bottom,0px)); z-index:60;
   display:none; flex-direction:column; align-items:flex-end; gap:5px; pointer-events:none; max-width:min(72vw,240px); }
@@ -3006,24 +3035,73 @@ const LIMONADAS_DATA = {
   homemade: {
     SJL: { nombre: "Super Juice de lima", tipo: "cítrico", rinde: 3044, merma: 0.15, minutos: 120,
            ing: [ {n:"piel de lima",v:140,u:"g"}, {n:"ácido cítrico",v:150,u:"g"}, {n:"ácido málico",v:4,u:"g"}, {n:"zumo de lima",v:420,u:"g"}, {n:"agua",v:2330,u:"g"} ],
-           metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7." },
+           metodo: "Piel sin albedo + ácidos al 100 % de vacío, 2 h. Túrmix, colar fino, V60. Rinde ×6,7.",
+           pasos: [
+             "Pela la lima con pelador quitando SOLO la capa verde. Deja el albedo blanco en la fruta (amarga).",
+             "Pesa la piel, añádele el ácido cítrico y el ácido málico y mézclalos para que la piel empiece a soltar el aceite.",
+             "Envasa la piel con los ácidos en bolsa(s) de vacío (≤500 ml) y sella al vacío.",
+             "Deja macerar al vacío 2 h (arranca el temporizador). Se extrae el aceite esencial de la piel.",
+             "Mientras, exprime las limas ya peladas y reserva el zumo.",
+             "Abre las bolsas, junta la piel macerada con el zumo y el agua y tritura con túrmix.",
+             "Cuela fino: primero un colador y luego filtro V60. Aquí se pierde ~15 % (la merma ya está calculada).",
+             "Enfría y reserva en frío. Rinde ~×6,7 sobre el peso de la piel." ] },
     SJP: { nombre: "Super Juice de pomelo", tipo: "cítrico", rinde: 8861, merma: 0.15, minutos: 120,
            ing: [ {n:"piel de pomelo",v:400,u:"g"}, {n:"ácido cítrico",v:362,u:"g"}, {n:"ácido málico",v:90,u:"g"}, {n:"zumo de pomelo",v:1332,u:"g"}, {n:"agua",v:6664,u:"g"}, {n:"glutamato",v:13,u:"g"} ],
-           metodo: "Igual que el de lima. Este lleva glutamato dentro." },
+           metodo: "Igual que el de lima. Este lleva glutamato dentro.",
+           pasos: [
+             "Pela el pomelo quitando solo la capa amarilla, sin el albedo blanco.",
+             "Añade a la piel el ácido cítrico, el ácido málico y el glutamato y mézclalos.",
+             "Envasa la piel con los ácidos y el glutamato en bolsa(s) de vacío (≤500 ml) y sella.",
+             "Deja macerar al vacío 2 h (arranca el temporizador).",
+             "Mientras, exprime el pomelo y reserva el zumo.",
+             "Junta la piel macerada con el zumo y el agua y tritura con túrmix.",
+             "Cuela fino (colador + V60); ~15 % de merma ya prevista.",
+             "Enfría y reserva en frío." ] },
     AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"hoja de lima kaffir",v:12,u:"g"} ], params: "60 °C · 25-30 min · sous vide sellado",
-           metodo: "Hoja rasgada, no triturada. Concentrado ×4: menos agua, mismo tiempo corto. Enfriar en hielo, filtrar 5 µm y diluir." },
+           metodo: "Hoja rasgada, no triturada. Concentrado ×4: menos agua, mismo tiempo corto. Enfriar en hielo, filtrar 5 µm y diluir.",
+           pasos: [
+             "Rasga las hojas de lima kaffir con la mano (NO las tritures: amargan).",
+             "Mete las hojas con el agua del concentrado (¼ del agua final) en bolsa de vacío y sella.",
+             "Sous-vide a 60 °C, 25-30 min (arranca el temporizador).",
+             "Enfría rápido en un baño de hielo para fijar el aroma.",
+             "Filtra a 5 µm (o filtro de café).",
+             "Diluye con el resto de agua filtrada fría hasta el volumen final." ] },
     AR:  { nombre: "Agua de romero", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"romero",v:15,u:"g"} ], params: "65 °C · 25-30 min · sous vide sellado",
-           metodo: "Sin tallo leñoso. Concentrado ×4: aguanta bien, es aromático más que tánico. Enfriar, filtrar y diluir." },
+           metodo: "Sin tallo leñoso. Concentrado ×4: aguanta bien, es aromático más que tánico. Enfriar, filtrar y diluir.",
+           pasos: [
+             "Usa solo las hojas de romero, sin el tallo leñoso.",
+             "Envasa el romero con el agua del concentrado (¼ del agua final) al vacío y sella.",
+             "Sous-vide a 65 °C, 25-30 min (arranca el temporizador).",
+             "Enfría en un baño de hielo.",
+             "Filtra fino.",
+             "Diluye con el resto de agua fría hasta el volumen final." ] },
     AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática", perLitro: true, concentra: 3, minutos: 20,
            ing: [ {n:"lapsang souchong",v:6,u:"g"} ], params: "70 °C · ~20 min (CORTA a tiempo) · sous vide sellado",
-           metodo: "Concentrado solo ×3 (el tanino sale rápido): corta a los ~20 min catando; cuando la astringencia tape el ahumado, para. Enfriar, filtrar y diluir." },
+           metodo: "Concentrado solo ×3 (el tanino sale rápido): corta a los ~20 min catando; cuando la astringencia tape el ahumado, para. Enfriar, filtrar y diluir.",
+           pasos: [
+             "Pesa el lapsang souchong (concentrado ×3, solo un tercio del agua).",
+             "Envasa el té con el agua del concentrado al vacío y sella.",
+             "Sous-vide a 70 °C, ~20 min (arranca el temporizador).",
+             "CORTA a tiempo: cata a los 15-20 min y, cuando la astringencia empiece a tapar el ahumado, para.",
+             "Enfría en un baño de hielo y filtra.",
+             "Diluye con el resto de agua fría hasta el volumen final." ] },
     CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial", rinde: 1160,
            ing: [ {n:"hierbabuena",v:130,u:"g"}, {n:"azúcar",v:500,u:"g"}, {n:"agua",v:500,u:"g"}, {n:"ácido cítrico",v:15,u:"g"}, {n:"ácido tartárico",v:15,u:"g"} ],
-           metodo: "NO es agua: es un cordial. Aporta aroma + azúcar + ácido a la vez. Por eso la pasión lleva poco azúcar y nada de cítrico añadido." },
+           metodo: "NO es agua: es un cordial. Aporta aroma + azúcar + ácido a la vez. Por eso la pasión lleva poco azúcar y nada de cítrico añadido.",
+           pasos: [
+             "Separa las hojas de hierbabuena de los tallos; lava y escurre bien.",
+             "Calienta el agua con el azúcar hasta disolver del todo (jarabe); no lo hiervas fuerte.",
+             "Retira del fuego, añade la hierbabuena y deja infusionar tapado ~15 min.",
+             "Añade el ácido cítrico y el ácido tartárico y remueve hasta disolver.",
+             "Cuela fino, presionando las hojas para sacar todo el aroma.",
+             "Enfría y reserva en frío. Aporta aroma + azúcar + ácido a la vez." ] },
     PB:  { nombre: "Purée Boiron fruta de la pasión", tipo: "comprado", comprado: true,
-           metodo: "13 °Bx · ya es puro y trae su propia acidez. No se prepara: se compra la cantidad necesaria." }
+           metodo: "13 °Bx · ya es puro y trae su propia acidez. No se prepara: se compra la cantidad necesaria.",
+           pasos: [
+             "No se prepara: es puré comprado (Boiron, 13 °Bx).",
+             "Descongela en frío la cantidad necesaria y úsalo tal cual (ya trae su propia acidez)." ] }
   },
   premezclas: {
     salina:    "5 g sal / 100 ml → 1 ml = 0,05 g",
@@ -3151,6 +3229,41 @@ async function burVerProducto(nombreProd){
 // Máximo de líquido por bolsa de vacío. Cada producción se reparte en bolsas de
 // ≤500 ml para que el vacío/sous-vide sea uniforme.
 const LIM_MAX_BOLSA = 500;
+// Escala UNA preparación a los ml (o g) que hace falta producir. Única fuente de
+// verdad de las cantidades: la usan tanto la tarjeta resumen como el paso a paso.
+function limScale(b, necesario){
+  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], bolsas:1, mlBolsa:necesario, dilu:"", concentra:0 };
+  if(b.comprado) return out;
+  let volBolsas = necesario;
+  if(b.perLitro){
+    // Agua aromática. Con concentra: infusiona TODA la hoja en menos agua
+    // (necesario/factor) y luego DILUYE con agua hasta el volumen final.
+    const factor = b.concentra || 1;
+    const concentradoMl = necesario / factor;
+    volBolsas = concentradoMl;                 // solo el concentrado va al vacío
+    const herb = (b.ing||[]).map(x=>({ n:x.n, g:x.v*necesario/1000 })); // hoja total (no cambia)
+    const bolsas = Math.max(1, Math.ceil(concentradoMl / LIM_MAX_BOLSA));
+    out.bolsas = bolsas; out.mlBolsa = concentradoMl / bolsas; out.concentra = factor;
+    out.ingsTotal = [{n:"agua", q:limMl(concentradoMl)}].concat(herb.map(h=>({n:h.n, q:limG(h.g)})));
+    out.ingsBolsa = [{n:"agua", q:limMl(out.mlBolsa)}].concat(herb.map(h=>({n:h.n, q:limG(h.g/bolsas)})));
+    if(factor>1) out.dilu = `Diluir después: + agua filtrada ${limMl(necesario-concentradoMl)} → ${limMl(necesario)} de agua final`;
+  } else {
+    // Lote fijo (Super Juice, cordial): escala por factor = producción / rinde.
+    // Los Super Juice se producen con +merma (se pierde líquido al colar).
+    const merma = b.merma || 0;
+    const produccion = necesario * (1 + merma);
+    volBolsas = produccion;
+    const factor = b.rinde>0 ? produccion/b.rinde : 1;
+    out.ingsTotal = (b.ing||[]).map(x=>({n:x.n, q:x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}));
+    const bolsas = Math.max(1, Math.ceil(produccion / LIM_MAX_BOLSA));
+    out.bolsas = bolsas; out.mlBolsa = produccion / bolsas;
+    out.ingsBolsa = (b.ing||[]).map(x=>({n:x.n, q:x.u==="g"?limG(x.v*factor/bolsas):limMl(x.v*factor/bolsas)}));
+    if(merma>0) out.dilu = `Produces ${limMl(produccion)} para que queden ${limMl(necesario)} tras colar (+${Math.round(merma*100)}% merma).`;
+  }
+  return out;
+}
+// ing → texto "nombre cantidad" (para el resumen compacto).
+function limIngTxt(o){ return `${o.n} ${o.q}`; }
 function limPrepHTML(r, L){
   // Homemade que pide ESTA receta (líneas con código) y cuánto ml necesita.
   const usados = (r.lineas||[]).filter(li=>li.cod && LIMONADAS_DATA.homemade[li.cod]);
@@ -3158,47 +3271,21 @@ function limPrepHTML(r, L){
   return usados.map(li=>{
     const b = LIMONADAS_DATA.homemade[li.cod];
     const necesario = li.v * L;                 // ml (o g para el purée) que hacen falta
+    const sc = limScale(b, necesario);
     let prep = "", bolsasHTML = "", dilucionHTML = "";
     if(b.comprado){
       prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">Comprar ${limG(necesario)} · no se prepara.</div>`;
     } else {
-      let ingsTotal, ingsBolsa, volBolsas = necesario;
-      if(b.perLitro){
-        // Agua aromática. Con concentra: infusiona TODA la hoja en menos agua
-        // (necesario/factor) y luego DILUYE con agua hasta el volumen final.
-        const factor = b.concentra || 1;
-        const concentradoMl = necesario / factor;
-        volBolsas = concentradoMl;                 // solo el concentrado va al vacío
-        const herb = (b.ing||[]).map(x=>({ n:x.n, g:x.v*necesario/1000 })); // hoja total (no cambia)
-        const bolsasC = Math.max(1, Math.ceil(concentradoMl / LIM_MAX_BOLSA));
-        const mlBolsaC = concentradoMl / bolsasC;
-        ingsTotal = [`agua ${limMl(concentradoMl)}`].concat(herb.map(h=>`${esc(h.n)} ${limG(h.g)}`));
-        ingsBolsa = [`agua ${limMl(mlBolsaC)}`].concat(herb.map(h=>`${esc(h.n)} ${limG(h.g/bolsasC)}`));
-        if(factor>1) dilucionHTML = `<div class="lim-dilu">Diluir después: <b>+ agua filtrada ${limMl(necesario-concentradoMl)}</b> → ${limMl(necesario)} de agua final</div>`;
-      } else {
-        // Lote fijo (Super Juice, cordial): escala por factor = producción / rinde.
-        // Los Super Juice se producen con +merma (se pierde líquido al colar), así
-        // que hay que preparar de más para que quede el líquido necesario.
-        const merma = b.merma || 0;
-        const produccion = necesario * (1 + merma);
-        volBolsas = produccion;
-        const factor = b.rinde>0 ? produccion/b.rinde : 1;
-        ingsTotal = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor):limMl(x.v*factor)}`);
-        if(merma>0) dilucionHTML = `<div class="lim-dilu">Produces <b>${limMl(produccion)}</b> para que queden ${limMl(necesario)} tras colar (+${Math.round(merma*100)}% merma).</div>`;
-        ingsBolsa = null;
-      }
-      const bolsas = Math.max(1, Math.ceil(volBolsas / LIM_MAX_BOLSA));
-      const mlBolsa = volBolsas / bolsas;
-      if(ingsBolsa==null){
-        const factor = b.rinde>0 ? volBolsas/b.rinde : 1;
-        ingsBolsa = (b.ing||[]).map(x=>`${esc(x.n)} ${x.u==="g"?limG(x.v*factor/bolsas):limMl(x.v*factor/bolsas)}`);
-      }
       const conc = (b.perLitro && b.concentra>1) ? `Concentrado ×${b.concentra}: ` : "";
-      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">${conc}${ingsTotal.join(" · ")}${b.params?` · ${esc(b.params)}`:""}</div>`;
-      bolsasHTML = `<div class="lim-bolsas"><b>${bolsas} bolsa${bolsas===1?"":"s"} de vacío</b> · ≤500 ml · ~${limMl(mlBolsa)}/bolsa</div>
-        <div class="card-meta" style="margin-top:2px;">Por bolsa: ${ingsBolsa.join(" · ")}</div>`;
+      prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">${conc}${sc.ingsTotal.map(o=>esc(limIngTxt(o))).join(" · ")}${b.params?` · ${esc(b.params)}`:""}</div>`;
+      bolsasHTML = `<div class="lim-bolsas"><b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío</b> · ≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa</div>
+        <div class="card-meta" style="margin-top:2px;">Por bolsa: ${sc.ingsBolsa.map(o=>esc(limIngTxt(o))).join(" · ")}</div>`;
+      if(sc.dilu) dilucionHTML = `<div class="lim-dilu">${esc(sc.dilu)}</div>`;
     }
-    return `<div class="card" style="margin-bottom:8px;">
+    // Toda la tarjeta es pulsable → abre el paso a paso a pantalla completa.
+    return `<div class="card lim-prep-card" style="margin-bottom:8px;" role="button" tabindex="0"
+        onclick="limAbrirPrep('${esc(li.cod)}',${necesario})"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();limAbrirPrep('${esc(li.cod)}',${necesario});}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
         <div class="card-name"><span class="lim-cod">${esc(li.cod)}</span>${esc(b.nombre)}</div>
         <span style="font-size:12px;font-weight:700;color:var(--olive);white-space:nowrap;">necesitas ${b.comprado?limG(necesario):limMl(necesario)}</span>
@@ -3207,9 +3294,49 @@ function limPrepHTML(r, L){
       ${bolsasHTML}
       ${dilucionHTML}
       <div class="card-meta" style="margin-top:4px;">${esc(b.metodo)}</div>
-      ${b.minutos?`<div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="svtStart(${b.minutos},'${esc(li.cod)} · ${esc(b.nombre)}')">▶ temporizador ${b.minutos>=60?(b.minutos/60)+" h":b.minutos+" min"}</button></div>`:""}
+      <div class="lim-vermas">paso a paso ›</div>
     </div>`;
   }).join("");
+}
+// Paso a paso a PANTALLA COMPLETA de una preparación (cordial, super juice, agua…).
+function limAbrirPrep(cod, necesario){
+  const b = LIMONADAS_DATA.homemade[cod]; if(!b) return;
+  const sc = limScale(b, necesario);
+  let el = document.getElementById("prep-fs");
+  if(!el){ el = document.createElement("div"); el.id = "prep-fs"; document.body.appendChild(el); }
+  const conc = (b.perLitro && b.concentra>1) ? ` · concentrado ×${b.concentra}` : "";
+  const ingsHTML = b.comprado
+    ? `<div class="prep-ing-row"><span>Comprar</span><b>${limG(necesario)}</b></div>`
+    : sc.ingsTotal.map(o=>`<div class="prep-ing-row"><span>${esc(o.n)}</span><b>${esc(o.q)}</b></div>`).join("");
+  const pasos = (b.pasos||[]);
+  const pasosHTML = pasos.length
+    ? `<ol class="prep-steps">${pasos.map(p=>`<li>${esc(p)}</li>`).join("")}</ol>`
+    : `<div class="card-meta">${esc(b.metodo||"")}</div>`;
+  el.innerHTML = `
+    <div class="prep-fs-head">
+      <button class="prep-fs-back" onclick="limCerrarPrep()">‹ volver</button>
+      <div class="prep-fs-title"><span class="lim-cod">${esc(cod)}</span>${esc(b.nombre)}</div>
+      <div class="prep-fs-need">necesitas ${b.comprado?limG(necesario):limMl(necesario)}${conc}</div>
+    </div>
+    <div class="prep-fs-body">
+      <div class="prep-sec-t">Ingredientes · para este lote</div>
+      <div class="prep-ings">${ingsHTML}</div>
+      ${!b.comprado?`<div class="prep-bags">${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío · ≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa</div>`:""}
+      ${sc.dilu?`<div class="lim-dilu" style="margin-top:8px;">${esc(sc.dilu)}</div>`:""}
+      <div class="prep-sec-t">Paso a paso</div>
+      ${pasosHTML}
+      ${b.params?`<div class="prep-params"><b>Parámetros:</b> ${esc(b.params)}</div>`:""}
+      ${b.minutos?`<div class="card-actions" style="margin-top:16px;"><button class="btn-primary" onclick="svtStart(${b.minutos},'${esc(cod)} · ${esc(b.nombre)}')">▶ iniciar temporizador · ${b.minutos>=60?(b.minutos/60)+" h":b.minutos+" min"}</button></div>`:""}
+    </div>`;
+  el.style.display = "block";
+  el.scrollTop = 0;
+  requestAnimationFrame(()=>el.classList.add("show"));
+  document.body.style.overflow = "hidden";
+}
+function limCerrarPrep(){
+  const el = document.getElementById("prep-fs");
+  if(el){ el.classList.remove("show"); el.style.display = "none"; }
+  document.body.style.overflow = "";
 }
 
 
@@ -3225,10 +3352,49 @@ function svtBarEl(){
   if(!bar){ bar = document.createElement("div"); bar.id = "cronos-bar"; document.body.appendChild(bar); }
   return bar;
 }
+// Genera UNA vez un WAV de alarma (pitidos alternos) como data URI. Se reproduce
+// por un <audio> ya desbloqueado: mucho más fiable en móvil que WebAudio, que
+// iOS vuelve a suspender y no llega a sonar al dispararse la cuenta atrás.
+function svtAlarmWav(){
+  if(window._svtWav) return window._svtWav;
+  const sr=8000, beep=0.18, gap=0.14, reps=10, total=(beep+gap)*reps, n=Math.floor(sr*total);
+  const buf=new ArrayBuffer(44+n*2), view=new DataView(buf);
+  const wr=(o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+  wr(0,"RIFF"); view.setUint32(4,36+n*2,true); wr(8,"WAVE"); wr(12,"fmt ");
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,sr,true); view.setUint32(28,sr*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
+  wr(36,"data"); view.setUint32(40,n*2,true);
+  const per=Math.floor(sr*(beep+gap)), bn=Math.floor(sr*beep), ramp=Math.floor(sr*0.012);
+  for(let i=0;i<n;i++){
+    const ph=i%per; let v=0;
+    if(ph<bn){
+      const f=(Math.floor(i/per)%2)?988:1319;
+      let env=1; if(ph<ramp) env=ph/ramp; else if(ph>bn-ramp) env=Math.max(0,(bn-ph)/ramp);
+      v=Math.sin(2*Math.PI*f*(i/sr))*0.55*env;
+    }
+    view.setInt16(44+i*2, Math.round(v*32767), true);
+  }
+  const b=new Uint8Array(buf); let bin=""; for(let i=0;i<b.length;i++) bin+=String.fromCharCode(b[i]);
+  window._svtWav="data:audio/wav;base64,"+btoa(bin);
+  return window._svtWav;
+}
+function svtAudioEl(){
+  let a=document.getElementById("svt-audio");
+  if(!a){ a=document.createElement("audio"); a.id="svt-audio"; a.preload="auto"; a.loop=false; a.src=svtAlarmWav(); document.body.appendChild(a); }
+  return a;
+}
 function svtAudioInit(){
+  // Se llama desde el gesto de pulsar ▶ → desbloquea el audio para poder sonar
+  // luego sin gesto (autoplay iOS/Android): un play() mudo + pause() lo habilita.
   try{
     if(!window._actx) window._actx = new (window.AudioContext||window.webkitAudioContext)();
     if(window._actx.state === "suspended") window._actx.resume();
+  }catch(e){}
+  try{
+    const a=svtAudioEl(); a.muted=true;
+    const p=a.play();
+    if(p&&p.then) p.then(()=>{ a.pause(); a.currentTime=0; a.muted=false; }).catch(()=>{ a.muted=false; });
+    else { a.pause(); a.currentTime=0; a.muted=false; }
   }catch(e){}
 }
 function svtStart(min, label){
@@ -3285,9 +3451,16 @@ function svtRender(){
   }).join("");
 }
 function svtBeep(){
+  // 1) <audio> con el WAV (camino fiable en móvil, ya desbloqueado en el arranque).
   try{
-    svtAudioInit(); const ctx = window._actx; if(!ctx) return;
-    let t = ctx.currentTime;
+    const a=svtAudioEl(); a.muted=false; a.volume=1; a.currentTime=0;
+    const p=a.play(); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+  // 2) Osciladores WebAudio como refuerzo (sobre todo en escritorio).
+  try{
+    const ctx = window._actx; if(!ctx) return;
+    if(ctx.state === "suspended") ctx.resume();
+    let t = ctx.currentTime + 0.02;
     for(let i=0;i<6;i++){
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = "sine"; o.frequency.value = i%2?988:1319;

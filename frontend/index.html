@@ -4046,8 +4046,23 @@ function labRender(){
     <table class="lim-tab">${admin?"<thead><tr><th>ingrediente</th><th>coste</th></tr></thead>":""}<tbody>${ingRowsGen()}
       ${admin?`<tr class="tot"><td class="n">Coste unidad</td><td class="q big">${labEur(coste)}</td></tr>`:""}</tbody></table>
     ${admin?`<div class="lim-param"><div><b>${labEur(coste)}</b><span>coste unidad</span></div><div><b>${labEur(p.pvp)}</b><span>pvp</span></div><div><b>${Math.round(fc)}%</b><span>food cost</span></div><div><b>${labEur(margen)}</b><span>margen</span></div></div>`:""}`;
+  const enlace = `<div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(p.nombre)}</b> en la carta · PVP ${labEur(p.pvp)}. Esta ficha es su producción.</div>
+    <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
+      <button class="btn-primary" onclick="labVerProducto('${tipo}','${esc(p.nombre)}')">Ver «${esc(p.nombre)}» en la carta →</button>
+      <button class="btn-ghost" onclick="labVerEnCarta('${tipo}')">Toda la sección · ${tipo==='sandwich'?'Sándwiches':'Tostas'}</button>
+    </div>`;
   const nota = `<div class="lim-nota" style="border-left-color:var(--muted);">Estado <b>${est.t}</b> · flujo Prueba → Aprobado → Carta → Archivado.${admin?" Los costes solo los ves tú (admin); el equipo ve ficha, perfil y montaje.":""}</div>`;
-  setInner(head+controles+perfil+ficha+escand+montaje+cata+vers+nota);
+  setInner(head+controles+perfil+ficha+escand+montaje+cata+vers+enlace+nota);
+}
+// Enlace con la carta (mismo patrón que Burbujas/Spritz).
+async function labVerEnCarta(tipo){ await irA_menu(); menuNivel(["comida", tipo==='sandwich'?'sandwiches':'tostas']); }
+async function labVerProducto(tipo, nombreProd){
+  await irA_menu();
+  const sub = tipo==='sandwich'?'sandwiches':'tostas';
+  menuNivel(["comida", sub]);
+  const node = menuNodoEn(["comida", sub]);
+  const idx = node && node.items ? node.items.findIndex(it=>it.n===nombreProd) : -1;
+  if(idx>=0) menuEditar(idx);
 }
 // Montaje guiado a pantalla completa (reutiliza el motor visual pwz- del paso a paso).
 function labMontaje(cod,tipo){
@@ -8486,6 +8501,11 @@ const CARTA_ARBOL = {
     { n:"Zumo Equilibrio", cat:"zumos", desc:"Zumo · equilibrio" },
     { n:"Zumo Colección",  cat:"zumos", desc:"Zumo · colección" },
   ]},
+  // Comida: derivada de LAB_DATA para no duplicar nombre ni PVP (fuente única).
+  comida: { nombre:"Comida", subs:{
+    sandwiches: { nombre:"Sándwiches", items: Object.values(LAB_DATA.sandwich).map(p=>({ n:p.nombre, cat:"sandwich", desc:`${p.carta} · PVP ${labEur(p.pvp)}` })) },
+    tostas:     { nombre:"Tostas",     items: Object.values(LAB_DATA.tosta).map(p=>({ n:p.nombre, cat:"tosta",    desc:`${p.carta} · PVP ${labEur(p.pvp)}` })) },
+  }},
   reposteria: { nombre:"Repostería", cat:"repostería", items:[
     { n:"Croissant", cat:"repostería", desc:"Comprado · 0,60 € + IVA" },
     { n:"Cookie de pistacho, cardamomo y lima", cat:"repostería", desc:"Comprada · 2,10 € + IVA" },

@@ -1009,6 +1009,11 @@ test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje g
   await page.evaluate(() => labSet("tosta", "TC"));
   await expect(page.locator(".lim-h")).toContainText(/Tosta Colección/);
   await expect(page.locator("body")).toContainText(/fruta caramelizada|fruta de temporada/i);
+  // Bases: elaboraciones compartidas con rinde y coste de lote.
+  await page.evaluate(() => labSet("base", "SV"));
+  await expect(page.locator(".lim-h")).toContainText(/Salsa Verde Materia/);
+  await expect(page.locator("body")).toContainText(/Se usa en/);
+  await expect(page.locator("body")).toContainText(/Coste lote/);
   // Montaje guiado a pantalla completa: recorre los pasos hasta «listo».
   await page.evaluate(() => labMontaje("TC", "tosta"));
   await expect(page.locator(".pwz .pwz-step")).toBeVisible();

@@ -1766,6 +1766,31 @@ button.cc-card:hover { border-color: var(--ink); }
   background:var(--olive); color:var(--cream); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
 .prep-params { margin-top:16px; font-size:13px; color:var(--muted); border-left:2px solid var(--olive); padding-left:11px; line-height:1.4; }
 .prep-params b { color:var(--olive); }
+.prep-produce { font-size:15px; padding:12px 14px; border:1px solid var(--olive); border-radius:11px; background:rgba(167,185,110,.08); }
+.prep-produce b { color:var(--olive); }
+.prep-start { display:block; width:100%; margin:20px 0 4px; padding:16px; font-size:17px; font-weight:800;
+  border:none; border-radius:12px; background:var(--olive); color:var(--cream); cursor:pointer; letter-spacing:.01em; }
+.prep-start:active { transform:scale(.99); }
+/* Guía paso a paso a pantalla completa (prefijo pwz- para no chocar con el wizard wiz-). */
+.pwz-prog { position:sticky; top:0; height:4px; background:var(--line); z-index:3; }
+.pwz-prog i { display:block; height:100%; background:var(--olive); transition:width .2s ease; }
+.pwz { min-height:calc(100dvh - 4px); display:flex; flex-direction:column; }
+.pwz-head { display:flex; align-items:center; gap:12px; padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px; border-bottom:1px solid var(--line); }
+.pwz-x { background:none; border:none; color:var(--muted); font-size:17px; font-weight:700; cursor:pointer; padding:0; line-height:1; }
+.pwz-ctx { flex:1; font-size:13px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pwz-count { font-size:13px; font-weight:800; color:var(--olive); font-variant-numeric:tabular-nums; }
+.pwz-main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:12px; padding:34px 22px; }
+.pwz-tag { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:800; }
+.pwz-ing { font-size:34px; font-weight:800; line-height:1.1; letter-spacing:-.01em; text-transform:capitalize; text-wrap:balance; }
+.pwz-q { font-size:54px; font-weight:800; color:var(--olive); font-variant-numeric:tabular-nums; line-height:1; }
+.pwz-step { font-size:22px; font-weight:600; line-height:1.35; max-width:520px; text-wrap:pretty; }
+.pwz-timer { margin-top:20px; }
+.pwz-done { gap:16px; }
+.pwz-check { width:78px; height:78px; border-radius:50%; background:var(--olive); color:var(--cream); font-size:42px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.pwz-foot { display:flex; gap:10px; padding:14px 16px calc(20px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line); }
+.pwz-back { flex:0 0 auto; padding:16px 18px; border:1px solid var(--line); border-radius:12px; background:none; color:var(--ink); font-weight:700; font-size:15px; cursor:pointer; }
+.pwz-next { flex:1; padding:16px; border:none; border-radius:12px; background:var(--olive); color:var(--cream); font-weight:800; font-size:17px; cursor:pointer; }
+.pwz-back:active, .pwz-next:active { transform:scale(.99); }
 /* Temporizadores de producción: píldoras compactas abajo-derecha (persisten entre pantallas). */
 #cronos-bar { position:fixed; right:10px; bottom:calc(76px + env(safe-area-inset-bottom,0px)); z-index:60;
   display:none; flex-direction:column; align-items:flex-end; gap:5px; pointer-events:none; max-width:min(72vw,240px); }
@@ -3232,7 +3257,10 @@ const LIM_MAX_BOLSA = 500;
 // Escala UNA preparación a los ml (o g) que hace falta producir. Única fuente de
 // verdad de las cantidades: la usan tanto la tarjeta resumen como el paso a paso.
 function limScale(b, necesario){
-  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], bolsas:1, mlBolsa:necesario, dilu:"", concentra:0 };
+  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], bolsas:1, mlBolsa:necesario, dilu:"", concentra:0,
+    // Solo las preparaciones al vacío/sous-vide se hacen «de bolsa en bolsa».
+    // El cordial es de cazuela: se pesa y prepara en un solo lote.
+    bagBased: !b.comprado && !!(b.minutos || b.perLitro) };
   if(b.comprado) return out;
   let volBolsas = necesario;
   if(b.perLitro){
@@ -3278,7 +3306,7 @@ function limPrepHTML(r, L){
     } else {
       const conc = (b.perLitro && b.concentra>1) ? `Concentrado ×${b.concentra}: ` : "";
       prep = `<div style="color:var(--olive);margin-top:6px;font-size:12px;">${conc}${sc.ingsTotal.map(o=>esc(limIngTxt(o))).join(" · ")}${b.params?` · ${esc(b.params)}`:""}</div>`;
-      bolsasHTML = `<div class="lim-bolsas"><b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío</b> · ≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa</div>
+      if(sc.bagBased) bolsasHTML = `<div class="lim-bolsas"><b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío</b> · ≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa</div>
         <div class="card-meta" style="margin-top:2px;">Por bolsa: ${sc.ingsBolsa.map(o=>esc(limIngTxt(o))).join(" · ")}</div>`;
       if(sc.dilu) dilucionHTML = `<div class="lim-dilu">${esc(sc.dilu)}</div>`;
     }
@@ -3298,44 +3326,154 @@ function limPrepHTML(r, L){
     </div>`;
   }).join("");
 }
-// Paso a paso a PANTALLA COMPLETA de una preparación (cordial, super juice, agua…).
-function limAbrirPrep(cod, necesario){
-  const b = LIMONADAS_DATA.homemade[cod]; if(!b) return;
-  const sc = limScale(b, necesario);
+// ── Preparación guiada a PANTALLA COMPLETA ──────────────────────────────────
+// Primero una FICHA (estilo mise en place): todos los ingredientes con su
+// gramaje ya escalado y lo que se va a producir. Al pulsar «Iniciar», empieza
+// una guía paso a paso que va de BOLSA en BOLSA y de ingrediente en ingrediente
+// ("hierbabuena · 54 g · ✓ pesado · siguiente"), y termina con el método.
+function limPrepBtnTimer(cod, b){
+  return b.minutos ? `<button class="btn-primary pwz-timer" onclick="svtStart(${b.minutos},'${esc(cod)} · ${esc(b.nombre)}')">▶ iniciar temporizador · ${b.minutos>=60?(b.minutos/60)+" h":b.minutos+" min"}</button>` : "";
+}
+// Construye la lista lineal de pasos de la guía (pesajes por bolsa + método).
+function limPrepSteps(cod, necesario){
+  const b = LIMONADAS_DATA.homemade[cod], sc = limScale(b, necesario), steps = [];
+  if(b.comprado){
+    steps.push({ t:"comprar", n:b.nombre, q:limG(necesario) });
+  } else if(sc.bagBased){
+    for(let k=1;k<=sc.bolsas;k++){
+      sc.ingsBolsa.forEach(o=> steps.push({ t:"pesar", n:o.n, q:o.q, bolsa:k, bolsas:sc.bolsas }));
+      steps.push({ t:"sellar", bolsa:k, bolsas:sc.bolsas });
+    }
+  } else {
+    sc.ingsTotal.forEach(o=> steps.push({ t:"pesar", n:o.n, q:o.q }));
+  }
+  const pasos = b.pasos||[];
+  pasos.forEach((p,idx)=> steps.push({ t:"metodo", texto:p, idx:idx+1, total:pasos.length, timer:/temporizador/i.test(p)&&!!b.minutos }));
+  return { b, sc, steps };
+}
+function limPrepFsShow(html){
   let el = document.getElementById("prep-fs");
   if(!el){ el = document.createElement("div"); el.id = "prep-fs"; document.body.appendChild(el); }
+  el.innerHTML = html; el.style.display = "block"; el.scrollTop = 0;
+  requestAnimationFrame(()=>el.classList.add("show"));
+  document.body.style.overflow = "hidden";
+}
+function limAbrirPrep(cod, necesario){
+  const b = LIMONADAS_DATA.homemade[cod]; if(!b) return;
+  window._prep = { cod, necesario, steps:null, i:0 };
+  limPrepFsShow(limPrepIntroHTML(cod, necesario));
+}
+// FICHA inicial (recuadro con todos los ingredientes y su gramaje + «Iniciar»).
+function limPrepIntroHTML(cod, necesario){
+  const b = LIMONADAS_DATA.homemade[cod], sc = limScale(b, necesario);
   const conc = (b.perLitro && b.concentra>1) ? ` · concentrado ×${b.concentra}` : "";
   const ingsHTML = b.comprado
     ? `<div class="prep-ing-row"><span>Comprar</span><b>${limG(necesario)}</b></div>`
     : sc.ingsTotal.map(o=>`<div class="prep-ing-row"><span>${esc(o.n)}</span><b>${esc(o.q)}</b></div>`).join("");
-  const pasos = (b.pasos||[]);
+  const produce = b.comprado
+    ? `Comprar <b>${limG(necesario)}</b> · no se prepara`
+    : `Vas a preparar <b>${limMl(necesario)}</b>${sc.bagBased?` · <b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"}</b> de ≤500 ml`:` · lote único`}`;
+  const pasos = b.pasos||[];
   const pasosHTML = pasos.length
     ? `<ol class="prep-steps">${pasos.map(p=>`<li>${esc(p)}</li>`).join("")}</ol>`
     : `<div class="card-meta">${esc(b.metodo||"")}</div>`;
-  el.innerHTML = `
+  return `
     <div class="prep-fs-head">
       <button class="prep-fs-back" onclick="limCerrarPrep()">‹ volver</button>
       <div class="prep-fs-title"><span class="lim-cod">${esc(cod)}</span>${esc(b.nombre)}</div>
       <div class="prep-fs-need">necesitas ${b.comprado?limG(necesario):limMl(necesario)}${conc}</div>
     </div>
     <div class="prep-fs-body">
+      <div class="prep-produce">${produce}</div>
       <div class="prep-sec-t">Ingredientes · para este lote</div>
       <div class="prep-ings">${ingsHTML}</div>
-      ${!b.comprado?`<div class="prep-bags">${sc.bolsas} bolsa${sc.bolsas===1?"":"s"} de vacío · ≤500 ml · ~${limMl(sc.mlBolsa)}/bolsa</div>`:""}
       ${sc.dilu?`<div class="lim-dilu" style="margin-top:8px;">${esc(sc.dilu)}</div>`:""}
-      <div class="prep-sec-t">Paso a paso</div>
+      <button class="prep-start" onclick="limPrepIniciar()">▶ Iniciar preparación</button>
+      <div class="prep-sec-t">Método · referencia</div>
       ${pasosHTML}
       ${b.params?`<div class="prep-params"><b>Parámetros:</b> ${esc(b.params)}</div>`:""}
-      ${b.minutos?`<div class="card-actions" style="margin-top:16px;"><button class="btn-primary" onclick="svtStart(${b.minutos},'${esc(cod)} · ${esc(b.nombre)}')">▶ iniciar temporizador · ${b.minutos>=60?(b.minutos/60)+" h":b.minutos+" min"}</button></div>`:""}
     </div>`;
-  el.style.display = "block";
-  el.scrollTop = 0;
-  requestAnimationFrame(()=>el.classList.add("show"));
-  document.body.style.overflow = "hidden";
+}
+function limPrepIniciar(){
+  const P = window._prep; if(!P) return;
+  P.steps = limPrepSteps(P.cod, P.necesario).steps; P.i = 0;
+  limPrepFsShow(limPrepWizHTML());
+}
+function limPrepPaso(delta){
+  const P = window._prep; if(!P || !P.steps) return;
+  const ni = P.i + delta;
+  if(ni < 0){ limPrepFsShow(limPrepIntroHTML(P.cod, P.necesario)); return; }
+  if(ni >= P.steps.length){ limPrepFsShow(limPrepFinHTML()); return; }
+  P.i = ni; limPrepFsShow(limPrepWizHTML());
+}
+// Una pantalla por paso: pesaje (grande) o método (texto).
+function limPrepWizHTML(){
+  const P = window._prep, b = LIMONADAS_DATA.homemade[P.cod];
+  const s = P.steps[P.i], n = P.steps.length, num = P.i + 1, pct = Math.round(num/n*100);
+  let tag = "", main = "", nextLbl = "Siguiente →";
+  if(s.t==="pesar"){
+    tag = s.bolsa ? `Bolsa ${s.bolsa} de ${s.bolsas} · pesa` : `Pesa`;
+    main = `<div class="pwz-ing">${esc(s.n)}</div><div class="pwz-q">${esc(s.q)}</div>`;
+    nextLbl = "✓ Pesado";
+  } else if(s.t==="sellar"){
+    tag = `Bolsa ${s.bolsa} de ${s.bolsas}`;
+    main = `<div class="pwz-ing">Sella la bolsa al vacío</div>`;
+    nextLbl = "✓ Sellada";
+  } else if(s.t==="comprar"){
+    tag = "Compra";
+    main = `<div class="pwz-ing">${esc(s.n)}</div><div class="pwz-q">${esc(s.q)}</div>`;
+    nextLbl = "✓ Comprado";
+  } else {
+    tag = `Método · paso ${s.idx} de ${s.total}`;
+    main = `<div class="pwz-step">${esc(s.texto)}</div>`;
+    nextLbl = "Hecho →";
+  }
+  const timerBtn = (s.t==="metodo" && s.timer) ? limPrepBtnTimer(P.cod, b) : "";
+  const lbl = num===n ? "✓ Finalizar" : nextLbl;
+  return `
+    <div class="pwz-prog"><i style="width:${pct}%"></i></div>
+    <div class="pwz">
+      <div class="pwz-head">
+        <button class="pwz-x" onclick="limCerrarPrep()" aria-label="cerrar">✕</button>
+        <div class="pwz-ctx"><span class="lim-cod">${esc(P.cod)}</span>${esc(b.nombre)}</div>
+        <div class="pwz-count">${num}/${n}</div>
+      </div>
+      <div class="pwz-main">
+        <div class="pwz-tag">${tag}</div>
+        ${main}
+        ${timerBtn}
+      </div>
+      <div class="pwz-foot">
+        <button class="pwz-back" onclick="limPrepPaso(-1)">${P.i===0?"‹ ficha":"Atrás"}</button>
+        <button class="pwz-next" onclick="limPrepPaso(1)">${lbl}</button>
+      </div>
+    </div>`;
+}
+function limPrepFinHTML(){
+  const P = window._prep, b = LIMONADAS_DATA.homemade[P.cod];
+  return `
+    <div class="pwz">
+      <div class="pwz-head">
+        <button class="pwz-x" onclick="limCerrarPrep()" aria-label="cerrar">✕</button>
+        <div class="pwz-ctx"><span class="lim-cod">${esc(P.cod)}</span>${esc(b.nombre)}</div>
+        <div class="pwz-count"></div>
+      </div>
+      <div class="pwz-main pwz-done">
+        <div class="pwz-check">✓</div>
+        <div class="pwz-ing">Preparación lista</div>
+        <div class="pwz-q" style="font-size:16px;color:var(--muted);font-weight:700;">${b.comprado?limG(P.necesario):limMl(P.necesario)} de ${esc(b.nombre)}</div>
+        ${limPrepBtnTimer(P.cod, b)}
+      </div>
+      <div class="pwz-foot">
+        <button class="pwz-back" onclick="limPrepIniciar()">↻ Repetir</button>
+        <button class="pwz-next" onclick="limCerrarPrep()">Cerrar</button>
+      </div>
+    </div>`;
 }
 function limCerrarPrep(){
   const el = document.getElementById("prep-fs");
-  if(el){ el.classList.remove("show"); el.style.display = "none"; }
+  if(el){ el.classList.remove("show"); el.style.display = "none"; el.innerHTML = ""; }
+  window._prep = null;
   document.body.style.overflow = "";
 }
 

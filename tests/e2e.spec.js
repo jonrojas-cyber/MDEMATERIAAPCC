@@ -994,3 +994,42 @@ test("MBDS: el trabajador NO recibe datos económicos de las bebidas", async ({ 
   expect(ambar.calc.coste_por_servicio).toBeUndefined();
   expect(typeof ambar.calc.abv).toBe("number");     // pero sí parámetros técnicos
 });
+
+test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje guiado", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_labCocina());
+  // Sándwich por defecto con ficha, perfil y escandallo (Moni es admin).
+  await expect(page.locator(".lim-h")).toContainText(/Sándwich Origen/);
+  await expect(page.locator("body")).toContainText(/Perfil sensorial/);
+  await expect(page.locator("body")).toContainText(/Escandallo · por unidad/);
+  await expect(page.locator(".lim-param")).toContainText(/food cost/);
+  // Cambio a Tostas → Colección.
+  await page.evaluate(() => labSet("tosta", "TC"));
+  await expect(page.locator(".lim-h")).toContainText(/Tosta Colección/);
+  await expect(page.locator("body")).toContainText(/fruta caramelizada|fruta de temporada/i);
+  // Montaje guiado a pantalla completa: recorre los pasos hasta «listo».
+  await page.evaluate(() => labMontaje("TC", "tosta"));
+  await expect(page.locator(".pwz .pwz-step")).toBeVisible();
+  const n = await page.evaluate(() => window._labm.pasos.length);
+  for (let k = 0; k < n; k++) await page.locator(".pwz-next").click();
+  await expect(page.locator(".pwz-check")).toBeVisible();
+  await page.locator(".pwz-next").click();                 // Cerrar
+  await expect(page.locator("#prep-fs")).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara");
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  await page.evaluate(() => irA_labCocina());
+  await expect(page.locator(".lim-h")).toContainText(/Sándwich Origen/);
+  await expect(page.locator("body")).toContainText(/Ingredientes/);      // ve los ingredientes
+  await expect(page.locator("body")).not.toContainText(/Escandallo/);    // pero NO costes
+  await expect(page.locator("body")).not.toContainText(/food cost/);
+});

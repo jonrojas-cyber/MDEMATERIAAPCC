@@ -1710,6 +1710,12 @@ button.cc-card:hover { border-color: var(--ink); }
 .etq-libre .etq-libre-val { margin-left: 4px; }
 .lim-seg { display: flex; border: 1px solid var(--line); margin-bottom: 12px; }
 .lim-seg button { flex: 1; font-size: 10px; letter-spacing: .12em; text-transform: lowercase; padding: 9px; background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--muted); cursor: pointer; }
+/* LAB · cocina (sándwiches y tostas): pastilla de estado y barras de perfil sensorial. */
+.lab-estado { font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:#1a1f16; padding:5px 11px; border-radius:999px; align-self:flex-start; white-space:nowrap; }
+.lab-perf { display:flex; align-items:center; gap:10px; margin:5px 0; }
+.lab-perf span { font-size:10px; letter-spacing:.1em; text-transform:lowercase; color:var(--muted); width:76px; flex:0 0 auto; }
+.lab-perf i { flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
+.lab-perf i b { display:block; height:100%; background:var(--olive); }
 .lim-seg button:last-child { border-right: 0; }
 .lim-seg button.on { background: var(--ink); color: var(--cream); font-weight: 700; }
 .lim-tab { width: 100%; border-collapse: collapse; }
@@ -2960,6 +2966,7 @@ async function irA_lab(){
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
       ${tile("Burbujas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
       ${tile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
+      ${tile("Cocina · sándwiches y tostas", "Fichas técnicas · escandallo · montaje · versiones", "irA_labCocina()", "")}
       ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
       ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
       ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
@@ -3815,6 +3822,202 @@ function spzRender(){
   // Enlace a productos también para las recetas pendientes.
   const enlacePend=r.pendiente?`<div class="card-actions" style="margin-top:14px;"><button class="btn-ghost" onclick="spzVerEnCarta()">Ver Spritz en productos →</button></div>`:"";
   setInner(head+controles+cuerpo+enlacePend);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LAB · COCINA · Sándwiches y Tostas · mismo motor que Burbujas/Spritz.
+// Cada producto: ficha técnica + perfil sensorial + escandallo + estado +
+// notas de cata + versiones + montaje guiado a pantalla completa. Los COSTES
+// (escandallo, food cost, margen, historial) SOLO los ve admin; el equipo ve
+// ficha, perfil y montaje. Datos en front (como Burbujas); editar aquí.
+// ════════════════════════════════════════════════════════════════════════════
+const LAB_IVA_FOOD = 0.10; // IVA reducido de restauración
+const LAB_ESTADOS = {
+  prueba:    { t:"Prueba",    c:"#c79a3a" },
+  aprobado:  { t:"Aprobado",  c:"var(--olive)" },
+  carta:     { t:"En carta",  c:"#3f6079" },
+  archivado: { t:"Archivado", c:"var(--muted)" },
+};
+const LAB_DATA = {
+  sandwich: {
+    SO: { cod:"SO", tipo:"sandwich", nombre:"Sándwich Origen", linea:"Origen", estado:"carta", pvp:4.90,
+      carta:"jamón, payoyo, pan cristal a la plancha. el mixto, como debe ser.",
+      perfil:{ grasa:4, acidez:1, dulzor:1, salinidad:4, umami:4, textura:"crujiente fuera · fundido dentro", temp:"caliente" },
+      tiempoMontaje:"90 s (plancha)", miseEnPlace:"pan fileteado · mezcla de quesos rallada · jamón porcionado · mantequilla pomada",
+      vidaUtil:"al momento · componentes 48 h en frío", mermas:"mínima · tapar el queso rallado (se oxida)",
+      ingredientes:[
+        { n:"Pan cristal trigo-centeno", q:"1 pieza (~90 g)", c:0.35 },
+        { n:"Mantequilla (cara exterior)", q:"8 g", c:0.06 },
+        { n:"Queso de fundido (Mahón joven)", q:"35 g", c:0.35 },
+        { n:"Payoyo semicurado rallado", q:"10 g", c:0.37 },
+        { n:"Jamón cocido extra", q:"1 loncha (~30 g)", c:0.45 },
+      ],
+      montaje:[
+        "Unta mantequilla en la cara EXTERIOR de las dos rebanadas (la que toca la plancha).",
+        "Monta: queso fundido · jamón · payoyo · queso fundido (el jamón abrazado por queso para que ligue).",
+        "Cierra y prensa en plancha ~90 s hasta dorar y que el queso funda del todo.",
+        "Corta en diagonal (la sección con el hilo de queso es la foto). Sirve caliente.",
+      ],
+      cata:[ { f:"cata 1", punt:9, nota:"El payoyo da identidad local sin tapar. Prensado 90 s = punto de dorado ideal." } ],
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Mixto base: Mahón joven (funde/hila) + payoyo rallado (aroma). Jamón cocido extra." } ] },
+    SE: { cod:"SE", tipo:"sandwich", nombre:"Sándwich Equilibrio", linea:"Equilibrio", estado:"aprobado", pvp:5.90,
+      carta:"pollo a baja temperatura, salsa verde, encurtido, cebolla crujiente.",
+      perfil:{ grasa:3, acidez:3, dulzor:1, salinidad:3, umami:4, textura:"jugoso + crujiente", temp:"templado" },
+      tiempoMontaje:"50 s (pollo de mise)", miseEnPlace:"muslo sous-vide 64 °C/2 h · salsa verde · pepinillo en láminas · cebolla crujiente",
+      vidaUtil:"pollo cocido 3 días en frío · montar al momento", mermas:"baja · aprovechar recortes del muslo",
+      ingredientes:[
+        { n:"Muslo de pollo deshuesado (sous-vide 64 °C)", q:"100 g cocido", c:0.70 },
+        { n:"Salsa Verde Materia (compartida)", q:"25 g", c:0.20 },
+        { n:"Pepinillo encurtido en casa", q:"15 g", c:0.10 },
+        { n:"Cebolla crujiente premium", q:"8 g", c:0.20 },
+        { n:"Pan cristal trigo-centeno", q:"1 pieza (~90 g)", c:0.35 },
+      ],
+      montaje:[
+        "Marca el muslo sous-vide 30-40 s en plancha para color y aroma; filetéalo.",
+        "Calienta el pan sin aplastar (buscamos altura y crujiente, no prensado).",
+        "Base de salsa verde · pollo · pepinillo · cebolla crujiente · hilo de salsa verde por encima.",
+        "Cierra y sirve templado.",
+      ],
+      cata:[ { f:"cata 1", punt:9, nota:"Muslo a 64 °C: jugoso y seguro. El crunch lo dan cebolla + pepinillo, sin freidora (más ligero y rápido)." } ],
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Muslo (no pechuga) sous-vide 64 °C. Crunch por cebolla + encurtido, sin freír el pollo." } ] },
+  },
+  tosta: {
+    TO: { cod:"TO", tipo:"tosta", nombre:"Tosta Origen", linea:"Origen", estado:"carta", pvp:3.50,
+      carta:"tomate rallado, ajo, aceite de oliva, sal. nada más.",
+      perfil:{ grasa:2, acidez:3, dulzor:1, salinidad:2, umami:3, textura:"crujiente + jugoso", temp:"templado" },
+      tiempoMontaje:"30 s", miseEnPlace:"tomate rallado y sazonado · ajo · AOVE bueno · sal en escamas",
+      vidaUtil:"tomate rallado, mismo día", mermas:"muy baja",
+      ingredientes:[
+        { n:"Pan multicereales", q:"1 rebanada", c:0.30 },
+        { n:"Tomate rallado maduro (sazonado)", q:"70 g", c:0.35 },
+        { n:"AOVE bueno (Málaga)", q:"12 ml", c:0.30 },
+        { n:"Ajo frotado + sal en escamas", q:"c/s", c:0.03 },
+      ],
+      montaje:[
+        "Tuesta el pan. Frota un diente de ajo por la superficie caliente.",
+        "Cubre con el tomate rallado ya sazonado (sal + AOVE mezclados en la pulpa).",
+        "Termina con AOVE generoso y sal en escamas.",
+      ],
+      cata:[ { f:"cata 1", punt:8, nota:"El ajo frotado y el tomate RALLADO (no en rodajas) la suben de nivel sin romper la pureza. El AOVE es el producto." } ],
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Tomate rallado y sazonado + ajo frotado. AOVE como protagonista. Extras opcionales: jamón / anchoa / payoyo." } ] },
+    TE: { cod:"TE", tipo:"tosta", nombre:"Tosta Equilibrio", linea:"Equilibrio", estado:"prueba", pvp:5.50,
+      carta:"labneh, edamame, salsa verde, huevo, dukkah.",
+      perfil:{ grasa:3, acidez:3, dulzor:1, salinidad:3, umami:3, textura:"cremoso + crujiente", temp:"templado" },
+      tiempoMontaje:"50 s", miseEnPlace:"labneh · smash de edamame/guisante · salsa verde · dukkah · huevo mollet",
+      vidaUtil:"smash mismo día · labneh 5 días", mermas:"baja (edamame congelado = sin merma de aguacate)",
+      ingredientes:[
+        { n:"Pan multicereales", q:"1 rebanada", c:0.30 },
+        { n:"Labneh (compartido)", q:"25 g", c:0.25 },
+        { n:"Smash de edamame + guisante + hierbas + lima", q:"40 g", c:0.35 },
+        { n:"Salsa Verde Materia (compartida)", q:"15 g", c:0.12 },
+        { n:"Huevo mollet", q:"1 ud", c:0.25 },
+        { n:"Dukkah / semillas tostadas", q:"5 g", c:0.12 },
+        { n:"AOVE + sal en escamas", q:"c/s", c:0.20 },
+      ],
+      montaje:[
+        "Tuesta el pan y extiende una base de labneh sazonado.",
+        "Añade el smash verde de edamame y guisante (con lima y AOVE).",
+        "Corona con el huevo mollet abierto (la yema es la foto).",
+        "Hilo de salsa verde, dukkah por encima y sal en escamas.",
+      ],
+      cata:[ { f:"cata 1", punt:9, nota:"La alternativa al avo toast: más proteína, coste estable (edamame congelado), verde brutal. La yema cierra el bocado." } ],
+      versiones:[ { v:"v0.9", f:"prueba", cambio:"NO es avo toast: base de edamame/guisante + labneh. Aguacate solo como extra opcional." } ] },
+    TC: { cod:"TC", tipo:"tosta", nombre:"Tosta Colección", linea:"Colección", estado:"carta", pvp:4.90,
+      carta:"crema de queso y yogur, fruta caramelizada, lima, agave.",
+      perfil:{ grasa:3, acidez:3, dulzor:3, salinidad:1, umami:1, textura:"cremoso + fruta + crunch", temp:"contraste frío/caliente" },
+      tiempoMontaje:"50 s", miseEnPlace:"crema montada queso+yogur · fruta de temporada porcionada · agave · lima · crumble de fruto seco",
+      vidaUtil:"crema 3 días · fruta al momento", mermas:"baja · fruta de temporada evita desperdicio",
+      ingredientes:[
+        { n:"Pan multicereales", q:"1 rebanada", c:0.30 },
+        { n:"Crema montada: queso crema + yogur griego (50/50)", q:"40 g", c:0.40 },
+        { n:"Fruta de temporada caramelizada (nectarina)", q:"½ ud", c:0.35 },
+        { n:"Crumble de pistacho/almendra tostada", q:"8 g", c:0.20 },
+        { n:"Agave + ralladura y zumo de lima", q:"c/s", c:0.18 },
+      ],
+      montaje:[
+        "Monta la crema de queso + yogur con un toque de miel y ralladura de lima.",
+        "Caramela la fruta: azúcar en la cara de corte y plancha muy caliente o soplete (crujiente fuera, fresca dentro).",
+        "Extiende la crema y coloca la fruta caramelizada tibia encima.",
+        "Termina con agave, zumo de lima y el crumble de fruto seco (el crujiente).",
+      ],
+      cata:[ { f:"cata 1", punt:9, nota:"Contraste tibio/frío + crujiente del fruto seco. Caramelizar a fuego alto y corto: nada de compota, fruta viva." } ],
+      versiones:[ { v:"v1.0", f:"cierre", cambio:"Base queso+yogur (más ligera). Caramelizado a plancha/soplete, no compota. Crumble por textura. Fruta de TEMPORADA (evergreen)." } ] },
+  },
+};
+function labEur(n){ return (Math.round((n||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
+function labProd(tipo,cod){ return (LAB_DATA[tipo]||{})[cod]; }
+function irA_labCocina(){
+  navInto(()=>irA_lab());
+  if(!window._labc || !labProd(window._labc.tipo, window._labc.cod)) window._labc = { tipo:"sandwich", cod:"SO" };
+  openSection("labcocina","Cocina · Lab");
+  labRender();
+}
+function labSet(tipo,cod){ if(labProd(tipo,cod)){ window._labc={tipo,cod}; labRender(); } }
+function labRender(){
+  const admin = mbdsEsAdmin();
+  const { tipo, cod } = window._labc, p = labProd(tipo,cod);
+  const est = LAB_ESTADOS[p.estado] || LAB_ESTADOS.prueba;
+  const seg = `<div class="lim-seg" style="max-width:260px;">
+    <button class="${tipo==='sandwich'?'on':''}" onclick="labSet('sandwich','${Object.keys(LAB_DATA.sandwich)[0]}')">Sándwiches</button>
+    <button class="${tipo==='tosta'?'on':''}" onclick="labSet('tosta','${Object.keys(LAB_DATA.tosta)[0]}')">Tostas</button></div>`;
+  const opts = Object.values(LAB_DATA[tipo]).map(x=>`<option value="${x.cod}" ${x.cod===cod?'selected':''}>${esc(x.nombre)}</option>`).join("");
+  const head = `<div class="lim-head"><div><div class="lim-eyebrow">Control M · cocina · ${tipo==='sandwich'?'sándwiches':'tostas'}</div><div class="lim-h">${esc(p.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(p.carta)}</div></div><span class="lab-estado" style="background:${est.c};">${est.t}</span></div>`;
+  const controles = `<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:14px 0;">${seg}<div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Producto</label><select onchange="labSet('${tipo}',this.value)" style="min-width:200px;">${opts}</select></div></div>`;
+  const bar = (k,v)=>`<div class="lab-perf"><span>${k}</span><i><b style="width:${Math.max(0,Math.min(5,v))/5*100}%"></b></i></div>`;
+  const perfil = `<div class="section-label">Perfil sensorial</div><div class="card">
+    ${bar("grasa",p.perfil.grasa)}${bar("acidez",p.perfil.acidez)}${bar("dulzor",p.perfil.dulzor)}${bar("salinidad",p.perfil.salinidad)}${bar("umami",p.perfil.umami)}
+    <div class="lim-prem-row" style="margin-top:8px;"><b>textura</b> · ${esc(p.perfil.textura)}</div><div class="lim-prem-row"><b>temperatura</b> · ${esc(p.perfil.temp)}</div></div>`;
+  const ficha = `<div class="section-label">Ficha técnica</div><table class="lim-tab"><tbody>
+    <tr><td class="n">Montaje</td><td class="q">${esc(p.tiempoMontaje)}</td></tr>
+    <tr><td class="n">Mise en place</td><td class="q">${esc(p.miseEnPlace)}</td></tr>
+    <tr><td class="n">Vida útil</td><td class="q">${esc(p.vidaUtil)}</td></tr>
+    <tr><td class="n">Mermas</td><td class="q">${esc(p.mermas)}</td></tr></tbody></table>`;
+  const coste = p.ingredientes.reduce((s,i)=>s+(i.c||0),0);
+  const pvpNeto = p.pvp/(1+LAB_IVA_FOOD), fc = pvpNeto>0?coste/pvpNeto*100:0, margen = pvpNeto-coste;
+  const ingRows = p.ingredientes.map(i=>`<tr><td class="n">${esc(i.n)} <small>${esc(i.q)}</small></td>${admin?`<td class="q">${labEur(i.c)}</td>`:""}</tr>`).join("");
+  const escand = `<div class="section-label">${admin?"Escandallo · por unidad":"Ingredientes"}</div>
+    <table class="lim-tab">${admin?"<thead><tr><th>ingrediente</th><th>coste</th></tr></thead>":""}<tbody>${ingRows}
+      ${admin?`<tr class="tot"><td class="n">Coste unidad</td><td class="q big">${labEur(coste)}</td></tr>`:""}</tbody></table>
+    ${admin?`<div class="lim-param"><div><b>${labEur(coste)}</b><span>coste unidad</span></div><div><b>${labEur(p.pvp)}</b><span>pvp</span></div><div><b>${Math.round(fc)}%</b><span>food cost</span></div><div><b>${labEur(margen)}</b><span>margen</span></div></div>`:""}`;
+  const montaje = `<div class="section-label">Montaje</div><ol class="prep-steps">${p.montaje.map(m=>`<li>${esc(m)}</li>`).join("")}</ol>
+    <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="labMontaje('${cod}','${tipo}')">▶ Montaje guiado</button></div>`;
+  const cata = `<div class="section-label">Notas de cata</div>${p.cata.map(c=>`<div class="card"><div class="lim-prem-row"><b>${esc(c.f)}</b> · ${c.punt?`<span style="color:var(--olive);font-weight:700;">${c.punt}/10</span> · `:""}${esc(c.nota)}</div></div>`).join("")}`;
+  const vers = admin?`<div class="section-label">Versiones · historial</div>${p.versiones.map(v=>`<div class="card"><div class="lim-prem-row"><b>${esc(v.v)}</b> · ${esc(v.f)} · ${esc(v.cambio)}</div></div>`).join("")}`:"";
+  const nota = `<div class="lim-nota" style="border-left-color:var(--muted);">Estado <b>${est.t}</b> · flujo Prueba → Aprobado → Carta → Archivado.${admin?" Los costes solo los ves tú (admin); el equipo ve ficha, perfil y montaje.":""}</div>`;
+  setInner(head+controles+perfil+ficha+escand+montaje+cata+vers+nota);
+}
+// Montaje guiado a pantalla completa (reutiliza el motor visual pwz- del paso a paso).
+function labMontaje(cod,tipo){
+  const p = labProd(tipo,cod); if(!p) return;
+  window._labm = { cod, tipo, pasos:p.montaje||[], i:0, nombre:p.nombre };
+  limPrepFsShow(labMWizHTML());
+}
+function labMPaso(d){
+  const M = window._labm; if(!M) return;
+  const ni = M.i + d;
+  if(ni < 0){ limCerrarPrep(); return; }
+  if(ni >= M.pasos.length){ limPrepFsShow(labMFinHTML()); return; }
+  M.i = ni; limPrepFsShow(labMWizHTML());
+}
+function labMReiniciar(){ if(window._labm){ window._labm.i=0; limPrepFsShow(labMWizHTML()); } }
+function labMWizHTML(){
+  const M = window._labm, n = M.pasos.length, num = M.i+1, pct = Math.round(num/n*100);
+  return `
+    <div class="pwz-prog"><i style="width:${pct}%"></i></div>
+    <div class="pwz">
+      <div class="pwz-head"><button class="pwz-x" onclick="limCerrarPrep()" aria-label="cerrar">✕</button><div class="pwz-ctx">${esc(M.nombre)}</div><div class="pwz-count">${num}/${n}</div></div>
+      <div class="pwz-main"><div class="pwz-tag">Montaje · paso ${num} de ${n}</div><div class="pwz-step">${esc(M.pasos[M.i])}</div></div>
+      <div class="pwz-foot"><button class="pwz-back" onclick="labMPaso(-1)">${M.i===0?"‹ ficha":"Atrás"}</button><button class="pwz-next" onclick="labMPaso(1)">${num===n?"✓ Finalizar":"Hecho →"}</button></div>
+    </div>`;
+}
+function labMFinHTML(){
+  const M = window._labm;
+  return `
+    <div class="pwz">
+      <div class="pwz-head"><button class="pwz-x" onclick="limCerrarPrep()" aria-label="cerrar">✕</button><div class="pwz-ctx">${esc(M.nombre)}</div><div class="pwz-count"></div></div>
+      <div class="pwz-main pwz-done"><div class="pwz-check">✓</div><div class="pwz-ing">Montaje listo</div><div class="pwz-q" style="font-size:16px;color:var(--muted);font-weight:700;">${esc(M.nombre)}</div></div>
+      <div class="pwz-foot"><button class="pwz-back" onclick="labMReiniciar()">↻ Repetir</button><button class="pwz-next" onclick="limCerrarPrep()">Cerrar</button></div>
+    </div>`;
 }
 
 // ── Óleo saccharum · base de la limonada ──────────────────────────────────────

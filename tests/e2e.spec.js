@@ -1008,7 +1008,7 @@ test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje g
   // Cambio a Tostas → Colección.
   await page.evaluate(() => labSet("tosta", "TC"));
   await expect(page.locator(".lim-h")).toContainText(/Tosta Colección/);
-  await expect(page.locator("body")).toContainText(/fruta caramelizada|fruta de temporada/i);
+  await expect(page.locator("body")).toContainText(/nectarina caramelizada/i);
   // Bases: elaboraciones compartidas con rinde y coste de lote.
   await page.evaluate(() => labSet("base", "SV"));
   await expect(page.locator(".lim-h")).toContainText(/Salsa Verde Materia/);

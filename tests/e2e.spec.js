@@ -860,9 +860,18 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await expect(page.locator(".prep-fs-title")).toContainText(/Purée Boiron/);
   await page.evaluate(() => limAbrirPrep("CH", 1200));
   await expect(page.locator(".prep-fs-title")).toContainText(/Cordial de hierbabuena/);
-  await expect(page.locator(".prep-steps li")).toHaveCount(6);
+  await expect(page.locator(".prep-produce")).toContainText(/Vas a preparar/);
+  await expect(page.locator(".prep-steps li")).toHaveCount(6);          // método de referencia
   await expect(page.locator(".prep-ings")).toContainText(/hierbabuena/);
-  await page.locator(".prep-fs-back").click();
+  // Guía interactiva: «Iniciar» → pesa ingrediente a ingrediente hasta el final.
+  await page.locator(".prep-start").click();
+  await expect(page.locator(".pwz .pwz-main")).toBeVisible();
+  await expect(page.locator(".pwz-ing")).toContainText(/hierbabuena/i);
+  await expect(page.locator(".pwz-count")).toContainText(/^1\//);
+  const total = await page.evaluate(() => window._prep.steps.length);
+  for (let k = 0; k < total; k++) await page.locator(".pwz-next").click();
+  await expect(page.locator(".pwz-check")).toBeVisible();               // pantalla «listo»
+  await page.locator(".pwz-next").click();                             // Cerrar
   await expect(page.locator("#prep-fs")).toBeHidden();
   await page.evaluate(() => limSetRec("R5"));
   // Enlace con productos: lleva a la categoría Burbujas de la carta.

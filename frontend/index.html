@@ -3082,34 +3082,34 @@ const LIMONADAS_DATA = {
              "Filtra en V60. Ya tienes el super juice (~15 % de merma al colar, ya prevista)." ] },
     AK:  { nombre: "Agua de lima kaffir", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"hoja de lima kaffir",v:12,u:"g"} ], params: "60 °C · 25-30 min · sous vide sellado",
-           metodo: "Hoja rasgada, no triturada. Concentrado ×4: menos agua, mismo tiempo corto. Enfriar en hielo, filtrar 5 µm y diluir.",
+           metodo: "Hoja rasgada, no triturada. Se hace CONCENTRADO ×4 y se guarda así: el agua de dilución se añade al rebachar el cóctel entero, no aquí.",
            pasos: [
              "Rasga las hojas de lima kaffir con la mano (NO las tritures: amargan).",
-             "Mete las hojas con el agua del concentrado (¼ del agua final) en bolsa de vacío y sella.",
+             "Mete las hojas con el agua del concentrado en bolsa de vacío y sella.",
              "Sous-vide a 60 °C, 25-30 min (arranca el temporizador).",
              "Enfría rápido en un baño de hielo para fijar el aroma.",
-             "Filtra a 5 µm (o filtro de café).",
-             "Diluye con el resto de agua filtrada fría hasta el volumen final." ] },
+             "Filtra a 5 µm (o filtro de café) y guárdalo como concentrado.",
+             "NO lo diluyas aquí: ese agua se añade al final, al rebachar el cóctel." ] },
     AR:  { nombre: "Agua de romero", tipo: "aromática", perLitro: true, concentra: 4, minutos: 30,
            ing: [ {n:"romero",v:15,u:"g"} ], params: "65 °C · 25-30 min · sous vide sellado",
-           metodo: "Sin tallo leñoso. Concentrado ×4: aguanta bien, es aromático más que tánico. Enfriar, filtrar y diluir.",
+           metodo: "Sin tallo leñoso. Se hace CONCENTRADO ×4 y se guarda así: el agua de dilución se añade al rebachar el cóctel entero, no aquí.",
            pasos: [
              "Usa solo las hojas de romero, sin el tallo leñoso.",
-             "Envasa el romero con el agua del concentrado (¼ del agua final) al vacío y sella.",
+             "Envasa el romero con el agua del concentrado al vacío y sella.",
              "Sous-vide a 65 °C, 25-30 min (arranca el temporizador).",
              "Enfría en un baño de hielo.",
-             "Filtra fino.",
-             "Diluye con el resto de agua fría hasta el volumen final." ] },
+             "Filtra fino y guárdalo como concentrado.",
+             "NO lo diluyas aquí: ese agua se añade al final, al rebachar el cóctel." ] },
     AL:  { nombre: "Agua de lapsang souchong", tipo: "aromática", perLitro: true, concentra: 3, minutos: 20,
            ing: [ {n:"lapsang souchong",v:6,u:"g"} ], params: "70 °C · ~20 min (CORTA a tiempo) · sous vide sellado",
-           metodo: "Concentrado solo ×3 (el tanino sale rápido): corta a los ~20 min catando; cuando la astringencia tape el ahumado, para. Enfriar, filtrar y diluir.",
+           metodo: "Concentrado ×3 (el tanino sale rápido): corta a los ~20 min catando. Se guarda como concentrado; el agua de dilución se añade al rebachar el cóctel, no aquí.",
            pasos: [
-             "Pesa el lapsang souchong (concentrado ×3, solo un tercio del agua).",
+             "Pesa el lapsang souchong (concentrado ×3).",
              "Envasa el té con el agua del concentrado al vacío y sella.",
              "Sous-vide a 70 °C, ~20 min (arranca el temporizador).",
              "CORTA a tiempo: cata a los 15-20 min y, cuando la astringencia empiece a tapar el ahumado, para.",
-             "Enfría en un baño de hielo y filtra.",
-             "Diluye con el resto de agua fría hasta el volumen final." ] },
+             "Enfría en un baño de hielo y filtra; guárdalo como concentrado.",
+             "NO lo diluyas aquí: ese agua se añade al final, al rebachar el cóctel." ] },
     CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial", rinde: 1160,
            ing: [ {n:"hierbabuena",v:130,u:"g"}, {n:"azúcar",v:500,u:"g"}, {n:"agua",v:500,u:"g"}, {n:"ácido cítrico",v:15,u:"g"}, {n:"ácido tartárico",v:15,u:"g"} ],
            metodo: "NO es agua: es un cordial. Aporta aroma + azúcar + ácido a la vez. Por eso la pasión lleva poco azúcar y nada de cítrico añadido.",
@@ -3204,15 +3204,37 @@ function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Mat
 function limRender(){
   const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk], L=s.litros;
   const hayAgua = r.lineas.some(li=>li.n==="Agua filtrada");
-  const rows = r.lineas.map(li=>{
-    const total=li.v*L;
-    const cod=li.cod?`<span class="lim-cod">${esc(li.cod)}</span>`:"";
-    const tag=li.tardio?`<small>al final · en frío</small>`:"";
-    return `<tr><td class="n">${cod}${esc(li.n)}${tag}</td><td class="q">${limFmt(li.v)} ${esc(li.u)}/L</td><td class="q big">${limFmt(total)} ${esc(li.u)}</td></tr>`;
-  }).join("");
-  const cierre = hayAgua
-    ? `<tr class="tot"><td class="n">Total ≈</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td></tr>`
-    : `<tr class="tot"><td class="n">Agua c.s.p.</td><td class="q">—</td><td class="q big">hasta ${limFmt(L)} L</td></tr>`;
+  // Fila de la tabla.
+  const trHTML = (n, v, u, cod, tardio, tardioTxt) => {
+    const codHTML = cod ? `<span class="lim-cod">${esc(cod)}</span>` : "";
+    const tag = tardio ? `<small>${esc(tardioTxt||"al final · en frío")}</small>` : "";
+    return `<tr><td class="n">${codHTML}${esc(n)}${tag}</td><td class="q">${limFmt(v)} ${esc(u)}/L</td><td class="q big">${limFmt(v*L)} ${esc(u)}</td></tr>`;
+  };
+  // Las aguas aromáticas van como CONCENTRADO; su agua de dilución + el agua
+  // filtrada se juntan en un único «agua de rebache» que se añade al final.
+  let rebacheExtra = 0, aguaFiltrada = 0;
+  const rowArr = [];
+  r.lineas.forEach(li=>{
+    const b = li.cod && LIMONADAS_DATA.homemade[li.cod];
+    if(b && b.perLitro && b.concentra>1){
+      const conc = li.v / b.concentra;
+      rebacheExtra += (li.v - conc);
+      rowArr.push(trHTML(li.n+" · concentrado", conc, "ml", li.cod));
+    } else if(li.n==="Agua filtrada"){
+      aguaFiltrada += li.v;                       // se integra en el rebache
+    } else {
+      rowArr.push(trHTML(li.n, li.v, li.u, li.cod, li.tardio));
+    }
+  });
+  let cierre;
+  if(hayAgua){
+    rowArr.push(trHTML("Agua de rebache", aguaFiltrada + rebacheExtra, "ml", null, true, "al final · al rebachar"));
+    cierre = `<tr class="tot"><td class="n">Total ≈</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td></tr>`;
+  } else {
+    // c.s.p.: el agua (incluida la dilución de los aromáticos) se añade al final.
+    cierre = `<tr class="tot"><td class="n">Agua de rebache c.s.p.</td><td class="q">—</td><td class="q big">hasta ${limFmt(L)} L</td></tr>`;
+  }
+  const rows = rowArr.join("");
   const chips=[2,5,16].map(n=>`<button class="${L===n?"on":""}" onclick="limSetL(${n})">${n} L</button>`).join("");
   const recSel=Object.entries(LIMONADAS_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.nombre)} · ${esc(x.sabor)}</option>`).join("");
 
@@ -3255,7 +3277,7 @@ const LIM_MAX_BOLSA = 500;
 // Escala UNA preparación a los ml (o g) que hace falta producir. Única fuente de
 // verdad de las cantidades: la usan tanto la tarjeta resumen como el paso a paso.
 function limScale(b, necesario){
-  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], ingsVacio:[], ingsDespues:[], bolsas:1, mlBolsa:necesario, bagUnit:"ml", dilu:"", concentra:0,
+  const out = { comprado:!!b.comprado, ingsTotal:[], ingsBolsa:[], ingsVacio:[], ingsDespues:[], bolsas:1, mlBolsa:necesario, bagUnit:"ml", dilu:"", concentra:0, produce:necesario, rebacheAgua:0,
     // Solo las preparaciones al vacío/sous-vide se hacen «de bolsa en bolsa».
     // El cordial es de cazuela: se pesa y prepara en un solo lote.
     bagBased: !b.comprado && !!(b.minutos || b.perLitro) };
@@ -3270,10 +3292,13 @@ function limScale(b, necesario){
     const herb = (b.ing||[]).map(x=>({ n:x.n, g:x.v*necesario/1000 })); // hoja total (no cambia)
     const bolsas = Math.max(1, Math.ceil(concentradoMl / LIM_MAX_BOLSA));
     out.bolsas = bolsas; out.mlBolsa = concentradoMl / bolsas; out.concentra = factor; out.bagUnit = "ml";
+    // Se prepara y se GUARDA solo el concentrado. El agua de dilución NO va aquí:
+    // se añade al rebachar el cóctel entero (por eso no hay paso de diluir).
+    out.produce = concentradoMl;
+    out.rebacheAgua = factor>1 ? (necesario - concentradoMl) : 0;
     out.ingsTotal = [{n:"agua", q:limMl(concentradoMl)}].concat(herb.map(h=>({n:h.n, q:limG(h.g)})));
     out.ingsBolsa = [{n:"agua", q:limMl(out.mlBolsa)}].concat(herb.map(h=>({n:h.n, q:limG(h.g/bolsas)})));
     out.ingsVacio = out.ingsTotal;
-    if(factor>1) out.dilu = `Diluir después: + agua filtrada ${limMl(necesario-concentradoMl)} → ${limMl(necesario)} de agua final`;
   } else {
     // Lote fijo (Super Juice, cordial): escala por factor = producción / rinde.
     // Los Super Juice se producen con +merma (se pierde líquido al colar).
@@ -3326,7 +3351,8 @@ function limPrepHTML(r, L){
           <div class="card-meta" style="margin-top:2px;">Por bolsa: ${sc.ingsBolsa.map(o=>esc(limIngTxt(o))).join(" · ")}</div>
           ${sc.ingsDespues.length?`<div class="card-meta" style="margin-top:2px;">Después, al triturar: ${sc.ingsDespues.map(o=>esc(limIngTxt(o))).join(" · ")}</div>`:""}`;
       }
-      if(sc.dilu) dilucionHTML = `<div class="lim-dilu">${esc(sc.dilu)}</div>`;
+      if(sc.rebacheAgua>0) dilucionHTML = `<div class="lim-dilu">Guardar como concentrado. El agua (<b>${limMl(sc.rebacheAgua)}</b>) va al rebache final del cóctel, no aquí.</div>`;
+      else if(sc.dilu) dilucionHTML = `<div class="lim-dilu">${esc(sc.dilu)}</div>`;
     }
     // Toda la tarjeta es pulsable → abre el paso a paso a pantalla completa.
     return `<div class="card lim-prep-card" style="margin-bottom:8px;" role="button" tabindex="0"
@@ -3334,7 +3360,7 @@ function limPrepHTML(r, L){
         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();limAbrirPrep('${esc(li.cod)}',${necesario});}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
         <div class="card-name"><span class="lim-cod">${esc(li.cod)}</span>${esc(b.nombre)}</div>
-        <span style="font-size:12px;font-weight:700;color:var(--olive);white-space:nowrap;">necesitas ${b.comprado?limG(necesario):limMl(necesario)}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--olive);white-space:nowrap;">${b.comprado?"necesitas "+limG(necesario):(sc.concentra>1?"prepara "+limMl(sc.produce)+" conc.":"necesitas "+limMl(necesario))}</span>
       </div>
       ${prep}
       ${bolsasHTML}
@@ -3401,7 +3427,6 @@ function limAbrirPrep(cod, necesario){
 // FICHA inicial (recuadro con todos los ingredientes y su gramaje + «Iniciar»).
 function limPrepIntroHTML(cod, necesario){
   const b = LIMONADAS_DATA.homemade[cod], sc = limScale(b, necesario);
-  const conc = (b.perLitro && b.concentra>1) ? ` · concentrado ×${b.concentra}` : "";
   const row = o=>`<div class="prep-ing-row"><span>${esc(o.n)}</span><b>${esc(o.q)}</b></div>`;
   const tieneDespues = sc.ingsDespues.length>0;
   let ingsSec;
@@ -3414,9 +3439,12 @@ function limPrepIntroHTML(cod, necesario){
   } else {
     ingsSec = `<div class="prep-sec-t">Ingredientes · para este lote</div><div class="prep-ings">${sc.ingsTotal.map(row).join("")}</div>`;
   }
+  const esConc = sc.concentra>1;
   const produce = b.comprado
     ? `Comprar <b>${limG(necesario)}</b> · no se prepara`
-    : `Vas a preparar <b>${limMl(necesario)}</b>${sc.bagBased?` · <b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"}</b> ${sc.bagUnit==="g"?"(piel + ácidos)":"de ≤500 ml"}`:` · lote único`}`;
+    : esConc
+      ? `Vas a preparar <b>${limMl(sc.produce)}</b> de concentrado ×${sc.concentra}${sc.bolsas>1?` · <b>${sc.bolsas} bolsas</b>`:""}`
+      : `Vas a preparar <b>${limMl(necesario)}</b>${sc.bagBased?` · <b>${sc.bolsas} bolsa${sc.bolsas===1?"":"s"}</b> ${sc.bagUnit==="g"?"(piel + ácidos)":"de ≤500 ml"}`:` · lote único`}`;
   const pasos = b.pasos||[];
   const pasosHTML = pasos.length
     ? `<ol class="prep-steps">${pasos.map(p=>`<li>${esc(p)}</li>`).join("")}</ol>`
@@ -3425,12 +3453,12 @@ function limPrepIntroHTML(cod, necesario){
     <div class="prep-fs-head">
       <button class="prep-fs-back" onclick="limCerrarPrep()">‹ volver</button>
       <div class="prep-fs-title"><span class="lim-cod">${esc(cod)}</span>${esc(b.nombre)}</div>
-      <div class="prep-fs-need">necesitas ${b.comprado?limG(necesario):limMl(necesario)}${conc}</div>
+      <div class="prep-fs-need">${esConc?`en receta rinde ${limMl(necesario)} diluido (×${sc.concentra})`:`necesitas ${b.comprado?limG(necesario):limMl(necesario)}`}</div>
     </div>
     <div class="prep-fs-body">
       <div class="prep-produce">${produce}</div>
       ${ingsSec}
-      ${sc.dilu?`<div class="lim-dilu" style="margin-top:8px;">${esc(sc.dilu)}</div>`:""}
+      ${sc.rebacheAgua>0?`<div class="lim-dilu" style="margin-top:8px;">Guárdalo como <b>concentrado</b>. El agua de dilución (<b>${limMl(sc.rebacheAgua)}</b>) se añade al <b>rebachar el cóctel entero</b>, no aquí.</div>`:(sc.dilu?`<div class="lim-dilu" style="margin-top:8px;">${esc(sc.dilu)}</div>`:"")}
       <button class="prep-start" onclick="limPrepIniciar()">▶ Iniciar preparación</button>
       <div class="prep-sec-t">Método · referencia</div>
       ${pasosHTML}

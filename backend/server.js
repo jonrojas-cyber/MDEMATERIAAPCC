@@ -311,7 +311,7 @@ app.use(
 // Arranca solo cuando el almacén está listo (hidratado desde PostgreSQL o JSON).
 store
   .init()
-  .then(() => {
+  .then(async () => {
     // ── Blindaje de persistencia ──────────────────────────────────────────
     // En producción sin Postgres, los datos viven en ficheros JSON sobre un
     // disco efímero (Render) y se PIERDEN al reiniciar. Avisamos fuerte; y con
@@ -333,6 +333,21 @@ store
     require("./seed-cafe").seedCafe().catch(() => {});
     // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
     require("./seed-negocio").seedNegocio().catch(() => {});
+    // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
+    // materias, recetas, lotes y productos de ejemplo). Solo en producción
+    // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,
+    // para no vaciar los fixtures que usan las pruebas.
+    try {
+      if (store.isUsingDb && store.isUsingDb()) {
+        const hecho = (store.readAll("config") || []).some((c) => c && c.id === "limpieza_demo_v1");
+        if (!hecho) {
+          const n = require("./limpieza-demo").limpiarDemo(store);
+          store.insert("config", { id: "limpieza_demo_v1", hecho: true, retirados: n, fecha: new Date().toISOString() });
+          await store.flush();
+          console.log(`Limpieza de datos de prueba · ${n} registros retirados.`);
+        }
+      }
+    } catch (e) { console.error("No se pudo limpiar los datos de prueba:", e.message); }
     // Reprograma los temporizadores de producción pendientes (avisos push).
     try { require("./sv-timers").init(); } catch (e) {}
 

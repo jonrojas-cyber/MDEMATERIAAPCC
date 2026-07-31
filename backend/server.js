@@ -67,10 +67,11 @@ function prepDatos(q) {
   const prodRaw = q.p ? new Date(q.p) : new Date();
   const producido = isNaN(prodRaw.getTime()) ? new Date() : prodRaw;
   const caduca = vidaH > 0 ? new Date(producido.getTime() + vidaH * 3600000) : null;
-  const p2 = (n) => String(n).padStart(2, "0");
   const ini = (nombre.replace(/[^a-zA-ZñÑ]/g, "").slice(0, 3).toUpperCase()) || "PRD";
-  // Código: el que venga (lote real, ej. CB-260720-QCO) o uno generado.
-  const code = q.code ? String(q.code).slice(0, 40) : `${ini}-${p2(producido.getDate())}${p2(producido.getMonth() + 1)}-${p2(producido.getHours())}${p2(producido.getMinutes())}`;
+  // Código: el que venga (lote real, ej. CB-260720-QCO) o uno generado en hora
+  // de Málaga (no UTC del servidor) para que coincida con la hora mostrada.
+  const pm = require("./tz").partes(producido);
+  const code = q.code ? String(q.code).slice(0, 40) : `${ini}-${pm.day}${pm.month}-${pm.hour}${pm.minute}`;
   return { nombre, cantidad, vidaH, producidoISO: producido.toISOString(), caducaISO: caduca ? caduca.toISOString() : null, code };
 }
 

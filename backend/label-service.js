@@ -79,22 +79,22 @@ function escapeHTML(s) {
   return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+const { partes: partesMadrid } = require("./tz");
+
 function fechaCorta(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d)) return "—";
-  const p = (n) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const p = partesMadrid(iso);
+  if (!p) return "—";
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }
 
-// Fecha compacta para la etiqueta: "16.07.26 · 14:30" (estilo boticario, sin
+// Fecha compacta para la etiqueta: "16.07 · 14:30" (estilo boticario, sin
 // barras). Sólo presentación; no toca fechaCorta que usa la ficha pública.
 function fechaSello(iso) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d)) return "—";
-  const p = (n) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)} · ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const p = partesMadrid(iso);
+  if (!p) return "—";
+  return `${p.day}.${p.month} · ${p.hour}:${p.minute}`;
 }
 
 // HTML de una etiqueta térmica de 62x30mm para la Phomemo D520BT.

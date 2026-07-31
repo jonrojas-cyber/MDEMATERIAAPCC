@@ -235,4 +235,4 @@ function nextId(prefix, name) {
   return `${prefix}-${String(n).padStart(3, "0")}-${Date.now().toString().slice(-5)}`;
 }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, DATA_DIR, ENTITIES };
+module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, DATA_DIR, ENTITIES, isUsingDb: () => usingDb };

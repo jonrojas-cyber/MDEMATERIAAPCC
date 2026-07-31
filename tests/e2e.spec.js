@@ -863,6 +863,7 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await page.evaluate(() => limAbrirPrep("CH", 1200));
   await expect(page.locator(".prep-fs-title")).toContainText(/Cordial de hierbabuena/);
   await expect(page.locator(".prep-produce")).toContainText(/Vas a preparar/);
+  await expect(page.locator(".prep-fs-body")).toContainText(/Generar etiqueta/);   // etiqueta por preparación
   await expect(page.locator(".prep-steps li")).toHaveCount(6);          // método de referencia
   await expect(page.locator(".prep-ings")).toContainText(/hierbabuena/);
   // Guía interactiva: «Iniciar» → pesa ingrediente a ingrediente hasta el final.
@@ -893,6 +894,20 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await expect(page.locator("body")).not.toContainText(/preparar antes/);   // oculta las preps en prueba
   await page.evaluate(() => limPrebachear());
   await expect(page.locator("body")).not.toContainText(/Modo prueba/);
+  // Lote de producción del prebache: guarda litros + hora exacta (sellada en servidor).
+  await page.evaluate(() => { limSetRec("R4"); limSetL(8); });
+  const lote = await page.evaluate(async () => { await limGenerarLote(); return window._lim.lote; });
+  expect(lote && lote.codigo).toBeTruthy();
+  expect(lote.litros).toBe(8);
+  expect(typeof lote.fecha).toBe("string");                    // hora exacta ISO
+  await expect(page.locator("body")).toContainText(/Lote registrado/);
+  await expect(page.locator("body")).toContainText(/Hora exacta/);
+  // El backend valida litros > 0.
+  const status = await page.evaluate(async () => {
+    try { await api("/lotes-produccion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "burbujas", litros: 0 }) }); return 200; }
+    catch (e) { return String(e.message).includes("litros") ? 400 : -1; }
+  });
+  expect(status).toBe(400);
   // Enlace con productos: lleva a la categoría Burbujas de la carta.
   await page.evaluate(() => burVerEnCarta());
   await expect(page.locator("body")).toContainText(/Burbujas Origen/);

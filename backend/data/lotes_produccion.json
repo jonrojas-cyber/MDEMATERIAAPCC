@@ -1,0 +1,32 @@
+[
+  {
+    "id": "lp-001-77655",
+    "codigo": "BUR-20260731-001",
+    "tipo": "burbujas",
+    "receta": "R4",
+    "producto": "Burbujas Origen",
+    "litros": 8,
+    "responsable": "Mónica",
+    "fecha": "2026-07-31T10:09:37.655Z"
+  },
+  {
+    "id": "lp-002-99423",
+    "codigo": "BUR-20260731-002",
+    "tipo": "burbujas",
+    "receta": "R4",
+    "producto": "Burbujas Origen",
+    "litros": 8,
+    "responsable": "Mónica",
+    "fecha": "2026-07-31T10:09:59.423Z"
+  },
+  {
+    "id": "lp-003-72343",
+    "codigo": "BUR-20260731-003",
+    "tipo": "burbujas",
+    "receta": "R4",
+    "producto": "Burbujas Origen",
+    "litros": 8,
+    "responsable": "Mónica",
+    "fecha": "2026-07-31T10:11:12.343Z"
+  }
+]

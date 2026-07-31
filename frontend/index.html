@@ -3204,12 +3204,40 @@ function irA_burbujas(){
   openSection("burbujas","Burbujas");
   limRender();
 }
-function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; limRender(); } }
+function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; window._lim.lote=null; limRender(); } }
 function limSetL(n){ window._lim.litros=Math.max(0,n); window._lim.prueba=false; limRender(); }
 function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); window._lim.prueba=false; limRender(); }
 // Prueba de cata de 200 ml antes de prebachear el lote entero.
 function limPrueba(){ window._lim.prueba=true; limRender(); }
 function limPrebachear(){ window._lim.prueba=false; limRender(); }
+// ── Trazabilidad de producción · etiquetas por preparación y lote del prebache ──
+// Vida útil por tipo de preparación (super juice/agua ~5 d · cordial 21 d).
+function limVidaPrep(b){ return b&&b.tipo==="cordial"?21 : (b&&b.tipo==="comprado"?30 : 5); }
+// Etiqueta de una preparación concreta (la que reposa horas): abre la etiquetadora
+// ya rellena con su nombre, cantidad producida y vida útil.
+function limEtiquetaPrep(cod, necesario){
+  const b=LIMONADAS_DATA.homemade[cod]; if(!b) return;
+  const sc=limScale(b, necesario);
+  const cant = b.comprado ? limG(necesario) : (sc.concentra>1 ? limMl(sc.produce)+" (concentrado)" : limMl(sc.produce));
+  limCerrarPrep();
+  irA_etiquetaProd({ nombre:b.nombre, cantidad:cant, vidaDias:limVidaPrep(b) });
+}
+// Fecha + HORA EXACTA legible de un lote.
+function limFechaHora(iso){ try{ return new Date(iso).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"}); }catch(e){ return iso||""; } }
+// Registra el lote del prebache: litros + hora exacta (la sella el servidor).
+async function limGenerarLote(){
+  const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk], L=s.litros;
+  if(!(L>0)){ alert("Indica los litros del lote antes de generarlo."); return; }
+  try{
+    const u=getUser();
+    const lote=await api("/lotes-produccion",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tipo:"burbujas",rk:s.rk,producto:r.prod,litros:L,responsable:(u&&u.nombre)||""})});
+    window._lim.lote=lote; limRender();
+  }catch(e){ alert("No se pudo registrar el lote: "+(e.message||e)); }
+}
+function limImprimirEtiquetaLote(){
+  const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk], lote=s.lote; if(!lote) return;
+  irA_etiquetaProd({ nombre:(lote.producto||r.prod)+" · "+lote.codigo, cantidad:limFmt(lote.litros)+" L", vidaDias:5 });
+}
 
 function limRender(){
   const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk];
@@ -3266,11 +3294,22 @@ function limRender(){
       <div class="card-meta" style="margin-top:8px;">Si todo OK → prebachea el lote completo. Si no, ajusta antes de escalar.</div>
       <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="limPrebachear()">Todo OK · prebachear lote completo →</button></div>
     </div>`;
+  const lote = s.lote;
+  const loteCardHTML = lote ? `<div class="card" style="border-left:3px solid var(--olive);margin-bottom:10px;">
+      <div style="font-weight:800;color:var(--olive);">✅ Lote registrado · ${esc(lote.codigo)}</div>
+      <div class="lim-prem-row" style="margin-top:4px;"><b>${esc(lote.producto||r.prod)}</b> · ${limFmt(lote.litros)} L</div>
+      <div class="lim-prem-row">Hora exacta · ${esc(limFechaHora(lote.fecha))}</div>
+      <div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="limImprimirEtiquetaLote()">🏷️ imprimir etiqueta del lote</button></div>
+    </div>` : "";
   const bloqueLote = `
     <div class="section-label" style="margin-top:24px;">Homemade · preparar antes · para ${limFmt(L)} L</div>
     ${limPrepHTML(r, L)}
     <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
     <div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>
+    <div class="section-label" style="margin-top:16px;">Registrar producción · lote</div>
+    ${loteCardHTML}
+    <div class="card"><div class="card-meta">Al prebachear el lote final, regístralo: guarda los <b>litros</b> producidos y la <b>hora exacta</b> de producción para la trazabilidad.</div>
+      <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="limGenerarLote()">✅ Generar lote de ${limFmt(L)} L</button></div></div>
     <div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta · PVP ${esc(r.pvp)}. Esta receta es la producción de ese producto.</div>
     <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
       <button class="btn-primary" onclick="burVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
@@ -3492,6 +3531,7 @@ function limPrepIntroHTML(cod, necesario){
       ${ingsSec}
       ${sc.rebacheAgua>0?`<div class="lim-dilu" style="margin-top:8px;">Guárdalo como <b>concentrado</b>. El agua de dilución (<b>${limMl(sc.rebacheAgua)}</b>) se añade al <b>rebachar el cóctel entero</b>, no aquí.</div>`:(sc.dilu?`<div class="lim-dilu" style="margin-top:8px;">${esc(sc.dilu)}</div>`:"")}
       <button class="prep-start" onclick="limPrepIniciar()">▶ Iniciar preparación</button>
+      <button class="btn-ghost" style="width:100%;margin-top:8px;" onclick="limEtiquetaPrep('${esc(cod)}',${necesario})">🏷️ Generar etiqueta de esta preparación</button>
       <div class="prep-sec-t">Método · referencia</div>
       ${pasosHTML}
       ${b.params?`<div class="prep-params"><b>Parámetros:</b> ${esc(b.params)}</div>`:""}
@@ -3578,6 +3618,7 @@ function limPrepFinHTML(){
         <div class="pwz-ing">Preparación lista</div>
         <div class="pwz-q" style="font-size:16px;color:var(--muted);font-weight:700;">${b.comprado?limG(P.necesario):limMl(P.necesario)} de ${esc(b.nombre)}</div>
         ${limPrepBtnTimer(P.cod, b)}
+        <button class="btn-primary pwz-timer" onclick="limEtiquetaPrep('${esc(P.cod)}',${P.necesario})">🏷️ Generar etiqueta</button>
       </div>
       <div class="pwz-foot">
         <button class="pwz-back" onclick="limPrepIniciar()">↻ Repetir</button>
@@ -3775,8 +3816,22 @@ function irA_spritz(){
   openSection("spritz","Spritz");
   spzRender();
 }
-function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; spzRender(); } }
+function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; window._spz.lote=null; spzRender(); } }
 function spzSetL(n){ window._spz.litros=Math.max(0,n); window._spz.prueba=false; spzRender(); }
+// Lote del prebache de Spritz: litros + hora exacta (sellada en servidor).
+async function spzGenerarLote(){
+  const s=window._spz, r=SPRITZ_DATA.recetas[s.rk], L=s.litros;
+  if(!(L>0)){ alert("Indica los litros del lote antes de generarlo."); return; }
+  try{
+    const u=getUser();
+    const lote=await api("/lotes-produccion",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tipo:"spritz",rk:s.rk,producto:r.prod,litros:L,responsable:(u&&u.nombre)||""})});
+    window._spz.lote=lote; spzRender();
+  }catch(e){ alert("No se pudo registrar el lote: "+(e.message||e)); }
+}
+function spzImprimirEtiquetaLote(){
+  const s=window._spz, r=SPRITZ_DATA.recetas[s.rk], lote=s.lote; if(!lote) return;
+  irA_etiquetaProd({ nombre:(lote.producto||r.prod)+" · "+lote.codigo, cantidad:limFmt(lote.litros)+" L", vidaDias:7 });
+}
 function spzLeerLitros(){ const i=el("spz-litros"); if(i) window._spz.litros=Math.max(0,parseFloat(i.value)||0); window._spz.prueba=false; spzRender(); }
 // Prueba de cata de 200 ml antes de prebachear el lote entero.
 function spzPrueba(){ window._spz.prueba=true; spzRender(); }
@@ -3859,12 +3914,22 @@ function spzRender(){
         <tr class="tot"><td class="n">Bebida en lata 250 ml</td><td class="q big">${spzEur(costeLata)}</td></tr>
       </tbody></table>
       <div class="lim-nota" style="border-left-color:var(--muted);">Falta sumar por lata: <b>lata, tapa, etiqueta, mano de obra y mermas</b> (aún por cifrar). Cuando los tengas, cierro el coste real por lata y su PVP.</div>`;
+    const loteS=s.lote;
+    const loteCardS = loteS ? `<div class="card" style="border-left:3px solid var(--olive);margin-bottom:10px;">
+        <div style="font-weight:800;color:var(--olive);">✅ Lote registrado · ${esc(loteS.codigo)}</div>
+        <div class="lim-prem-row" style="margin-top:4px;"><b>${esc(loteS.producto||r.prod)}</b> · ${limFmt(loteS.litros)} L</div>
+        <div class="lim-prem-row">Hora exacta · ${esc(limFechaHora(loteS.fecha))}</div>
+        <div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="spzImprimirEtiquetaLote()">🏷️ imprimir etiqueta del lote</button></div>
+      </div>` : "";
+    const registrar=`<div class="section-label" style="margin-top:16px;">Registrar producción · lote</div>${loteCardS}
+      <div class="card"><div class="card-meta">Al prebachear el lote, regístralo: guarda los <b>litros</b> producidos y la <b>hora exacta</b> para la trazabilidad.</div>
+        <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="spzGenerarLote()">✅ Generar lote de ${limFmt(L)} L</button></div></div>`;
     const enlace=`<div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta${r.pvp?` · PVP ${esc(r.pvp)}`:" · falta PVP"}. Esta receta es su producción.</div>
       <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
         <button class="btn-primary" onclick="spzVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
         <button class="btn-ghost" onclick="spzVerEnCarta()">Todas en carta · Spritz</button>
       </div>`;
-    cuerpo=param+tabla+`<div class="lim-nota">${esc(r.nota)}</div>`+escandallo+enlace;
+    cuerpo=param+tabla+`<div class="lim-nota">${esc(r.nota)}</div>`+escandallo+registrar+enlace;
   }
   // Enlace a productos también para las recetas pendientes.
   const enlacePend=r.pendiente?`<div class="card-actions" style="margin-top:14px;"><button class="btn-ghost" onclick="spzVerEnCarta()">Ver Spritz en productos →</button></div>`:"";

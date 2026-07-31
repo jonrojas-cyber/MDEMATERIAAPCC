@@ -3205,11 +3205,17 @@ function irA_burbujas(){
   limRender();
 }
 function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; limRender(); } }
-function limSetL(n){ window._lim.litros=Math.max(0,n); limRender(); }
-function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); limRender(); }
+function limSetL(n){ window._lim.litros=Math.max(0,n); window._lim.prueba=false; limRender(); }
+function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); window._lim.prueba=false; limRender(); }
+// Prueba de cata de 200 ml antes de prebachear el lote entero.
+function limPrueba(){ window._lim.prueba=true; limRender(); }
+function limPrebachear(){ window._lim.prueba=false; limRender(); }
 
 function limRender(){
-  const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk], L=s.litros;
+  const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk];
+  const prueba = !!s.prueba, L = prueba ? 0.2 : s.litros;   // prueba = 200 ml de resultado final
+  const volTxt = prueba ? "200 ml · prueba" : limFmt(L)+" L";
+  const colTxt = prueba ? "prueba 200 ml" : "lote "+limFmt(L)+" L";
   const hayAgua = r.lineas.some(li=>li.n==="Agua filtrada");
   // Fila de la tabla.
   const trHTML = (n, v, u, cod, tardio, tardioTxt) => {
@@ -3236,25 +3242,31 @@ function limRender(){
   let cierre;
   if(hayAgua){
     rowArr.push(trHTML("Agua de rebache", aguaFiltrada + rebacheExtra, "ml", null, true, "al final · al rebachar"));
-    cierre = `<tr class="tot"><td class="n">Total ≈</td><td class="q">—</td><td class="q big">${limFmt(L)} L</td></tr>`;
+    cierre = `<tr class="tot"><td class="n">Total ≈</td><td class="q">—</td><td class="q big">${volTxt}</td></tr>`;
   } else {
     // c.s.p.: el agua (incluida la dilución de los aromáticos) se añade al final.
-    cierre = `<tr class="tot"><td class="n">Agua de rebache c.s.p.</td><td class="q">—</td><td class="q big">hasta ${limFmt(L)} L</td></tr>`;
+    cierre = `<tr class="tot"><td class="n">Agua de rebache c.s.p.</td><td class="q">—</td><td class="q big">hasta ${volTxt}</td></tr>`;
   }
   const rows = rowArr.join("");
-  const chips=[2,5,16].map(n=>`<button class="${L===n?"on":""}" onclick="limSetL(${n})">${n} L</button>`).join("");
+  const chips=[2,5,16].map(n=>`<button class="${!prueba&&L===n?"on":""}" onclick="limSetL(${n})">${n} L</button>`).join("")
+    + `<button class="${prueba?"on":""}" onclick="limPrueba()">prueba 200 ml</button>`;
   const recSel=Object.entries(LIMONADAS_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.nombre)} · ${esc(x.sabor)}</option>`).join("");
 
-  setInner(`
-    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Burbujas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${limFmt(L)} L</div></div>
-    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
-      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="lim-rsel" onchange="limSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
-      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="lim-litros" type="number" min="0.5" step="0.5" value="${L}" inputmode="decimal" oninput="limLeerLitros()" style="width:110px;"></div>
-      <div class="lim-presets" style="margin:0;">${chips}</div>
-    </div>
-    <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
-    <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>lote ${limFmt(L)} L</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
-    <div class="lim-nota">${esc(r.nota)}</div>
+  // En prueba: checklist de cata y ocultar preparaciones (usas las que ya tienes).
+  // Fuera de prueba: preparaciones + premezclas + enlace a carta.
+  const bloquePrueba = `
+    <div class="section-label" style="margin-top:24px;">Prueba de cata · 200 ml</div>
+    <div class="card" style="border-left:3px solid var(--olive);">
+      <div style="font-weight:700;margin-bottom:6px;">Antes de prebachear el lote, haz esta muestra de 200 ml y cátala.</div>
+      <div class="card-meta">Mezcla las cantidades de la columna «prueba 200 ml» (usa las preparaciones que ya tienes hechas), carbonata la muestra y comprueba:</div>
+      <div class="lim-prem-row" style="margin-top:8px;">1 · Dulzor y acidez equilibrados (°Bx ~${esc(r.bx)} · acidez ${esc(r.acidez)}).</div>
+      <div class="lim-prem-row">2 · Amargor / astringencia de los aromáticos en su punto.</div>
+      <div class="lim-prem-row">3 · Aroma y color correctos.</div>
+      <div class="lim-prem-row">4 · Al carbonatar: burbuja fina, sin espuma excesiva (CO₂ ~${esc(r.co2)}).</div>
+      <div class="card-meta" style="margin-top:8px;">Si todo OK → prebachea el lote completo. Si no, ajusta antes de escalar.</div>
+      <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="limPrebachear()">Todo OK · prebachear lote completo →</button></div>
+    </div>`;
+  const bloqueLote = `
     <div class="section-label" style="margin-top:24px;">Homemade · preparar antes · para ${limFmt(L)} L</div>
     ${limPrepHTML(r, L)}
     <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
@@ -3264,7 +3276,20 @@ function limRender(){
       <button class="btn-primary" onclick="burVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
       <button class="btn-ghost" onclick="burVerEnCarta()">Todas en carta · Burbujas</button>
       <button class="btn-ghost" onclick="limOleo()">Óleo saccharum</button>
+    </div>`;
+
+  setInner(`
+    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Burbujas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="lim-rsel" onchange="limSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="lim-litros" type="number" min="0.5" step="0.5" value="${s.litros}" inputmode="decimal" oninput="limLeerLitros()" style="width:110px;"></div>
+      <div class="lim-presets" style="margin:0;">${chips}</div>
     </div>
+    ${prueba?`<div class="lim-nota" style="border-left-color:var(--olive);"><b>Modo prueba · 200 ml.</b> Cantidades del resultado final para catar antes de prebachear el lote.</div>`:""}
+    <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
+    <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>${colTxt}</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
+    <div class="lim-nota">${esc(r.nota)}</div>
+    ${prueba?bloquePrueba:bloqueLote}
   `);
 }
 // Enlace con el apartado de Productos (carta): abre la categoría Burbujas y, si se
@@ -3751,8 +3776,11 @@ function irA_spritz(){
   spzRender();
 }
 function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; spzRender(); } }
-function spzSetL(n){ window._spz.litros=Math.max(0,n); spzRender(); }
-function spzLeerLitros(){ const i=el("spz-litros"); if(i) window._spz.litros=Math.max(0,parseFloat(i.value)||0); spzRender(); }
+function spzSetL(n){ window._spz.litros=Math.max(0,n); window._spz.prueba=false; spzRender(); }
+function spzLeerLitros(){ const i=el("spz-litros"); if(i) window._spz.litros=Math.max(0,parseFloat(i.value)||0); window._spz.prueba=false; spzRender(); }
+// Prueba de cata de 200 ml antes de prebachear el lote entero.
+function spzPrueba(){ window._spz.prueba=true; spzRender(); }
+function spzPrebachear(){ window._spz.prueba=false; spzRender(); }
 async function spzVerEnCarta(){ await irA_menu(); menuNivel(["spritz"]); }
 async function spzVerProducto(nombreProd){
   await irA_menu(); menuNivel(["spritz"]);
@@ -3762,19 +3790,38 @@ async function spzVerProducto(nombreProd){
 }
 
 function spzRender(){
-  const s=window._spz, r=SPRITZ_DATA.recetas[s.rk], L=s.litros;
+  const s=window._spz, r=SPRITZ_DATA.recetas[s.rk];
+  const prueba = !!s.prueba, L = prueba ? 0.2 : s.litros;   // prueba = 200 ml de resultado final
+  const volTxt = prueba ? "200 ml · prueba" : limFmt(L)+" L";
   const recSel=Object.entries(SPRITZ_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.nombre)} · ${esc(x.sabor)}</option>`).join("");
-  const chips=[2,5,16].map(n=>`<button class="${L===n?"on":""}" onclick="spzSetL(${n})">${n} L</button>`).join("");
-  const head=`<div class="lim-head"><div><div class="lim-eyebrow">Control m · producción · carbonatado</div><div class="lim-h">Spritz · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${limFmt(L)} L</div></div>`;
+  const chips=[2,5,16].map(n=>`<button class="${!prueba&&L===n?"on":""}" onclick="spzSetL(${n})">${n} L</button>`).join("")
+    + `<button class="${prueba?"on":""}" onclick="spzPrueba()">prueba 200 ml</button>`;
+  const head=`<div class="lim-head"><div><div class="lim-eyebrow">Control m · producción · carbonatado</div><div class="lim-h">Spritz · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>`;
   const controles=`<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="spz-rsel" onchange="spzSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
-      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="spz-litros" type="number" min="0.5" step="0.5" value="${L}" inputmode="decimal" oninput="spzLeerLitros()" style="width:110px;"></div>
+      <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="spz-litros" type="number" min="0.5" step="0.5" value="${s.litros}" inputmode="decimal" oninput="spzLeerLitros()" style="width:110px;"></div>
       <div class="lim-presets" style="margin:0;">${chips}</div>
     </div>`;
 
   let cuerpo="";
   if(r.pendiente){
     cuerpo=`<div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Receta pendiente.</b> Pásame la receta de <b>Spritz ${esc(r.nombre)}</b> (ingredientes y cantidades por vaso) y la cierro aquí con su escandallo, igual que Origen.</div>`;
+  } else if(prueba){
+    const rowsP=r.lineas.map(li=>`<tr><td class="n">${esc(li.n)}</td><td class="q big">${limFmt(li.v*0.2)} ${esc(li.u)}</td></tr>`).join("");
+    cuerpo=`
+      <div class="lim-nota" style="border-left-color:var(--olive);"><b>Modo prueba · 200 ml.</b> Cantidades del resultado final para catar antes de prebachear el lote.</div>
+      <table class="lim-tab"><thead><tr><th>componente</th><th>prueba 200 ml</th></tr></thead><tbody>${rowsP}
+        <tr class="tot"><td class="n">Total</td><td class="q big">200 ml</td></tr></tbody></table>
+      <div class="section-label" style="margin-top:18px;">Prueba de cata · 200 ml</div>
+      <div class="card" style="border-left:3px solid var(--olive);">
+        <div style="font-weight:700;margin-bottom:6px;">Antes de prebachear el lote, monta esta muestra de 200 ml y cátala.</div>
+        <div class="lim-prem-row" style="margin-top:6px;">1 · Equilibrio del amargo (Aperol) con el vino y el agua.</div>
+        <div class="lim-prem-row">2 · Dulzor y acidez en su punto.</div>
+        <div class="lim-prem-row">3 · Al carbonatar: burbuja fina, sin espuma excesiva.</div>
+        <div class="lim-prem-row">4 · Color y aroma correctos.</div>
+        <div class="card-meta" style="margin-top:8px;">Si todo OK → prebachea el lote completo. Si no, ajusta antes de escalar.</div>
+        <div class="card-actions" style="margin-top:12px;"><button class="btn-primary" onclick="spzPrebachear()">Todo OK · prebachear lote completo →</button></div>
+      </div>`;
   } else {
     const costeL=spzCosteMezclaL(r), tecL=spzTecnicosL();
     const lataL=(SPRITZ_DATA.lataMl||250)/1000;                 // 0,25 L por lata

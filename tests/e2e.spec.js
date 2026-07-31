@@ -886,6 +886,13 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await page.evaluate(() => limCerrarPrep());
   await expect(page.locator("#prep-fs")).toBeHidden();
   await page.evaluate(() => limSetRec("R5"));
+  // Prueba de cata de 200 ml antes de prebachear el lote entero.
+  await page.evaluate(() => { limSetRec("R4"); limPrueba(); });
+  await expect(page.locator("body")).toContainText(/Modo prueba · 200 ml/);
+  await expect(page.locator("body")).toContainText(/prebachear lote completo/);
+  await expect(page.locator("body")).not.toContainText(/preparar antes/);   // oculta las preps en prueba
+  await page.evaluate(() => limPrebachear());
+  await expect(page.locator("body")).not.toContainText(/Modo prueba/);
   // Enlace con productos: lleva a la categoría Burbujas de la carta.
   await page.evaluate(() => burVerEnCarta());
   await expect(page.locator("body")).toContainText(/Burbujas Origen/);
@@ -910,6 +917,12 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
   await expect(page.locator("body")).toContainText(/Aperol/);
   await expect(page.locator("body")).toContainText(/25 ml/);  // Aperol por lata 250 (400:600:3000)
   await expect(page.locator("body")).toContainText(/0,57 €/); // bebida por lata 250 ml
+  // Prueba de cata de 200 ml antes de prebachear (Origen): Aperol 100 ml/L → 20 ml.
+  await page.evaluate(() => { spzSetRec("origen"); spzPrueba(); });
+  await expect(page.locator("body")).toContainText(/Modo prueba · 200 ml/);
+  await expect(page.locator("body")).toContainText(/prebachear lote completo/);
+  await page.evaluate(() => spzPrebachear());
+  await expect(page.locator("body")).not.toContainText(/Modo prueba/);
   // Colección aún es plantilla (receta pendiente).
   await page.evaluate(() => spzSetRec("coleccion"));
   await expect(page.locator("body")).toContainText(/Receta pendiente/);

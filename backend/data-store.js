@@ -66,6 +66,8 @@ const ENTITIES = [
   "mbds_lotes",        // control de producción por lote
   // ── Cierre de caja (arqueo diario · conciliación Ágora/efectivo/tarjetas) ──
   "cierres_caja",      // cierres de caja por día/local/turno (estados + versiones, nunca se borran)
+  // ── Lotes de producción (Burbujas/Spritz): litros producidos + hora exacta ──
+  "lotes_produccion",  // registro de cada prebache: producto, litros, timestamp exacto
 ];
 
 const cache = {};

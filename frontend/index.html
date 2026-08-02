@@ -1716,13 +1716,20 @@ button.cc-card:hover { border-color: var(--ink); }
 .lab-perf span { font-size:10px; letter-spacing:.1em; text-transform:lowercase; color:var(--muted); width:76px; flex:0 0 auto; }
 .lab-perf i { flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
 .lab-perf i b { display:block; height:100%; background:var(--olive); }
-/* Estación de trabajo · mise en place derivada de la carta. */
-.est-row { display:flex; gap:12px; align-items:flex-start; padding:8px 0; border-top:1px solid var(--line); }
-.est-row:first-child { border-top:0; }
-.est-num { flex:0 0 auto; width:22px; height:22px; border-radius:5px; background:var(--olive); color:var(--cream); font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
-.est-dot { flex:0 0 auto; color:var(--olive); font-weight:800; width:22px; text-align:center; }
-.est-nom { font-size:14px; font-weight:600; }
-.est-prods { font-size:10px; color:var(--muted); letter-spacing:.02em; margin-top:1px; }
+/* Estación de trabajo · plano en planta de la mesa refrigerada (derivado de la carta). */
+.est-mesa { border:1.5px solid var(--line); border-radius:14px; padding:14px; background:rgba(255,255,255,.02); }
+.est-mesa-lbl { font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.est-bins { display:flex; gap:10px; }
+.est-col { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.est-bin { display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px; padding:10px; min-height:48px; background:rgba(167,185,110,.06); }
+.est-bnum { flex:0 0 auto; width:20px; height:20px; border-radius:5px; background:var(--olive); color:var(--cream); font-weight:800; font-size:11px; display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+.est-bname { font-size:12px; font-weight:600; line-height:1.15; min-width:0; }
+.est-zonas2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; border-top:1px dashed var(--line); padding-top:12px; }
+.est-zona { border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.est-cond { margin-top:10px; }
+.est-zt { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--olive); font-weight:800; }
+.est-zs { font-size:11px; color:var(--muted); margin-top:4px; line-height:1.5; }
+.est-chip { display:inline-block; font-size:10px; border:1px solid var(--line); border-radius:999px; padding:2px 9px; margin:3px 4px 0 0; color:var(--ink); }
 .lim-seg button:last-child { border-right: 0; }
 .lim-seg button.on { background: var(--ink); color: var(--cream); font-weight: 700; }
 .lim-tab { width: 100%; border-collapse: collapse; }
@@ -4245,58 +4252,72 @@ function estacionDatos(){
   return { prods, base: all.filter(x=>x.zona==="base"), cubetas: all.filter(x=>x.zona==="cubeta"), fuera: all.filter(x=>x.zona==="fuera") };
 }
 function irA_estacion(){ navInto(()=>irA_lab()); openSection("estacion","Estación de trabajo"); estacionRender(); }
+// Plano en planta: rejilla de cubetas a 2 columnas (como la saladette GN 1/3),
+// numeración columna-mayor (izq 1..n, dcha n+1..), y zonas debajo.
+function estBinsGrid(cubetas, bin){
+  if(!cubetas.length) return `<div class="card-meta" style="padding:10px;">Sin cubetas: cierra productos en la carta.</div>`;
+  const half = Math.ceil(cubetas.length/2);
+  const left  = cubetas.slice(0, half).map((x,i)=>bin(x, i)).join("");
+  const right = cubetas.slice(half).map((x,i)=>bin(x, i+half)).join("");
+  return `<div class="est-bins"><div class="est-col">${left}</div><div class="est-col">${right}</div></div>`;
+}
 function estacionRender(){
   const d = estacionDatos();
-  const rowNum = (x,i)=>`<div class="est-row"><span class="est-num">${i+1}</span><div><div class="est-nom">${esc(x.nombre)}</div><div class="est-prods">${x.productos.map(esc).join(" · ")}</div></div></div>`;
-  const rowDot = (x)=>`<div class="est-row"><span class="est-dot">•</span><div><div class="est-nom">${esc(x.nombre)}</div><div class="est-prods">${x.productos.map(esc).join(" · ")}</div></div></div>`;
+  const bin = (x,i)=>`<div class="est-bin"><span class="est-bnum">${i+1}</span><span class="est-bname">${esc(x.nombre)}</span></div>`;
+  const panTxt = d.base.map(x=>esc(x.nombre)).join(" · ") || "—";
+  const chips = d.fuera.length ? d.fuera.map(x=>`<span class="est-chip">${esc(x.nombre)}</span>`).join("") : "—";
   setInner(`
-    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · mise en place</div><div class="lim-h">Estación de trabajo en frío</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">todo en su sitio · derivado de la carta</div></div></div>
-    <div class="lim-nota" style="border-left-color:var(--olive);">Este mapa se genera solo desde las recetas en carta. Cierra o cambia un producto y la estación se actualiza sola. Mesa refrigerada 2–4 °C.</div>
-    <div class="section-label" style="margin-top:16px;">En cubetas · ${d.cubetas.length}</div>
-    <div class="card">${d.cubetas.length?d.cubetas.map(rowNum).join(""):`<div class="card-meta">Sin cubetas todavía: cierra productos en la carta.</div>`}</div>
-    <div class="section-label" style="margin-top:16px;">Fuera de la mesa · salsas y acabados</div>
-    <div class="card">${d.fuera.length?d.fuera.map(rowDot).join(""):`<div class="card-meta">—</div>`}</div>
-    <div class="section-label" style="margin-top:16px;">Pan · zona de montaje</div>
-    <div class="card">${d.base.length?d.base.map(rowDot).join(""):`<div class="card-meta">—</div>`}</div>
-    <div class="section-label" style="margin-top:16px;">Zonas y flujo</div>
-    <div class="card">
-      <div class="lim-prem-row"><b>Calor</b> · sandwichera / panini</div>
-      <div class="lim-prem-row"><b>Montaje</b> · tabla + cuchillo (una para pan, otra para proteína)</div>
-      <div class="lim-prem-row"><b>Condimentos</b> · biberones y acabados</div>
-      <div class="lim-prem-row" style="margin-top:6px;">1 · elegir pan → 2 · calentar → 3 · cubetas → 4 · salsas → 5 · servir</div>
+    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · mise en place</div><div class="lim-h">Estación de trabajo en frío</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">plano en planta · derivado de la carta</div></div></div>
+    <div class="lim-nota" style="border-left-color:var(--olive);">Se dibuja solo desde las recetas en carta. Cierra o cambia un producto y el plano se actualiza. Numeración de cubeta = orden de montaje.</div>
+    <div class="est-mesa">
+      <div class="est-mesa-lbl">mesa refrigerada · cubetas gn 1/3 · 2–4 °C</div>
+      ${estBinsGrid(d.cubetas, bin)}
+      <div class="est-zonas2">
+        <div class="est-zona"><div class="est-zt">Calor</div><div class="est-zs">sandwichera / panini</div></div>
+        <div class="est-zona"><div class="est-zt">Montaje</div><div class="est-zs">tabla + cuchillo · pan: ${panTxt}</div></div>
+      </div>
+      <div class="est-zona est-cond"><div class="est-zt">Condimentos · fuera de la mesa</div><div class="est-zs" style="margin-top:6px;">${chips}</div></div>
     </div>
+    <div class="lim-nota" style="border-left-color:var(--muted);">Flujo: elegir pan → calentar → cubetas (1→${d.cubetas.length}) → salsas → servir.</div>
     <div class="card-actions" style="margin-top:14px;"><button class="btn-primary" onclick="estacionImprimir()">🖨️ Imprimir para colgar</button></div>
   `);
 }
 function estacionImprimir(){
   const d = estacionDatos();
-  const cub = d.cubetas.map((x,i)=>`<tr><td class="n">${i+1}</td><td>${esc(x.nombre)}<span class="p">${esc(x.productos.join(" · "))}</span></td></tr>`).join("");
-  const fue = d.fuera.map(x=>`<li>${esc(x.nombre)}</li>`).join("");
-  const pan = d.base.map(x=>`<li>${esc(x.nombre)}</li>`).join("");
+  const bin = (x,i)=>`<div class="bin"><span class="bn">${i+1}</span><span>${esc(x.nombre)}</span></div>`;
+  const bins = estBinsGrid(d.cubetas, bin).replace(/est-bins/g,"bins").replace(/est-col/g,"bcol");
+  const chips = d.fuera.map(x=>`<span class="chip">${esc(x.nombre)}</span>`).join("") || "—";
+  const panTxt = d.base.map(x=>esc(x.nombre)).join(" · ") || "—";
   const w = window.open("", "_blank"); if(!w) return;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Estación de trabajo · m de materia</title>
     <style>
       *{box-sizing:border-box} body{font-family:ui-monospace,'Courier Prime',monospace;background:#ece2d0;color:#2a332b;margin:0;padding:28px;}
       h1{font-size:20px;letter-spacing:.02em;margin:2px 0 0} .eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#6a7052}
-      .cols{display:flex;gap:26px;margin-top:18px;flex-wrap:wrap} .col{flex:1;min-width:240px}
-      h2{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#6a7052;border-bottom:1px solid #c9bfa8;padding-bottom:6px;margin:0 0 4px}
-      table{width:100%;border-collapse:collapse} td{padding:7px 0;vertical-align:top;font-size:14px;border-bottom:1px solid #d9cfb8}
-      td.n{width:26px;font-weight:800;color:#4a5a2e} .p{display:block;font-size:10px;color:#8a8770;margin-top:2px}
-      ul{list-style:none;padding:0;margin:0} li{padding:7px 0;font-size:14px;border-bottom:1px solid #d9cfb8}
-      .pie{margin-top:22px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8770}
-      @media print{ body{padding:0} @page{margin:14mm} }
+      .mesa{border:1.5px solid #b7ac93;border-radius:14px;padding:14px;margin-top:16px}
+      .mlbl{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#8a8770;margin-bottom:10px}
+      .bins{display:flex;gap:10px} .bcol{flex:1;display:flex;flex-direction:column;gap:8px}
+      .bin{display:flex;gap:8px;align-items:center;border:1px solid #c9bfa8;border-radius:8px;padding:10px;min-height:46px}
+      .bn{width:20px;height:20px;border-radius:5px;background:#4a5a2e;color:#ece2d0;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+      .zonas{display:flex;gap:10px;margin-top:12px;border-top:1px dashed #c9bfa8;padding-top:12px}
+      .zona{flex:1;border:1px solid #c9bfa8;border-radius:8px;padding:8px 10px}
+      .zt{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#4a5a2e;font-weight:800} .zs{font-size:11px;color:#6a7052;margin-top:4px}
+      .cond{margin-top:10px;border:1px solid #c9bfa8;border-radius:8px;padding:8px 10px}
+      .chip{display:inline-block;font-size:11px;border:1px solid #c9bfa8;border-radius:999px;padding:2px 9px;margin:3px 4px 0 0}
+      .pie{margin-top:18px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8770}
+      @media print{ body{padding:0} @page{margin:12mm} }
     </style></head><body onload="setTimeout(function(){window.print()},80)">
     <div class="eye">m de materia · el palo · mise en place</div>
     <h1>Estación de trabajo en frío</h1>
-    <div class="cols">
-      <div class="col"><h2>En cubetas</h2><table>${cub||'<tr><td>—</td></tr>'}</table></div>
-      <div class="col">
-        <h2>Fuera de la mesa · salsas y acabados</h2><ul>${fue||'<li>—</li>'}</ul>
-        <h2 style="margin-top:18px">Pan · montaje</h2><ul>${pan||'<li>—</li>'}</ul>
-        <h2 style="margin-top:18px">Flujo</h2><ul><li>1 · elegir pan</li><li>2 · calentar en sandwichera</li><li>3 · añadir ingredientes</li><li>4 · salsas y acabados</li><li>5 · servir</li></ul>
+    <div class="mesa">
+      <div class="mlbl">mesa refrigerada · cubetas gn 1/3 · 2–4 °C</div>
+      ${bins}
+      <div class="zonas">
+        <div class="zona"><div class="zt">Calor</div><div class="zs">sandwichera / panini</div></div>
+        <div class="zona"><div class="zt">Montaje</div><div class="zs">tabla + cuchillo · pan: ${panTxt}</div></div>
       </div>
+      <div class="cond"><div class="zt">Condimentos · fuera de la mesa</div><div class="zs" style="margin-top:6px">${chips}</div></div>
     </div>
-    <div class="pie">orden · claridad · precisión — mesa refrigerada 2–4 °C</div>
+    <div class="pie">orden · claridad · precisión — flujo: pan → calor → cubetas → salsas → servir</div>
   </body></html>`);
   w.document.close();
 }

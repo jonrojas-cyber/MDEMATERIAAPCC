@@ -1057,6 +1057,24 @@ test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje g
   expect(errors).toEqual([]);
 });
 
+test("estación de trabajo: mise en place derivada de la carta (cubetas + fuera de mesa)", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_estacion());
+  await expect(page.locator(".lim-h")).toContainText(/Estación de trabajo/);
+  // Cubetas derivadas de las recetas en carta.
+  await expect(page.locator("body")).toContainText(/Tomate huevo de toro/);
+  await expect(page.locator("body")).toContainText(/Jamón cocido/);
+  await expect(page.locator("body")).toContainText(/Pechuga de pollo/);
+  // Condimentos fuera de la mesa (salsas/acabados).
+  await expect(page.locator("body")).toContainText(/Mayonesa de chimichurri/);
+  await expect(page.locator("body")).toContainText(/AOVE/);
+  // La Tosta Equilibrio está «por definir» → no aporta cubetas inventadas.
+  await expect(page.locator("body")).not.toContainText(/edamame/i);
+  expect(errors).toEqual([]);
+});
+
 test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page }) => {
   await page.goto("/");
   await page.waitForSelector("#ubtn-Lara");

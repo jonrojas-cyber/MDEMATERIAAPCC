@@ -3219,12 +3219,43 @@ function irA_burbujas(){
   openSection("burbujas","Burbujas");
   limRender();
 }
-function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; window._lim.lote=null; limRender(); } }
-function limSetL(n){ window._lim.litros=Math.max(0,n); window._lim.prueba=false; limRender(); }
-function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); window._lim.prueba=false; limRender(); }
+function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; window._lim.lote=null; window._lim.limitaMsg=""; limRender(); } }
+function limSetL(n){ window._lim.litros=Math.max(0,n); window._lim.prueba=false; window._lim.limitaMsg=""; limRender(); }
+function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); window._lim.prueba=false; window._lim.limitaMsg=""; limRender(); }
 // Prueba de cata de 200 ml antes de prebachear el lote entero.
-function limPrueba(){ window._lim.prueba=true; limRender(); }
+function limPrueba(){ window._lim.prueba=true; window._lim.limitaMsg=""; limRender(); }
 function limPrebachear(){ window._lim.prueba=false; limRender(); }
+// ── Producir por INGREDIENTE LIMITANTE (compartido Burbujas/Spritz) ──────────
+// El que menos tienes marca el lote máximo: litros = lo que tienes / consumo por
+// litro. El resto de la receta y el resultado final se recalculan solos.
+function prodUnidadBase(valor, unidad){ const v=Math.max(0,parseFloat(String(valor).replace(",","."))||0); return (unidad==="L"||unidad==="kg")?v*1000:v; }
+function prodFmtCant(base, unidad){
+  if(unidad==="ml") return base>=1000?limNum(base/1000,2)+" L":limFmt(base)+" ml";
+  if(unidad==="g")  return base>=1000?limNum(base/1000,2)+" kg":limFmt(base)+" g";
+  return limFmt(base)+" "+esc(unidad);
+}
+// Ingredientes que pueden LIMITAR el lote y su consumo por litro (para aromáticos
+// se cuenta el CONCENTRADO, que es lo que guardas).
+function limIngLimitantes(r){
+  return (r.lineas||[]).map(li=>{
+    const b = li.cod && LIMONADAS_DATA.homemade[li.cod];
+    let perL=li.v, nombre=li.n;
+    if(b && b.perLitro && b.concentra>1){ perL=li.v/b.concentra; nombre=li.n+" · concentrado"; }
+    return { key:(li.cod||li.n), nombre, perL, unidad:li.u };
+  }).filter(x=>x.perL>0);
+}
+function limAplicarLimite(){
+  const r=LIMONADAS_DATA.recetas[window._lim.rk];
+  const selEl=el("lim-lim-ing"), valEl=el("lim-lim-cant"), uEl=el("lim-lim-u");
+  const ing=limIngLimitantes(r).find(x=>x.key===(selEl&&selEl.value)); if(!ing||!valEl) return;
+  const have=prodUnidadBase(valEl.value, uEl?uEl.value:ing.unidad);
+  if(!(have>0)){ alert("Indica cuánto tienes de "+ing.nombre); return; }
+  window._lim.litros=Math.round((have/ing.perL)*100)/100;
+  window._lim.prueba=false;
+  window._lim.limitaKey=ing.key;
+  window._lim.limitaMsg=`Limitado por <b>${esc(ing.nombre)}</b>: tienes ${prodFmtCant(have, ing.unidad)} → lote máximo <b>${limFmt(window._lim.litros)} L</b>.`;
+  limRender();
+}
 // ── Trazabilidad de producción · etiquetas por preparación y lote del prebache ──
 // Vida útil por tipo de preparación (super juice/agua ~5 d · cordial 21 d).
 function limVidaPrep(b){ return b&&b.tipo==="cordial"?21 : (b&&b.tipo==="comprado"?30 : 5); }
@@ -3339,6 +3370,17 @@ function limRender(){
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="lim-litros" type="number" min="0.5" step="0.5" value="${s.litros}" inputmode="decimal" oninput="limLeerLitros()" style="width:110px;"></div>
       <div class="lim-presets" style="margin:0;">${chips}</div>
     </div>
+    <div class="card" style="margin:0 0 12px;">
+      <div class="lim-eyebrow" style="margin-bottom:4px;">producir por ingrediente limitante</div>
+      <div class="card-meta" style="margin-bottom:8px;">¿Tienes poco de algo? Dime cuál y cuánto y calculo el lote máximo y el resto.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <select id="lim-lim-ing" style="min-width:150px;flex:1;">${limIngLimitantes(r).map(x=>`<option value="${esc(x.key)}" ${x.key===s.limitaKey?"selected":""}>${esc(x.nombre)}</option>`).join("")}</select>
+        <input id="lim-lim-cant" type="number" min="0" step="0.1" inputmode="decimal" placeholder="cuánto tienes" style="width:120px;">
+        <select id="lim-lim-u" style="width:64px;"><option>L</option><option>ml</option><option>kg</option><option>g</option></select>
+        <button class="btn-primary" onclick="limAplicarLimite()">calcular</button>
+      </div>
+    </div>
+    ${s.limitaMsg?`<div class="lim-nota" style="border-left-color:var(--olive);">${s.limitaMsg}</div>`:""}
     ${prueba?`<div class="lim-nota" style="border-left-color:var(--olive);"><b>Modo prueba · 200 ml.</b> Cantidades del resultado final para catar antes de prebachear el lote.</div>`:""}
     <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
     <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>${colTxt}</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
@@ -3831,8 +3873,22 @@ function irA_spritz(){
   openSection("spritz","Spritz");
   spzRender();
 }
-function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; window._spz.lote=null; spzRender(); } }
-function spzSetL(n){ window._spz.litros=Math.max(0,n); window._spz.prueba=false; spzRender(); }
+function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; window._spz.lote=null; window._spz.limitaMsg=""; spzRender(); } }
+function spzSetL(n){ window._spz.litros=Math.max(0,n); window._spz.prueba=false; window._spz.limitaMsg=""; spzRender(); }
+// Producir por ingrediente limitante (Spritz): el que menos tienes marca el lote.
+function spzIngLimitantes(r){ return (r.lineas||[]).map(li=>({ key:(li.ing||li.n), nombre:li.n, perL:li.v, unidad:li.u })).filter(x=>x.perL>0); }
+function spzAplicarLimite(){
+  const r=SPRITZ_DATA.recetas[window._spz.rk];
+  const selEl=el("spz-lim-ing"), valEl=el("spz-lim-cant"), uEl=el("spz-lim-u");
+  const ing=spzIngLimitantes(r).find(x=>x.key===(selEl&&selEl.value)); if(!ing||!valEl) return;
+  const have=prodUnidadBase(valEl.value, uEl?uEl.value:ing.unidad);
+  if(!(have>0)){ alert("Indica cuánto tienes de "+ing.nombre); return; }
+  window._spz.litros=Math.round((have/ing.perL)*100)/100;
+  window._spz.prueba=false;
+  window._spz.limitaKey=ing.key;
+  window._spz.limitaMsg=`Limitado por <b>${esc(ing.nombre)}</b>: tienes ${prodFmtCant(have, ing.unidad)} → lote máximo <b>${limFmt(window._spz.litros)} L</b>.`;
+  spzRender();
+}
 // Lote del prebache de Spritz: litros + hora exacta (sellada en servidor).
 async function spzGenerarLote(){
   const s=window._spz, r=SPRITZ_DATA.recetas[s.rk], L=s.litros;
@@ -3847,9 +3903,9 @@ function spzImprimirEtiquetaLote(){
   const s=window._spz, r=SPRITZ_DATA.recetas[s.rk], lote=s.lote; if(!lote) return;
   irA_etiquetaProd({ nombre:(lote.producto||r.prod)+" · "+lote.codigo, cantidad:limFmt(lote.litros)+" L", vidaDias:7 });
 }
-function spzLeerLitros(){ const i=el("spz-litros"); if(i) window._spz.litros=Math.max(0,parseFloat(i.value)||0); window._spz.prueba=false; spzRender(); }
+function spzLeerLitros(){ const i=el("spz-litros"); if(i) window._spz.litros=Math.max(0,parseFloat(i.value)||0); window._spz.prueba=false; window._spz.limitaMsg=""; spzRender(); }
 // Prueba de cata de 200 ml antes de prebachear el lote entero.
-function spzPrueba(){ window._spz.prueba=true; spzRender(); }
+function spzPrueba(){ window._spz.prueba=true; window._spz.limitaMsg=""; spzRender(); }
 function spzPrebachear(){ window._spz.prueba=false; spzRender(); }
 async function spzVerEnCarta(){ await irA_menu(); menuNivel(["spritz"]); }
 async function spzVerProducto(nombreProd){
@@ -3867,11 +3923,21 @@ function spzRender(){
   const chips=[2,5,16].map(n=>`<button class="${!prueba&&L===n?"on":""}" onclick="spzSetL(${n})">${n} L</button>`).join("")
     + `<button class="${prueba?"on":""}" onclick="spzPrueba()">prueba 200 ml</button>`;
   const head=`<div class="lim-head"><div><div class="lim-eyebrow">Control m · producción · carbonatado</div><div class="lim-h">Spritz · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>`;
+  const limita = r.pendiente ? "" : `<div class="card" style="margin:0 0 12px;">
+      <div class="lim-eyebrow" style="margin-bottom:4px;">producir por ingrediente limitante</div>
+      <div class="card-meta" style="margin-bottom:8px;">¿Tienes poco de algo (p. ej. Aperol)? Dime cuál y cuánto y calculo el lote máximo y el resto.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <select id="spz-lim-ing" style="min-width:150px;flex:1;">${spzIngLimitantes(r).map(x=>`<option value="${esc(x.key)}" ${x.key===s.limitaKey?"selected":""}>${esc(x.nombre)}</option>`).join("")}</select>
+        <input id="spz-lim-cant" type="number" min="0" step="0.1" inputmode="decimal" placeholder="cuánto tienes" style="width:120px;">
+        <select id="spz-lim-u" style="width:64px;"><option>L</option><option>ml</option><option>kg</option><option>g</option></select>
+        <button class="btn-primary" onclick="spzAplicarLimite()">calcular</button>
+      </div>
+    </div>${s.limitaMsg?`<div class="lim-nota" style="border-left-color:var(--olive);">${s.limitaMsg}</div>`:""}`;
   const controles=`<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="spz-rsel" onchange="spzSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="spz-litros" type="number" min="0.5" step="0.5" value="${s.litros}" inputmode="decimal" oninput="spzLeerLitros()" style="width:110px;"></div>
       <div class="lim-presets" style="margin:0;">${chips}</div>
-    </div>`;
+    </div>${limita}`;
 
   let cuerpo="";
   if(r.pendiente){

@@ -932,6 +932,19 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
   await expect(page.locator("body")).toContainText(/Aperol/);
   await expect(page.locator("body")).toContainText(/25 ml/);  // Aperol por lata 250 (400:600:3000)
   await expect(page.locator("body")).toContainText(/0,57 €/); // bebida por lata 250 ml
+  // Ingrediente limitante: 2 L de Aperol (100 ml/L) → lote máximo 20 L.
+  await page.evaluate(() => { spzSetRec("origen"); spzSetL(5); });
+  const lit = await page.evaluate(() => {
+    document.getElementById("spz-lim-ing").value = "aperol";
+    document.getElementById("spz-lim-cant").value = "2";
+    document.getElementById("spz-lim-u").value = "L";
+    spzAplicarLimite();
+    return window._spz.litros;
+  });
+  expect(lit).toBe(20);
+  await expect(page.locator("body")).toContainText(/lote máximo/);
+  await expect(page.locator(".lim-tab").first()).toContainText(/lote 20 L/);   // el lote entero escaló a 20 L
+  await page.evaluate(() => spzSetL(5));
   // Prueba de cata de 200 ml antes de prebachear (Origen): Aperol 100 ml/L → 20 ml.
   await page.evaluate(() => { spzSetRec("origen"); spzPrueba(); });
   await expect(page.locator("body")).toContainText(/Modo prueba · 200 ml/);

@@ -276,6 +276,7 @@ app.use("/api/mbds", require("./routes/mbds")); // laboratorio de bebidas (MBDS)
 // middleware `requerido` ya bloquea a los no-admin; cada ruta lo reafirma además.
 app.use("/api/executive-dashboard", require("./routes/executive-dashboard"));
 app.use("/api/financials", require("./routes/financials"));
+app.use("/api/ebitda", require("./routes/ebitda"));
 app.use("/api/fixed-costs", require("./routes/fixed-costs"));
 app.use("/api/debts", require("./routes/debts"));
 app.use("/api/assets", require("./routes/assets"));

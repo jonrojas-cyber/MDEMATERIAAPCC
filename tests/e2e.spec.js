@@ -930,9 +930,8 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
   await page.evaluate(() => { spzSetRec("origen"); spzSetL(5); });
   await expect(page.locator(".lim-h")).toContainText(/Spritz · Origen/);
   await expect(page.locator("body")).toContainText(/Aperol/);
-  await expect(page.locator("body")).toContainText(/25 ml/);  // Aperol por lata 250 (400:600:3000)
-  await expect(page.locator("body")).toContainText(/0,57 €/); // bebida por lata 250 ml
-  // Ingrediente limitante: 2 L de Aperol (100 ml/L) → lote máximo 20 L.
+  await expect(page.locator("body")).toContainText(/55,6 g/);  // Aperol por lata 250 (base 20:30:40 g)
+  // Ingrediente limitante: 2 L de Aperol (base 20:30:40 → 222 g/L) → lote máximo 9 L.
   await page.evaluate(() => { spzSetRec("origen"); spzSetL(5); });
   const lit = await page.evaluate(() => {
     document.getElementById("spz-lim-ing").value = "aperol";
@@ -941,16 +940,17 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
     spzAplicarLimite();
     return window._spz.litros;
   });
-  expect(lit).toBe(20);
+  expect(lit).toBe(9);
   await expect(page.locator("body")).toContainText(/lote máximo/);
-  await expect(page.locator(".lim-tab").first()).toContainText(/lote 20 L/);   // el lote entero escaló a 20 L
+  await expect(page.locator(".lim-tab").first()).toContainText(/lote 9 L/);
   await page.evaluate(() => spzSetL(5));
-  // Prueba de cata de 200 ml antes de prebachear (Origen): Aperol 100 ml/L → 20 ml.
+  // Prueba básica en gramos (20/30/40) antes de prebachear.
   await page.evaluate(() => { spzSetRec("origen"); spzPrueba(); });
-  await expect(page.locator("body")).toContainText(/Modo prueba · 200 ml/);
+  await expect(page.locator("body")).toContainText(/Pesa esta muestra/);   // banner solo en prueba
+  await expect(page.locator(".lim-tab").first()).toContainText(/90 g/);    // total base 20+30+40
   await expect(page.locator("body")).toContainText(/prebachear lote completo/);
   await page.evaluate(() => spzPrebachear());
-  await expect(page.locator("body")).not.toContainText(/Modo prueba/);
+  await expect(page.locator("body")).not.toContainText(/Pesa esta muestra/);
   // Colección aún es plantilla (receta pendiente).
   await page.evaluate(() => spzSetRec("coleccion"));
   await expect(page.locator("body")).toContainText(/Receta pendiente/);

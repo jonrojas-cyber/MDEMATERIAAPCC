@@ -5349,6 +5349,12 @@ function ccRender(d){
     ${ccDelta(b.vs_anterior&&b.vs_anterior.beneficio)}
     <div class="cc-mini">Ventas ${ccEur(b.ventas)} · Materia ${ccEur(b.coste_materia)} · Personal ${ccEur(b.coste_laboral)} · Fijos ${ccEur(b.gastos_fijos)}</div>
     <div class="cc-mini">Burn mensual ${ccEur(fin.monthly_burn)} · EBITDA mes ${ccEur(fin.ebitda_mes)}</div></button>`;
+  // EBITDA (dedicado): ventas − coste producto − personal − fijos (sin préstamos).
+  const ebitdaCard=`<button class="cc-card" onclick="irA_ebitda()">
+    <div class="cc-label">EBITDA · ${esc(d.periodo.label)}</div>
+    <div class="cc-kpi">${ccEur(fin.ebitda_mes)}<span class="cc-score-max">/mes</span></div>
+    <div class="cc-mini">Ventas − coste de producto − personal − fijos · sin préstamos</div>
+    <div class="cc-mini cc-accent">${fin.margen_mes_pct!=null?'Margen '+fin.margen_mes_pct+'% · ':''}pincha para la cuenta de resultados →</div></button>`;
   // Operaciones (estado del día unificado)
   const opCard=`<button class="cc-card" onclick="irA_tareas()">
     <div class="cc-label">Operaciones · hoy</div>
@@ -5410,7 +5416,7 @@ function ccRender(d){
 
   return `${ccFiltroHTML()}
     <div class="cc-grid">
-      ${saludCard}${beCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${opCard}${capCard}
+      ${saludCard}${beCard}${ebitdaCard}${benCard}${costeCard}${valorCard}${tesCard}${deudaCard}${equipoCard}${opCard}${capCard}
     </div>
     ${objCard}
     ${copCard}
@@ -5528,6 +5534,26 @@ function irA_beneficio(){
       <div class="cc-line cc-total"><span>Beneficio neto estimado</span><b>${ccEur(b.beneficio_neto_estimado)}</b></div></div>
     <div class="cc-card"><div class="cc-mini">Food cost ${b.food_cost_pct!=null?b.food_cost_pct+'%':'—'} · Coste laboral ${b.coste_laboral_pct!=null?b.coste_laboral_pct+'%':'—'} · Margen operativo ${b.margen_operativo_pct!=null?b.margen_operativo_pct+'%':'—'}</div>
       ${b.proyeccion_mes!=null?`<div class="cc-mini cc-accent">Proyección a fin de mes: ${ccEur(b.proyeccion_mes)}</div>`:""}</div>`);
+}
+// ── Detalle: EBITDA · cuenta de resultados en vivo ─────────────────────────
+async function irA_ebitda(){
+  ccVolver(); openSection("cc-ebitda","EBITDA");
+  try{
+    const e=await api("/ebitda");
+    const m=e.mes||{}, a=e.anio||{};
+    const linea=(l,val,neg)=>`<div class="cc-line"><span>${l}</span><b>${neg?'−':''}${ccEur(val)}</b></div>`;
+    const cubre=(m.ebitda||0)>=(e.cuota_creditos_mes||0);
+    setInner(`
+      <div class="cc-card cc-hero-single"><div class="cc-label">EBITDA · mes en curso</div><div class="cc-kpi cc-big">${ccEur(m.ebitda)}</div><div class="cc-mini">${m.margen_pct!=null?'Margen '+m.margen_pct+'% · ':''}contribución de carta ${e.contribucion_pct!=null?e.contribucion_pct+'%':'—'}</div></div>
+      ${e.sin_ventas?`<div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Aún sin ventas registradas.</b> El EBITDA sale negativo por los costes fijos; conecta Ágora y entrará solo. De momento es la foto del coste de existir.</div>`:""}
+      <div class="cc-card">${linea("Ventas",m.ventas)}${linea("− Coste de producto",m.coste_producto,true)}${linea("− Coste laboral",m.coste_laboral,true)}${linea("− Gastos variables",m.gastos_variables,true)}${linea("− Gastos fijos",m.gastos_fijos,true)}
+        <div class="cc-line cc-total"><span>EBITDA</span><b>${ccEur(m.ebitda)}</b></div></div>
+      <div class="cc-grid">
+        <div class="cc-card"><div class="cc-label">EBITDA · año en curso</div><div class="cc-kpi">${ccEur(a.ebitda)}</div><div class="cc-mini">Ventas ${ccEur(a.ventas)} · margen ${a.margen_pct!=null?a.margen_pct+'%':'—'}</div></div>
+        <div class="cc-card"><div class="cc-label">¿Cubre los préstamos?</div><div class="cc-kpi" style="color:${cubre?'var(--olive)':'var(--alert)'};">${cubre?'Sí':'No'}</div><div class="cc-mini">EBITDA ${ccEur(m.ebitda)}/mes vs cuota ${ccEur(e.cuota_creditos_mes)}/mes</div></div></div>
+      <div class="cc-card"><div class="cc-mini">EBITDA = ventas − coste de producto − personal − fijos. NO resta las cuotas/intereses de los préstamos (van por debajo del EBITDA). Punto de equilibrio del mes: ${e.equilibrio_mes!=null?ccEur(e.equilibrio_mes):'—'} · con créditos ${e.equilibrio_con_creditos_mes!=null?ccEur(e.equilibrio_con_creditos_mes):'—'}.</div></div>
+    `);
+  }catch(err){ setInner(`<div class="err">${esc(err.message)}</div>`); }
 }
 // ── Detalle: Equipo ────────────────────────────────────────────────────────
 function irA_equipo(){

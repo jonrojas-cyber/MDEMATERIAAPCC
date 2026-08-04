@@ -1101,3 +1101,31 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   await expect(page.locator("body")).not.toContainText(/Escandallo/);    // pero NO costes
   await expect(page.locator("body")).not.toContainText(/food cost/);
 });
+
+test("EBITDA: cuenta de resultados en vivo (admin)", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  const e = await page.evaluate(async () => await api("/ebitda"));
+  expect(typeof e.mes.ebitda).toBe("number");                 // EBITDA del mes es un número
+  expect(e).toHaveProperty("cuota_creditos_mes");
+  await page.evaluate(() => irA_ebitda());
+  await expect(page.locator("body")).toContainText(/EBITDA/);
+  await expect(page.locator("body")).toContainText(/Cubre los préstamos/);
+  await expect(page.locator("body")).toContainText(/Punto de equilibrio/);
+  expect(errors).toEqual([]);
+});
+
+test("EBITDA: el trabajador NO puede consultarlo", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara");
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  const blocked = await page.evaluate(async () => {
+    try { await api("/ebitda"); return false; }   // no debería devolver datos
+    catch (e) { return true; }                     // bloqueado (403)
+  });
+  expect(blocked).toBe(true);
+});

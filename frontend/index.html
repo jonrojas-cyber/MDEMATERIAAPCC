@@ -3848,21 +3848,25 @@ const SPRITZ_DATA = {
   recetas: {
     origen: {
       nombre:"Origen", sabor:"Aperol · Chardonnay Pernales", prod:"Spritz Origen", pvp:"",
-      // Proporción 400 Aperol : 600 vino : 3000 agua (total 4000) → por litro de mezcla.
+      // PRUEBA BÁSICA (fuente única, en gramos de báscula): Aperol 20 · Chardonnay 30
+      // · agua 40 (ratio 2:3:4). El lote escala esta base por litros.
       lineas: [
-        { n:"Aperol",              v:100, u:"ml", ing:"aperol" },     // 25 ml / lata 250
-        { n:"Chardonnay Pernales", v:150, u:"ml", ing:"chardonnay" }, // 37,5 ml / lata 250
-        { n:"Agua filtrada",       v:750, u:"ml", ing:"agua" },       // 187,5 ml / lata 250
+        { n:"Aperol",              v:20, u:"g", ing:"aperol" },
+        { n:"Chardonnay Pernales", v:30, u:"g", ing:"chardonnay" },
+        { n:"Agua filtrada",       v:40, u:"g", ing:"agua" },
       ],
-      nota:"Proporción 400 : 600 : 3000 (Aperol · vino · agua). En lata de 250 ml: Aperol 25 ml + vino 37,5 ml + agua 187,5 ml. Bebida ~0,57 €/lata (mezcla 0,51 € + CO₂ y agua ~0,06 €); a eso hay que sumar lata, tapa, etiqueta, mano de obra y mermas. El Chardonnay lleva +21 % de IVA no incluido en estas cifras."
+      nota:"Prueba básica en gramos: Aperol 20 g · Chardonnay 30 g · agua 40 g (ratio 2:3:4). El lote escala esta base. El Chardonnay lleva +21 % de IVA no incluido. Falta por lata: lata, tapa, etiqueta, mano de obra y mermas."
     },
     equilibrio: { nombre:"Equilibrio", sabor:"por definir", prod:"Spritz Equilibrio", pendiente:true },
     coleccion:  { nombre:"Colección",  sabor:"por definir", prod:"Spritz Colección",  pendiente:true },
   }
 };
 function spzEur(x){ return (Math.round((Number(x)||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
+// Total en gramos de la prueba básica (base de escalado). g ≈ ml (densidad ~1).
+function spzBaseTotal(r){ return (r.lineas||[]).reduce((s,li)=>s+(li.v||0),0)||1; }
 function spzCosteMezclaL(r){ // €/L de mezcla (neto, criterio del escandallo)
-  return (r.lineas||[]).reduce((s,li)=>{ const ing=SPRITZ_DATA.ingredientes[li.ing]; return s+(ing?ing.precioL:0)*li.v/1000; },0);
+  const bt=spzBaseTotal(r);
+  return (r.lineas||[]).reduce((s,li)=>{ const ing=SPRITZ_DATA.ingredientes[li.ing]; return s+(ing?ing.precioL:0)*li.v/bt; },0);
 }
 function spzTecnicosL(){ return SPRITZ_DATA.tecnicosL || 0; } // €/L (CO₂ + agua)
 
@@ -3876,7 +3880,7 @@ function irA_spritz(){
 function spzSetRec(rk){ if(SPRITZ_DATA.recetas[rk]){ window._spz.rk=rk; window._spz.lote=null; window._spz.limitaMsg=""; spzRender(); } }
 function spzSetL(n){ window._spz.litros=Math.max(0,n); window._spz.prueba=false; window._spz.limitaMsg=""; spzRender(); }
 // Producir por ingrediente limitante (Spritz): el que menos tienes marca el lote.
-function spzIngLimitantes(r){ return (r.lineas||[]).map(li=>({ key:(li.ing||li.n), nombre:li.n, perL:li.v, unidad:li.u })).filter(x=>x.perL>0); }
+function spzIngLimitantes(r){ const bt=spzBaseTotal(r); return (r.lineas||[]).map(li=>({ key:(li.ing||li.n), nombre:li.n, perL:li.v*1000/bt, unidad:li.u })).filter(x=>x.perL>0); }
 function spzAplicarLimite(){
   const r=SPRITZ_DATA.recetas[window._spz.rk];
   const selEl=el("spz-lim-ing"), valEl=el("spz-lim-cant"), uEl=el("spz-lim-u");
@@ -3917,11 +3921,11 @@ async function spzVerProducto(nombreProd){
 
 function spzRender(){
   const s=window._spz, r=SPRITZ_DATA.recetas[s.rk];
-  const prueba = !!s.prueba, L = prueba ? 0.2 : s.litros;   // prueba = 200 ml de resultado final
-  const volTxt = prueba ? "200 ml · prueba" : limFmt(L)+" L";
+  const prueba = !!s.prueba, L = s.litros, bt = spzBaseTotal(r);
+  const volTxt = prueba ? "prueba básica" : limFmt(L)+" L";
   const recSel=Object.entries(SPRITZ_DATA.recetas).map(([k,x])=>`<option value="${k}" ${k===s.rk?"selected":""}>${esc(x.nombre)} · ${esc(x.sabor)}</option>`).join("");
   const chips=[2,5,16].map(n=>`<button class="${!prueba&&L===n?"on":""}" onclick="spzSetL(${n})">${n} L</button>`).join("")
-    + `<button class="${prueba?"on":""}" onclick="spzPrueba()">prueba 200 ml</button>`;
+    + `<button class="${prueba?"on":""}" onclick="spzPrueba()">prueba básica</button>`;
   const head=`<div class="lim-head"><div><div class="lim-eyebrow">Control m · producción · carbonatado</div><div class="lim-h">Spritz · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>`;
   const limita = r.pendiente ? "" : `<div class="card" style="margin:0 0 12px;">
       <div class="lim-eyebrow" style="margin-bottom:4px;">producir por ingrediente limitante</div>
@@ -3943,14 +3947,14 @@ function spzRender(){
   if(r.pendiente){
     cuerpo=`<div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Receta pendiente.</b> Pásame la receta de <b>Spritz ${esc(r.nombre)}</b> (ingredientes y cantidades por vaso) y la cierro aquí con su escandallo, igual que Origen.</div>`;
   } else if(prueba){
-    const rowsP=r.lineas.map(li=>`<tr><td class="n">${esc(li.n)}</td><td class="q big">${limFmt(li.v*0.2)} ${esc(li.u)}</td></tr>`).join("");
+    const rowsP=r.lineas.map(li=>`<tr><td class="n">${esc(li.n)}</td><td class="q big">${limFmt(li.v)} ${esc(li.u)}</td></tr>`).join("");
     cuerpo=`
-      <div class="lim-nota" style="border-left-color:var(--olive);"><b>Modo prueba · 200 ml.</b> Cantidades del resultado final para catar antes de prebachear el lote.</div>
-      <table class="lim-tab"><thead><tr><th>componente</th><th>prueba 200 ml</th></tr></thead><tbody>${rowsP}
-        <tr class="tot"><td class="n">Total</td><td class="q big">200 ml</td></tr></tbody></table>
-      <div class="section-label" style="margin-top:18px;">Prueba de cata · 200 ml</div>
+      <div class="lim-nota" style="border-left-color:var(--olive);"><b>Prueba básica.</b> Pesa esta muestra (${limFmt(bt)} g) y cátala antes de prebachear el lote.</div>
+      <table class="lim-tab"><thead><tr><th>componente</th><th>prueba básica</th></tr></thead><tbody>${rowsP}
+        <tr class="tot"><td class="n">Total</td><td class="q big">${limFmt(bt)} g</td></tr></tbody></table>
+      <div class="section-label" style="margin-top:18px;">Cata</div>
       <div class="card" style="border-left:3px solid var(--olive);">
-        <div style="font-weight:700;margin-bottom:6px;">Antes de prebachear el lote, monta esta muestra de 200 ml y cátala.</div>
+        <div style="font-weight:700;margin-bottom:6px;">Pesa la prueba básica en gramos, carbonata y cata.</div>
         <div class="lim-prem-row" style="margin-top:6px;">1 · Equilibrio del amargo (Aperol) con el vino y el agua.</div>
         <div class="lim-prem-row">2 · Dulzor y acidez en su punto.</div>
         <div class="lim-prem-row">3 · Al carbonatar: burbuja fina, sin espuma excesiva.</div>
@@ -3960,13 +3964,13 @@ function spzRender(){
       </div>`;
   } else {
     const costeL=spzCosteMezclaL(r), tecL=spzTecnicosL();
-    const lataL=(SPRITZ_DATA.lataMl||250)/1000;                 // 0,25 L por lata
+    const lataMl=(SPRITZ_DATA.lataMl||250), lataL=lataMl/1000;   // 0,25 L por lata
     const costeLata=(costeL+tecL)*lataL;                        // bebida por lata 250 ml
     const nLatas=lataL>0?L/lataL:0;                             // latas que salen del lote
     const rows=r.lineas.map(li=>{
       const ing=SPRITZ_DATA.ingredientes[li.ing];
-      const porLata=li.v*lataL;                                 // ml por lata 250
-      const total=li.v*L;
+      const porLata=li.v*lataMl/bt;                             // g por lata 250
+      const total=li.v*1000*L/bt;                               // g del lote
       const costeComp=(ing?ing.precioL:0)*total/1000;
       const ivaTag=ing&&ing.iva?`<small>+ IVA</small>`:"";
       return `<tr><td class="n">${esc(li.n)}${ivaTag}</td><td class="q">${limFmt(porLata)} ${esc(li.u)}</td><td class="q big">${limFmt(total)} ${esc(li.u)}</td><td class="q">${costeComp>0?spzEur(costeComp):"—"}</td></tr>`;
@@ -3983,9 +3987,10 @@ function spzRender(){
     // Escandallo POR LATA de 250 ml (unidad de venta).
     const escFilas=r.lineas.map(li=>{
       const ing=SPRITZ_DATA.ingredientes[li.ing];
-      const c=(ing?ing.precioL:0)*li.v*lataL/1000;
+      const gLata=li.v*lataMl/bt;                               // g por lata 250
+      const c=(ing?ing.precioL:0)*gLata/1000;
       const ivaTag=ing&&ing.iva?`<small>+ IVA</small>`:"";
-      return `<tr><td class="n">${esc(li.n)} <small>${limFmt(li.v*lataL)} ml</small>${ivaTag}</td><td class="q">${c>0?spzEur(c):"—"}</td></tr>`;
+      return `<tr><td class="n">${esc(li.n)} <small>${limFmt(gLata)} g</small>${ivaTag}</td><td class="q">${c>0?spzEur(c):"—"}</td></tr>`;
     }).join("");
     const escandallo=`<div class="section-label" style="margin-top:6px;">Escandallo · lata 250 ml</div>
       <table class="lim-tab"><tbody>

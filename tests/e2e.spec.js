@@ -1102,6 +1102,32 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   await expect(page.locator("body")).not.toContainText(/food cost/);
 });
 
+test("etiquetas: prueba manual (nombre a mano + estado 'Por testear' + vida útil libre)", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_etiquetaProd());
+  await expect(page.locator("body")).toContainText(/estado · pruebas/i);
+  await expect(page.locator("body")).toContainText(/Por testear/);
+  // Escribe a mano algo que nunca ha estado en carta y marca su estado de prueba.
+  const url = await page.evaluate(() => {
+    document.getElementById("etq-nombre").value = "sirope de té chai";
+    document.getElementById("etq-nota").value = "prueba 2";
+    etqLeer();
+    etqEstado("Prueba");
+    let opened = null;
+    const orig = window.open; window.open = (u) => { opened = u; return null; };
+    etqGenerar();
+    window.open = orig;
+    return opened;
+  });
+  expect(url).toContain("/etiqueta/prep");
+  const dec = decodeURIComponent(url).replace(/\+/g, " ");
+  expect(dec).toContain("n=sirope de té chai");
+  expect(dec).toContain("est=Prueba · prueba 2");
+  expect(errors).toEqual([]);
+});
+
 test("EBITDA: cuenta de resultados en vivo (admin)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

@@ -15,7 +15,7 @@ function urlFichaLote(req, loteId) {
 function urlFichaPrep(req, q) {
   const host = req ? `${req.protocol}://${req.get("host")}` : "http://localhost:4001";
   const usp = new URLSearchParams();
-  ["n", "c", "v", "r", "p", "code", "et"].forEach((k) => { if (q[k] != null && q[k] !== "") usp.set(k, q[k]); });
+  ["n", "c", "v", "r", "p", "code", "et", "est"].forEach((k) => { if (q[k] != null && q[k] !== "") usp.set(k, q[k]); });
   return `${host}/p?${usp.toString()}`;
 }
 
@@ -135,6 +135,9 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   .meta dd { font-size: 8px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
   .meta dd.big { font-size: 9px; }
   .codigo { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; white-space: nowrap; }
+  /* Estado de prueba / I+D: destaca que NO es un producto de carta. */
+  .prueba { font-size: 6.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+            border: 0.2mm solid #000; border-radius: 0.6mm; padding: 0.2mm 1mm; display: inline-block; margin-top: 0.7mm; }
   /* QR con marco fino de boticario y pie tracked. */
   .qr { width: 23mm; flex: 0 0 23mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .qr .frame { border: 0.2mm solid #000; padding: 0.6mm; background: #fff; }
@@ -150,6 +153,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       <div class="brand"><span class="word">m · de · materia</span><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span></div>
       <div class="rule"></div>
       <div class="nombre">${nombre}</div>
+      ${lote.prueba ? `<div class="prueba">${escapeHTML(lote.prueba)}</div>` : ""}
       <dl class="meta">
         <dt>elaborado</dt><dd>${fechaSello(lote.producido_en)}</dd>
         <dt>${escapeHTML(venceLabel || "consumir").toLowerCase()}</dt><dd class="big">${fechaSello(lote.caduca_en)}</dd>
@@ -232,6 +236,7 @@ function renderFichaLoteHTML({ lote, receta, materias, responsable, venceLabel }
   <div class="marca">m de materia · trazabilidad</div>
   <h1>${nombre}</h1>
   <div class="codigo">${escapeHTML(lote.codigo)}</div>
+  ${lote.prueba ? `<div style="text-align:center;margin:0 0 16px;"><span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--olive);border:1px solid var(--olive);border-radius:6px;padding:5px 12px;display:inline-block;">${escapeHTML(lote.prueba)}</span></div>` : ""}
 
   <div class="vida" id="vida">
     <div class="estado-txt" id="estado">Calculando…</div>

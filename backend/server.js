@@ -72,14 +72,15 @@ function prepDatos(q) {
   // de Málaga (no UTC del servidor) para que coincida con la hora mostrada.
   const pm = require("./tz").partes(producido);
   const code = q.code ? String(q.code).slice(0, 40) : `${ini}-${pm.day}${pm.month}-${pm.hour}${pm.minute}`;
-  return { nombre, cantidad, vidaH, producidoISO: producido.toISOString(), caducaISO: caduca ? caduca.toISOString() : null, code };
+  const estado = q.est ? String(q.est).slice(0, 40) : ""; // estado de prueba/I+D (Prueba, Por testear…)
+  return { nombre, cantidad, vidaH, producidoISO: producido.toISOString(), caducaISO: caduca ? caduca.toISOString() : null, code, estado };
 }
 
 app.get("/etiqueta/prep", async (req, res) => {
   const labelService = require("./label-service");
   try {
     const d = prepDatos(req.query);
-    const lote = { id: "prep", codigo: d.code, receta_id: d.nombre, producido_en: d.producidoISO, caduca_en: d.caducaISO };
+    const lote = { id: "prep", codigo: d.code, receta_id: d.nombre, producido_en: d.producidoISO, caduca_en: d.caducaISO, prueba: d.estado };
     const html = await labelService.renderEtiquetaHTML(req, {
       lote,
       receta: null,
@@ -102,7 +103,7 @@ app.get("/p", (req, res) => {
       id: "prep", codigo: d.code, receta_id: d.nombre,
       producido_en: d.producidoISO, caduca_en: d.caducaISO,
       cantidad_inicial: d.cantidad || "", estado: "Correcto",
-      responsable: req.query.r || null,
+      responsable: req.query.r || null, prueba: d.estado,
     };
     // et: etiqueta del campo de vencimiento (p. ej. "Maceración lista" en cold
     // brew, en vez de "Consumir antes"). El contador de tiempo es el mismo.

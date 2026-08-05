@@ -4473,6 +4473,8 @@ const ETQ_VIDAS = [
   { h:12,  t:"12 h" }, { h:24, t:"1 día" }, { h:72, t:"3 días" },
   { h:168, t:"1 sem" }, { h:336, t:"2 sem" }, { h:720, t:"1 mes" },
 ];
+// Estados de prueba / I+D: para etiquetar cosas que NO están en carta (pruebas).
+const ETQ_ESTADOS = [ { k:"Prueba", t:"Prueba" }, { k:"Por testear", t:"Por testear" }, { k:"Aprobado", t:"Aprobado" } ];
 function irA_etiquetaProd(pre){
   pre = pre || {};
   const u = getUser();
@@ -4481,18 +4483,22 @@ function irA_etiquetaProd(pre){
     cantidad: pre.cantidad || "",
     vidaH: pre.vidaDias != null ? pre.vidaDias * 24 : (pre.vidaH != null ? pre.vidaH : 72),
     resp: (u && u.nombre) || "",
+    estado: pre.estado || "",
+    nota: pre.nota || "",
   };
   navReset(); openSection("etiquetaprod", "Etiqueta de producción");
   etqRender();
 }
 function etqLeer(){
   const s=window._etq;
-  const n=el("etq-nombre"), c=el("etq-cant"), r=el("etq-resp");
+  const n=el("etq-nombre"), c=el("etq-cant"), r=el("etq-resp"), no=el("etq-nota");
   if(n) s.nombre=n.value.trim();
   if(c) s.cantidad=c.value.trim();
   if(r) s.resp=r.value.trim();
+  if(no) s.nota=no.value.trim();
 }
 function etqPreset(nombre, vidaDias){ etqLeer(); const s=window._etq; s.nombre=nombre; if(vidaDias!=null) s.vidaH=vidaDias*24; etqRender(); }
+function etqEstado(k){ etqLeer(); window._etq.estado = (window._etq.estado===k ? "" : k); etqRender(); }
 function etqVida(h){ etqLeer(); window._etq.vidaH=h; etqRender(); }
 function etqVidaLibre(dias){ const d=Math.max(0,parseFloat(dias)||0); window._etq.vidaH=d*24; const box=el("etq-vida-libre-val"); if(box) box.textContent=d?`${limNum(d,1)} días de vida útil`:""; document.querySelectorAll("#etq .lim-presets button").forEach(b=>b.classList.remove("on")); }
 function etqRender(){
@@ -4502,11 +4508,15 @@ function etqRender(){
     </div>`;
   const chips=ETQ_PRODUCTOS.map(p=>`<button class="${s.nombre===p.n?"on":""}" onclick="etqPreset('${p.n.replace(/'/g,"\\'")}',${p.v})">${esc(p.n)}</button>`).join("");
   const vidas=ETQ_VIDAS.map(v=>`<button class="${s.vidaH===v.h?"on":""}" onclick="etqVida(${v.h})">${v.t}</button>`).join("");
-  const body=`<div class="lim-lead">Datea cualquier cosa que preparas. Eliges el producto, la cantidad y la vida útil; la etiqueta lleva un QR que te dice el tiempo que lleva en vivo.</div>
-    <div class="lim-eyebrow" style="margin-bottom:6px">producto</div>
+  const estados=ETQ_ESTADOS.map(e=>`<button class="${s.estado===e.k?"on":""}" onclick="etqEstado('${e.k}')">${esc(e.t)}</button>`).join("");
+  const body=`<div class="lim-lead">Datea cualquier cosa que preparas —también pruebas que no están en carta—: escribes el nombre a mano, la cantidad y la vida útil, y sale con la fecha, un QR y (si quieres) su estado de prueba.</div>
+    <div class="lim-eyebrow" style="margin-bottom:6px">producto (o escríbelo a mano)</div>
     <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${chips}</div>
-    <input id="etq-nombre" class="etq-in" type="text" placeholder="nombre del producto" value="${esc(s.nombre)}" oninput="etqLeer()" style="margin-top:10px">
+    <input id="etq-nombre" class="etq-in" type="text" placeholder="nombre · ej. sirope de té chai" value="${esc(s.nombre)}" oninput="etqLeer()" style="margin-top:10px">
     <input id="etq-cant" class="etq-in" type="text" placeholder="cantidad · ej. 601 ml, 2 L, 30 uds" value="${esc(s.cantidad)}" oninput="etqLeer()">
+    <div class="lim-eyebrow" style="margin:16px 0 6px">estado · pruebas (opcional)</div>
+    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${estados}</div>
+    <input id="etq-nota" class="etq-in" type="text" placeholder="nº o nota de prueba · ej. prueba 2, v3" value="${esc(s.nota)}" oninput="etqLeer()">
     <div class="lim-eyebrow" style="margin:16px 0 6px">vida útil</div>
     <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${vidas}</div>
     <div class="etq-libre"><input id="etq-vida-libre" type="number" min="0" step="0.5" placeholder="otros" inputmode="decimal" oninput="etqVidaLibre(this.value)"><span>días</span><span id="etq-vida-libre-val" class="etq-libre-val"></span></div>
@@ -4525,6 +4535,8 @@ function etqGenerar(){
   if(s.cantidad) qs.set("c", s.cantidad);
   if(s.vidaH>0) qs.set("v", s.vidaH);
   if(s.resp) qs.set("r", s.resp);
+  const est=[s.estado, s.nota].filter(Boolean).join(" · ");   // ej. "Prueba · prueba 2"
+  if(est) qs.set("est", est);
   qs.set("p", new Date().toISOString()); // sella el momento de la impresión
   qs.set("print", "1");
   window.open("/etiqueta/prep?"+qs.toString(), "_blank");

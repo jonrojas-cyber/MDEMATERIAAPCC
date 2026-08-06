@@ -1088,6 +1088,24 @@ test("estación de trabajo: mise en place derivada de la carta (cubetas + fuera 
   expect(errors).toEqual([]);
 });
 
+test("plan de producción: checklist diario que se marca + pauta semanal", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_planProduccion());
+  await expect(page.locator(".lim-h")).toContainText(/Plan de producción/);
+  // Diario y semanal transcritos de la pizarra.
+  await expect(page.locator("body")).toContainText(/Picar tomate/);
+  await expect(page.locator("body")).toContainText(/Sirope de chai/);
+  await expect(page.locator("body")).toContainText(/3×\/sem/);
+  // Marcar la primera tarea del diario se persiste en el dispositivo.
+  await page.locator(".plan-row").first().click();
+  const marcado = await page.evaluate(() => planHechos().has("d0"));
+  expect(marcado).toBe(true);
+  await expect(page.locator(".plan-row").first()).toHaveClass(/on/);
+  expect(errors).toEqual([]);
+});
+
 test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page }) => {
   await page.goto("/");
   await page.waitForSelector("#ubtn-Lara");

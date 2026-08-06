@@ -1760,6 +1760,12 @@ button.cc-card:hover { border-color: var(--ink); }
 .plan-sub { font-size:11px; color:var(--muted); margin-top:3px; }
 .plan-row.plan-ref { cursor:default; }
 .plan-freq { flex:0 0 auto; min-width:52px; text-align:center; font-size:10px; font-weight:700; color:var(--olive); background:rgba(120,132,74,.14); border-radius:20px; padding:4px 8px; margin-top:1px; }
+.lim-dias { display:flex; gap:8px; margin:18px 0 4px; }
+.lim-dia { flex:1; display:flex; flex-direction:column; gap:2px; align-items:flex-start; text-align:left; background:none; border:1px solid var(--line); border-radius:12px; padding:9px 11px; color:var(--muted); cursor:pointer; font:inherit; }
+.lim-dia b { font-size:13px; color:var(--ink); }
+.lim-dia span { font-size:10px; line-height:1.25; }
+.lim-dia.on { border-color:var(--olive); background:rgba(120,132,74,.12); }
+.lim-dia.on b { color:var(--olive); }
 .lim-prem-row { font-size:12px; padding:3px 0; }
 .lim-prem-row b { color:var(--olive); }
 .lim-bolsas { margin-top:8px; font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; display:inline-block; }
@@ -3225,16 +3231,21 @@ function limFmt(x){
 function irA_burbujas(){
   navInto(()=>irA_mbds());
   const keys=Object.keys(LIMONADAS_DATA.recetas);
-  if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16 };
+  if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16, dia:1, carbonatar:null };
   openSection("burbujas","Burbujas");
   limRender();
 }
 function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; window._lim.lote=null; window._lim.limitaMsg=""; limRender(); } }
 function limSetL(n){ window._lim.litros=Math.max(0,n); window._lim.prueba=false; window._lim.limitaMsg=""; limRender(); }
 function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); window._lim.prueba=false; window._lim.limitaMsg=""; limRender(); }
-// Prueba de cata de 200 ml antes de prebachear el lote entero.
-function limPrueba(){ window._lim.prueba=true; window._lim.limitaMsg=""; limRender(); }
-function limPrebachear(){ window._lim.prueba=false; limRender(); }
+// Prueba de cata de 200 ml antes de prebachear el lote entero (Día 3).
+function limPrueba(){ window._lim.prueba=true; window._lim.dia=3; window._lim.limitaMsg=""; limRender(); }
+function limPrebachear(){ window._lim.prueba=false; window._lim.dia=3; limRender(); }
+// Producción en 3 días: Día 1 super juice + clarificado · Día 2 trasiego · Día 3 prebache/carbonatación/enlatado.
+function limSetDia(n){ window._lim.dia=n; window._lim.prueba=false; limRender(); }
+function limToggleCarbonatar(v){ window._lim.carbonatar=v; limRender(); }
+// Etiqueta del super juice mientras clarifica / ya clarificado (vida útil corta en frío).
+function limEtiquetaClarificando(txt){ const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk]; irA_etiquetaProd({ nombre:"Super juice "+r.nombre+" · "+(txt||"clarificando"), cantidad:limFmt(s.litros)+" L", vidaDias:3 }); }
 // ── Producir por INGREDIENTE LIMITANTE (compartido Burbujas/Spritz) ──────────
 // El que menos tienes marca el lote máximo: litros = lo que tienes / consumo por
 // litro. El resto de la receta y el resultado final se recalculan solos.
@@ -3357,21 +3368,71 @@ function limRender(){
       <div class="lim-prem-row">Hora exacta · ${esc(limFechaHora(lote.fecha))}</div>
       <div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="limImprimirEtiquetaLote()">🏷️ imprimir etiqueta del lote</button></div>
     </div>` : "";
-  const bloqueLote = `
-    <div class="section-label" style="margin-top:24px;">Homemade · preparar antes · para ${limFmt(L)} L</div>
+  // ── Producción en 3 días (desestructurada) ──────────────────────────────────
+  const premezHTML = `<div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>`;
+  // DÍA 1 · super juice + aromáticos + clarificado con pectinasa.
+  const dia1HTML = `
+    <div class="section-label" style="margin-top:20px;">Día 1 · Homemade · preparar antes · para ${limFmt(L)} L</div>
     ${limPrepHTML(r, L)}
     <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
-    <div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>
-    <div class="section-label" style="margin-top:16px;">Registrar producción · lote</div>
+    ${premezHTML}
+    <div class="section-label" style="margin-top:16px;">Clarificar con pectinasa</div>
+    <div class="card" style="border-left:3px solid var(--olive);">
+      <div style="font-weight:700;margin-bottom:6px;">Cuando el super juice esté filtrado (V60), clarifícalo.</div>
+      <div class="lim-prem-row">1 · Dosifica <b>pectinasa (Pectinex Ultra SP-L) · 2 g/L</b> (0,2 %) sobre el super juice y remueve.</div>
+      <div class="lim-prem-row">2 · Tápalo y déjalo <b>clarificando en frío 12–24 h</b>: la enzima rompe la pectina y la pulpa decanta al fondo.</div>
+      <div class="lim-prem-row">3 · Mañana pasas al <b>Día 2</b> · trasiego del líquido limpio.</div>
+      <div class="card-meta" style="margin-top:6px;">Referencia: para ${limFmt(L)} L ≈ <b>${limFmt(L*2)} g de pectinasa</b> (ajusta al volumen real de super juice, no al de resultado).</div>
+      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limEtiquetaClarificando('clarificando')">🏷️ etiqueta «clarificando»</button></div>
+    </div>`;
+  // DÍA 2 · trasiego del clarificado.
+  const dia2HTML = `
+    <div class="section-label" style="margin-top:20px;">Día 2 · Trasiego del clarificado</div>
+    <div class="card" style="border-left:3px solid var(--olive);">
+      <div style="font-weight:700;margin-bottom:6px;">El super juice ha clarificado toda la noche.</div>
+      <div class="lim-prem-row">1 · La pulpa ha decantado al fondo. <b>Trasiega con cuidado</b> el líquido limpio a otro recipiente, dejando el sedimento.</div>
+      <div class="lim-prem-row">2 · Si aún queda turbio, <b>filtra en superbag o V60</b>.</div>
+      <div class="lim-prem-row">3 · Mide <b>°Bx (~${esc(r.bx)})</b> y <b>acidez (${esc(r.acidez)})</b> y anótalo. Guarda en frío.</div>
+      <div class="lim-prem-row">4 · Mañana, <b>Día 3</b>: prebache, carbonatación y enlatado.</div>
+      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limEtiquetaClarificando('clarificado')">🏷️ etiqueta «clarificado»</button></div>
+    </div>`;
+  // DÍA 3 · prebache + carbonatación (por confirmar) + enlatado.
+  const latas = Math.floor(L*1000/250), carb = s.carbonatar;
+  const dia3HTML = `
+    <div class="section-label" style="margin-top:20px;">Día 3 · Prebache · carbonatación · enlatado</div>
+    <div class="card"><div class="card-meta">Antes de escalar, cata una muestra de 200 ml del resultado final.</div>
+      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limPrueba()">🧪 Hacer prueba de 200 ml</button></div></div>
+    <div class="section-label" style="margin-top:16px;">Prebache · registrar lote</div>
     ${loteCardHTML}
-    <div class="card"><div class="card-meta">Al prebachear el lote final, regístralo: guarda los <b>litros</b> producidos y la <b>hora exacta</b> de producción para la trazabilidad.</div>
+    <div class="card"><div class="card-meta">Mezcla el prebache final (super juice clarificado + aromáticos + azúcares + ácidos). Al cerrarlo, regístralo con los <b>litros</b> y la <b>hora exacta</b> (la sella el servidor).</div>
       <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="limGenerarLote()">✅ Generar lote de ${limFmt(L)} L</button></div></div>
+    <div class="section-label" style="margin-top:16px;">Carbonatación <small style="color:var(--muted);font-weight:400;">· por confirmar</small></div>
+    <div class="card">
+      <div class="card-meta" style="margin-bottom:8px;">¿Carbonatas este lote o va sin gas? (a confirmar por producción).</div>
+      <div class="lim-presets" style="margin:0;">
+        <button class="${carb===true?"on":""}" onclick="limToggleCarbonatar(true)">Sí · carbonatar</button>
+        <button class="${carb===false?"on":""}" onclick="limToggleCarbonatar(false)">No · sin gas</button>
+        <button class="${carb==null?"on":""}" onclick="limToggleCarbonatar(null)">Por confirmar</button>
+      </div>
+      ${carb===true?`<div class="lim-prem-row" style="margin-top:8px;">Carbonata a <b>${esc(r.co2)}</b> con el líquido a 2–4 °C (frío retiene mejor el CO₂). Burbuja fina, sin espuma excesiva.</div>`:""}
+      ${carb===false?`<div class="lim-prem-row" style="margin-top:8px;">Lote sin gas · pasa directo al enlatado.</div>`:""}
+    </div>
+    <div class="section-label" style="margin-top:16px;">Enlatado</div>
+    <div class="card">
+      <div class="lim-prem-row">De ${limFmt(L)} L salen ≈ <b>${latas} latas de 250 ml</b>.</div>
+      <div class="lim-prem-row">Llena, sella (seamer) y etiqueta cada lata. Mantén la cadena de frío.</div>
+      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limImprimirEtiquetaLote()">🏷️ etiqueta del lote</button></div>
+    </div>
     <div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta · PVP ${esc(r.pvp)}. Esta receta es la producción de ese producto.</div>
     <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
       <button class="btn-primary" onclick="burVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
       <button class="btn-ghost" onclick="burVerEnCarta()">Todas en carta · Burbujas</button>
       <button class="btn-ghost" onclick="limOleo()">Óleo saccharum</button>
     </div>`;
+  const diaActivo = prueba ? 3 : (s.dia||1);
+  const diasDef = [{n:1,t:"Día 1",s:"Super juice + clarificado"},{n:2,t:"Día 2",s:"Trasiego del clarificado"},{n:3,t:"Día 3",s:"Prebache · carbonatación · enlatado"}];
+  const diaTabs = `<div class="lim-dias">${diasDef.map(d=>`<button class="lim-dia${d.n===diaActivo?" on":""}" onclick="limSetDia(${d.n})"><b>${esc(d.t)}</b><span>${esc(d.s)}</span></button>`).join("")}</div>`;
+  const bloqueLote = (diaActivo===1?dia1HTML : diaActivo===2?dia2HTML : dia3HTML);
 
   setInner(`
     <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Burbujas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>
@@ -3395,6 +3456,7 @@ function limRender(){
     <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
     <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>${colTxt}</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
     <div class="lim-nota">${esc(r.nota)}</div>
+    ${diaTabs}
     ${prueba?bloquePrueba:bloqueLote}
   `);
 }

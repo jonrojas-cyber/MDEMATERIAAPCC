@@ -908,6 +908,21 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
     catch (e) { return String(e.message).includes("litros") ? 400 : -1; }
   });
   expect(status).toBe(400);
+  // Producción desestructurada en 3 días.
+  await page.evaluate(() => { limSetRec("R4"); limSetDia(1); });
+  await expect(page.locator(".lim-dias .lim-dia")).toHaveCount(3);
+  await expect(page.locator("body")).toContainText(/Clarificar con pectinasa/);
+  await expect(page.locator("body")).toContainText(/Pectinex Ultra SP-L/);
+  await page.evaluate(() => limSetDia(2));
+  await expect(page.locator("body")).toContainText(/Trasiego del clarificado/);
+  await expect(page.locator("body")).not.toContainText(/preparar antes/);   // el Día 2 no repite las preparaciones
+  await page.evaluate(() => { limSetDia(3); limSetL(5); });
+  await expect(page.locator("body")).toContainText(/Enlatado/);
+  await expect(page.locator("body")).toContainText(/20 latas de 250 ml/);    // 5 L → 20 latas
+  await expect(page.locator("body")).toContainText(/Carbonatación/);
+  // Carbonatación por confirmar → se puede fijar sí/no.
+  await page.evaluate(() => limToggleCarbonatar(true));
+  await expect(page.locator("body")).toContainText(/Carbonata a/);
   // Enlace con productos: lleva a la categoría Burbujas de la carta.
   await page.evaluate(() => burVerEnCarta());
   await expect(page.locator("body")).toContainText(/Burbujas Origen/);

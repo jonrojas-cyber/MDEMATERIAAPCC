@@ -335,6 +335,8 @@ store
     require("./seed-cafe").seedCafe().catch(() => {});
     // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
     require("./seed-negocio").seedNegocio().catch(() => {});
+    // Siembra idempotente de proveedores reales (Frutería y siguientes).
+    require("./seed-proveedores").seedProveedores().catch(() => {});
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
     // materias, recetas, lotes y productos de ejemplo). Solo en producción
     // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,

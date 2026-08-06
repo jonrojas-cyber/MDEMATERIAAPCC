@@ -1751,6 +1751,15 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-tab td.q.big { font-size:15px; color:var(--olive); }
 .lim-tab tr.tot td { border-top:1px solid var(--ink); font-weight:700; padding-top:9px; }
 .lim-nota { border-left:2px solid var(--olive); padding:8px 0 8px 12px; margin:14px 0; font-size:12px; color:var(--muted); line-height:1.55; }
+.plan-row { display:flex; gap:12px; align-items:flex-start; width:100%; text-align:left; background:none; border:0; border-top:1px solid var(--line); padding:11px 2px; color:var(--ink); cursor:pointer; font:inherit; }
+.plan-row:first-child { border-top:0; }
+.plan-check { flex:0 0 auto; width:22px; height:22px; border:1.5px solid var(--line); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff; margin-top:1px; }
+.plan-row.on .plan-check { background:var(--olive); border-color:var(--olive); }
+.plan-row.on .plan-nom { text-decoration:line-through; color:var(--muted); }
+.plan-nom { font-size:14px; line-height:1.3; }
+.plan-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+.plan-row.plan-ref { cursor:default; }
+.plan-freq { flex:0 0 auto; min-width:52px; text-align:center; font-size:10px; font-weight:700; color:var(--olive); background:rgba(120,132,74,.14); border-radius:20px; padding:4px 8px; margin-top:1px; }
 .lim-prem-row { font-size:12px; padding:3px 0; }
 .lim-prem-row b { color:var(--olive); }
 .lim-bolsas { margin-top:8px; font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; display:inline-block; }
@@ -2982,6 +2991,7 @@ async function irA_lab(){
       ${tile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
       ${tile("Cocina · sándwiches y tostas", "Fichas técnicas · escandallo · montaje · versiones", "irA_labCocina()", "")}
       ${tile("Estación de trabajo", "Mise en place en frío · derivada de la carta · imprimible", "irA_estacion()", "")}
+      ${tile("Plan de producción", "Qué preparar · diario y semanal · imprimible", "irA_planProduccion()", "")}
       ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
       ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
       ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
@@ -4389,6 +4399,81 @@ function estacionImprimir(){
       <div class="cond"><div class="zt">Condimentos · fuera de la mesa</div><div class="zs" style="margin-top:6px">${chips}</div></div>
     </div>
     <div class="pie">orden · claridad · precisión — flujo: pan → calor → cubetas → salsas → servir</div>
+  </body></html>`);
+  w.document.close();
+}
+
+// ── PLAN DE PRODUCCIÓN · qué preparar (diario + semanal por frecuencia) ───────
+// Digitaliza la pizarra de producción. El DIARIO es un checklist que se marca y
+// se reinicia cada día (guardado en el dispositivo). El SEMANAL es la pauta de
+// frecuencia. Datos editables aquí (fuente única del plan).
+const PLAN_PROD = {
+  semanal: [
+    { n:"Dejar pan a descongelar", freq:"1×/sem" },
+    { n:"Zumo Materia · naranja, pomelo, agua, jengibre", freq:"2×/sem" },
+    { n:"Refrescos · super juice (pomelo · lima · pasión)", freq:"1×/sem", sub:["Clarificado 12 h","Prebacheado"] },
+    { n:"Pollo a baja temperatura", freq:"1×/sem" },
+    { n:"Mayonesa de chimichurri", freq:"1×/sem" },
+    { n:"Salsa Materia (verde)", freq:"2×/sem" },
+    { n:"Huevo duro", freq:"3×/sem" },
+    { n:"Sirope de chai", freq:"1×/sem" },
+  ],
+  diario: [
+    { n:"Hornear", sub:["Cookie 8'","Croissant 15'","Pan crunch","Pan tosta"] },
+    { n:"Picar tomate" },
+    { n:"Cortar nectarina" },
+    { n:"Cortar aguacate + ácido" },
+    { n:"Cortar pollo" },
+    { n:"Rellenar croissants" },
+  ],
+};
+function planKeyHoy(){ const d=new Date(); return "plan-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function planHechos(){ try{ return new Set(JSON.parse(localStorage.getItem(planKeyHoy())||"[]")); }catch(e){ return new Set(); } }
+function planToggle(id){ const s=planHechos(); s.has(id)?s.delete(id):s.add(id); try{ localStorage.setItem(planKeyHoy(), JSON.stringify([...s])); }catch(e){} planRender(); }
+function irA_planProduccion(){ navInto(()=>irA_lab()); openSection("planprod","Plan de producción"); planRender(); }
+function planRender(){
+  const hechos = planHechos();
+  const diarioRows = PLAN_PROD.diario.map((it,i)=>{
+    const id="d"+i, ok=hechos.has(id);
+    const subs = it.sub?`<div class="plan-sub">${it.sub.map(esc).join(" · ")}</div>`:"";
+    return `<button class="plan-row${ok?' on':''}" onclick="planToggle('${id}')"><span class="plan-check">${ok?'✓':''}</span><div><div class="plan-nom">${esc(it.n)}</div>${subs}</div></button>`;
+  }).join("");
+  const semRows = PLAN_PROD.semanal.map(it=>{
+    const subs = it.sub?`<div class="plan-sub">${it.sub.map(esc).join(" · ")}</div>`:"";
+    return `<div class="plan-row plan-ref"><span class="plan-freq">${esc(it.freq)}</span><div><div class="plan-nom">${esc(it.n)}</div>${subs}</div></div>`;
+  }).join("");
+  const hechosN = PLAN_PROD.diario.filter((_,i)=>hechos.has("d"+i)).length;
+  setInner(`
+    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción</div><div class="lim-h">Plan de producción</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">qué preparar · diario y semanal</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${hechosN}/${PLAN_PROD.diario.length}</div></div>
+    <div class="section-label" style="margin-top:16px;">Diario · marca lo que vas haciendo (se reinicia cada día)</div>
+    <div class="card" style="padding:4px 12px;">${diarioRows}</div>
+    <div class="section-label" style="margin-top:16px;">Semanal · frecuencia</div>
+    <div class="card" style="padding:4px 12px;">${semRows}</div>
+    <div class="lim-nota" style="border-left-color:var(--muted);">El diario se guarda en este dispositivo y se pone a cero cada día. El semanal es la pauta de frecuencia.</div>
+    <div class="card-actions" style="margin-top:14px;"><button class="btn-primary" onclick="planImprimir()">🖨️ Imprimir para colgar</button></div>
+  `);
+}
+function planImprimir(){
+  const li = arr => arr.map(it=>`<li>${esc(it.n)}${it.freq?` <span class="fr">${esc(it.freq)}</span>`:""}${it.sub?`<div class="sub">${it.sub.map(esc).join(" · ")}</div>`:""}</li>`).join("");
+  const w = window.open("", "_blank"); if(!w) return;
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Plan de producción · m de materia</title>
+    <style>
+      *{box-sizing:border-box} body{font-family:ui-monospace,'Courier Prime',monospace;background:#ece2d0;color:#2a332b;margin:0;padding:28px;}
+      h1{font-size:20px;margin:2px 0 0} .eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#6a7052}
+      .cols{display:flex;gap:26px;margin-top:18px;flex-wrap:wrap} .col{flex:1;min-width:250px}
+      h2{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#6a7052;border-bottom:1px solid #c9bfa8;padding-bottom:6px;margin:0 0 6px}
+      ul{list-style:none;padding:0;margin:0} li{padding:8px 0;font-size:14px;border-bottom:1px solid #d9cfb8}
+      .fr{float:right;font-size:10px;font-weight:700;color:#4a5a2e} .sub{font-size:10px;color:#8a8770;margin-top:2px}
+      .pie{margin-top:20px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a8770}
+      @media print{ body{padding:0} @page{margin:14mm} }
+    </style></head><body onload="setTimeout(function(){window.print()},80)">
+    <div class="eye">m de materia · el palo · producción</div>
+    <h1>Plan de producción</h1>
+    <div class="cols">
+      <div class="col"><h2>Diario</h2><ul>${li(PLAN_PROD.diario)}</ul></div>
+      <div class="col"><h2>Semanal · frecuencia</h2><ul>${li(PLAN_PROD.semanal)}</ul></div>
+    </div>
+    <div class="pie">orden · claridad · precisión</div>
   </body></html>`);
   w.document.close();
 }

@@ -859,7 +859,12 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await page.evaluate(() => { limSetRec("R6"); limSetL(8); });        // Equilibrio → cordial de hierbabuena
   await page.locator(".lim-prep-card").first().click();
   await expect(page.locator("#prep-fs.show")).toBeVisible();
-  await expect(page.locator(".prep-fs-title")).toContainText(/Purée Boiron/);
+  // El maracuyá se CLARIFICA con pectinasa (diluir + 12 h frío + trasiego), como el pomelo.
+  await expect(page.locator(".prep-fs-title")).toContainText(/Maracuyá clarificado/);
+  await expect(page.locator(".prep-steps")).toContainText(/pectinasa|Pectinex/i);
+  await expect(page.locator(".prep-steps")).toContainText(/clarificando en frío/i);
+  await expect(page.locator(".prep-ings")).toContainText(/agua/i);   // lleva agua de dilución
+  await page.evaluate(() => limCerrarPrep());
   await page.evaluate(() => limAbrirPrep("CH", 1200));
   await expect(page.locator(".prep-fs-title")).toContainText(/Cordial de hierbabuena/);
   await expect(page.locator(".prep-produce")).toContainText(/Vas a preparar/);

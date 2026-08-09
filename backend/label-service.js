@@ -118,43 +118,42 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
 <html lang="es"><head><meta charset="utf-8">
 <title>Etiqueta ${escapeHTML(lote.codigo)}</title>
 <style>
-  @page { size: 62mm 30mm; margin: 0; }
+  @page { size: 90mm 40mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 62mm; height: 30mm; overflow: hidden; }
+  html, body { width: 90mm; height: 40mm; overflow: hidden; }
   body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; }
-  .label { width: 62mm; height: 30mm; border: 0.35mm solid #000; display: flex; align-items: stretch; page-break-inside: avoid; }
+  .label { width: 90mm; height: 40mm; border: 0.4mm solid #000; display: flex; align-items: stretch; page-break-inside: avoid; }
   /* Columna QR (izquierda). */
-  .qr { width: 16mm; flex: 0 0 16mm; border-right: 0.3mm solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1mm 0.6mm; }
-  .qr img { width: 12.5mm; height: 12.5mm; display: block; image-rendering: pixelated; background: #fff; }
-  .qr .code { font-size: 6px; font-weight: 700; letter-spacing: 0.5px; margin-top: 0.9mm; text-align: center; line-height: 1.05; word-break: break-all; }
+  .qr { width: 22mm; flex: 0 0 22mm; border-right: 0.3mm solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.6mm 1mm; }
+  .qr img { width: 17mm; height: 17mm; display: block; image-rendering: pixelated; background: #fff; }
+  .qr .code { font-size: 7.5px; font-weight: 700; letter-spacing: 0.6px; margin-top: 1.3mm; text-align: center; line-height: 1.05; word-break: break-all; }
   /* Columna principal. */
   .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .top { flex: 1; padding: 1.5mm 1.8mm 0.8mm; display: flex; flex-direction: column; min-width: 0; }
-  .titulo-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5mm; }
-  .titulo { font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; line-height: 1.05;
+  .top { flex: 1; padding: 2.2mm 2.6mm 1.2mm; display: flex; flex-direction: column; min-width: 0; }
+  .titulo-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 2mm; }
+  .titulo { font-size: 14px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; line-height: 1.05;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .mark { display: flex; align-items: flex-end; gap: 0.4mm; flex: 0 0 auto; margin-top: 0.4mm; }
-  .mark i { display: block; width: 0.4mm; height: 2.4mm; background: #000; }
-  .mark i:nth-child(2) { height: 3mm; }
-  .subtitulo { font-size: 7.5px; text-transform: lowercase; letter-spacing: 0.3px; margin-top: 0.5mm;
+  .mark { display: flex; align-items: flex-end; gap: 0.6mm; flex: 0 0 auto; margin-top: 0.6mm; }
+  .mark i { display: block; width: 0.5mm; height: 3.2mm; background: #000; }
+  .mark i:nth-child(2) { height: 4mm; }
+  .subtitulo { font-size: 10px; text-transform: lowercase; letter-spacing: 0.3px; margin-top: 0.9mm;
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rule { border-top: 0.2mm solid #000; margin: 1mm 0 0.9mm; }
-  .fecha { font-size: 7px; letter-spacing: 0.2px; text-transform: lowercase; line-height: 1.4; white-space: nowrap; }
+  .rule { border-top: 0.2mm solid #000; margin: 1.5mm 0 1.3mm; }
+  .fecha { font-size: 9px; letter-spacing: 0.2px; text-transform: lowercase; line-height: 1.55; white-space: nowrap; }
   .fecha b { font-weight: 700; }
-  .fecha.vence b { font-size: 8.5px; }
-  .prueba { font-size: 6px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
-            border: 0.2mm solid #000; padding: 0.2mm 1mm; display: inline-block; margin-top: 0.6mm; align-self: flex-start; }
-  .foot { border-top: 0.3mm solid #000; padding: 0.9mm 1.8mm; }
-  .legal { font-size: 5px; letter-spacing: 0.2px; text-transform: uppercase; line-height: 1.3; }
+  .fecha.vence b { font-size: 11.5px; }
+  .prueba { font-size: 8px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+            border: 0.25mm solid #000; padding: 0.4mm 1.6mm; display: inline-block; margin-top: 1mm; align-self: flex-start; }
+  .foot { border-top: 0.3mm solid #000; padding: 1.3mm 2.6mm; }
+  .legal { font-size: 6.5px; letter-spacing: 0.2px; text-transform: uppercase; line-height: 1.35; }
   /* Columna cantidad (derecha), en vertical. */
-  .cant { width: 5.5mm; flex: 0 0 5.5mm; border-left: 0.3mm solid #000; display: flex; align-items: center; justify-content: center; }
-  .cant span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; font-weight: 700; letter-spacing: 0.8px; text-transform: lowercase; white-space: nowrap; }
-  @media screen { body { background: #ddd; padding: 14px; } .label { box-shadow: 0 0 0 1px #999; background:#fff; }
-    .toolbar{font-family:sans-serif;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-    .toolbar button{font-family:inherit;font-size:14px;font-weight:600;padding:11px 16px;border-radius:10px;border:1px solid #333;cursor:pointer;}
-    .toolbar .primary{background:#2a332b;color:#fff;border-color:#2a332b;}
-    .toolbar .ghost{background:#fff;color:#333;}
-    .toolbar .hint{font-size:11px;color:#666;flex-basis:100%;} }
+  .cant { width: 7.5mm; flex: 0 0 7.5mm; border-left: 0.3mm solid #000; display: flex; align-items: center; justify-content: center; }
+  .cant span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: lowercase; white-space: nowrap; }
+  @media screen { body { background: #ddd; padding: 16px; max-width: 560px; margin: 0 auto; } .label { box-shadow: 0 0 0 1px #999; background:#fff; }
+    .toolbar{font-family:sans-serif;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
+    .toolbar .primary{flex-basis:100%;font-size:18px;font-weight:700;padding:18px 16px;border-radius:14px;border:0;background:#2a332b;color:#fff;cursor:pointer;}
+    .toolbar button.ghost{font-family:inherit;font-size:13px;font-weight:600;padding:9px 14px;border-radius:10px;border:1px solid #999;background:#fff;color:#333;cursor:pointer;}
+    .toolbar .hint{font-size:11.5px;color:#666;flex-basis:100%;line-height:1.4;} }
   @media print { .toolbar { display: none; } }
 </style></head>
 <body>
@@ -162,7 +161,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
     <button class="primary" onclick="compartirLabelife()">📤 Imprimir en Labelife</button>
     <button class="ghost" onclick="descargarEtiqueta()">⬇️ Guardar PNG</button>
     <button class="ghost" onclick="window.print()">🖨️ Navegador</button>
-    <span class="hint">Toca «Imprimir en Labelife» → elige <b>Labelife</b> en el menú de compartir → imprime en la Phomemo D520BT (62×30 mm).</span>
+    <span class="hint">Un toque en <b>Imprimir en Labelife</b> → elige <b>Labelife</b> en el menú de compartir → imprime. Etiqueta 90×40 mm · Phomemo D520BT.</span>
   </div>
   <div class="label">
     <div class="qr">
@@ -221,15 +220,25 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
     }
-    window.descargarEtiqueta = function(){ labelToPng().then(descargar).catch(function(e){ alert('No se pudo generar la imagen: ' + e.message); }); };
+    // Pre-genera el PNG en cuanto carga la página, así al tocar el botón el
+    // compartir se lanza al instante DENTRO del gesto (fiable en Android).
+    var _blobPromise = null;
+    function prepararBlob(){ if (!_blobPromise) _blobPromise = labelToPng(); return _blobPromise; }
+    window.addEventListener('load', function(){ prepararBlob().catch(function(){ _blobPromise = null; }); });
+    function conBlob(fn){
+      prepararBlob().then(fn).catch(function(e){ _blobPromise = null; alert('No se pudo generar la etiqueta: ' + e.message); });
+    }
+    window.descargarEtiqueta = function(){ conBlob(descargar); };
     window.compartirLabelife = function(){
-      labelToPng().then(function(blob){
+      conBlob(function(blob){
         var file = new File([blob], 'etiqueta-' + CODE + '.png', { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          return navigator.share({ files: [file], title: 'Etiqueta ' + CODE, text: 'Etiqueta m de materia · ' + CODE });
+          navigator.share({ files: [file], title: 'Etiqueta ' + CODE, text: 'Etiqueta m de materia · ' + CODE })
+            .catch(function(e){ if (e && e.name !== 'AbortError') descargar(blob); });
+        } else {
+          descargar(blob); // sin compartir con ficheros (escritorio): baja el PNG para abrirlo en Labelife
         }
-        descargar(blob); // sin compartir con ficheros (p. ej. escritorio): baja el PNG para abrirlo en Labelife
-      }).catch(function(e){ if (e && e.name !== 'AbortError') alert('No se pudo compartir: ' + e.message); });
+      });
     };
   })();
   </script>

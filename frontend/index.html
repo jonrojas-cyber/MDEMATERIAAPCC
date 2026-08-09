@@ -4640,6 +4640,7 @@ function irA_etiquetaProd(pre){
   };
   navReset(); openSection("etiquetaprod", "Etiqueta de producción");
   etqRender();
+  pbtReconectarSilencioso();   // reconecta la impresora ya emparejada → imprimir será instantáneo
 }
 function etqLeer(){
   const s=window._etq;
@@ -4690,8 +4691,108 @@ function etqGenerar(){
   const est=[s.estado, s.nota].filter(Boolean).join(" · ");   // ej. "Prueba · prueba 2"
   if(est) qs.set("est", est);
   qs.set("p", new Date().toISOString()); // sella el momento de la impresión
-  qs.set("print", "1");
-  window.open("/etiqueta/prep?"+qs.toString(), "_blank");
+  pbtImprimir("/etiqueta/prep?"+qs.toString());
+}
+
+// ── IMPRESORA BLUETOOTH · conexión persistente en la app (impresión instantánea)
+// Conecta una vez por Bluetooth LE con la Phomemo D520BT y mantiene el canal
+// abierto; al imprimir, rasteriza la etiqueta (en un iframe oculto, reusando el
+// diseño del backend) y la manda por ESC/POS. Sin pestañas ni descargas. Si el
+// navegador no tiene Bluetooth web o falla, cae en abrir la etiqueta como antes.
+var _mdmPrinter = null;
+var MDM_BT_SERVICIOS = [0xff00, 0xff10, 0xffe0, 0x18f0, 0xfff0,
+  "0000ff00-0000-1000-8000-00805f9b34fb", "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+  "e7810a71-73ae-499d-8c15-faa9aef0c3f2"];
+function pbtConectado(){ return !!(_mdmPrinter && _mdmPrinter.device.gatt.connected); }
+async function pbtCanal(server){
+  var svcs = await server.getPrimaryServices();
+  for(var i=0;i<svcs.length;i++){ var cs = await svcs[i].getCharacteristics();
+    for(var j=0;j<cs.length;j++){ var p = cs[j].properties; if(p.write || p.writeWithoutResponse) return cs[j]; } }
+  throw new Error("sin canal de escritura");
+}
+function pbtGuardar(device, canal){
+  device.addEventListener("gattserverdisconnected", function(){ _mdmPrinter = null; });
+  _mdmPrinter = { device: device, canal: canal };
+  return _mdmPrinter;
+}
+// Reconexión SILENCIOSA (sin selector) a una impresora ya emparejada. No exige
+// gesto: se puede llamar al abrir la pantalla para que imprimir sea instantáneo.
+async function pbtReconectarSilencioso(){
+  try{
+    if(pbtConectado() || !navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+    var ds = await navigator.bluetooth.getDevices();
+    if(!ds || !ds.length) return;
+    var dev = ds[0], server = await dev.gatt.connect(), canal = await pbtCanal(server);
+    pbtGuardar(dev, canal);
+  }catch(e){}
+}
+// Asegura conexión DENTRO de un gesto (muestra el selector solo si hace falta).
+async function pbtAsegurar(){
+  if(pbtConectado()) return _mdmPrinter;
+  var dev = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices: MDM_BT_SERVICIOS });
+  var server = await dev.gatt.connect(), canal = await pbtCanal(server);
+  return pbtGuardar(dev, canal);
+}
+function pbtEscpos(mono){
+  var head=[0x1B,0x40, 0x1D,0x76,0x30,0x00, mono.bytesPerRow&0xff,(mono.bytesPerRow>>8)&0xff, mono.height&0xff,(mono.height>>8)&0xff];
+  var feed=[0x1B,0x64,0x04];
+  var out=new Uint8Array(head.length+mono.data.length+feed.length);
+  out.set(head,0); out.set(mono.data,head.length); out.set(feed,head.length+mono.data.length);
+  return out;
+}
+async function pbtEnviar(canal, data){
+  var CH=160, wnr=canal.properties.writeWithoutResponse;
+  for(var i=0;i<data.length;i+=CH){ var s=data.slice(i,i+CH);
+    try{ wnr ? await canal.writeValueWithoutResponse(s) : await canal.writeValue(s); }
+    catch(e){ await canal.writeValue(s); }
+    await new Promise(function(r){ setTimeout(r,12); }); }
+}
+// Rasteriza a 1-bit una etiqueta ya montada (en un iframe) al ancho del cabezal.
+function pbtRaster(labelEl, css, dotsWide){
+  return new Promise(function(resolve, reject){
+    var w=labelEl.offsetWidth, h=labelEl.offsetHeight, Wp=Math.round(dotsWide/8)*8, scale=Wp/w, Hp=Math.round(Wp*40/90); // alto EXACTO 90×40 → 720×320 a 203 dpi
+    var xml=new XMLSerializer().serializeToString(labelEl);
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+Wp+'" height="'+Hp+'"><foreignObject x="0" y="0" width="'+Wp+'" height="'+Hp+'"><div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale('+scale+');transform-origin:top left;width:'+w+'px;height:'+h+'px;background:#fff;"><style>'+css+'</style>'+xml+'</div></foreignObject></svg>';
+    var img=new Image();
+    img.onload=function(){ var c=document.createElement("canvas"); c.width=Wp; c.height=Hp; var ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,Wp,Hp); ctx.drawImage(img,0,0);
+      var d=ctx.getImageData(0,0,Wp,Hp).data, bpr=Wp/8, out=new Uint8Array(bpr*Hp);
+      for(var y=0;y<Hp;y++)for(var x=0;x<Wp;x++){ var k=(y*Wp+x)*4; var lum=d[k]*0.299+d[k+1]*0.587+d[k+2]*0.114; if(d[k+3]>128&&lum<128) out[y*bpr+(x>>3)]|=(0x80>>(x&7)); }
+      resolve({ bytesPerRow:bpr, height:Hp, data:out }); };
+    img.onerror=function(){ reject(new Error("rasterizado")); };
+    img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+  });
+}
+// Carga la etiqueta del backend en un iframe oculto (mismo diseño, fuente única).
+function pbtCargar(path){
+  return new Promise(function(resolve, reject){
+    var f=document.createElement("iframe");
+    f.style.cssText="position:fixed;left:-10000px;top:0;width:420px;height:240px;border:0;";
+    f.onload=function(){ try{ var doc=f.contentDocument; var label=doc.querySelector(".label"); if(!label) throw new Error("etiqueta");
+      var css=""; doc.querySelectorAll("style").forEach(function(s){ css+=s.textContent; }); resolve({ label:label, css:css, frame:f }); }catch(e){ reject(e); } };
+    f.onerror=function(){ reject(new Error("carga")); };
+    f.src=path; document.body.appendChild(f);
+  });
+}
+var _pbtToastEl=null, _pbtToastT=null;
+function pbtToast(msg, ms){
+  if(!_pbtToastEl){ _pbtToastEl=document.createElement("div"); _pbtToastEl.style.cssText="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#232a20;color:#ece7d6;font-size:14px;padding:12px 18px;border-radius:12px;z-index:99999;box-shadow:0 6px 24px rgba(0,0,0,.35);max-width:86vw;text-align:center;"; document.body.appendChild(_pbtToastEl); }
+  if(_pbtToastT){ clearTimeout(_pbtToastT); _pbtToastT=null; }
+  if(!msg){ _pbtToastEl.style.display="none"; return; }
+  _pbtToastEl.textContent=msg; _pbtToastEl.style.display="block";
+  if(ms){ _pbtToastT=setTimeout(function(){ _pbtToastEl.style.display="none"; }, ms); }
+}
+async function pbtImprimir(path){
+  if(!navigator.bluetooth){ window.open(path, "_blank"); return; }   // sin Bluetooth web → abre la etiqueta
+  var p;
+  try{ pbtToast("Conectando impresora…"); p = await pbtAsegurar(); }
+  catch(e){ pbtToast(""); if(e && e.name==="NotFoundError") return; /* canceló el selector */ window.open(path, "_blank"); return; }
+  try{
+    pbtToast("Imprimiendo…");
+    var r = await pbtCargar(path);
+    try{ var mono = await pbtRaster(r.label, r.css, 720); await pbtEnviar(p.canal, pbtEscpos(mono)); pbtToast("Impreso ✓", 1600); }
+    finally{ r.frame.remove(); }
+  }catch(e){ pbtToast("");
+    if(confirm("No se pudo imprimir directo ("+(e.message||e)+"). ¿Abrir la etiqueta para imprimirla a mano?")) window.open(path, "_blank"); }
 }
 
 // ── Base de matcha · gel fluido (matcha + agua + gellan) ──────────────────────

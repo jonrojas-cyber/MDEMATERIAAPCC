@@ -164,6 +164,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   <div class="toolbar">
     <button class="primary" onclick="btPrint()">🖨️ Imprimir directo (Bluetooth)</button>
     <button class="ghost" onclick="compartirPDF()">📄 PDF 90×40</button>
+    <button class="ghost" onclick="compartirPDFgirado()">🔄 PDF girado (si sale vertical)</button>
     <button class="ghost" onclick="window.print()">🖨️ Navegador</button>
     <label class="opt">ancho <input id="btw" type="number" value="720" step="8" min="200" max="1200"> pts</label>
     <span class="hint"><b>Imprimir directo</b> conecta por Bluetooth con la Phomemo D520BT y sale sin pasar por Labelife (Android + Chrome). La 1ª vez eliges la impresora; luego va directa. <b>PDF 90×40</b> te da la etiqueta como PDF a tamaño exacto (imprime sin reescalar). Si algo falla en directo, cópiame el registro de abajo.</span>
@@ -205,17 +206,22 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
     // Construye un PDF (sin librerías) con una única página de 90×40 mm y la
     // etiqueta como imagen 1-bit a página completa: imprime a tamaño exacto,
     // sin reescalar, en cualquier visor/impresora.
-    function buildPdf(mono){
+    function buildPdf(mono, rot){
       var W = mono.bytesPerRow * 8, H = mono.height, bits = mono.data;
-      var pw = (90/25.4*72).toFixed(3), ph = (40/25.4*72).toFixed(3);  // 255.118 × 113.386 pt
+      var L = (90/25.4*72), S = (40/25.4*72);   // 255.118 (90mm) · 113.386 (40mm)
+      // rot=false: página 90×40 horizontal. rot=true: página 40×90 vertical con la
+      // etiqueta girada 90° (para impresoras que alimentan la etiqueta en vertical).
+      var mw = (rot ? S : L).toFixed(3), mh = (rot ? L : S).toFixed(3);
+      var cm = rot ? ("0 "+L.toFixed(3)+" -"+S.toFixed(3)+" 0 "+S.toFixed(3)+" 0")
+                   : (L.toFixed(3)+" 0 0 "+S.toFixed(3)+" 0 0");
       var enc = new TextEncoder(), chunks = [], off = [], pos = 0;
       function push(x){ var b = (typeof x === 'string') ? enc.encode(x) : x; chunks.push(b); pos += b.length; }
       function mark(n){ off[n] = pos; }
       push("%PDF-1.4\n");
       mark(1); push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
       mark(2); push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
-      mark(3); push("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+pw+" "+ph+"] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n");
-      var content = "q "+pw+" 0 0 "+ph+" 0 0 cm 0 g /Im0 Do Q\n";
+      mark(3); push("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+mw+" "+mh+"] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n");
+      var content = "q "+cm+" cm 0 g /Im0 Do Q\n";
       mark(4); push("4 0 obj\n<< /Length "+content.length+" >>\nstream\n"+content+"endstream\nendobj\n");
       mark(5); push("5 0 obj\n<< /Type /XObject /Subtype /Image /Width "+W+" /Height "+H+" /ImageMask true /BitsPerComponent 1 /Decode [1 0] /Length "+bits.length+" >>\nstream\n");
       push(bits); push("\nendstream\nendobj\n");
@@ -234,16 +240,20 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       prepararPdf().then(fn).catch(function(e){ _pdfPromise = null; alert('No se pudo generar el PDF: ' + e.message); });
     }
     window.descargarEtiqueta = function(){ conPdf(function(b){ descargar(b, 'pdf'); }); };
-    window.compartirPDF = function(){
-      conPdf(function(blob){
-        var file = new File([blob], 'etiqueta-' + CODE + '.pdf', { type: 'application/pdf' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file], title: 'Etiqueta ' + CODE, text: 'Etiqueta m de materia · ' + CODE })
-            .catch(function(e){ if (e && e.name !== 'AbortError') descargar(blob, 'pdf'); });
-        } else {
-          descargar(blob, 'pdf');
-        }
-      });
+    function compartirBlob(blob, extra){
+      var file = new File([blob], 'etiqueta-' + CODE + (extra||'') + '.pdf', { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Etiqueta ' + CODE, text: 'Etiqueta m de materia · ' + CODE })
+          .catch(function(e){ if (e && e.name !== 'AbortError') descargar(blob, 'pdf'); });
+      } else { descargar(blob, 'pdf'); }
+    }
+    window.compartirPDF = function(){ conPdf(function(blob){ compartirBlob(blob); }); };
+    // PDF GIRADO 90°: para impresoras que alimentan la etiqueta en vertical y
+    // por eso la sacan girada / no a 90×40. Misma etiqueta, página 40×90 girada.
+    window.compartirPDFgirado = function(){
+      rasterMono(720).then(function(m){ return buildPdf(m, true); })
+        .then(function(blob){ compartirBlob(blob, '-girada'); })
+        .catch(function(e){ alert('No se pudo generar el PDF girado: ' + e.message); });
     };
 
     // ── IMPRESIÓN DIRECTA POR BLUETOOTH (sin Labelife) ───────────────────────

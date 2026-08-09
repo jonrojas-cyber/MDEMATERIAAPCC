@@ -162,12 +162,13 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
 </style></head>
 <body>
   <div class="toolbar">
-    <button class="primary" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="primary" onclick="imprimirPdf()">🖨️ Imprimir (nítido)</button>
     <button class="ghost" onclick="imprimirGirado()">🔄 Imprimir girado (si sale vertical)</button>
-    <button class="ghost" onclick="compartirPDF()">⬇️ Descargar PDF 90×40</button>
+    <button class="ghost" onclick="window.print()">🖥️ Navegador (si falla)</button>
+    <button class="ghost" onclick="compartirPDF()">⬇️ Descargar PDF</button>
     <button class="ghost" onclick="btPrint()">📶 Bluetooth (móvil)</button>
     <label class="opt">ancho <input id="btw" type="number" value="720" step="8" min="200" max="1200"> pts</label>
-    <span class="hint">Por cable: pulsa <b>Imprimir</b>, elige tu impresora y pon tamaño <b>90×40 mm</b>, <b>horizontal</b> y escala <b>100%</b>. Si sale en vertical, usa <b>Imprimir girado</b>. <b>Bluetooth</b> solo es para móvil.</span>
+    <span class="hint">Pulsa <b>Imprimir (nítido)</b> — manda la etiqueta en negro puro al diálogo; elige tu D520 con papel <b>90×40</b> y escala <b>100%</b>. Si sale en vertical, usa <b>Imprimir girado</b>. Si sale flojo/con rayas, sube la <b>densidad</b> y baja la <b>velocidad</b> en el driver.</span>
     <pre id="btlog" class="btlog"></pre>
   </div>
   <div class="label">
@@ -255,19 +256,21 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
         .then(function(blob){ compartirBlob(blob, '-girada'); })
         .catch(function(e){ alert('No se pudo generar el PDF girado: ' + e.message); });
     };
-    // Imprime la etiqueta GIRADA 90° directamente (para impresoras por cable que
-    // sacan la etiqueta en vertical): genera el PDF girado y lo abre en el diálogo
-    // de impresión. Si el navegador no deja imprimir el iframe, lo descarga.
-    window.imprimirGirado = function(){
-      rasterMono(720).then(function(m){ return buildPdf(m, true); }).then(function(blob){
+    // Imprime el PDF (imagen 1-bit en negro puro, ideal para térmica) mandándolo
+    // directo al diálogo de impresión. rot=true lo gira 90° (impresoras que sacan
+    // la etiqueta en vertical). Si el navegador no deja imprimir el iframe, descarga.
+    function imprimirPdfBlob(rot){
+      rasterMono(720).then(function(m){ return buildPdf(m, rot); }).then(function(blob){
         var url = URL.createObjectURL(blob);
         var f = document.createElement('iframe');
         f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;';
         f.onload = function(){ setTimeout(function(){ try { f.contentWindow.focus(); f.contentWindow.print(); } catch(e){ descargar(blob, 'pdf'); } }, 250); };
         f.src = url; document.body.appendChild(f);
         setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
-      }).catch(function(e){ alert('No se pudo imprimir girado: ' + e.message); });
-    };
+      }).catch(function(e){ alert('No se pudo imprimir: ' + e.message); });
+    }
+    window.imprimirPdf = function(){ imprimirPdfBlob(false); };
+    window.imprimirGirado = function(){ imprimirPdfBlob(true); };
 
     // ── IMPRESIÓN DIRECTA POR BLUETOOTH (sin Labelife) ───────────────────────
     // Rasteriza la etiqueta a 1 bit al ancho del cabezal y la manda por ESC/POS
@@ -281,23 +284,32 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       return new Promise(function(resolve, reject){
         var el = document.querySelector('.label');
         var w = el.offsetWidth, h = el.offsetHeight;
-        // Ancho byte-alineado; ALTO exacto por el físico 90×40 mm (no por el
-        // redondeo de píxeles), así el raster es siempre 1 etiqueta: 720×320 a 203 dpi.
-        var Wp = Math.round(dotsWide/8)*8, scale = Wp/w, Hp = Math.round(Wp * 40/90);
+        // Ancho byte-alineado; ALTO exacto por el físico 90×40 mm → 720×320 a 203 dpi.
+        var Wp = Math.round(dotsWide/8)*8, Hp = Math.round(Wp * 40/90);
+        // Se renderiza a DOBLE resolución (supersample) y se baja a 1 bit con un
+        // umbral generoso: así el texto y las líneas finas NO se rompen en la
+        // impresión térmica (salen en negro pleno, más nítidas).
+        var SS = 2, W2 = Wp*SS, H2 = Hp*SS, scale = W2/w;
         var css=''; document.querySelectorAll('style').forEach(function(s){ css += s.textContent; });
         var xml = new XMLSerializer().serializeToString(el);
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+Wp+'" height="'+Hp+'">'
-          + '<foreignObject x="0" y="0" width="'+Wp+'" height="'+Hp+'">'
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+W2+'" height="'+H2+'">'
+          + '<foreignObject x="0" y="0" width="'+W2+'" height="'+H2+'">'
           + '<div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale('+scale+');transform-origin:top left;width:'+w+'px;height:'+h+'px;background:#fff;">'
           + '<style>'+css+'</style>' + xml + '</div></foreignObject></svg>';
         var img = new Image();
         img.onload = function(){
-          var c = document.createElement('canvas'); c.width = Wp; c.height = Hp;
-          var ctx = c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,Wp,Hp); ctx.drawImage(img,0,0);
-          var d = ctx.getImageData(0,0,Wp,Hp).data, bpr = Wp/8, out = new Uint8Array(bpr*Hp);
-          for(var y=0;y<Hp;y++){ for(var x=0;x<Wp;x++){ var i=(y*Wp+x)*4;
-            var lum = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
-            if(d[i+3]>128 && lum<128){ out[y*bpr + (x>>3)] |= (0x80 >> (x&7)); } } }
+          var c = document.createElement('canvas'); c.width = W2; c.height = H2;
+          var ctx = c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W2,H2); ctx.drawImage(img,0,0);
+          var d = ctx.getImageData(0,0,W2,H2).data, bpr = Wp/8, out = new Uint8Array(bpr*Hp);
+          var THR = 165;   // umbral: si el promedio del bloque es oscuro → negro
+          for(var y=0;y<Hp;y++){ for(var x=0;x<Wp;x++){
+            var sum=0;
+            for(var dy=0;dy<SS;dy++){ for(var dx=0;dx<SS;dx++){
+              var i=(((y*SS+dy)*W2)+(x*SS+dx))*4;
+              sum += (d[i+3]>128) ? (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114) : 255;
+            } }
+            if(sum/(SS*SS) < THR){ out[y*bpr + (x>>3)] |= (0x80 >> (x&7)); }
+          } }
           resolve({ bytesPerRow: bpr, height: Hp, data: out });
         };
         img.onerror = function(){ reject(new Error('rasterizado')); };

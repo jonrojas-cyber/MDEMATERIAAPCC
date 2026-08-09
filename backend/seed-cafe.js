@@ -161,6 +161,20 @@ const BATCHES = [
     ],
     productos: [],
   },
+  {
+    // Shoondhisa pasa a ser el ESPRESSO de temporada: se repunta la línea de
+    // Etiopía (solo, con leche, coco, avena) al grano Shoondhisa. El grano
+    // anterior (Haile Gebre) queda en catálogo como temporada pasada.
+    flag: "cafe_seed_v11_shoondhisa_espresso",
+    materias: [],
+    productos: [],
+    actualizaciones: [
+      { entity: "productos", id: "prod-cafe-esp-eti",   campos: { ingredientes: [{ materia_id: "mat-cafe-inef-shoondhisa", cantidad: 17 }] } },
+      { entity: "productos", id: "prod-cafe-leche-eti", campos: { ingredientes: [{ materia_id: "mat-cafe-inef-shoondhisa", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 160 }] } },
+      { entity: "productos", id: "prod-cafe-coco-eti",  campos: { ingredientes: [{ materia_id: "mat-cafe-inef-shoondhisa", cantidad: 17 }, { materia_id: "mat-leche-coco", cantidad: 160 }] } },
+      { entity: "productos", id: "prod-cafe-avena-eti", campos: { ingredientes: [{ materia_id: "mat-cafe-inef-shoondhisa", cantidad: 17 }, { materia_id: "mat-leche-avena", cantidad: 160 }] } },
+    ],
+  },
 ];
 
 async function seedCafe() {

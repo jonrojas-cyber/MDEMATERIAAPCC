@@ -3148,26 +3148,34 @@ const LIMONADAS_DATA = {
              "CORTA a tiempo: cata a los 15-20 min y, cuando la astringencia empiece a tapar el ahumado, para.",
              "Enfría en un baño de hielo y filtra; guárdalo como concentrado.",
              "NO lo diluyas aquí: ese agua se añade al final, al rebachar el cóctel." ] },
-    CH:  { nombre: "Super Juice de hierbabuena", tipo: "cítrico", rinde: 1000, merma: 0.15,
-           ing: [ {n:"hierbabuena",v:190,u:"g"}, {n:"ácido cítrico",v:41,u:"g"}, {n:"ácido málico",v:10,u:"g"}, {n:"agua",v:750,u:"g"}, {n:"glutamato",v:1.5,u:"g"} ],
-           metodo: "MISMA estructura y técnica que el super juice de pomelo, para que la percepción en boca sea IGUAL: la menta ocupa el lugar de la piel+zumo (el aromático), se macera al vacío con cítrico+málico (misma proporción ~4:1 y misma acidez viva), y luego se tritura con el agua y el glutamato y se filtra. Da la misma acidez brillante, cuerpo y redondez umami que el pomelo. La menta pisa poco, por eso va muy cargada; se rebaja con agua al rebachar.",
+    CH:  { nombre: "Agua de hierbabuena", tipo: "aromática", rinde: 1000, merma: 0.05,
+           ing: [ {n:"hierbabuena",v:32,u:"g"}, {n:"agua",v:1000,u:"g"} ],
+           metodo: "Agua aromática de hierbabuena a tu proporción: 16 g de hierbabuena por 500 g de agua (32 g/L). Se TRITURA (no sous-vide) y se filtra fino. Trátala como el agua de romero: es un componente aromático que entra en el cóctel; el dulzor y la acidez los pone la estructura del refresco.",
            pasos: [
-             "Separa las hojas de hierbabuena de los tallos y lávalas bien.",
-             "Envasa AL VACÍO las hojas con el ácido cítrico y el ácido málico (los ácidos extraen los aceites aromáticos, igual que con la piel del pomelo).",
-             "Deja macerar al vacío ~2 h (o sous-vide suave 55-60 °C · 30 min para acelerar, sin cocer la menta).",
-             "Abre la bolsa, añade el agua y el glutamato y tritura con túrmix.",
-             "Filtra en V60. Ya tienes el super juice de hierbabuena (~15 % de merma al colar, ya prevista).",
+             "Separa las hojas de hierbabuena de los tallos y lávalas.",
+             "Pésalas a razón de 16 g de hierbabuena por 500 g de agua fría (32 g por litro).",
+             "Tritura con túrmix la hierbabuena con el agua hasta romperla bien.",
+             "Deja reposar 5-10 min para que ceda el aroma.",
+             "Filtra fino (superbag o V60), presionando para sacar todo el aroma.",
              "Enfría y reserva en frío." ] },
-    PB:  { nombre: "Maracuyá clarificado", tipo: "cítrico", rinde: 1000, merma: 0.18,
-           ing: [ {n:"purée Boiron maracuyá",v:480,u:"g"}, {n:"agua",v:720,u:"g"}, {n:"pectinasa (Pectinex)",v:2.4,u:"g"} ],
-           metodo: "El puré (13 °Bx) es demasiado espeso para clarificar tal cual: hay que DILUIRLO con agua (1 : 1,5), dosificar pectinasa (2 g/L) y dejarlo clarificar 12–24 h en frío; luego se trasiega el líquido limpio del sedimento. Clarificar diluye el maracuyá: recata y sube la cantidad si pierde intensidad.",
+    TV:  { nombre: "Agua de té verde", tipo: "aromática", perLitro: true, concentra: 3, minutos: 20,
+           ing: [ {n:"té verde",v:10,u:"g"} ], params: "70 °C · ~12-15 min (CORTA a tiempo) · sous vide sellado",
+           metodo: "Como el agua de lapsang: CONCENTRADO ×3, sous-vide a 70 °C y se CORTA a tiempo (el té verde suelta tanino rápido y amarga). El agua de dilución se añade al rebachar el cóctel, no aquí.",
            pasos: [
-             "Diluye el puré de maracuyá con el agua, 1 parte de puré por 1,5 de agua, hasta que quede fluido.",
-             "Dosifica la pectinasa (Pectinex Ultra SP-L · 2 g/L del diluido) y remueve bien.",
-             "(Opcional) templa a 45–50 °C 1 h para acelerar la enzima; si no, pásalo directo a frío.",
-             "Tápalo y déjalo clarificando en frío 12–24 h: la pulpa flocula y decanta al fondo.",
-             "Trasiega con cuidado el líquido limpio dejando el sedimento; filtra en superbag o V60 si hace falta.",
-             "Ya tienes el maracuyá clarificado (~18 % de merma al sedimento, ya prevista)." ] }
+             "Pesa el té verde (10 g por litro de agua, concentrado ×3).",
+             "Envasa el té con el agua del concentrado al vacío y sella.",
+             "Sous-vide a 70 °C, ~12-15 min (arranca el temporizador).",
+             "CORTA a tiempo: cata a los 10-15 min y, en cuanto la astringencia empiece a tapar, para.",
+             "Enfría en un baño de hielo y filtra; guárdalo como concentrado.",
+             "NO lo diluyas aquí: ese agua se añade al final, al rebachar el cóctel." ] },
+    PB:  { nombre: "Maracuyá (Boiron)", tipo: "cítrico", rinde: 1250, merma: 0,
+           ing: [ {n:"purée Boiron maracuyá",v:1000,u:"g"}, {n:"agua",v:250,u:"g"} ],
+           metodo: "El puré Boiron ya está: se pone a punto añadiendo 250 g de agua por cada kg de puré (dilución 4:1). Sin clarificar; trae su propia acidez y aroma de maracuyá.",
+           pasos: [
+             "Descongela el puré Boiron en frío.",
+             "Pesa el puré y añade 250 g de agua por cada kg de puré (dilución 4:1).",
+             "Mezcla bien hasta que quede homogéneo.",
+             "Reserva en frío." ] }
   },
   premezclas: {
     salina:    "5 g sal / 100 ml → 1 ml = 0,05 g",
@@ -3207,18 +3215,19 @@ const LIMONADAS_DATA = {
       nota: "Tu reinvención: dos cítricos (pomelo+lima) y dos fondos (romero herbal + lapsang ahumado). El agua ya va dentro, no hay c.s.p. Nombre sugerido en carta: «pomelo ahumado». Cerrada en cata."
     },
     R6: {
-      nombre: "Equilibrio", sabor: "fruta de la pasión · hierbabuena", prod: "Burbujas Equilibrio", fase: "carbonatada · fruta de la pasión · hierbabuena", pvp: "2,90 €",
-      bx: "9,0", acidez: "0,85 %", co2: "2,8 vol",
+      nombre: "Equilibrio", sabor: "fruta de la pasión · hierbabuena · té verde", prod: "Burbujas Equilibrio", fase: "carbonatada · fruta de la pasión · hierbabuena · té verde", pvp: "2,90 €",
+      bx: "9,0", acidez: "0,80 %", co2: "2,8 vol",
       lineas: [
-        { n: "Maracuyá clarificado",       v: 150, u: "ml", cod: "PB" },
-        { n: "Super Juice de hierbabuena",  v: 150, u: "ml", cod: "CH", tardio: true },
-        { n: "Azúcar",       v: 60,   u: "g" },
-        { n: "Fructosa",     v: 40,   u: "g" },
+        { n: "Maracuyá (Boiron)",     v: 150, u: "ml", cod: "PB" },
+        { n: "Agua de hierbabuena",   v: 250, u: "ml", cod: "CH", tardio: true },
+        { n: "Agua de té verde",      v: 180, u: "ml", cod: "TV" },
+        { n: "Azúcar",       v: 50,   u: "g" },
+        { n: "Fructosa",     v: 35,   u: "g" },
         { n: "Glutamato",    v: 0.25, u: "g" },
         { n: "Ácido málico", v: 0.30, u: "g" },
         { n: "Sal",          v: 0.60, u: "g" }
       ],
-      nota: "La hierbabuena va como SUPER JUICE con la misma estructura que el de pomelo (menta macerada al vacío con cítrico+málico + agua + glutamato, misma acidez viva y redondez umami), para que la percepción en boca sea igual. Base de refresco estándar (azúcar 60 · fructosa 40 · glutamato 0,25 · sal 0,6); el málico añadido baja a 0,3 porque el super juice y el maracuyá ya traen acidez. El agua de rebache (c.s.p.) es el dial de intensidad de menta. A cerrar en cata: ml de super juice de hierbabuena (150 de partida) y reparto con el maracuyá."
+      nota: "Tres bases + estructura de refresco: maracuyá (Boiron + 250 g agua/kg), agua de hierbabuena (16 g/500 g triturada, como el romero) y agua de té verde (concentrado ×3 sous-vide, como el lapsang). Se estructura con azúcar 50 · fructosa 35 · glutamato 0,25 · sal 0,6 y málico 0,3 (poco, porque el maracuyá ya trae acidez). El agua de rebache (c.s.p.) es el dial: más agua, más suave. A cerrar en cata: ml de cada base, dulzor (°Bx ~9) y acidez."
     }
   }
 };

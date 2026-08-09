@@ -153,15 +153,21 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
     .toolbar{font-family:sans-serif;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
     .toolbar .primary{flex-basis:100%;font-size:18px;font-weight:700;padding:18px 16px;border-radius:14px;border:0;background:#2a332b;color:#fff;cursor:pointer;}
     .toolbar button.ghost{font-family:inherit;font-size:13px;font-weight:600;padding:9px 14px;border-radius:10px;border:1px solid #999;background:#fff;color:#333;cursor:pointer;}
-    .toolbar .hint{font-size:11.5px;color:#666;flex-basis:100%;line-height:1.4;} }
+    .toolbar .opt{font-size:12px;color:#444;display:flex;align-items:center;gap:5px;}
+    .toolbar .opt input{width:66px;font-size:13px;padding:5px 6px;border:1px solid #999;border-radius:7px;}
+    .toolbar .hint{font-size:11.5px;color:#666;flex-basis:100%;line-height:1.4;}
+    .btlog{flex-basis:100%;font-family:ui-monospace,monospace;font-size:11px;background:#111;color:#7bd88f;padding:8px 10px;border-radius:8px;max-height:140px;overflow:auto;white-space:pre-wrap;margin:0;display:none;}
+    .btlog.on{display:block;} }
   @media print { .toolbar { display: none; } }
 </style></head>
 <body>
   <div class="toolbar">
-    <button class="primary" onclick="compartirLabelife()">📤 Imprimir en Labelife</button>
-    <button class="ghost" onclick="descargarEtiqueta()">⬇️ Guardar PNG</button>
-    <button class="ghost" onclick="window.print()">🖨️ Navegador</button>
-    <span class="hint">Un toque en <b>Imprimir en Labelife</b> → elige <b>Labelife</b> en el menú de compartir → imprime. Etiqueta 90×40 mm · Phomemo D520BT.</span>
+    <button class="primary" onclick="btPrint()">🖨️ Imprimir directo (Bluetooth)</button>
+    <button class="ghost" onclick="compartirLabelife()">📤 Labelife</button>
+    <button class="ghost" onclick="descargarEtiqueta()">⬇️ PNG</button>
+    <label class="opt">ancho <input id="btw" type="number" value="720" step="8" min="200" max="1200"> pts</label>
+    <span class="hint"><b>Imprimir directo</b> conecta por Bluetooth con la Phomemo D520BT y sale sin pasar por Labelife (Android + Chrome). La 1ª vez eliges la impresora; luego va directa. Si algo falla, cópiame el registro de abajo. Respaldos: Labelife / PNG. Etiqueta 90×40 mm.</span>
+    <pre id="btlog" class="btlog"></pre>
   </div>
   <div class="label">
     <div class="qr">
@@ -239,6 +245,89 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
           descargar(blob); // sin compartir con ficheros (escritorio): baja el PNG para abrirlo en Labelife
         }
       });
+    };
+
+    // ── IMPRESIÓN DIRECTA POR BLUETOOTH (sin Labelife) ───────────────────────
+    // Rasteriza la etiqueta a 1 bit al ancho del cabezal y la manda por ESC/POS
+    // (GS v 0) a la Phomemo D520BT. Reconecta sola tras la 1ª vez (getDevices).
+    function log(m){ var el=document.getElementById('btlog'); if(el){ el.classList.add('on'); el.textContent += m + "\n"; el.scrollTop = el.scrollHeight; } }
+    var SERVICIOS = [0xff00, 0xff10, 0xffe0, 0x18f0, 0xfff0,
+      '0000ff00-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+      'e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
+    // Rasteriza al ancho pedido (en puntos) y devuelve {bytesPerRow,height,data}.
+    function rasterMono(dotsWide){
+      return new Promise(function(resolve, reject){
+        var el = document.querySelector('.label');
+        var w = el.offsetWidth, h = el.offsetHeight;
+        var Wp = Math.round(dotsWide/8)*8, scale = Wp/w, Hp = Math.max(1, Math.round(h*scale));
+        var css=''; document.querySelectorAll('style').forEach(function(s){ css += s.textContent; });
+        var xml = new XMLSerializer().serializeToString(el);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+Wp+'" height="'+Hp+'">'
+          + '<foreignObject x="0" y="0" width="'+Wp+'" height="'+Hp+'">'
+          + '<div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale('+scale+');transform-origin:top left;width:'+w+'px;height:'+h+'px;background:#fff;">'
+          + '<style>'+css+'</style>' + xml + '</div></foreignObject></svg>';
+        var img = new Image();
+        img.onload = function(){
+          var c = document.createElement('canvas'); c.width = Wp; c.height = Hp;
+          var ctx = c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,Wp,Hp); ctx.drawImage(img,0,0);
+          var d = ctx.getImageData(0,0,Wp,Hp).data, bpr = Wp/8, out = new Uint8Array(bpr*Hp);
+          for(var y=0;y<Hp;y++){ for(var x=0;x<Wp;x++){ var i=(y*Wp+x)*4;
+            var lum = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+            if(d[i+3]>128 && lum<128){ out[y*bpr + (x>>3)] |= (0x80 >> (x&7)); } } }
+          resolve({ bytesPerRow: bpr, height: Hp, data: out });
+        };
+        img.onerror = function(){ reject(new Error('rasterizado')); };
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      });
+    }
+    function escpos(mono){
+      var head = [0x1B,0x40, 0x1D,0x76,0x30,0x00,
+        mono.bytesPerRow & 0xff, (mono.bytesPerRow>>8)&0xff, mono.height & 0xff, (mono.height>>8)&0xff];
+      var feed = [0x1B,0x64,0x04];              // avanza 4 líneas para poder cortar
+      var out = new Uint8Array(head.length + mono.data.length + feed.length);
+      out.set(head,0); out.set(mono.data, head.length); out.set(feed, head.length + mono.data.length);
+      return out;
+    }
+    function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+    async function pickDevice(){
+      if(navigator.bluetooth.getDevices){ try{ var ds = await navigator.bluetooth.getDevices();
+        if(ds && ds.length){ log('impresora recordada: '+(ds[0].name||ds[0].id)); return ds[0]; } }catch(e){} }
+      log('elige la impresora…');
+      return await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices: SERVICIOS });
+    }
+    async function findWritable(server){
+      var svcs = await server.getPrimaryServices();
+      for(var s=0;s<svcs.length;s++){ var chars = await svcs[s].getCharacteristics();
+        for(var c=0;c<chars.length;c++){ var p = chars[c].properties;
+          if(p.write || p.writeWithoutResponse){ log('canal: '+chars[c].uuid); return chars[c]; } } }
+      throw new Error('sin canal de escritura');
+    }
+    async function sendChunks(ch, data){
+      var CH = 160, wnr = ch.properties.writeWithoutResponse;
+      for(var i=0;i<data.length;i+=CH){ var s = data.slice(i, i+CH);
+        try { wnr ? await ch.writeValueWithoutResponse(s) : await ch.writeValue(s); }
+        catch(e){ await ch.writeValue(s); }      // reintento con respuesta si el canal sin respuesta falla
+        await sleep(12); }
+    }
+    window.btPrint = async function(){
+      if(!navigator.bluetooth){ alert('Este navegador no tiene Bluetooth web. Abre la etiqueta en Chrome (Android).'); return; }
+      var btn = document.querySelector('.toolbar .primary'); if(btn) btn.disabled = true;
+      try{
+        var dotsWide = Math.round((parseInt(document.getElementById('btw').value,10) || 720)/8)*8;
+        log('conectando…');
+        var dev = await pickDevice();
+        dev.addEventListener && dev.addEventListener('gattserverdisconnected', function(){ log('desconectada'); });
+        var server = await dev.gatt.connect();
+        log('conectada a '+(dev.name||'impresora'));
+        var ch = await findWritable(server);
+        log('rasterizando '+dotsWide+' pts…');
+        var mono = await rasterMono(dotsWide);
+        log('enviando '+mono.height+' líneas ('+(mono.bytesPerRow*mono.height)+' bytes)…');
+        await sendChunks(ch, escpos(mono));
+        await sleep(150);
+        log('impreso ✓');
+      }catch(e){ log('error: '+(e && e.message ? e.message : e)); }
+      finally{ if(btn) btn.disabled = false; }
     };
   })();
   </script>

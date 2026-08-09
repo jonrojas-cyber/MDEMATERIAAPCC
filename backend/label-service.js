@@ -149,11 +149,21 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   /* Columna cantidad (derecha), en vertical. */
   .cant { width: 5.5mm; flex: 0 0 5.5mm; border-left: 0.3mm solid #000; display: flex; align-items: center; justify-content: center; }
   .cant span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; font-weight: 700; letter-spacing: 0.8px; text-transform: lowercase; white-space: nowrap; }
-  @media screen { body { background: #ddd; padding: 14px; } .label { box-shadow: 0 0 0 1px #999; background:#fff; } .toolbar{font-family:sans-serif;margin-bottom:10px;font-size:12px;color:#333;} .toolbar button{font-family:inherit;} }
+  @media screen { body { background: #ddd; padding: 14px; } .label { box-shadow: 0 0 0 1px #999; background:#fff; }
+    .toolbar{font-family:sans-serif;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .toolbar button{font-family:inherit;font-size:14px;font-weight:600;padding:11px 16px;border-radius:10px;border:1px solid #333;cursor:pointer;}
+    .toolbar .primary{background:#2a332b;color:#fff;border-color:#2a332b;}
+    .toolbar .ghost{background:#fff;color:#333;}
+    .toolbar .hint{font-size:11px;color:#666;flex-basis:100%;} }
   @media print { .toolbar { display: none; } }
 </style></head>
 <body>
-  <div class="toolbar"><button onclick="window.print()">Imprimir</button> — 62×30mm · Phomemo D520BT</div>
+  <div class="toolbar">
+    <button class="primary" onclick="compartirLabelife()">📤 Imprimir en Labelife</button>
+    <button class="ghost" onclick="descargarEtiqueta()">⬇️ Guardar PNG</button>
+    <button class="ghost" onclick="window.print()">🖨️ Navegador</button>
+    <span class="hint">Toca «Imprimir en Labelife» → elige <b>Labelife</b> en el menú de compartir → imprime en la Phomemo D520BT (62×30 mm).</span>
+  </div>
   <div class="label">
     <div class="qr">
       <img src="${qrDataUrl}" alt="QR">
@@ -178,7 +188,52 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
     </div>
     ${cant ? `<div class="cant"><span>${cant}</span></div>` : ""}
   </div>
-  ${autoprint ? "<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script>" : ""}
+  <script>
+  (function(){
+    var CODE = ${JSON.stringify(lote.codigo || "etiqueta")};
+    // Rasteriza la .label a PNG al tamaño real (≈203 dpi) para que Labelife la
+    // imprima nítida. Usa SVG+foreignObject con el CSS embebido (sin librerías).
+    function labelToPng(){
+      return new Promise(function(resolve, reject){
+        var el = document.querySelector('.label');
+        var w = el.offsetWidth, h = el.offsetHeight, S = 3;
+        var css = ''; document.querySelectorAll('style').forEach(function(s){ css += s.textContent; });
+        var xml = new XMLSerializer().serializeToString(el);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+(w*S)+'" height="'+(h*S)+'">'
+          + '<foreignObject x="0" y="0" width="'+(w*S)+'" height="'+(h*S)+'">'
+          + '<div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale('+S+');transform-origin:top left;width:'+w+'px;height:'+h+'px;background:#fff;">'
+          + '<style>'+css+'</style>' + xml + '</div>'
+          + '</foreignObject></svg>';
+        var img = new Image();
+        img.onload = function(){
+          var c = document.createElement('canvas'); c.width = Math.round(w*S); c.height = Math.round(h*S);
+          var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,c.width,c.height);
+          ctx.drawImage(img, 0, 0);
+          c.toBlob(function(b){ b ? resolve(b) : reject(new Error('imagen vacía')); }, 'image/png');
+        };
+        img.onerror = function(){ reject(new Error('no se pudo dibujar la etiqueta')); };
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      });
+    }
+    function descargar(blob){
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'etiqueta-' + CODE + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+    }
+    window.descargarEtiqueta = function(){ labelToPng().then(descargar).catch(function(e){ alert('No se pudo generar la imagen: ' + e.message); }); };
+    window.compartirLabelife = function(){
+      labelToPng().then(function(blob){
+        var file = new File([blob], 'etiqueta-' + CODE + '.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          return navigator.share({ files: [file], title: 'Etiqueta ' + CODE, text: 'Etiqueta m de materia · ' + CODE });
+        }
+        descargar(blob); // sin compartir con ficheros (p. ej. escritorio): baja el PNG para abrirlo en Labelife
+      }).catch(function(e){ if (e && e.name !== 'AbortError') alert('No se pudo compartir: ' + e.message); });
+    };
+  })();
+  </script>
+  ${autoprint ? "<script>window.addEventListener('load',function(){var b=document.querySelector('.toolbar .primary'); if(b) b.focus();});</script>" : ""}
 </body></html>`;
 }
 

@@ -162,12 +162,12 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
 </style></head>
 <body>
   <div class="toolbar">
-    <button class="primary" onclick="btPrint()">🖨️ Imprimir directo (Bluetooth)</button>
-    <button class="ghost" onclick="compartirPDF()">📄 PDF 90×40</button>
-    <button class="ghost" onclick="compartirPDFgirado()">🔄 PDF girado (si sale vertical)</button>
-    <button class="ghost" onclick="window.print()">🖨️ Navegador</button>
+    <button class="primary" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="ghost" onclick="imprimirGirado()">🔄 Imprimir girado (si sale vertical)</button>
+    <button class="ghost" onclick="compartirPDF()">⬇️ Descargar PDF 90×40</button>
+    <button class="ghost" onclick="btPrint()">📶 Bluetooth (móvil)</button>
     <label class="opt">ancho <input id="btw" type="number" value="720" step="8" min="200" max="1200"> pts</label>
-    <span class="hint"><b>Imprimir directo</b> conecta por Bluetooth con la Phomemo D520BT y sale sin pasar por Labelife (Android + Chrome). La 1ª vez eliges la impresora; luego va directa. <b>PDF 90×40</b> te da la etiqueta como PDF a tamaño exacto (imprime sin reescalar). Si algo falla en directo, cópiame el registro de abajo.</span>
+    <span class="hint">Por cable: pulsa <b>Imprimir</b>, elige tu impresora y pon tamaño <b>90×40 mm</b>, <b>horizontal</b> y escala <b>100%</b>. Si sale en vertical, usa <b>Imprimir girado</b>. <b>Bluetooth</b> solo es para móvil.</span>
     <pre id="btlog" class="btlog"></pre>
   </div>
   <div class="label">
@@ -254,6 +254,19 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       rasterMono(720).then(function(m){ return buildPdf(m, true); })
         .then(function(blob){ compartirBlob(blob, '-girada'); })
         .catch(function(e){ alert('No se pudo generar el PDF girado: ' + e.message); });
+    };
+    // Imprime la etiqueta GIRADA 90° directamente (para impresoras por cable que
+    // sacan la etiqueta en vertical): genera el PDF girado y lo abre en el diálogo
+    // de impresión. Si el navegador no deja imprimir el iframe, lo descarga.
+    window.imprimirGirado = function(){
+      rasterMono(720).then(function(m){ return buildPdf(m, true); }).then(function(blob){
+        var url = URL.createObjectURL(blob);
+        var f = document.createElement('iframe');
+        f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;';
+        f.onload = function(){ setTimeout(function(){ try { f.contentWindow.focus(); f.contentWindow.print(); } catch(e){ descargar(blob, 'pdf'); } }, 250); };
+        f.src = url; document.body.appendChild(f);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+      }).catch(function(e){ alert('No se pudo imprimir girado: ' + e.message); });
     };
 
     // ── IMPRESIÓN DIRECTA POR BLUETOOTH (sin Labelife) ───────────────────────

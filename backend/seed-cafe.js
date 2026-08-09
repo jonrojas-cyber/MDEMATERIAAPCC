@@ -147,6 +147,20 @@ const BATCHES = [
       { entity: "materias", id: "mat-matcha", campos: { coste_medio: 0.19 } },
     ],
   },
+  {
+    // Café de temporada Ineffable · Shoondhisa (etiqueta de la bolsa). Se añade
+    // al catálogo con su ficha completa. coste_medio estimado en el tramo de los
+    // etíopes naturales complejos (Bookkisa/Sasaba); confírmalo con el albarán.
+    flag: "cafe_seed_v10_shoondhisa",
+    materias: [
+      { id: "mat-cafe-inef-shoondhisa", nombre: "Etiopía · Shoondhisa · Guji (temporada)",
+        unidad: "g", coste_medio: 0.0359, categoria: "Café", ubicacion: "Barra", disponibilidad_actual: 1000,
+        tostador: "Ineffable Coffee Roasters", origen: "Etiopía", region: "Guji",
+        variedad: "Gibirina 74110 & Serto 74112", proceso: "Natural", altitud_m: 2173,
+        notas: "Violeta, frambuesa, floral" },
+    ],
+    productos: [],
+  },
 ];
 
 async function seedCafe() {

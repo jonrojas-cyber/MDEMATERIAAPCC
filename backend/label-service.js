@@ -121,7 +121,9 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   @page { size: 90mm 40mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 90mm; height: 40mm; overflow: hidden; }
-  body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; }
+  body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; font-weight: 700; }
+  /* Toda la letra en NEGRITA: la fina se rompe en térmica. */
+  .label, .label * { font-weight: 700 !important; }
   .label { width: 90mm; height: 40mm; border: 0.4mm solid #000; display: flex; align-items: stretch; page-break-inside: avoid; }
   /* Columna QR (izquierda). */
   .qr { width: 22mm; flex: 0 0 22mm; border-right: 0.3mm solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.6mm 1mm; }

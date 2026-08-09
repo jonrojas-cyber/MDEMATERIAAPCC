@@ -163,10 +163,10 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
 <body>
   <div class="toolbar">
     <button class="primary" onclick="btPrint()">🖨️ Imprimir directo (Bluetooth)</button>
-    <button class="ghost" onclick="compartirLabelife()">📤 Labelife</button>
-    <button class="ghost" onclick="descargarEtiqueta()">⬇️ PNG</button>
+    <button class="ghost" onclick="compartirPDF()">📄 PDF 90×40</button>
+    <button class="ghost" onclick="window.print()">🖨️ Navegador</button>
     <label class="opt">ancho <input id="btw" type="number" value="720" step="8" min="200" max="1200"> pts</label>
-    <span class="hint"><b>Imprimir directo</b> conecta por Bluetooth con la Phomemo D520BT y sale sin pasar por Labelife (Android + Chrome). La 1ª vez eliges la impresora; luego va directa. Si algo falla, cópiame el registro de abajo. Respaldos: Labelife / PNG. Etiqueta 90×40 mm.</span>
+    <span class="hint"><b>Imprimir directo</b> conecta por Bluetooth con la Phomemo D520BT y sale sin pasar por Labelife (Android + Chrome). La 1ª vez eliges la impresora; luego va directa. <b>PDF 90×40</b> te da la etiqueta como PDF a tamaño exacto (imprime sin reescalar). Si algo falla en directo, cópiame el registro de abajo.</span>
     <pre id="btlog" class="btlog"></pre>
   </div>
   <div class="label">
@@ -196,53 +196,52 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   <script>
   (function(){
     var CODE = ${JSON.stringify(lote.codigo || "etiqueta")};
-    // Rasteriza la .label a PNG al tamaño real (≈203 dpi) para que Labelife la
-    // imprima nítida. Usa SVG+foreignObject con el CSS embebido (sin librerías).
-    function labelToPng(){
-      return new Promise(function(resolve, reject){
-        var el = document.querySelector('.label');
-        var w = el.offsetWidth, h = el.offsetHeight, S = 3;
-        var css = ''; document.querySelectorAll('style').forEach(function(s){ css += s.textContent; });
-        var xml = new XMLSerializer().serializeToString(el);
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+(w*S)+'" height="'+(h*S)+'">'
-          + '<foreignObject x="0" y="0" width="'+(w*S)+'" height="'+(h*S)+'">'
-          + '<div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale('+S+');transform-origin:top left;width:'+w+'px;height:'+h+'px;background:#fff;">'
-          + '<style>'+css+'</style>' + xml + '</div>'
-          + '</foreignObject></svg>';
-        var img = new Image();
-        img.onload = function(){
-          var c = document.createElement('canvas'); c.width = Math.round(w*S); c.height = Math.round(h*S);
-          var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,c.width,c.height);
-          ctx.drawImage(img, 0, 0);
-          c.toBlob(function(b){ b ? resolve(b) : reject(new Error('imagen vacía')); }, 'image/png');
-        };
-        img.onerror = function(){ reject(new Error('no se pudo dibujar la etiqueta')); };
-        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-      });
-    }
-    function descargar(blob){
+    function descargar(blob, ext){
       var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'etiqueta-' + CODE + '.png';
+      a.href = URL.createObjectURL(blob); a.download = 'etiqueta-' + CODE + '.' + (ext || 'pdf');
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
     }
-    // Pre-genera el PNG en cuanto carga la página, así al tocar el botón el
-    // compartir se lanza al instante DENTRO del gesto (fiable en Android).
-    var _blobPromise = null;
-    function prepararBlob(){ if (!_blobPromise) _blobPromise = labelToPng(); return _blobPromise; }
-    window.addEventListener('load', function(){ prepararBlob().catch(function(){ _blobPromise = null; }); });
-    function conBlob(fn){
-      prepararBlob().then(fn).catch(function(e){ _blobPromise = null; alert('No se pudo generar la etiqueta: ' + e.message); });
+    // Construye un PDF (sin librerías) con una única página de 90×40 mm y la
+    // etiqueta como imagen 1-bit a página completa: imprime a tamaño exacto,
+    // sin reescalar, en cualquier visor/impresora.
+    function buildPdf(mono){
+      var W = mono.bytesPerRow * 8, H = mono.height, bits = mono.data;
+      var pw = (90/25.4*72).toFixed(3), ph = (40/25.4*72).toFixed(3);  // 255.118 × 113.386 pt
+      var enc = new TextEncoder(), chunks = [], off = [], pos = 0;
+      function push(x){ var b = (typeof x === 'string') ? enc.encode(x) : x; chunks.push(b); pos += b.length; }
+      function mark(n){ off[n] = pos; }
+      push("%PDF-1.4\n");
+      mark(1); push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+      mark(2); push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+      mark(3); push("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+pw+" "+ph+"] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n");
+      var content = "q "+pw+" 0 0 "+ph+" 0 0 cm 0 g /Im0 Do Q\n";
+      mark(4); push("4 0 obj\n<< /Length "+content.length+" >>\nstream\n"+content+"endstream\nendobj\n");
+      mark(5); push("5 0 obj\n<< /Type /XObject /Subtype /Image /Width "+W+" /Height "+H+" /ImageMask true /BitsPerComponent 1 /Decode [1 0] /Length "+bits.length+" >>\nstream\n");
+      push(bits); push("\nendstream\nendobj\n");
+      var xrefPos = pos, n = 6, xref = "xref\n0 "+n+"\n0000000000 65535 f \n";
+      for(var i=1;i<n;i++){ xref += ("0000000000"+off[i]).slice(-10)+" 00000 n \n"; }
+      push(xref);
+      push("trailer\n<< /Size "+n+" /Root 1 0 R >>\nstartxref\n"+xrefPos+"\n%%EOF");
+      return new Blob(chunks, { type: 'application/pdf' });
     }
-    window.descargarEtiqueta = function(){ conBlob(descargar); };
-    window.compartirLabelife = function(){
-      conBlob(function(blob){
-        var file = new File([blob], 'etiqueta-' + CODE + '.png', { type: 'image/png' });
+    // Pre-genera el PDF (1-bit a ~305 dpi) al cargar, para que al tocar el botón
+    // el compartir se lance al instante DENTRO del gesto (fiable en Android).
+    var _pdfPromise = null;
+    function prepararPdf(){ if (!_pdfPromise) _pdfPromise = rasterMono(1080).then(buildPdf); return _pdfPromise; }
+    window.addEventListener('load', function(){ setTimeout(function(){ prepararPdf().catch(function(){ _pdfPromise = null; }); }, 60); });
+    function conPdf(fn){
+      prepararPdf().then(fn).catch(function(e){ _pdfPromise = null; alert('No se pudo generar el PDF: ' + e.message); });
+    }
+    window.descargarEtiqueta = function(){ conPdf(function(b){ descargar(b, 'pdf'); }); };
+    window.compartirPDF = function(){
+      conPdf(function(blob){
+        var file = new File([blob], 'etiqueta-' + CODE + '.pdf', { type: 'application/pdf' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({ files: [file], title: 'Etiqueta ' + CODE, text: 'Etiqueta m de materia · ' + CODE })
-            .catch(function(e){ if (e && e.name !== 'AbortError') descargar(blob); });
+            .catch(function(e){ if (e && e.name !== 'AbortError') descargar(blob, 'pdf'); });
         } else {
-          descargar(blob); // sin compartir con ficheros (escritorio): baja el PNG para abrirlo en Labelife
+          descargar(blob, 'pdf');
         }
       });
     };

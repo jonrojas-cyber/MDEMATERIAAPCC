@@ -859,14 +859,13 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await page.evaluate(() => { limSetRec("R6"); limSetL(8); });        // Equilibrio → agua de hierbabuena
   await page.locator(".lim-prep-card").first().click();
   await expect(page.locator("#prep-fs.show")).toBeVisible();
-  // El maracuyá se CLARIFICA con pectinasa (diluir + 12 h frío + trasiego), como el pomelo.
-  await expect(page.locator(".prep-fs-title")).toContainText(/Maracuyá clarificado/);
-  await expect(page.locator(".prep-steps")).toContainText(/pectinasa|Pectinex/i);
-  await expect(page.locator(".prep-steps")).toContainText(/clarificando en frío/i);
+  // El maracuyá (Boiron) se pone a punto diluyendo 250 g de agua por kg de puré.
+  await expect(page.locator(".prep-fs-title")).toContainText(/Maracuyá \(Boiron\)/);
+  await expect(page.locator(".prep-steps")).toContainText(/250 g de agua/i);
   await expect(page.locator(".prep-ings")).toContainText(/agua/i);   // lleva agua de dilución
   await page.evaluate(() => limCerrarPrep());
   await page.evaluate(() => limAbrirPrep("CH", 1200));
-  await expect(page.locator(".prep-fs-title")).toContainText(/Super Juice de hierbabuena/);
+  await expect(page.locator(".prep-fs-title")).toContainText(/Agua de hierbabuena/);
   await expect(page.locator(".prep-produce")).toContainText(/Vas a preparar/);
   await expect(page.locator(".prep-fs-body")).toContainText(/Generar etiqueta/);   // etiqueta por preparación
   await expect(page.locator(".prep-steps li")).toHaveCount(6);          // método de referencia

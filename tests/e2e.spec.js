@@ -866,7 +866,7 @@ test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async (
   await expect(page.locator(".prep-ings")).toContainText(/agua/i);   // lleva agua de dilución
   await page.evaluate(() => limCerrarPrep());
   await page.evaluate(() => limAbrirPrep("CH", 1200));
-  await expect(page.locator(".prep-fs-title")).toContainText(/Agua de hierbabuena/);
+  await expect(page.locator(".prep-fs-title")).toContainText(/Super Juice de hierbabuena/);
   await expect(page.locator(".prep-produce")).toContainText(/Vas a preparar/);
   await expect(page.locator(".prep-fs-body")).toContainText(/Generar etiqueta/);   // etiqueta por preparación
   await expect(page.locator(".prep-steps li")).toHaveCount(6);          // método de referencia

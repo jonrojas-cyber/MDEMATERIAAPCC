@@ -3148,16 +3148,16 @@ const LIMONADAS_DATA = {
              "CORTA a tiempo: cata a los 15-20 min y, cuando la astringencia empiece a tapar el ahumado, para.",
              "Enfría en un baño de hielo y filtra; guárdalo como concentrado.",
              "NO lo diluyas aquí: ese agua se añade al final, al rebachar el cóctel." ] },
-    CH:  { nombre: "Cordial de hierbabuena", tipo: "cordial", rinde: 1160,
-           ing: [ {n:"hierbabuena",v:130,u:"g"}, {n:"azúcar",v:500,u:"g"}, {n:"agua",v:500,u:"g"}, {n:"ácido cítrico",v:15,u:"g"}, {n:"ácido málico",v:12,u:"g"}, {n:"glutamato",v:2,u:"g"}, {n:"sal",v:1.5,u:"g"} ],
-           metodo: "Llevado al nivel del super juice de pomelo con SU misma técnica: extracción en verde (escaldado + choque de hielo y triturado en frío, para fijar aroma y color y NO 'cocer' la menta), acidez redonda cítrico+málico (como los super juices, en vez de tartárico) y un fondo de sal+glutamato que da cuerpo y hace que 'sepa a más'. Sigue siendo cordial: aroma+azúcar+ácido a la vez.",
+    CH:  { nombre: "Agua de hierbabuena", tipo: "aromática", rinde: 1000, merma: 0.1,
+           ing: [ {n:"hierbabuena",v:180,u:"g"}, {n:"agua",v:850,u:"g"}, {n:"azúcar",v:60,u:"g"}, {n:"ácido cítrico",v:6,u:"g"} ],
+           metodo: "La menta es MUCHO menos aromática que el kaffir y cuesta extraerla: se carga fuerte (concentrada, 180 g/L) y se infusiona a baja temperatura EN azúcar+ácido (extraen más aroma que el agua sola). Se guarda concentrada y se REBAJA con agua al rebachar el cóctel; ahí se ajusta la intensidad. Lleva poco azúcar/ácido: el dulzor y la acidez finales los pone la estructura estándar del refresco, no esta base.",
            pasos: [
              "Separa las hojas de hierbabuena de los tallos y lávalas bien.",
-             "Escalda las hojas 10 s en agua hirviendo y pásalas de golpe a agua con hielo: fija el verde y el aroma fresco y evita el sabor 'cocido'.",
-             "Aparte, calienta el agua con el azúcar hasta disolver (jarabe); NO lo hiervas fuerte y déjalo templar.",
-             "Escurre bien las hojas y tritúralas EN FRÍO con el jarabe templado (túrmix): arranca el aroma sin apagarlo.",
-             "Añade el ácido cítrico, el ácido málico, el glutamato y la sal; tritura y disuelve del todo.",
-             "Filtra fino (superbag o V60) presionando las hojas. Enfría y reserva en frío." ] },
+             "Escáldalas 10 s en agua hirviendo y pásalas de golpe a agua con hielo: fija el verde y el aroma y evita el sabor 'cocido'.",
+             "Envasa al vacío las hojas con el agua, el azúcar y el ácido cítrico (el azúcar y el ácido extraen más aroma que el agua sola).",
+             "Sous-vide a 60 °C, 25-30 min. NO subas la temperatura: la menta se cuece y amarga.",
+             "Enfría en un baño de hielo para fijar el aroma.",
+             "Filtra fino y guárdalo CONCENTRADO. Se rebaja con agua al rebachar el cóctel." ] },
     PB:  { nombre: "Maracuyá clarificado", tipo: "cítrico", rinde: 1000, merma: 0.18,
            ing: [ {n:"purée Boiron maracuyá",v:480,u:"g"}, {n:"agua",v:720,u:"g"}, {n:"pectinasa (Pectinex)",v:2.4,u:"g"} ],
            metodo: "El puré (13 °Bx) es demasiado espeso para clarificar tal cual: hay que DILUIRLO con agua (1 : 1,5), dosificar pectinasa (2 g/L) y dejarlo clarificar 12–24 h en frío; luego se trasiega el líquido limpio del sedimento. Clarificar diluye el maracuyá: recata y sube la cantidad si pierde intensidad.",
@@ -3208,17 +3208,17 @@ const LIMONADAS_DATA = {
     },
     R6: {
       nombre: "Equilibrio", sabor: "fruta de la pasión · hierbabuena", prod: "Burbujas Equilibrio", fase: "carbonatada · fruta de la pasión · hierbabuena", pvp: "2,90 €",
-      bx: "~9", acidez: "alta", co2: "2,8 vol",
+      bx: "9,0", acidez: "0,85 %", co2: "2,8 vol",
       lineas: [
         { n: "Maracuyá clarificado",   v: 150, u: "ml", cod: "PB" },
-        { n: "Cordial de hierbabuena", v: 150, u: "ml", cod: "CH", tardio: true },
-        { n: "Azúcar",       v: 10,   u: "g" },
-        { n: "Fructosa",     v: 15,   u: "g" },
-        { n: "Glutamato",    v: 0.20, u: "g" },
-        { n: "Ácido málico", v: 0.50, u: "g" },
-        { n: "Sal",          v: 0.50, u: "g" }
+        { n: "Agua de hierbabuena",    v: 150, u: "ml", cod: "CH", tardio: true },
+        { n: "Azúcar",       v: 60,   u: "g" },
+        { n: "Fructosa",     v: 40,   u: "g" },
+        { n: "Glutamato",    v: 0.25, u: "g" },
+        { n: "Ácido málico", v: 0.80, u: "g" },
+        { n: "Sal",          v: 0.60, u: "g" }
       ],
-      nota: "El maracuyá va CLARIFICADO (pectinasa + 12 h en frío) para una burbuja limpia sin pulpa: como clarificar diluye, recata el 150 ml y súbelo si pierde intensidad. El cordial de hierbabuena va reforzado (verde, cítrico+málico y un fondo de sal+glutamato) y ya trae azúcar y ácido: por eso poco azúcar y NADA de cítrico añadido, y RECATA el glutamato/sal añadidos del cóctel (ya viene fondo del cordial). La hierbabuena (cordial) entra al final, en frío."
+      nota: "Reestructurada: MISMA base de refresco que Origen/Colección (azúcar 60 · fructosa 40 · málico 0,8 · glutamato 0,25 · sal 0,6) y el sabor = juntar dos bases equilibradas: maracuyá CLARIFICADO + agua de hierbabuena CONCENTRADA (menta muy cargada, sous-vide en azúcar+ácido, se rebaja con agua). El agua de rebache (c.s.p.) es tu dial de intensidad de menta. Puntos a cerrar en cata: cuánta agua de hierbabuena (150 ml de partida) y el reparto con el maracuyá. Sin el subidón de azúcar/ácido del cordial viejo."
     }
   }
 };

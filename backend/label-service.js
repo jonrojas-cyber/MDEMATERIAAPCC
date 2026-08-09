@@ -158,7 +158,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
     .toolbar .hint{font-size:11.5px;color:#666;flex-basis:100%;line-height:1.4;}
     .btlog{flex-basis:100%;font-family:ui-monospace,monospace;font-size:11px;background:#111;color:#7bd88f;padding:8px 10px;border-radius:8px;max-height:140px;overflow:auto;white-space:pre-wrap;margin:0;display:none;}
     .btlog.on{display:block;} }
-  @media print { .toolbar { display: none; } }
+  @media print { html, body { width: 90mm; height: 40mm; margin: 0; padding: 0; overflow: hidden; } .toolbar { display: none; } .label { box-shadow: none; margin: 0; } }
 </style></head>
 <body>
   <div class="toolbar">
@@ -228,7 +228,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
     // Pre-genera el PDF (1-bit a ~305 dpi) al cargar, para que al tocar el botón
     // el compartir se lance al instante DENTRO del gesto (fiable en Android).
     var _pdfPromise = null;
-    function prepararPdf(){ if (!_pdfPromise) _pdfPromise = rasterMono(1080).then(buildPdf); return _pdfPromise; }
+    function prepararPdf(){ if (!_pdfPromise) _pdfPromise = rasterMono(720).then(buildPdf); return _pdfPromise; }
     window.addEventListener('load', function(){ setTimeout(function(){ prepararPdf().catch(function(){ _pdfPromise = null; }); }, 60); });
     function conPdf(fn){
       prepararPdf().then(fn).catch(function(e){ _pdfPromise = null; alert('No se pudo generar el PDF: ' + e.message); });
@@ -258,7 +258,9 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
       return new Promise(function(resolve, reject){
         var el = document.querySelector('.label');
         var w = el.offsetWidth, h = el.offsetHeight;
-        var Wp = Math.round(dotsWide/8)*8, scale = Wp/w, Hp = Math.max(1, Math.round(h*scale));
+        // Ancho byte-alineado; ALTO exacto por el físico 90×40 mm (no por el
+        // redondeo de píxeles), así el raster es siempre 1 etiqueta: 720×320 a 203 dpi.
+        var Wp = Math.round(dotsWide/8)*8, scale = Wp/w, Hp = Math.round(Wp * 40/90);
         var css=''; document.querySelectorAll('style').forEach(function(s){ css += s.textContent; });
         var xml = new XMLSerializer().serializeToString(el);
         var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+Wp+'" height="'+Hp+'">'

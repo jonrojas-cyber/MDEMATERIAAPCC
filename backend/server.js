@@ -44,6 +44,7 @@ app.get("/etiqueta/lote/:loteId", async (req, res) => {
       receta,
       responsable: req.query.responsable || "—",
       autoprint: req.query.print === "1",
+      cantidad: lote.cantidad_inicial != null ? `${lote.cantidad_inicial} ${receta ? receta.unidad || "" : ""}`.trim() : "",
     });
     labelService.guardarHistorial({
       lote_id: lote.id,
@@ -88,6 +89,7 @@ app.get("/etiqueta/prep", async (req, res) => {
       autoprint: req.query.print === "1",
       qrUrl: labelService.urlFichaPrep(req, req.query),
       venceLabel: req.query.et ? String(req.query.et).slice(0, 24) : null,
+      cantidad: d.cantidad,
     });
     res.set("Content-Type", "text/html; charset=utf-8").send(html);
   } catch (e) {

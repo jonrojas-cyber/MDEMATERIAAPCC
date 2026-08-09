@@ -98,14 +98,21 @@ function fechaSello(iso) {
 }
 
 // HTML de una etiqueta térmica de 62x30mm para la Phomemo D520BT.
-// Lenguaje "m de materia": minúsculas, tags con tracking, líneas finas de
-// boticario y el imagotipo de las tres líneas. Negro puro sobre blanco para
-// que la impresión térmica salga nítida; el QR nunca se recorta.
-async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, qrUrl, venceLabel }) {
+// Diseño "boticario m de materia": marco, título en mayúsculas + subtítulo, una
+// regla, los datos de fecha, la cantidad en vertical a la derecha y la coletilla
+// legal abajo. El QR de trazabilidad (vida útil en vivo) va en la columna
+// izquierda. Negro puro sobre blanco para que la térmica salga nítida.
+async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, qrUrl, venceLabel, cantidad }) {
   const qrTexto = qrUrl || urlFichaLote(req, lote.id);
   const qrDataUrl = await generateQRCode(qrTexto);
-  const nombre = escapeHTML(receta ? receta.nombre : lote.receta_id);
-  const unidad = receta ? receta.unidad : "";
+  const nombreRaw = String((receta ? receta.nombre : lote.receta_id) || "");
+  // El nombre se parte en TÍTULO · subtítulo (como "COLD BREW / tembo tembo").
+  const partes = nombreRaw.split(" · ");
+  const titulo = escapeHTML(partes[0] || "");
+  const subtitulo = escapeHTML(partes.slice(1).join(" · "));
+  const cant = escapeHTML(cantidad || "");
+  const vence = escapeHTML((venceLabel || "consumir antes")).toLowerCase();
+  const resp = escapeHTML((responsable || "").trim()).toLowerCase();
 
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
@@ -115,57 +122,61 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 62mm; height: 30mm; overflow: hidden; }
   body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; }
-  /* Margen interno de seguridad: nada toca el borde. */
-  .label { width: 62mm; height: 30mm; padding: 1.8mm 2mm; display: flex; gap: 2mm; align-items: stretch; page-break-inside: avoid; }
-  .datos { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  /* Cabecera de marca: palabra tracked + imagotipo tres líneas. */
-  .brand { display: flex; align-items: center; justify-content: space-between; }
-  .brand .word { font-size: 5px; letter-spacing: 1.4px; text-transform: lowercase; }
-  .brand .mark { display: flex; align-items: flex-end; gap: 0.5mm; }
-  .brand .mark i { display: block; width: 0.42mm; height: 2.6mm; background: #000; }
-  .brand .mark i:nth-child(2) { height: 3.2mm; }
-  .rule { height: 0; border-top: 0.2mm solid #000; margin: 0.7mm 0; }
-  .rule.foot { margin-top: auto; margin-bottom: 0.6mm; }
-  /* Nombre: máx 2 líneas (nunca desborda ni corta el resto de la etiqueta). */
-  .nombre { font-size: 10px; font-weight: 700; line-height: 1.05; letter-spacing: 0.2px; text-transform: lowercase;
+  .label { width: 62mm; height: 30mm; border: 0.35mm solid #000; display: flex; align-items: stretch; page-break-inside: avoid; }
+  /* Columna QR (izquierda). */
+  .qr { width: 16mm; flex: 0 0 16mm; border-right: 0.3mm solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1mm 0.6mm; }
+  .qr img { width: 12.5mm; height: 12.5mm; display: block; image-rendering: pixelated; background: #fff; }
+  .qr .code { font-size: 6px; font-weight: 700; letter-spacing: 0.5px; margin-top: 0.9mm; text-align: center; line-height: 1.05; word-break: break-all; }
+  /* Columna principal. */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .top { flex: 1; padding: 1.5mm 1.8mm 0.8mm; display: flex; flex-direction: column; min-width: 0; }
+  .titulo-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5mm; }
+  .titulo { font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; line-height: 1.05;
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  /* Ficha de meta en columnas: tag en minúscula tracked, valor en negrita. */
-  .meta { display: grid; grid-template-columns: auto 1fr; column-gap: 2mm; row-gap: 0.35mm; margin-top: 0.9mm; }
-  .meta dt { font-size: 5.5px; letter-spacing: 0.7px; text-transform: lowercase; align-self: baseline; }
-  .meta dd { font-size: 8px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
-  .meta dd.big { font-size: 9px; }
-  .codigo { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; white-space: nowrap; }
-  /* Estado de prueba / I+D: destaca que NO es un producto de carta. */
-  .prueba { font-size: 6.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
-            border: 0.2mm solid #000; border-radius: 0.6mm; padding: 0.2mm 1mm; display: inline-block; margin-top: 0.7mm; }
-  /* QR con marco fino de boticario y pie tracked. */
-  .qr { width: 23mm; flex: 0 0 23mm; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .qr .frame { border: 0.2mm solid #000; padding: 0.6mm; background: #fff; }
-  .qr img { width: 18.5mm; height: 18.5mm; display: block; background: #fff; image-rendering: pixelated; }
-  .qr span { font-size: 5px; letter-spacing: 1px; text-transform: lowercase; margin-top: 0.9mm; text-align: center; }
+  .mark { display: flex; align-items: flex-end; gap: 0.4mm; flex: 0 0 auto; margin-top: 0.4mm; }
+  .mark i { display: block; width: 0.4mm; height: 2.4mm; background: #000; }
+  .mark i:nth-child(2) { height: 3mm; }
+  .subtitulo { font-size: 7.5px; text-transform: lowercase; letter-spacing: 0.3px; margin-top: 0.5mm;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rule { border-top: 0.2mm solid #000; margin: 1mm 0 0.9mm; }
+  .fecha { font-size: 7px; letter-spacing: 0.2px; text-transform: lowercase; line-height: 1.4; white-space: nowrap; }
+  .fecha b { font-weight: 700; }
+  .fecha.vence b { font-size: 8.5px; }
+  .prueba { font-size: 6px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+            border: 0.2mm solid #000; padding: 0.2mm 1mm; display: inline-block; margin-top: 0.6mm; align-self: flex-start; }
+  .foot { border-top: 0.3mm solid #000; padding: 0.9mm 1.8mm; }
+  .legal { font-size: 5px; letter-spacing: 0.2px; text-transform: uppercase; line-height: 1.3; }
+  /* Columna cantidad (derecha), en vertical. */
+  .cant { width: 5.5mm; flex: 0 0 5.5mm; border-left: 0.3mm solid #000; display: flex; align-items: center; justify-content: center; }
+  .cant span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px; font-weight: 700; letter-spacing: 0.8px; text-transform: lowercase; white-space: nowrap; }
   @media screen { body { background: #ddd; padding: 14px; } .label { box-shadow: 0 0 0 1px #999; background:#fff; } .toolbar{font-family:sans-serif;margin-bottom:10px;font-size:12px;color:#333;} .toolbar button{font-family:inherit;} }
   @media print { .toolbar { display: none; } }
 </style></head>
 <body>
   <div class="toolbar"><button onclick="window.print()">Imprimir</button> — 62×30mm · Phomemo D520BT</div>
   <div class="label">
-    <div class="datos">
-      <div class="brand"><span class="word">m · de · materia</span><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span></div>
-      <div class="rule"></div>
-      <div class="nombre">${nombre}</div>
-      ${lote.prueba ? `<div class="prueba">${escapeHTML(lote.prueba)}</div>` : ""}
-      <dl class="meta">
-        <dt>elaborado</dt><dd>${fechaSello(lote.producido_en)}</dd>
-        <dt>${escapeHTML(venceLabel || "consumir").toLowerCase()}</dt><dd class="big">${fechaSello(lote.caduca_en)}</dd>
-        <dt>responsable</dt><dd>${escapeHTML((responsable || "—")).toLowerCase()}</dd>
-      </dl>
-      <div class="rule foot"></div>
-      <div class="codigo">${escapeHTML(lote.codigo)}</div>
-    </div>
     <div class="qr">
-      <div class="frame"><img src="${qrDataUrl}" alt="QR"></div>
-      <span>escanea · vida útil</span>
+      <img src="${qrDataUrl}" alt="QR">
+      <div class="code">${escapeHTML(lote.codigo)}</div>
     </div>
+    <div class="main">
+      <div class="top">
+        <div class="titulo-row">
+          <div class="titulo">${titulo}</div>
+          <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        </div>
+        ${subtitulo ? `<div class="subtitulo">${subtitulo}</div>` : ""}
+        <div class="rule"></div>
+        <div class="fecha">elaborado · <b>${fechaSello(lote.producido_en)}</b></div>
+        <div class="fecha vence">${vence} · <b>${fechaSello(lote.caduca_en)}</b></div>
+        ${resp ? `<div class="fecha">resp · ${resp}</div>` : ""}
+        ${lote.prueba ? `<div class="prueba">${escapeHTML(lote.prueba)}</div>` : ""}
+      </div>
+      <div class="foot">
+        <div class="legal">Elaborado con ingredientes de origen natural. Sin colorantes. Sin conservantes.</div>
+      </div>
+    </div>
+    ${cant ? `<div class="cant"><span>${cant}</span></div>` : ""}
   </div>
   ${autoprint ? "<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script>" : ""}
 </body></html>`;

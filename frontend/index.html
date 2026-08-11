@@ -7146,21 +7146,26 @@ async function irA_proveedores(){
   navReset(); // raíz de Proveedores
   openSection("proveedores","Proveedores");
   try{
-    const [provs,meta]=await Promise.all([api("/proveedores"),api("/proveedores/meta")]);
+    const [provs,meta,arts]=await Promise.all([api("/proveedores"),api("/proveedores/meta"),api("/compras-productos").catch(()=>[])]);
     window._provMeta=meta;
+    // Cuenta artículos «Pendiente de completar» por proveedor (para avisar en la tarjeta).
+    const pendPorProv={};
+    (arts||[]).forEach(a=>{ if(a.pendiente) pendPorProv[a.proveedor_id]=(pendPorProv[a.proveedor_id]||0)+1; });
     const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="formProveedor()">Agregar proveedor</button></div>`;
     if(!provs.length){ setInner(cab+`<div class="empty">Aún no hay proveedores. Pulsa “Agregar proveedor” para crear el primero.</div>`); return; }
     // Orden: activos primero, luego por nombre.
     provs.sort((a,b)=> (a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1) || a.nombre.localeCompare(b.nombre));
     const html=cab+provs.map(p=>{
-      const tel=(p.telefono||p.whatsapp||"").replace(/[^0-9+]/g,"");
+      const tel=(p.telefono||p.telefono_pedidos||p.whatsapp||"").replace(/[^0-9+]/g,"");
       const estado=p.estado||"Activo";
+      const nPend=pendPorProv[p.id]||0;
+      const pendChip=nPend?` <span style="font-size:10px;font-weight:700;color:var(--alert);">· ${nPend} sin tarifa</span>`:"";
       const meta2=[p.categoria||"Otros", p.contacto||"", (p.productos_nombres||[]).slice(0,3).join(", ")].filter(Boolean).join(" · ");
       const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Productos</button>`+
         `<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
         (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"");
       return `<div class="card">
-        <div class="card-name">${p.nombre} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span></div>
+        <div class="card-name">${p.nombre} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${pendChip}</div>
         <div class="card-meta">${meta2}</div>
         <div class="card-actions">${acc}</div>
       </div>`;
@@ -7172,25 +7177,52 @@ async function irA_proveedores(){
 // Formulario crear/editar proveedor. Si se pasa id, carga el proveedor para editar.
 async function formProveedor(id){
   navInto(()=>irA_proveedores()); // "atrás" desde el formulario vuelve a la lista
-  const meta=window._provMeta||{categorias:["Otros"],estados:["Activo","Pausado","Sustituido"]};
-  let p={nombre:"",contacto:"",telefono:"",email:"",direccion:"",categoria:"",estado:"Activo",notas:"",foto_url:null};
+  const meta=window._provMeta||{categorias:["Otros"],estados:["Activo","Pausado","Sustituido"],dias:["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]};
+  const dias=meta.dias||["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+  const admin=mbdsEsAdmin();
+  let p={nombre:"",razon_social:"",contacto:"",telefono:"",telefono_pedidos:"",email:"",direccion:"",cif:"",nif_cif:"",categoria:"",estado:"Activo",notas:"",observaciones:"",hora_limite:"",pedido_minimo:"",transporte:"",forma_pago:"",bizum:"",bizum_tel:"",dias_pedido:[],dias_entrega:[],foto_url:null};
   if(id){ try{ p=await api("/proveedores/"+id); }catch(e){ alert(e.message); return; } }
   window._provEditId=id||null;
   window._provFoto=(p.foto_url!==undefined)?p.foto_url:null; // null/"" según exista
   const cats=meta.categorias.map(c=>`<option value="${c}" ${c===p.categoria?"selected":""}>${c}</option>`).join("");
   const ests=meta.estados.map(s=>`<option value="${s}" ${s===(p.estado||"Activo")?"selected":""}>${s}</option>`).join("");
+  // Chips de días (pedido / entrega): selección múltiple sin inventar formato.
+  const chipsDias=(campo,sel)=>dias.map(d=>{
+    const on=(sel||[]).includes(d);
+    return `<label class="todo-chip" style="display:inline-flex;align-items:center;gap:5px;margin:3px;cursor:pointer;${on?"outline:2px solid var(--olive)":""}">
+      <input type="checkbox" class="pv-${campo}" value="${d}" ${on?"checked":""} style="margin:0;"> ${d.slice(0,3)}</label>`;
+  }).join("");
   setInner(`
     <div class="section-label">${id?"Editar proveedor":"Nuevo proveedor"}</div>
     <div class="card">
-      <div class="field"><label>Nombre del proveedor</label><input id="pv-nombre" value="${esc(p.nombre)}" style="width:100%;"></div>
+      <div class="field"><label>Nombre comercial</label><input id="pv-nombre" value="${esc(p.nombre)}" style="width:100%;"></div>
+      <div class="field"><label>Razón social</label><input id="pv-razon" value="${esc(p.razon_social||"")}" style="width:100%;"></div>
+      <div class="field"><label>NIF / CIF</label><input id="pv-nif" value="${esc(p.nif_cif||p.cif||"")}" style="width:100%;"></div>
       <div class="field"><label>Categoría</label><select id="pv-cat" style="width:100%;"><option value="">Selecciona…</option>${cats}</select></div>
       <div class="field"><label>Persona de contacto</label><input id="pv-contacto" value="${esc(p.contacto)}" style="width:100%;"></div>
-      <div class="field"><label>Teléfono</label><input id="pv-tel" value="${esc(p.telefono||p.whatsapp||"")}" style="width:100%;" inputmode="tel"></div>
+      <div class="field"><label>Teléfono general</label><input id="pv-tel" value="${esc(p.telefono||p.whatsapp||"")}" style="width:100%;" inputmode="tel"></div>
+      <div class="field"><label>Teléfono de pedidos</label><input id="pv-telped" value="${esc(p.telefono_pedidos||"")}" style="width:100%;" inputmode="tel"></div>
+      <div class="field"><label>WhatsApp</label><input id="pv-wa" value="${esc(p.whatsapp||"")}" style="width:100%;" inputmode="tel"></div>
       <div class="field"><label>Email</label><input id="pv-email" value="${esc(p.email)}" style="width:100%;" inputmode="email"></div>
       <div class="field"><label>Dirección</label><input id="pv-dir" value="${esc(p.direccion)}" style="width:100%;"></div>
       <div class="field"><label>Estado</label><select id="pv-estado" style="width:140px;">${ests}</select></div>
-      <div class="field"><label>Notas internas</label><textarea id="pv-notas" style="width:100%;min-height:60px;">${esc(p.notas)}</textarea></div>
     </div>
+    <div class="card">
+      <div class="card-name">Logística de pedido</div>
+      <div class="field"><label>Días de pedido</label><div>${chipsDias("dpedido",p.dias_pedido)}</div></div>
+      <div class="field"><label>Días de entrega</label><div>${chipsDias("dentrega",p.dias_entrega)}</div></div>
+      <div class="field"><label>Hora límite de pedido</label><input id="pv-hora" value="${esc(p.hora_limite||"")}" placeholder="p. ej. 18:00" style="width:140px;"></div>
+      <div class="field"><label>Pedido mínimo</label><input id="pv-min" value="${esc(p.pedido_minimo||"")}" placeholder="p. ej. 30 € o 1 caja" style="width:100%;"></div>
+      <div class="field"><label>Transporte / portes</label><input id="pv-transp" value="${esc(p.transporte||"")}" style="width:100%;"></div>
+      <div class="field"><label>Observaciones</label><textarea id="pv-obs" style="width:100%;min-height:50px;">${esc(p.observaciones||"")}</textarea></div>
+      <div class="field"><label>Notas internas</label><textarea id="pv-notas" style="width:100%;min-height:50px;">${esc(p.notas)}</textarea></div>
+    </div>
+    ${admin?`<div class="card">
+      <div class="card-name">Pago 🔒 <span class="card-meta" style="font-weight:400;">solo propietario</span></div>
+      <div class="field"><label>Forma de pago</label><input id="pv-formapago" value="${esc(p.forma_pago||"")}" placeholder="Bizum · transferencia · efectivo…" style="width:100%;"></div>
+      <div class="field"><label>Bizum (número)</label><input id="pv-bizum" value="${esc(p.bizum||"")}" style="width:100%;" inputmode="tel"></div>
+      <div class="field"><label>Teléfono Bizum (si difiere)</label><input id="pv-bizumtel" value="${esc(p.bizum_tel||"")}" style="width:100%;" inputmode="tel"></div>
+    </div>`:""}
     <div class="card">
       <div class="card-name">Foto / logo / tarjeta</div>
       <input type="file" accept="image/*" capture="environment" id="pv-file-cam" style="display:none" onchange="elegirFotoProv(this)">
@@ -7224,16 +7256,30 @@ function quitarFotoProv(){
 
 async function guardarProveedor(btn){
   const msg=el("pv-msg");
+  const chips=(cls)=>Array.from(document.querySelectorAll("."+cls+":checked")).map(c=>c.value);
+  const val=(id)=>{ const e=el(id); return e?e.value.trim():""; };
   const body={
     nombre:el("pv-nombre").value.trim(),
+    razon_social:val("pv-razon"),
+    nif_cif:val("pv-nif"),
     categoria:el("pv-cat").value,
     contacto:el("pv-contacto").value.trim(),
     telefono:el("pv-tel").value.trim(),
+    telefono_pedidos:val("pv-telped"),
+    whatsapp:val("pv-wa"),
     email:el("pv-email").value.trim(),
     direccion:el("pv-dir").value.trim(),
     estado:el("pv-estado").value,
+    dias_pedido:chips("pv-dpedido"),
+    dias_entrega:chips("pv-dentrega"),
+    hora_limite:val("pv-hora"),
+    pedido_minimo:val("pv-min"),
+    transporte:val("pv-transp"),
+    observaciones:val("pv-obs"),
     notas:el("pv-notas").value.trim(),
   };
+  // Campos sensibles: solo se envían si el propietario (admin) tiene el bloque de pago.
+  if(mbdsEsAdmin()){ body.forma_pago=val("pv-formapago"); body.bizum=val("pv-bizum"); body.bizum_tel=val("pv-bizumtel"); }
   if(window._provFoto!==undefined && window._provFoto!==null) body.foto_url=window._provFoto; // "" borra, dataURL nueva
   if(!body.nombre){ if(msg) msg.textContent="Revísalo antes de continuar: indica el nombre del proveedor."; return; }
   if(btn){btn.disabled=true;}
@@ -7265,10 +7311,14 @@ async function irA_productosProveedor(provId){
         <button class="btn-ghost" onclick="irA_proveedores()">← Proveedores</button>
       </div>`;
     if(!prods.length){ setInner(cab+`<div class="empty">Aún no hay productos de este proveedor. Pulsa “Agregar producto”.</div>`); return; }
-    prods.sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||""));
-    const html=cab+prods.map(p=>`<div class="card">
-      <div class="card-name">${esc(p.nombre)}</div>
-      <div class="card-meta">${esc(p.categoria||"")} · ${p.cantidad_formato||1} ${esc(p.formato||"")} · pactado ${eur4(p.precio_con_iva)} € (IVA ${p.iva||0}%) · unitario ${eur4(p.precio_unitario_real)} €/${esc(p.formato||"ud")}</div>
+    prods.sort((a,b)=>(a.pendiente?0:1)-(b.pendiente?0:1) || (a.nombre||"").localeCompare(b.nombre||""));
+    const nPend=prods.filter(p=>p.pendiente).length;
+    const aviso=nPend?`<div class="card-meta" style="color:var(--alert);margin:-6px 0 10px;">⚠️ ${nPend} artículo(s) sin tarifa completa.</div>`:"";
+    const html=cab+aviso+prods.map(p=>`<div class="card">
+      <div class="card-name">${esc(p.nombre)} ${p.pendiente?`<span style="font-size:10px;font-weight:700;color:var(--alert);letter-spacing:.05em;">· pendiente</span>`:""}</div>
+      ${p.pendiente
+        ? `<div class="card-meta" style="color:var(--alert)">Falta completar la tarifa${p.faltan&&p.faltan.length?": "+p.faltan.map(esc).join(", "):""}. Pulsa “Editar” para añadirla.</div>`
+        : `<div class="card-meta">${esc(p.categoria||"")} · ${p.cantidad_formato||1} ${esc(p.formato||"")} · pactado ${eur4(p.precio_con_iva)} € (IVA ${p.iva||0}%) · unitario ${eur4(p.precio_unitario_real)} €/${esc(p.formato||"ud")}</div>`}
       ${(p.alergenos&&p.alergenos.length)?`<div class="card-meta" style="color:var(--alert)">Alérgenos: ${p.alergenos.map(esc).join(", ")}</div>`:""}
       <div class="card-actions">
         <button class="btn-ghost" onclick="irA_precioProducto('${p.id}','${provId}')">Precio / histórico</button>

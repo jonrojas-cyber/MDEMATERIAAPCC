@@ -7,6 +7,33 @@
 
 const store = require("./data-store");
 
+// Artículo de compra «Pendiente de completar»: se registra el nombre y el
+// proveedor pero NO se inventan precio, IVA, formato ni contenido (la fundadora
+// los completa después). Se marca con estado para que la app avise "Falta
+// completar la tarifa" y no se use en escandallos hasta estar completo.
+function articuloPendiente(id, proveedor_id, nombre, categoria) {
+  return {
+    id, proveedor_id, nombre,
+    categoria: categoria || "Otros",
+    estado: "Pendiente de completar",
+    formato: "",                 // sin inventar
+    cantidad_formato: 0,
+    precio_sin_iva: 0,
+    iva: null,                   // sin inventar el tipo de IVA
+    precio_con_iva: 0,
+    precio_unitario_real: 0,
+    foto_url: null,
+    codigo_interno: "",
+    referencia_proveedor: "",
+    stock_minimo: 0,
+    stock_ideal: 0,
+    caducidad_habitual: "",
+    alergenos: [],
+    notas: "",
+    creado_en: new Date().toISOString(),
+  };
+}
+
 // Materia fresca de frutería (se pesa en gramos). coste_medio en €/g.
 function fruta(id, nombre, lote, kgNetos, precioKg, vida) {
   const g = Math.round(kgNetos * 1000);
@@ -57,6 +84,71 @@ const BATCHES = [
       fruta("mat-fru-nectarina",  "Nectarina",                 "634.28.114398", 4.30, 1.95, 96),
     ],
   },
+  {
+    // Proveedores iniciales de la pizarra (② charcutería/lácteos, ③ panadería) +
+    // reconciliación de la frutería ya existente. Datos marcados «(por confirmar)»
+    // NO son definitivos. Los artículos se crean «Pendiente de completar»: sin
+    // precio/IVA/formato inventados, para que la app pida completarlos y NO se
+    // vinculan todavía a recetas ni producciones.
+    flag: "proveedores_seed_v3_iniciales",
+    proveedores: [
+      {
+        // ① Charcutería y lácteos — «Juanma de Bravo» (nombre por confirmar).
+        id: "prov-charcuteria",
+        nombre: "Juanma (por confirmar)",
+        razon_social: "",
+        nif_cif: "44652877 (por confirmar)",   // puede faltarle la letra
+        categoria: "Charcutería",
+        contacto: "Juanma",
+        telefono: "627 175 427",
+        telefono_pedidos: "627 175 427",
+        whatsapp: "627 175 427",
+        email: "",
+        direccion: "",
+        forma_pago: "Bizum",                    // dato sensible → solo admin
+        bizum: "655 428 703",                   // dato sensible → solo admin
+        estado: "Activo",
+        observaciones: "Alimentación · charcutería y lácteos. Datos por confirmar con el proveedor.",
+        productos_asociados: [],
+        creado_en: new Date().toISOString(),
+      },
+      {
+        // ③ Panadería — Pan con Alma y Pasión, S.L.
+        id: "prov-panaderia",
+        nombre: "Pan con Alma y Pasión, S.L.",
+        razon_social: "Pan con Alma y Pasión, S.L.",
+        nif_cif: "B40821753 (por confirmar)",
+        categoria: "Panadería",
+        contacto: "Sheila",
+        telefono: "638 883 040",
+        telefono_pedidos: "638 883 040",
+        whatsapp: "638 883 040",
+        email: "",
+        direccion: "",
+        estado: "Activo",
+        observaciones: "Panadería. Datos por confirmar con el proveedor.",
+        productos_asociados: [],
+        creado_en: new Date().toISOString(),
+      },
+    ],
+    // Reconciliación (no se duplica): la frutería de la pizarra (tel 630 217 646)
+    // es el proveedor de fruta ya sembrado (Málaga Costa Fruit SL). Solo se le
+    // añade ese teléfono de pedidos como «por confirmar», sin tocar el resto.
+    proveedores_patch: [
+      { id: "prov-fruteria", patch: { telefono_pedidos: "630 217 646 (por confirmar)" } },
+    ],
+    // Artículos «Pendiente de completar». La frutería ya tiene Tomate, Aguacate,
+    // Nectarina y Lima como materias del albarán (no se duplican): solo se añade
+    // el que falta (Rúcula).
+    articulos: [
+      articuloPendiente("cpr-charc-jamon",    "prov-charcuteria", "Jamón braseado",    "Charcutería"),
+      articuloPendiente("cpr-charc-mortadela","prov-charcuteria", "Mortadela italiana","Charcutería"),
+      articuloPendiente("cpr-charc-quesocrema","prov-charcuteria","Queso crema",        "Leche"),
+      articuloPendiente("cpr-pan-centeno",    "prov-panaderia",   "Pan de centeno",    "Panadería"),
+      articuloPendiente("cpr-pan-espelta",    "prov-panaderia",   "Tosta de espelta",  "Panadería"),
+      articuloPendiente("cpr-fru-rucula",     "prov-fruteria",    "Rúcula",            "Fruta y verdura"),
+    ],
+  },
 ];
 
 // Aplica los lotes pendientes sobre el store dado (inyectable para tests).
@@ -65,18 +157,24 @@ function aplicar(st) {
   const cfg = st.readAll("config") || [];
   const hechos = new Set(cfg.filter((c) => c && c.id).map((c) => c.id));
   let tocados = 0, ranAny = false;
+  const upsert = (entidad, row) => {
+    if (st.findById(entidad, row.id)) st.update(entidad, row.id, row);
+    else st.insert(entidad, row);
+    tocados++;
+  };
   for (const b of BATCHES) {
     if (hechos.has(b.flag)) continue;
-    if (b.proveedor) {
-      if (st.findById("proveedores", b.proveedor.id)) st.update("proveedores", b.proveedor.id, b.proveedor);
-      else st.insert("proveedores", b.proveedor);
-      tocados++;
-    }
-    (b.materias || []).forEach((m) => {
-      if (st.findById("materias", m.id)) st.update("materias", m.id, m);
-      else st.insert("materias", m);
-      tocados++;
+    // Proveedor único (lotes antiguos) o lista de proveedores (lotes nuevos).
+    if (b.proveedor) upsert("proveedores", b.proveedor);
+    (b.proveedores || []).forEach((p) => upsert("proveedores", p));
+    // Parches parciales: fusionan campos sin sobrescribir el resto (reconciliación).
+    (b.proveedores_patch || []).forEach(({ id, patch }) => {
+      if (st.findById("proveedores", id)) { st.update("proveedores", id, patch); tocados++; }
     });
+    // Materias del albarán (con precio/stock real).
+    (b.materias || []).forEach((m) => upsert("materias", m));
+    // Artículos de compra «Pendiente de completar».
+    (b.articulos || []).forEach((a) => upsert("compras_productos", a));
     st.insert("config", { id: b.flag, hecho: true, fecha: new Date().toISOString() });
     ranAny = true;
   }

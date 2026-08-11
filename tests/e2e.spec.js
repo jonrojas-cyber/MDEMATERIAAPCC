@@ -304,6 +304,40 @@ test("proveedores: abre el formulario de alta con todos los campos", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("proveedores iniciales: se siembran, sus artículos salen 'Pendiente de completar' y los datos de pago son solo del propietario", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page); // Moni es admin
+  // Los proveedores de la pizarra están sembrados (sin duplicar la frutería).
+  const provs = await page.evaluate(async () => await api("/proveedores"));
+  const charc = provs.find((p) => p.id === "prov-charcuteria");
+  const pan = provs.find((p) => p.id === "prov-panaderia");
+  expect(charc && charc.nombre).toContain("Juanma");
+  expect(pan && pan.razon_social).toContain("Pan con Alma");
+  expect(provs.filter((p) => p.id === "prov-fruteria").length).toBe(1); // no duplicada
+  // El admin SÍ ve los datos de pago (Bizum).
+  expect(charc.bizum).toBe("655 428 703");
+  // Sus artículos llegan como "Pendiente de completar" sin precio inventado.
+  await page.evaluate(() => irA_productosProveedor("prov-charcuteria"));
+  await expect(page.locator(".card-meta", { hasText: /Falta completar la tarifa/ }).first()).toBeVisible();
+  const arts = await page.evaluate(async () => await api("/compras-productos?proveedor_id=prov-charcuteria"));
+  expect(arts.every((a) => a.pendiente && a.precio_sin_iva === 0)).toBe(true);
+  // El formulario nuevo incluye los campos ampliados y el bloque de pago (admin).
+  await page.evaluate(() => formProveedor("prov-charcuteria"));
+  for (const id of ["#pv-razon", "#pv-nif", "#pv-telped", "#pv-hora", "#pv-bizum"]) {
+    await expect(page.locator(id)).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
+test("proveedores: el equipo NO accede a proveedores (datos de pago protegidos)", async ({ request }) => {
+  // El segmento proveedores es solo del propietario; el equipo ni ve los datos
+  // de pago (Bizum, forma de pago) porque no alcanza la sección.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const r = await request.get("/api/proveedores/prov-charcuteria", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(r.status()).toBe(403);
+});
+
 test("productos por proveedor: formulario con cálculo de IVA y unitario", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

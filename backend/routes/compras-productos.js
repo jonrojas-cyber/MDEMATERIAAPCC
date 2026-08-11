@@ -9,8 +9,9 @@ const store = require("../data-store");
 const router = express.Router();
 const jsonGrande = express.json({ limit: "8mb" }); // foto del producto en base64
 
-const CATEGORIAS = ["Café", "Matcha", "Pan", "Bollería", "Packaging", "Leche", "Fruta y verdura", "Limpieza", "Otros"];
+const CATEGORIAS = ["Café", "Matcha", "Pan", "Panadería", "Bollería", "Charcutería", "Packaging", "Leche", "Fruta y verdura", "Limpieza", "Otros"];
 const FORMATOS = ["kg", "g", "litro", "unidad", "caja", "pack"];
+const ESTADOS_ART = ["Pendiente de completar", "Completo"];
 // 14 alérgenos de declaración obligatoria (UE).
 const ALERGENOS = [
   "Gluten", "Crustáceos", "Huevos", "Pescado", "Cacahuetes", "Soja", "Lácteos",
@@ -30,13 +31,26 @@ function calcular(p) {
   return { ...p, precio_con_iva: conIva, precio_unitario_real: unitario };
 }
 
+// Evalúa si a un artículo le falta tarifa para poder usarse (escandallos/pedidos).
+// No inventa nada: si falta precio, formato o contenido, queda «Pendiente de
+// completar» y se listan los campos que faltan para avisar en la app.
+function evaluarEstado(p) {
+  const faltan = [];
+  if (num(p.precio_sin_iva) <= 0) faltan.push("precio");
+  if (p.iva == null) faltan.push("IVA");
+  if (!p.formato) faltan.push("formato");
+  if (num(p.cantidad_formato) <= 0) faltan.push("contenido");
+  const pendiente = faltan.length > 0;   // se deriva de los datos, no de un flag fijo
+  return { ...p, faltan, pendiente, estado: pendiente ? "Pendiente de completar" : "Completo" };
+}
+
 function slim(p) {
-  const { foto_url, ...resto } = p;
+  const { foto_url, ...resto } = evaluarEstado(p);
   return { ...resto, tiene_foto: !!foto_url };
 }
 
 router.get("/meta", (req, res) => {
-  res.json({ categorias: CATEGORIAS, formatos: FORMATOS, alergenos: ALERGENOS });
+  res.json({ categorias: CATEGORIAS, formatos: FORMATOS, alergenos: ALERGENOS, estados: ESTADOS_ART });
 });
 
 // Listado (slim). Filtra por ?proveedor_id=...
@@ -49,7 +63,7 @@ router.get("/", (req, res) => {
 router.get("/:id", (req, res) => {
   const p = store.findById("compras_productos", req.params.id);
   if (!p) return res.status(404).json({ error: "Producto no encontrado" });
-  res.json(p);
+  res.json(evaluarEstado(p));
 });
 
 function camposDe(body) {

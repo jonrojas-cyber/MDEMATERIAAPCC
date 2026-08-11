@@ -74,7 +74,8 @@ test("v3: crea charcutería y panadería con datos reales y por-confirmar", () =
   const st = nuevoStore();
   aplicar(st);
   const charc = st._data.proveedores.find((p) => p.id === "prov-charcuteria");
-  assert.strictEqual(charc.nombre, "Juanma (por confirmar)");
+  assert.strictEqual(charc.nombre, "Jamonería Isa Brava"); // corregido desde la pizarra (v4)
+  assert.strictEqual(charc.nif_cif, "44652877");
   assert.strictEqual(charc.telefono_pedidos, "627 175 427");
   assert.strictEqual(charc.categoria, "Charcutería");
   assert.strictEqual(charc.bizum, "655 428 703");        // dato sensible (lo gatea la ruta)

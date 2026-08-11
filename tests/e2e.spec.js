@@ -312,7 +312,7 @@ test("proveedores iniciales: se siembran, sus artículos salen 'Pendiente de com
   const provs = await page.evaluate(async () => await api("/proveedores"));
   const charc = provs.find((p) => p.id === "prov-charcuteria");
   const pan = provs.find((p) => p.id === "prov-panaderia");
-  expect(charc && charc.nombre).toContain("Juanma");
+  expect(charc && charc.nombre).toContain("Isa Brava");
   expect(pan && pan.razon_social).toContain("Pan con Alma");
   expect(provs.filter((p) => p.id === "prov-fruteria").length).toBe(1); // no duplicada
   // El admin SÍ ve los datos de pago (Bizum).

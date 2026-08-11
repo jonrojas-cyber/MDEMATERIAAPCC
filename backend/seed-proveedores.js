@@ -149,6 +149,22 @@ const BATCHES = [
       articuloPendiente("cpr-fru-rucula",     "prov-fruteria",    "Rúcula",            "Fruta y verdura"),
     ],
   },
+  {
+    // Corrección desde la foto de la pizarra: el proveedor ① es «Jamonería Isa
+    // Brava» (no «Juanma») y su NIF escrito es 44652877. Parche idempotente
+    // (v3 ya corrió en producción y no se re-ejecuta): fusiona solo estos campos.
+    flag: "proveedores_seed_v4_correccion_nombres",
+    proveedores_patch: [
+      {
+        id: "prov-charcuteria",
+        patch: {
+          nombre: "Jamonería Isa Brava",
+          razon_social: "Jamonería Isa Brava",
+          nif_cif: "44652877",   // según la pizarra (puede faltarle la letra)
+        },
+      },
+    ],
+  },
 ];
 
 // Aplica los lotes pendientes sobre el store dado (inyectable para tests).

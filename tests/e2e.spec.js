@@ -861,70 +861,41 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   expect(errors).toEqual([]);
 });
 
-// Módulo Limonadas: asistente paso a paso (nativo, sin scroll) que calcula la receta.
-test("burbujas: el escalador calcula las 3 recetas cerradas por litros", async ({ page }) => {
+// Módulo Limonadas/Zumo: escalador que calcula las recetas (todo a la batidora
+// + clarificado con pectinasa). Cantidades base por litro; a 5 L dan el gramaje real.
+test("burbujas: el escalador calcula las 4 recetas cerradas por litros", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_burbujas());
-  // Selector con las 3 burbujas (Origen · Equilibrio · Colección).
+  // Selector con las 4 recetas (3 limonadas + zumo).
   await expect(page.locator(".lim-tab")).toBeVisible();
-  await expect(page.locator("#lim-rsel option")).toHaveCount(3);
-  // Origen (lima·kaffir) a 5 L: el Super Juice de lima (196 ml/L) escala a 980 ml.
+  await expect(page.locator("#lim-rsel option")).toHaveCount(4);
+  // Limonada de lima·kaffir a 5 L: azúcar 61 g/L escala a 305 g; piel de lima a 51,8 g.
   await page.evaluate(() => { limSetRec("R4"); limSetL(5); });
-  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Origen/);
-  await expect(page.locator(".lim-tab")).toContainText(/Super Juice de lima/);
-  await expect(page.locator(".lim-tab")).toContainText(/196 ml\/L/);
-  await expect(page.locator(".lim-tab")).toContainText(/980 ml/);
-  // Las preparaciones previas ESCALAN con los litros: a 16 L de Origen hacen
-  // falta 3,14 L de Super Juice de lima (no la cantidad base fija).
-  await page.evaluate(() => limSetL(16));
-  await expect(page.locator("body")).toContainText(/necesitas 3,14 L/);
-  await expect(page.locator("body")).toContainText(/hoja de lima kaffir 29,4 g/);
-  await page.evaluate(() => limSetL(5));
-  // Colección (pomelo·romero·lapsang) muestra su fondo ahumado.
-  await page.evaluate(() => limSetRec("R5"));
-  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Colección/);
-  // Aromáticos como CONCENTRADO y el agua junta en un «agua de rebache» al final.
-  await expect(page.locator(".lim-tab")).toContainText(/Agua de lapsang · concentrado/);
-  await expect(page.locator(".lim-tab")).toContainText(/Agua de rebache/);
-  // Paso a paso a pantalla completa: pulsar una preparación abre la vista con
-  // los ingredientes escalados y los pasos numerados; «volver» la cierra.
-  await page.evaluate(() => { limSetRec("R6"); limSetL(8); });        // Equilibrio → agua de hierbabuena
-  await page.locator(".lim-prep-card").first().click();
-  await expect(page.locator("#prep-fs.show")).toBeVisible();
-  // El maracuyá (Boiron) se pone a punto diluyendo 250 g de agua por kg de puré.
-  await expect(page.locator(".prep-fs-title")).toContainText(/Maracuyá \(Boiron\)/);
-  await expect(page.locator(".prep-steps")).toContainText(/250 g de agua/i);
-  await expect(page.locator(".prep-ings")).toContainText(/agua/i);   // lleva agua de dilución
-  await page.evaluate(() => limCerrarPrep());
-  await page.evaluate(() => limAbrirPrep("CH", 1200));
-  await expect(page.locator(".prep-fs-title")).toContainText(/Agua de hierbabuena/);
-  await expect(page.locator(".prep-produce")).toContainText(/Vas a preparar/);
-  await expect(page.locator(".prep-fs-body")).toContainText(/Generar etiqueta/);   // etiqueta por preparación
-  await expect(page.locator(".prep-steps li")).toHaveCount(6);          // método de referencia
-  await expect(page.locator(".prep-ings")).toContainText(/hierbabuena/);
-  // Guía interactiva: «Iniciar» → pesa ingrediente a ingrediente hasta el final.
-  await page.locator(".prep-start").click();
-  await expect(page.locator(".pwz .pwz-main")).toBeVisible();
-  await expect(page.locator(".pwz-ing")).toContainText(/hierbabuena/i);
-  await expect(page.locator(".pwz-count")).toContainText(/^1\//);
-  const total = await page.evaluate(() => window._prep.steps.length);
-  for (let k = 0; k < total; k++) await page.locator(".pwz-next").click();
-  await expect(page.locator(".pwz-check")).toBeVisible();               // pantalla «listo»
-  await page.locator(".pwz-next").click();                             // Cerrar
-  await expect(page.locator("#prep-fs")).toBeHidden();
-  // Super Juice: al vacío SOLO piel + ácidos; zumo y agua se añaden después.
-  await page.evaluate(() => limAbrirPrep("SJL", 196 * 16));
-  await expect(page.locator(".prep-fs-body")).toContainText(/Al vacío · solo piel \+ ácidos/);
-  await expect(page.locator(".prep-fs-body")).toContainText(/Añadir después/);
-  await page.locator(".prep-start").click();
-  await expect(page.locator(".pwz-ing")).toContainText(/piel de lima/i);   // primer pesaje = piel
-  const hayAnadir = await page.evaluate(() => window._prep.steps.some(s => s.t === "anadir"));
-  expect(hayAnadir).toBe(true);
-  await page.evaluate(() => limCerrarPrep());
-  await expect(page.locator("#prep-fs")).toBeHidden();
-  await page.evaluate(() => limSetRec("R5"));
+  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Lima · hoja de lima kaffir/);
+  await expect(page.locator(".lim-tab")).toContainText(/Piel verde de lima sin albedo/);
+  await expect(page.locator(".lim-tab")).toContainText(/61 g\/L/);
+  await expect(page.locator(".lim-tab")).toContainText(/305 g/);
+  await expect(page.locator(".lim-tab")).toContainText(/51,8 g/);       // 10,36 g/L × 5
+  // Estas recetas no llevan sub-preparaciones (todo a la batidora).
+  await page.evaluate(() => { limSetRec("R4"); limSetDia(1); });
+  await expect(page.locator("body")).toContainText(/Esta receta no lleva preparaciones previas/);
+  // Pomelo·romero·Lapsang: cambia el nombre y muestra el zumo de pomelo.
+  await page.evaluate(() => { limSetRec("R5"); limSetL(5); });
+  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Pomelo · romero · Lapsang Souchong/);
+  await expect(page.locator(".lim-tab")).toContainText(/Zumo de pomelo rosa/);
+  await expect(page.locator(".lim-tab")).toContainText(/200 g\/L/);     // 1000 g a 5 L
+  // Pasión·hierbabuena: el puré de Boiron a 750 g (150 g/L × 5).
+  await page.evaluate(() => { limSetRec("R6"); limSetL(5); });
+  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Fruta de la pasión · hierbabuena/);
+  await expect(page.locator(".lim-tab")).toContainText(/Puré de fruta de la pasión Boiron/);
+  await expect(page.locator(".lim-tab")).toContainText(/750 g/);
+  // Zumo (Naranja·pomelo·jengibre): nueva receta R7 con su zumo de naranja.
+  await page.evaluate(() => { limSetRec("R7"); limSetL(5); });
+  await expect(page.locator(".lim-h")).toContainText(/Naranja · pomelo rosa · jengibre/);
+  await expect(page.locator(".lim-tab")).toContainText(/Zumo de naranja/);
+  await expect(page.locator(".lim-tab")).toContainText(/450 g\/L/);     // 2250 g a 5 L
   // Prueba de cata de 200 ml antes de prebachear el lote entero.
   await page.evaluate(() => { limSetRec("R4"); limPrueba(); });
   await expect(page.locator("body")).toContainText(/Modo prueba · 200 ml/);

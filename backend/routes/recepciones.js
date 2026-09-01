@@ -351,9 +351,24 @@ function aplicarStock(recepcion) {
         const m = materias.find((x) => x.id === l.materia_id);
         if (m) {
           m.disponibilidad_actual = Math.round((m.disponibilidad_actual + cant) * 100) / 100;
-          // Precio de compra de este proveedor (si la línea lo trae).
+          // Precio de compra de este proveedor (si la línea lo trae). Si cambia
+          // respecto al anterior, se guarda en el histórico de precios (como Gstock).
           const pu = Number(l.precio_unitario);
-          if (Number.isFinite(pu) && pu > 0) m.precio_compra = Math.round(pu * 10000) / 10000;
+          if (Number.isFinite(pu) && pu > 0) {
+            const nuevo = Math.round(pu * 10000) / 10000;
+            const anterior = Number(m.precio_compra);
+            if (Number.isFinite(anterior) && anterior > 0 && Math.abs(nuevo - anterior) > 1e-6) {
+              store.insert("precios_historico", {
+                id: store.nextId("ph", "precios_historico"),
+                producto_id: m.id, proveedor_id: recepcion.proveedor_id || null,
+                fecha: recepcion.fecha || new Date().toISOString(),
+                precio_anterior: anterior, precio_nuevo: nuevo,
+                motivo: "Recepción de albarán", responsable: "Recepción",
+                origen: "recepcion", recepcion_id: recepcion.id,
+              });
+            }
+            m.precio_compra = nuevo;
+          }
           // Vincula el artículo al catálogo del proveedor.
           if (proveedor) {
             if (!m.proveedor_id) m.proveedor_id = proveedor.id;

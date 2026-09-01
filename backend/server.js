@@ -263,6 +263,7 @@ app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/inventario", require("./routes/inventario"));
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/compras-productos", require("./routes/compras-productos"));
+app.use("/api/compras-informe", require("./routes/compras-informe"));
 app.use("/api/recepciones", require("./routes/recepciones"));
 app.use("/api/pedidos", require("./routes/pedidos"));
 app.use("/api/pagos", require("./routes/pagos"));

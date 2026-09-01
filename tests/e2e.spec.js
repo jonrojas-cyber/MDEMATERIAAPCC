@@ -338,6 +338,23 @@ test("proveedores: el equipo NO accede a proveedores (datos de pago protegidos)"
   expect(r.status()).toBe(403);
 });
 
+test("informe de compras: el admin genera el informe; el equipo no accede", async ({ page, request }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page); // Moni admin
+  await page.evaluate(() => irA_informeCompras());
+  await expect(page.locator(".section-label", { hasText: /Informe de compras/ })).toBeVisible();
+  await expect(page.locator("#infc-desde")).toBeVisible();
+  await page.evaluate(() => infcGenerar(null));
+  // Tras generar, aparece el panel de totales (albaranes · subtotal · total · gran total).
+  await expect(page.locator(".lim-param")).toContainText(/albaranes/);
+  expect(errors).toEqual([]);
+  // El equipo (money-adjacent) no puede consultar el informe de compras.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const r = await request.get("/api/compras-informe", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(r.status()).toBe(403);
+});
+
 test("productos por proveedor: formulario con cálculo de IVA y unitario", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

@@ -2511,7 +2511,8 @@ function modulosMeta(d) {
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
-    archivo:      { num:"05", name:"Archivo albaranes", badge:"Por trimestre · gestoría", urgent:false },
+    informeCompras:{ num:"05", name:"Informe de compras", badge:"Por proveedor · familia · fecha", urgent:false },
+    archivo:      { num:"06", name:"Archivo albaranes", badge:"Por trimestre · gestoría", urgent:false },
     avisos:       { num:"06", name:"Avisos", badge:"Notificación · pedidos y caducidades", urgent:false },
     manual:       { num:"07", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
     resumen:      { num:"08", name:"Resumen del día", badge:"KPIs · estado del negocio", urgent:false },
@@ -2525,7 +2526,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Ventas · Config", ids:["menu","cafes","carta","analisis","ventas","pagos","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Ventas · Config", ids:["menu","cafes","carta","analisis","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -7363,6 +7364,9 @@ async function formProductoCompra(provId,prodId){
   if(prodId){ try{ p=await api("/compras-productos/"+prodId); }catch(e){ alert(e.message); return; } }
   window._cprEditId=prodId||null; window._cprProvId=provId;
   window._cprFoto=(p.foto_url!==undefined)?p.foto_url:null;
+  // Producto base (materia) al que este formato aporta stock — como en Gstock.
+  const materias=await api("/materias").catch(()=>[]);
+  const matOpts=`<option value="">— sin enlazar —</option>`+materias.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"")).map(m=>`<option value="${m.id}" ${m.id===p.materia_id?"selected":""}>${esc(m.nombre)} (${esc(m.unidad||"")})</option>`).join("");
   const cats=meta.categorias.map(c=>`<option value="${c}" ${c===p.categoria?"selected":""}>${c}</option>`).join("");
   const fmts=meta.formatos.map(f=>`<option value="${f}" ${f===p.formato?"selected":""}>${f}</option>`).join("");
   const alg=(meta.alergenos||[]).map(a=>{
@@ -7385,6 +7389,8 @@ async function formProductoCompra(provId,prodId){
       <div class="field"><label>Stock mínimo</label><input id="cp-smin" type="number" step="0.001" value="${p.stock_minimo||0}" style="width:120px;"></div>
       <div class="field"><label>Stock ideal</label><input id="cp-sideal" type="number" step="0.001" value="${p.stock_ideal||0}" style="width:120px;"></div>
       <div class="field"><label>Caducidad habitual</label><input id="cp-cad" value="${esc(p.caducidad_habitual)}" placeholder="p. ej. 5 días" style="width:100%;"></div>
+      <div class="field"><label>Producto base (materia)</label><select id="cp-materia" style="width:100%;">${matOpts}</select> <span class="card-meta">a qué materia del almacén aporta stock</span></div>
+      <div class="field"><label>Contenido por formato (en unidad base)</label><input id="cp-contbase" type="number" step="0.001" value="${p.contenido_base||0}" style="width:160px;"> <span class="card-meta">p. ej. caja = 10000 g</span></div>
       <div class="field"><label>Notas</label><textarea id="cp-notas" style="width:100%;min-height:50px;">${esc(p.notas)}</textarea></div>
     </div>
     <div class="card">
@@ -7434,6 +7440,8 @@ async function guardarProductoCompra(btn){
     referencia_proveedor:el("cp-ref").value.trim(),
     stock_minimo:Number(el("cp-smin").value)||0,
     stock_ideal:Number(el("cp-sideal").value)||0,
+    materia_id:el("cp-materia")?el("cp-materia").value||null:null,
+    contenido_base:el("cp-contbase")?Number(el("cp-contbase").value)||0:0,
     caducidad_habitual:el("cp-cad").value.trim(),
     notas:el("cp-notas").value.trim(),
     alergenos,
@@ -7517,6 +7525,75 @@ async function guardarCambioPrecio(btn){
     await api("/compras-productos/"+window._precProd.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     irA_precioProducto(window._precProd.id,window._precProvId);
   }catch(e){ if(msg) msg.textContent="Esto no cuadra: "+e.message; if(btn){btn.disabled=false;} }
+}
+
+// ── INFORME DE COMPRAS (estructura Gstock · Compras → Informes) ──────────────
+const infcEur = (n) => (Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+function infcYmd(d){ return d.toISOString().slice(0,10); }
+async function irA_informeCompras(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("informeCompras","Informe de compras");
+  const hoy=new Date(); const primero=new Date(hoy.getFullYear(),hoy.getMonth(),1);
+  window._infc=window._infc||{ desde:infcYmd(primero), hasta:infcYmd(hoy), proveedor_id:"", categoria:"", datos:null };
+  try{
+    const [provs]=await Promise.all([api("/proveedores").catch(()=>[])]);
+    window._infcProvs=provs;
+    infcRender();
+  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+function infcRender(){
+  const s=window._infc, provs=window._infcProvs||[];
+  const provOpts=`<option value="">Todos los proveedores</option>`+provs.map(p=>`<option value="${p.id}" ${p.id===s.proveedor_id?"selected":""}>${esc(p.nombre)}</option>`).join("");
+  // Familias presentes en el resultado (para el desglose); el filtro por categoría es texto libre de la materia.
+  const d=s.datos;
+  let resultado="";
+  if(d){
+    const filasProd=(d.por_producto||[]).map(x=>`<tr><td class="n">${esc(x.producto)}</td><td>${esc(x.familia||"")}</td><td class="q">${x.cantidad!=null?limFmt(x.cantidad)+" "+esc(x.unidad||""):"—"}</td><td class="q big">${infcEur(x.importe)}</td></tr>`).join("");
+    const filasProv=(d.por_proveedor||[]).map(x=>`<tr><td class="n">${esc(x.proveedor)}</td><td class="q big">${infcEur(x.importe)}</td></tr>`).join("");
+    const filasFam=(d.por_familia||[]).map(x=>`<tr><td class="n">${esc(x.familia)}</td><td class="q big">${infcEur(x.importe)}</td></tr>`).join("");
+    resultado=`
+      <div class="lim-param" style="margin-top:14px;"><div><b>${d.recepciones}</b><span>albaranes</span></div><div><b>${infcEur(d.subtotal)}</b><span>subtotal líneas</span></div><div><b>${d.total_facturado!=null?infcEur(d.total_facturado):"—"}</b><span>total facturado</span></div><div><b>${infcEur(d.gran_total)}</b><span>gran total</span></div></div>
+      <div class="card-actions" style="margin:10px 0;"><button class="btn-ghost" onclick="infcExportarCSV()">↓ Exportar a Excel (CSV)</button></div>
+      ${(d.por_producto&&d.por_producto.length)?`<div class="section-label">Por producto</div>
+        <table class="lim-tab"><thead><tr><th>producto</th><th>familia</th><th>cantidad</th><th>importe</th></tr></thead><tbody>${filasProd}</tbody></table>`:`<div class="empty">Sin compras en este periodo/filtro.</div>`}
+      ${(d.por_proveedor&&d.por_proveedor.length>1)?`<div class="section-label" style="margin-top:16px;">Por proveedor</div>
+        <table class="lim-tab"><tbody>${filasProv}</tbody></table>`:""}
+      ${(d.por_familia&&d.por_familia.length>1)?`<div class="section-label" style="margin-top:16px;">Por familia</div>
+        <table class="lim-tab"><tbody>${filasFam}</tbody></table>`:""}`;
+  }
+  setInner(`
+    <div class="section-label">Informe de compras</div>
+    <div class="card">
+      <div class="field"><label>Desde</label><input id="infc-desde" type="date" value="${esc(s.desde)}" style="width:100%;"></div>
+      <div class="field"><label>Hasta</label><input id="infc-hasta" type="date" value="${esc(s.hasta)}" style="width:100%;"></div>
+      <div class="field"><label>Proveedor</label><select id="infc-prov" style="width:100%;">${provOpts}</select></div>
+      <div class="field"><label>Familia / categoría (opcional)</label><input id="infc-cat" value="${esc(s.categoria)}" placeholder="p. ej. Fruta y verdura" style="width:100%;"></div>
+      <div class="card-actions" style="margin-top:8px;"><button class="btn-primary" onclick="infcGenerar(this)">Generar informe</button></div>
+    </div>
+    ${resultado}`);
+}
+async function infcGenerar(btn){
+  const s=window._infc;
+  s.desde=el("infc-desde").value; s.hasta=el("infc-hasta").value;
+  s.proveedor_id=el("infc-prov").value; s.categoria=el("infc-cat").value.trim();
+  const qs=new URLSearchParams();
+  if(s.desde) qs.set("desde",s.desde); if(s.hasta) qs.set("hasta",s.hasta);
+  if(s.proveedor_id) qs.set("proveedor_id",s.proveedor_id); if(s.categoria) qs.set("categoria",s.categoria);
+  if(btn) btn.disabled=true;
+  try{ s.datos=await api("/compras-informe?"+qs.toString()); infcRender(); }
+  catch(e){ if(btn) btn.disabled=false; const scr=el("screen-inner"); if(scr) scr.insertAdjacentHTML("beforeend",`<div class="err">${e.message}</div>`); }
+}
+function infcExportarCSV(){
+  const d=window._infc&&window._infc.datos; if(!d) return;
+  const filas=[["Producto","Familia","Cantidad","Unidad","Importe (€)"]];
+  (d.por_producto||[]).forEach(x=>filas.push([x.producto,x.familia||"",x.cantidad!=null?String(x.cantidad).replace(".",","):"",x.unidad||"",String(x.importe).replace(".",",")]));
+  filas.push([]); filas.push(["Subtotal líneas","","","",String(d.subtotal).replace(".",",")]);
+  if(d.total_facturado!=null) filas.push(["Total facturado","","","",String(d.total_facturado).replace(".",",")]);
+  const csv="﻿"+filas.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`compras_${window._infc.desde||""}_${window._infc.hasta||""}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

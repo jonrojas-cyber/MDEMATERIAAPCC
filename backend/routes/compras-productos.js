@@ -28,7 +28,11 @@ function calcular(p) {
   const cant = num(p.cantidad_formato);
   const conIva = round(sinIva * (1 + iva / 100), 4);
   const unitario = cant > 0 ? round(conIva / cant, 4) : conIva;
-  return { ...p, precio_con_iva: conIva, precio_unitario_real: unitario };
+  // Coste por unidad base (si el formato está enlazado a una materia): precio del
+  // formato ÷ contenido en unidad base. Es la conversión formato→producto base.
+  const cb = num(p.contenido_base);
+  const costeBase = cb > 0 ? round(conIva / cb, 6) : null;
+  return { ...p, precio_con_iva: conIva, precio_unitario_real: unitario, coste_base: costeBase };
 }
 
 // Evalúa si a un artículo le falta tarifa para poder usarse (escandallos/pedidos).
@@ -71,7 +75,11 @@ function camposDe(body) {
   const str = (k) => { if (body[k] != null) c[k] = String(body[k]).trim(); };
   const n = (k) => { if (body[k] != null && body[k] !== "") c[k] = num(body[k]); };
   ["proveedor_id", "nombre", "categoria", "formato", "foto_url", "codigo_interno", "referencia_proveedor", "caducidad_habitual", "notas"].forEach(str);
-  ["cantidad_formato", "precio_sin_iva", "iva", "stock_minimo", "stock_ideal"].forEach(n);
+  ["cantidad_formato", "precio_sin_iva", "iva", "stock_minimo", "stock_ideal", "contenido_base"].forEach(n);
+  // Enlace al producto base (materia): un formato de compra aporta `contenido_base`
+  // unidades de la materia (p. ej. caja = 10.000 g). Así el pedido/precio va por
+  // formato y el stock/escandallo por la unidad base. Vacío = sin enlazar.
+  if (body.materia_id != null) c.materia_id = String(body.materia_id).trim() || null;
   if (Array.isArray(body.alergenos)) c.alergenos = body.alergenos.filter((a) => ALERGENOS.includes(a));
   if (c.categoria && !CATEGORIAS.includes(c.categoria)) c.categoria = "Otros";
   if (c.formato && !FORMATOS.includes(c.formato)) c.formato = "unidad";
@@ -98,6 +106,8 @@ router.post("/", jsonGrande, (req, res) => {
     referencia_proveedor: d.referencia_proveedor || "",
     stock_minimo: d.stock_minimo || 0,
     stock_ideal: d.stock_ideal || 0,
+    materia_id: d.materia_id || null,
+    contenido_base: d.contenido_base || 0,
     caducidad_habitual: d.caducidad_habitual || "",
     alergenos: d.alergenos || [],
     notas: d.notas || "",

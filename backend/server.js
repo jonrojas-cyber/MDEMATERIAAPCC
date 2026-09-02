@@ -340,6 +340,9 @@ store
     require("./seed-negocio").seedNegocio().catch(() => {});
     // Siembra idempotente de proveedores reales (Frutería y siguientes).
     require("./seed-proveedores").seedProveedores().catch(() => {});
+    // Siembra idempotente de los productos de venta de Ágora que Control M no
+    // tenía (para que el conector deje de bloquear tickets por "no vinculado").
+    require("./seed-productos-agora").seedProductosAgora().catch(() => {});
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
     // materias, recetas, lotes y productos de ejemplo). Solo en producción
     // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,

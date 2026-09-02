@@ -27,19 +27,29 @@ function fakeStore(data) {
 
 console.log("seed de usuarios");
 
-test("cambia el PIN de Mónica a 5234 (hasheado) y no la degrada de admin", () => {
-  const data = { usuarios: [{ id: "Moni", key: "Moni", nombre: "Mónica", rol: "admin", pin_hash: "scrypt$aa$bb" }], config: [] };
+function baseUsuarios() {
+  return [
+    { id: "Jon", key: "Jon", nombre: "Jon", rol: "admin", pin_hash: "scrypt$aa$bb" },
+    { id: "Moni", key: "Moni", nombre: "Mónica", rol: "admin", pin_hash: "scrypt$aa$bb" },
+  ];
+}
+
+test("Jon -> 5234 admin y Mónica -> 3333 admin (ambos con acceso total)", () => {
+  const data = { usuarios: baseUsuarios(), config: [] };
   const st = fakeStore(data);
   const r = aplicar(st);
   assert.ok(r.ranAny);
+  const jon = data.usuarios.find((u) => u.id === "Jon");
+  assert.strictEqual(jon.rol, "admin");
+  assert.ok(pinOk("5234", jon.pin_hash), "Jon valida con 5234");
   const moni = data.usuarios.find((u) => u.id === "Moni");
   assert.strictEqual(moni.rol, "admin");                 // sigue con control total
-  assert.ok(pinOk("5234", moni.pin_hash), "el nuevo PIN 5234 valida");
-  assert.ok(!pinOk("3333", moni.pin_hash), "el PIN viejo ya no vale");
+  assert.ok(pinOk("3333", moni.pin_hash), "Mónica vuelve a 3333");
+  assert.ok(!pinOk("5234", moni.pin_hash), "Mónica ya no es 5234 (era de Jon)");
 });
 
 test("da de alta a Daniel como trabajador (equipo), no admin", () => {
-  const data = { usuarios: [{ id: "Moni", key: "Moni", rol: "admin", pin_hash: "scrypt$aa$bb" }], config: [] };
+  const data = { usuarios: baseUsuarios(), config: [] };
   const st = fakeStore(data);
   aplicar(st);
   const dani = data.usuarios.find((u) => u.id === "Daniel");
@@ -50,7 +60,7 @@ test("da de alta a Daniel como trabajador (equipo), no admin", () => {
 });
 
 test("es idempotente por flag y no duplica a Daniel", () => {
-  const data = { usuarios: [{ id: "Moni", key: "Moni", rol: "admin", pin_hash: "scrypt$aa$bb" }], config: [] };
+  const data = { usuarios: baseUsuarios(), config: [] };
   const st = fakeStore(data);
   aplicar(st);
   const r2 = aplicar(st);

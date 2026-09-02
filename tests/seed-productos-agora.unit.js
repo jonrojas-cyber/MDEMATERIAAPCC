@@ -34,6 +34,19 @@ test("crea los artículos del catálogo con nombre exacto y sin escandallo", () 
   assert.strictEqual(lim.activo, true);
   const zumo = data.productos.find((p) => p.clave === "Zumo materia");
   assert.ok(zumo && zumo.precio_venta === 3.50);
+  assert.strictEqual(zumo.coste_materia, undefined);     // sin coste inventado
+  // Las tostas SÍ llevan su coste real (suma del escandallo del LAB).
+  const to = data.productos.find((p) => p.id === "prod-agora-tosta-origen");
+  assert.strictEqual(to.coste_materia, 0.99);
+  const tc = data.productos.find((p) => p.id === "prod-agora-tosta-coleccion");
+  assert.strictEqual(tc.coste_materia, 1.43);
+});
+
+test("el motor de coste usa el coste directo cuando existe (costing)", () => {
+  const { margenProducto } = require("../backend/costing");
+  const m = margenProducto({ precio_venta: 3.50, coste_materia: 0.99, iva: 0.10 }, {});
+  assert.ok(Math.abs(m.coste - 1.089) < 1e-6, "coste con IVA = 0,99 × 1,10");
+  assert.ok(m.margen_bruto > 0.6 && m.margen_bruto < 0.72, "margen ≈ 69 %");
 });
 
 test("no duplica Matcha latte (ya existía)", () => {

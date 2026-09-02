@@ -32,8 +32,13 @@ function costePorUnidad(receta, idxMat) {
   return base > 0 ? costeEscandallo(receta.ingredientes, idxMat) / base : 0;
 }
 
-// Coste de una unidad de producto de carta.
+// Coste de una unidad de producto de carta (neto, sin IVA de compra).
+// Si el producto trae un coste de materia DIRECTO (€/unidad) se usa ese —sirve
+// para productos cuyo escandallo no está mapeado a materias (p. ej. lo que se
+// vende en Ágora)—; si no, se calcula desde sus ingredientes.
 function costeProducto(producto, idxMat) {
+  const directo = Number(producto && producto.coste_materia);
+  if (Number.isFinite(directo) && directo > 0) return Math.round(directo * 10000) / 10000;
   return Math.round(costeEscandallo(producto.ingredientes, idxMat) * 10000) / 10000;
 }
 

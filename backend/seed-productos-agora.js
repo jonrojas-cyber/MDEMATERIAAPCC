@@ -40,47 +40,73 @@ function slug(s) {
 
 const FLAG = "productos_agora_seed_v1";
 
+// Costes de materia REALES por unidad (€, neto), donde el sistema los tiene.
+// Hoy solo las tostas del LAB (suma de su escandallo). NO se inventan los demás:
+// los productos sin coste real se quedan con coste 0 hasta cargar su dato real.
+//   Tosta Origen   = 0,30+0,38+0,30+0,01 = 0,99 €
+//   Tosta Colección= 0,30+0,42+0,35+0,20+0,16 = 1,43 €
+const COSTES_REALES = [
+  { id: "prod-agora-tosta-origen", coste_materia: 0.99 },
+  { id: "prod-agora-tosta-coleccion", coste_materia: 1.43 },
+];
+const FLAG_COSTES = "productos_agora_costes_v1";
+
 // Aplica el lote sobre el store dado (inyectable para tests). Idempotente por flag.
 // No duplica: si ya existe un producto cuya clave/nombre coincide (sin distinguir
 // mayúsculas) con el de Ágora, se salta.
 function aplicar(st) {
   const cfg = st.readAll("config") || [];
-  if (cfg.some((c) => c && c.id === FLAG)) return { creados: 0, ranAny: false };
+  const hechos = new Set(cfg.filter((c) => c && c.id).map((c) => c.id));
+  const costeById = {}; COSTES_REALES.forEach((c) => { costeById[c.id] = c.coste_materia; });
 
-  const existentes = st.readAll("productos") || [];
-  const yaHay = new Set();
-  existentes.forEach((p) => {
-    [p.clave, p.nombre, p.agora_ref].forEach((k) => { if (k) yaHay.add(String(k).toLowerCase()); });
-  });
+  let creados = 0, costesTocados = 0, ranAny = false;
 
-  let creados = 0;
-  CATALOGO.forEach(([nombre, categoria, pvp]) => {
-    if (yaHay.has(nombre.toLowerCase())) return; // ya existe (p. ej. Matcha latte)
-    const id = "prod-agora-" + slug(nombre);
-    const prod = {
-      id, clave: nombre, nombre, agora_ref: nombre,
-      categoria, descripcion: "Alta automática desde el catálogo de Ágora",
-      precio_venta: pvp, activo: true,
-      ingredientes: [],                 // sin escandallo inventado (se vincula después)
-      origen: "agora", creado_en: new Date().toISOString(),
-    };
-    if (st.findById("productos", id)) st.update("productos", id, prod);
-    else st.insert("productos", prod);
-    yaHay.add(nombre.toLowerCase());
-    creados++;
-  });
+  // Bloque 1 · crear los artículos del catálogo que faltan (nombre exacto + PVP).
+  if (!hechos.has(FLAG)) {
+    const yaHay = new Set();
+    (st.readAll("productos") || []).forEach((p) => {
+      [p.clave, p.nombre, p.agora_ref].forEach((k) => { if (k) yaHay.add(String(k).toLowerCase()); });
+    });
+    CATALOGO.forEach(([nombre, categoria, pvp]) => {
+      if (yaHay.has(nombre.toLowerCase())) return; // ya existe (p. ej. Matcha latte)
+      const id = "prod-agora-" + slug(nombre);
+      const prod = {
+        id, clave: nombre, nombre, agora_ref: nombre,
+        categoria, descripcion: "Alta automática desde el catálogo de Ágora",
+        precio_venta: pvp, activo: true,
+        ingredientes: [],                 // sin escandallo inventado (se vincula después)
+        origen: "agora", creado_en: new Date().toISOString(),
+      };
+      if (costeById[id] != null) prod.coste_materia = costeById[id]; // coste real conocido
+      if (st.findById("productos", id)) st.update("productos", id, prod);
+      else st.insert("productos", prod);
+      yaHay.add(nombre.toLowerCase());
+      creados++;
+    });
+    st.insert("config", { id: FLAG, hecho: true, fecha: new Date().toISOString() });
+    ranAny = true;
+  }
 
-  st.insert("config", { id: FLAG, hecho: true, fecha: new Date().toISOString() });
-  return { creados, ranAny: true };
+  // Bloque 2 (independiente) · carga los costes de materia reales conocidos sobre
+  // productos ya existentes (p. ej. en un despliegue posterior). No inventa nada.
+  if (!hechos.has(FLAG_COSTES)) {
+    COSTES_REALES.forEach((c) => {
+      if (st.findById("productos", c.id)) { st.update("productos", c.id, { coste_materia: c.coste_materia }); costesTocados++; }
+    });
+    st.insert("config", { id: FLAG_COSTES, hecho: true, fecha: new Date().toISOString() });
+    ranAny = true;
+  }
+
+  return { creados, costes: costesTocados, ranAny };
 }
 
 async function seedProductosAgora() {
   try {
-    const { creados, ranAny } = aplicar(store);
-    if (ranAny) { await store.flush(); console.log(`Seed productos Ágora · ${creados} artículos creados.`); }
+    const { creados, costes, ranAny } = aplicar(store);
+    if (ranAny) { await store.flush(); console.log(`Seed productos Ágora · ${creados} creados · ${costes} con coste real.`); }
   } catch (e) {
     console.error("No se pudieron sembrar los productos de Ágora:", e.message);
   }
 }
 
-module.exports = { seedProductosAgora, aplicar, CATALOGO, FLAG };
+module.exports = { seedProductosAgora, aplicar, CATALOGO, FLAG, COSTES_REALES, FLAG_COSTES };

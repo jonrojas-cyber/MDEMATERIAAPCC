@@ -343,6 +343,8 @@ store
     // Siembra idempotente de los productos de venta de Ágora que Control M no
     // tenía (para que el conector deje de bloquear tickets por "no vinculado").
     require("./seed-productos-agora").seedProductosAgora().catch(() => {});
+    // Siembra idempotente de usuarios (cambios de PIN / altas pedidos por la fundadora).
+    require("./seed-usuarios").seedUsuarios().catch(() => {});
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
     // materias, recetas, lotes y productos de ejemplo). Solo en producción
     // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,

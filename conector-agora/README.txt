@@ -94,4 +94,21 @@ DUDAS FRECUENTES
   encenderlo recupera lo pendiente (Ágora guarda lo no confirmado).
 · "¿Descuenta dos veces si se reinicia?"  No. Cada ticket lleva un
   identificador único; Control M ignora los que ya procesó.
+
+ARRANQUE FÁCIL (1 clic) · recomendado para el local
+---------------------------------------------------
+Ya no hace falta abrir consolas. En esta carpeta hay dos archivos:
+
+  · arrancar.bat            → doble clic para arrancar el conector ahora.
+                              Deja la ventana abierta (puedes minimizarla).
+                              Si se cae, se vuelve a arrancar solo cada 30 s.
+                              Si falta Node.js, te lo dice.
+
+  · instalar-autoarranque.bat → doble clic UNA vez. Deja el conector
+                              arrancando solo (minimizado) cada vez que se
+                              enciende el PC. Así no se vuelve a parar al
+                              reiniciar (que fue lo que pasó el 4 de julio).
+
+Requisito: config.json relleno (agora_token, controlm_base, conector_token)
+y Node.js instalado. Ver "INSTALACIÓN" arriba.
 ========================================================================

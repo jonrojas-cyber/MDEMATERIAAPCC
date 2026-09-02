@@ -28,6 +28,18 @@ const BATCHES = [
     ],
   },
   {
+    // Personal a coste real "con todo" (2.500 €/mes cada uno, indicado por la
+    // fundadora y confirmado por la nómina de Lara: devengado 1.806,55 +
+    // aportación de empresa 580,80 = 2.387,35 + gestor ≈ 2.500). Alta de Daniel
+    // y corrección de Lara (estaba a 1.800). upsert idempotente (flag nuevo).
+    flag: "negocio_seed_v5_personal_real",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-lara", name: "Salario Lara (con todo)", category: "Personal", amount: 2500, vat: 0, periodicity: "monthly", active: true, notes: "Coste total con todo (devengado 1.806,55 + SS empresa 580,80 + gestor). ≈2.500 €/mes." },
+      { id: "fc-daniel", name: "Salario Daniel (con todo)", category: "Personal", amount: 2500, vat: 0, periodicity: "monthly", active: true, notes: "Coste total con todo (SS + retenciones + gestor). 2.500 €/mes, misma estructura que Lara." },
+    ],
+  },
+  {
     // Quitar los costes de EJEMPLO que el usuario no tiene (Internet y Seguro RC).
     // Se desactivan (no se borran) por si luego los quiere con su importe real.
     flag: "negocio_seed_v4_limpieza",

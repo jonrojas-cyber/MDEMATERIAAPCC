@@ -312,6 +312,28 @@ const BATCHES = [
         { materia_id: "mat-coc-croissant", cantidad: 1 }, { materia_id: "mat-coc-crema-pistacho", cantidad: 34.5 } ] } },
     ],
   },
+  // Croissant de mantequilla (Dulce Origen, ya existía como prod-rep-croissant):
+  // le damos escandallo real (croissant 0,60 €) e IVA de coste 4%.
+  {
+    flag: "cocina_seed_v13_mantequilla",
+    actualizaciones: [
+      { entity: "productos", id: "prod-rep-croissant", campos: { nombre: "Croissant de mantequilla", precio_venta: 2.20, iva: 0.04, ingredientes: [ { materia_id: "mat-coc-croissant", cantidad: 1 } ] } },
+      { entity: "productos", id: "prod-rep-cookie", campos: { nombre: "Cookie de pistacho, lima y cardamomo", precio_venta: 3.80, iva: 0.04 } },
+    ],
+  },
+  // LIMPIEZA: archivar (activo:false) todo lo que NO está en la carta actual.
+  // Se conserva el registro (no se borra) y Ágora sigue casando por nombre.
+  {
+    flag: "cocina_limpieza_carta_v1",
+    actualizaciones: [
+      "prod-agora-crunch-origen", "prod-agora-crunch-equilibrio", "prod-agora-crunch-coleccion",
+      "prod-agora-tosta-equilibrio", "prod-agora-tosta-origen", "prod-agora-tosta-coleccion",
+      "prod-agora-dulce-origen", "prod-agora-dulce-equilibrio", "prod-agora-dulce-coleccion",
+      "prod-agora-jamon-braseado-y-queso-edam", "prod-agora-dulce-de-leche", "prod-agora-pistacho",
+      "prod-001", "prod-002", "prod-003", "prod-004", // Brasa, Sal, Raíz, Savia (sándwiches viejos)
+      "prod-rep-rol", // Rol de canela (no está en la carta)
+    ].map((id) => ({ entity: "productos", id, campos: { activo: false, archivado_motivo: "no en carta actual (limpieza)" } })),
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

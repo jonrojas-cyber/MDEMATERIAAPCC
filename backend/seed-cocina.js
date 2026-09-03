@@ -232,6 +232,14 @@ const BATCHES = [
       { entity: "materias", id: "mat-leche-fresca", campos: { coste_medio: 0.001 } }, // 1,50 €/1,5 L = 1 €/L (café)
     ],
   },
+  // Más costes (Mercadona / varios).
+  {
+    flag: "cocina_seed_v6_costes2",
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-payoyo", campos: { coste_medio: 0.026, pendiente_coste: false } }, // 26 €/kg
+      { entity: "materias", id: "mat-coc-croissant", campos: { coste_medio: 0.60, pendiente_coste: false } }, // 0,60 €/ud
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

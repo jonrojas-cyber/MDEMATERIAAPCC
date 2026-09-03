@@ -2,7 +2,7 @@
 // Salsa M y Mayonesa de trufa). Usa un store falso: no toca ficheros.
 // Ejecutar: node tests/seed-cocina.unit.js
 const assert = require("assert");
-const { aplicar, MATERIAS, RECETAS, PRODUCTOS } = require("../backend/seed-cocina");
+const { aplicar, MATERIAS, RECETAS, PRODUCTOS, FLAGS } = require("../backend/seed-cocina");
 
 let fallos = 0;
 function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + e.message); } }
@@ -53,7 +53,7 @@ test("es idempotente: segunda pasada no duplica", () => {
 });
 
 test("no respawnea lo borrado: si el flag existe, no re-inserta", () => {
-  const data = { materias: [], recetas: [], productos: [], config: [{ id: "cocina_seed_v1", hecho: true }, { id: "cocina_seed_v2_pvp", hecho: true }, { id: "cocina_seed_v3_centeno", hecho: true }] };
+  const data = { materias: [], recetas: [], productos: [], config: FLAGS.map((f) => ({ id: f, hecho: true })) };
   const st = fakeStore(data);
   const { ranAny } = aplicar(st);
   assert.strictEqual(ranAny, false);

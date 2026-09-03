@@ -213,7 +213,20 @@ const BATCHES = [
         { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM } ] } },
     ],
   },
+  // Costes reales de materias (facturas). €/kg → €/g (÷1000).
+  {
+    flag: "cocina_seed_v4_costes1",
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-jamon-braseado", campos: { coste_medio: 0.0165, pendiente_coste: false } }, // 16,5 €/kg
+      { entity: "materias", id: "mat-coc-jamon", campos: { nombre: "Jamón braseado", coste_medio: 0.0165, pendiente_coste: false } }, // mismo jamón
+      { entity: "materias", id: "mat-coc-mortadela", campos: { coste_medio: 0.0165, pendiente_coste: false } }, // 16,5 €/kg
+      { entity: "materias", id: "mat-coc-aguacate", campos: { coste_medio: 0.0055, pendiente_coste: false } }, // 5,5 €/kg
+    ],
+  },
 ];
+
+// Flags de todos los lotes (para tests y trazabilidad).
+const FLAGS = BATCHES.map((b) => b.flag);
 
 // Aplica los lotes pendientes sobre un store (real o inyectado en tests).
 function aplicar(store) {
@@ -222,7 +235,7 @@ function aplicar(store) {
   let insertados = 0, ranAny = false;
   for (const b of BATCHES) {
     if (hechos.has(b.flag)) continue;
-    (b.materias || []).forEach((m) => { if (!store.findById("materias", m.id)) { store.insert("materias", m); insertados++; } });
+    (b.materias || []).forEach((m) => { if (!store.findById("materias", m.id)) { store.insert("materias", { ...m }); insertados++; } });
     (b.recetas || []).forEach((r) => { if (!store.findById("recetas", r.id)) { store.insert("recetas", { ...r, creado_en: new Date().toISOString() }); insertados++; } });
     (b.productos || []).forEach((p) => { if (!store.findById("productos", p.id)) { store.insert("productos", { ...p, creado_en: new Date().toISOString() }); insertados++; } });
     (b.actualizaciones || []).forEach((u) => { if (store.findById(u.entity, u.id)) { store.update(u.entity, u.id, u.campos); insertados++; } });
@@ -242,4 +255,4 @@ async function seedCocina() {
   }
 }
 
-module.exports = { seedCocina, aplicar, MATERIAS, RECETAS, PRODUCTOS };
+module.exports = { seedCocina, aplicar, MATERIAS, RECETAS, PRODUCTOS, FLAGS };

@@ -283,6 +283,13 @@ const BATCHES = [
       "prod-croissant-pistacho", "prod-croissant-jyq",
     ].map((id) => ({ entity: "productos", id, campos: { iva: 0.04 } })),
   },
+  // Coste del pollo especiado (Crunch Equilibrio).
+  {
+    flag: "cocina_seed_v10_pollo_coste",
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-pollo", campos: { coste_medio: 0.00675, pendiente_coste: false } }, // 6,75 €/kg
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

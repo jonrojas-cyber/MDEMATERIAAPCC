@@ -290,6 +290,13 @@ const BATCHES = [
       { entity: "materias", id: "mat-coc-pollo", campos: { coste_medio: 0.00675, pendiente_coste: false } }, // 6,75 €/kg
     ],
   },
+  // Crema de pistacho (Croissant Pistacho).
+  {
+    flag: "cocina_seed_v11_pistacho",
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-crema-pistacho", campos: { coste_medio: 0.02, pendiente_coste: false } }, // 20 €/kg
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

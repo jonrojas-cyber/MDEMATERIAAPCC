@@ -369,6 +369,19 @@ const BATCHES = [
       { entity: "productos", id: "prod-agora-coldbrew", campos: { ingredientes: [ { materia_id: "mat-008", cantidad: 200 } ] } },
     ],
   },
+  // BEBIDAS · matcha: cuadrar el Matcha Latte caliente (prod-005) a PVP 3,30 con
+  // su escandallo (2,5 g matcha + 180 ml leche) y ARCHIVAR los 8 matcha viejos
+  // (variantes entera/coco/avena/soja sin PVP) que no están en la carta.
+  {
+    flag: "bebidas_matcha_limpieza_v1",
+    actualizaciones: [
+      { entity: "productos", id: "prod-005", campos: { nombre: "Matcha Latte", precio_venta: 3.30, ingredientes: [ { materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
+      ...[
+        "prod-matcha-latte-entera", "prod-matcha-latte-coco", "prod-matcha-latte-avena", "prod-matcha-latte-soja",
+        "prod-matcha-ice-entera", "prod-matcha-ice-coco", "prod-matcha-ice-avena", "prod-matcha-ice-soja",
+      ].map((id) => ({ entity: "productos", id, campos: { activo: false, archivado_motivo: "duplicado matcha (no en carta)" } })),
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

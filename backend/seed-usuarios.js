@@ -8,11 +8,11 @@
 const store = require("./data-store");
 const auth = require("./auth");
 
-// v3: corrige el reparto de PIN/roles.
-//   · Jon    -> PIN 5234, admin (acceso total al negocio, junto a Mónica).
-//   · Mónica -> PIN 3333, admin (se revierte el 5234 que era de Jon).
-//   · Daniel -> alta como trabajador (equipo) si no existía (se creó en v2).
-const FLAG = "usuarios_seed_v3_jon5234_moni3333";
+// v4: Jon y Mónica comparten PIN 5234 (ambos admin, acceso total). Daniel equipo.
+//   · Jon    -> PIN 5234, admin.
+//   · Mónica -> PIN 5234, admin (a petición suya, igual que Jon).
+//   · Daniel -> alta como trabajador (equipo) si no existía.
+const FLAG = "usuarios_seed_v4_jon_moni_5234";
 
 // Aplica sobre el store dado (inyectable para tests). Idempotente por flag.
 function aplicar(st) {
@@ -27,9 +27,9 @@ function aplicar(st) {
   const jon = buscar("Jon");
   if (jon) { st.update("usuarios", jon.id, { pin_hash: auth.hashPin("5234"), rol: "admin", pin_temporal: false }); tocados++; }
 
-  // Mónica: 3333 (su PIN), admin.
+  // Mónica: 5234 (igual que Jon, a petición suya), admin.
   const moni = buscar("Moni");
-  if (moni) { st.update("usuarios", moni.id, { pin_hash: auth.hashPin("3333"), rol: "admin", pin_temporal: false }); tocados++; }
+  if (moni) { st.update("usuarios", moni.id, { pin_hash: auth.hashPin("5234"), rol: "admin", pin_temporal: false }); tocados++; }
 
   // Daniel como TRABAJADOR (equipo): recetas, pedidos, inventario, APPCC…; nada de
   // negocio. PIN inicial 4444 (temporal, cambiable en la app).

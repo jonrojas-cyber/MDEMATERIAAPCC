@@ -34,7 +34,7 @@ function baseUsuarios() {
   ];
 }
 
-test("Jon -> 5234 admin y Mónica -> 3333 admin (ambos con acceso total)", () => {
+test("Jon y Mónica -> 5234, ambos admin (acceso total)", () => {
   const data = { usuarios: baseUsuarios(), config: [] };
   const st = fakeStore(data);
   const r = aplicar(st);
@@ -44,8 +44,7 @@ test("Jon -> 5234 admin y Mónica -> 3333 admin (ambos con acceso total)", () =>
   assert.ok(pinOk("5234", jon.pin_hash), "Jon valida con 5234");
   const moni = data.usuarios.find((u) => u.id === "Moni");
   assert.strictEqual(moni.rol, "admin");                 // sigue con control total
-  assert.ok(pinOk("3333", moni.pin_hash), "Mónica vuelve a 3333");
-  assert.ok(!pinOk("5234", moni.pin_hash), "Mónica ya no es 5234 (era de Jon)");
+  assert.ok(pinOk("5234", moni.pin_hash), "Mónica también 5234");
 });
 
 test("da de alta a Daniel como trabajador (equipo), no admin", () => {

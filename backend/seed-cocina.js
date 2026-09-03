@@ -177,6 +177,42 @@ const BATCHES = [
       { entity: "productos", id: "prod-croissant-jyq", campos: { precio_venta: 4.00, pendiente_pvp: false } },
     ],
   },
+  // Pan: TODO pan de centeno, coste real 0,40 €/ud (Crunch 1 ud · Tosta 0,5 ud).
+  {
+    flag: "cocina_seed_v3_centeno",
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-pan-centeno", campos: { nombre: "Pan de centeno", coste_medio: 0.40, pendiente_coste: false } },
+      { entity: "productos", id: "prod-crunch-origen", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 1 }, { materia_id: "mat-coc-jamon", cantidad: 65 },
+        { materia_id: "mat-coc-edam", cantidad: 40 }, { materia_id: "mat-coc-payoyo", cantidad: 10 },
+        { materia_id: "mat-coc-sal", cantidad: GRINDER_SAL }, { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM },
+        { materia_id: "mat-coc-aceite", cantidad: 2 } ] } },
+      { entity: "productos", id: "prod-crunch-equilibrio", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 1 }, { materia_id: "mat-coc-edam", cantidad: 30 },
+        { materia_id: "mat-coc-payoyo", cantidad: 80 }, { materia_id: "mat-coc-rucula", cantidad: 3 },
+        { materia_id: "mat-coc-chimichurri", cantidad: 12 }, { materia_id: "mat-coc-aceite", cantidad: 2 },
+        { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM } ] } },
+      { entity: "productos", id: "prod-crunch-coleccion", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 1 }, { materia_id: "mat-coc-mortadela", cantidad: 55 },
+        { materia_id: "mat-coc-burrata", cantidad: 20 }, { materia_id: "mat-coc-rucula", cantidad: 3 },
+        { materia_id: "mat-coc-edam", cantidad: 20 }, { materia_id: "mat-coc-mayo-trufa", cantidad: 12 } ] } },
+      { entity: "productos", id: "prod-tosta-origen", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 0.5 }, { materia_id: "mat-coc-aceite", cantidad: 5 },
+        { materia_id: "mat-coc-tomate", cantidad: 85 }, { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM },
+        { materia_id: "mat-coc-sal", cantidad: GRINDER_SAL } ] } },
+      { entity: "productos", id: "prod-tosta-equilibrio", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 0.5 }, { materia_id: "mat-coc-salsa-m", cantidad: 30 },
+        { materia_id: "mat-coc-aguacate", cantidad: 140 }, { materia_id: "mat-coc-feta", cantidad: 8 },
+        { materia_id: "mat-coc-aceite", cantidad: 1 }, { materia_id: "mat-coc-semillas", cantidad: 4 },
+        { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM }, { materia_id: "mat-coc-sal", cantidad: GRINDER_SAL },
+        { materia_id: "mat-coc-lima", cantidad: 14 } ] } },
+      { entity: "productos", id: "prod-tosta-coleccion", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 0.5 }, { materia_id: "mat-coc-higo", cantidad: 54 },
+        { materia_id: "mat-coc-salsa-m", cantidad: 30 }, { materia_id: "mat-coc-semillas", cantidad: 2 },
+        { materia_id: "mat-coc-aceite", cantidad: 1 }, { materia_id: "mat-coc-sal", cantidad: GRINDER_SAL },
+        { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM } ] } },
+    ],
+  },
 ];
 
 // Aplica los lotes pendientes sobre un store (real o inyectado en tests).

@@ -34,6 +34,12 @@ test("siembra 8 productos, 2 elaboraciones y sus materias (create-if-missing)", 
   assert.strictEqual(co.pendiente_pvp, false);
   const tc = data.productos.find((p) => p.id === "prod-tosta-coleccion");
   assert.strictEqual(tc.precio_venta, 4.00, "PVP Tosta Colección 4,00 €");
+  // v3: todo pan de centeno a 0,40 €/ud; los productos apuntan a esa materia.
+  const pan = data.materias.find((m) => m.id === "mat-coc-pan-centeno");
+  assert.strictEqual(pan.coste_medio, 0.40, "pan de centeno 0,40 €/ud");
+  assert.ok(co.ingredientes.some((i) => i.materia_id === "mat-coc-pan-centeno" && i.cantidad === 1), "Crunch usa 1 ud de centeno");
+  const to = data.productos.find((p) => p.id === "prod-tosta-origen");
+  assert.ok(to.ingredientes.some((i) => i.materia_id === "mat-coc-pan-centeno" && i.cantidad === 0.5), "Tosta usa 0,5 ud de centeno");
 });
 
 test("es idempotente: segunda pasada no duplica", () => {
@@ -47,7 +53,7 @@ test("es idempotente: segunda pasada no duplica", () => {
 });
 
 test("no respawnea lo borrado: si el flag existe, no re-inserta", () => {
-  const data = { materias: [], recetas: [], productos: [], config: [{ id: "cocina_seed_v1", hecho: true }, { id: "cocina_seed_v2_pvp", hecho: true }] };
+  const data = { materias: [], recetas: [], productos: [], config: [{ id: "cocina_seed_v1", hecho: true }, { id: "cocina_seed_v2_pvp", hecho: true }, { id: "cocina_seed_v3_centeno", hecho: true }] };
   const st = fakeStore(data);
   const { ranAny } = aplicar(st);
   assert.strictEqual(ranAny, false);

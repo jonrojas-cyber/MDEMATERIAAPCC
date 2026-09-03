@@ -334,6 +334,22 @@ const BATCHES = [
       "prod-rep-rol", // Rol de canela (no está en la carta)
     ].map((id) => ({ entity: "productos", id, campos: { activo: false, archivado_motivo: "no en carta actual (limpieza)" } })),
   },
+  // BEBIDAS · cafés: 17 g café Brasil todos + su leche. Flat White 180 ml (dato
+  // de Mónica); cortado/capuccino/latte/iced con ml estándar (afinar si procede).
+  // El café (17 g) es el que manda en el coste; la leche pesa muy poco.
+  {
+    flag: "bebidas_cafe_v1",
+    actualizaciones: [
+      { entity: "productos", id: "prod-agora-espresso", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 } ] } },
+      { entity: "productos", id: "prod-agora-lungo", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 } ] } },
+      { entity: "productos", id: "prod-agora-americano", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 } ] } },
+      { entity: "productos", id: "prod-agora-cortado", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 40 } ] } },
+      { entity: "productos", id: "prod-agora-flatwhite", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
+      { entity: "productos", id: "prod-agora-capuccino", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 150 } ] } },
+      { entity: "productos", id: "prod-agora-latte", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 200 } ] } },
+      { entity: "productos", id: "prod-agora-iced-latte", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

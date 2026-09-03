@@ -252,6 +252,28 @@ const BATCHES = [
         { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM } ] } },
     ],
   },
+  // Precios Mercadona (Hacendado). €/g = precio ÷ gramos del envase (burrata y
+  // feta por peso ESCURRIDO 150 g). Aceite/mayonesa/chimichurri: ml≈g.
+  {
+    flag: "cocina_seed_v8_mercadona",
+    materias: [ { id: "mat-coc-nectarina", nombre: "Nectarina", unidad: "g", categoria: "Fruta", coste_medio: 0.0025, disponibilidad_actual: 0, ubicacion: "Cocina", pendiente_coste: false } ], // 0,45 € / 180 g
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-burrata", campos: { coste_medio: 0.01467, pendiente_coste: false } },       // 2,20 € / 150 g escurridos
+      { entity: "materias", id: "mat-coc-feta", campos: { coste_medio: 0.016, pendiente_coste: false } },             // 2,40 € / 150 g escurridos
+      { entity: "materias", id: "mat-coc-aceite", campos: { coste_medio: 0.00445, pendiente_coste: false } },         // 4,45 € / 1000 ml
+      { entity: "materias", id: "mat-coc-tomate", campos: { coste_medio: 0.002, pendiente_coste: false } },           // 0,24 € / 120 g
+      { entity: "materias", id: "mat-coc-lima", campos: { coste_medio: 0.004429, pendiente_coste: false } },          // 0,31 € / 70 g
+      { entity: "materias", id: "mat-coc-higo", campos: { coste_medio: 0.0059, pendiente_coste: false } },            // 2,36 € / 400 g
+      { entity: "materias", id: "mat-coc-semillas", campos: { coste_medio: 0.0073, pendiente_coste: false } },        // 1,46 € / 200 g
+      { entity: "materias", id: "mat-coc-chimichurri", campos: { coste_medio: 0.004677, pendiente_coste: false } },   // 1,45 € / 310 ml
+      { entity: "materias", id: "mat-coc-dulce-leche", campos: { coste_medio: 0.006302, pendiente_coste: false } },   // 2,71 € / 430 g
+      { entity: "materias", id: "mat-coc-queso-crema", campos: { coste_medio: 0.008519, pendiente_coste: false } },   // 2,30 € / 270 g (Philadelphia)
+      { entity: "materias", id: "mat-coc-ricota", campos: { coste_medio: 0.008, pendiente_coste: false } },           // 1,60 € / 200 g
+      { entity: "materias", id: "mat-coc-agave", campos: { coste_medio: 0.007429, pendiente_coste: false } },         // 2,60 € / 350 g
+      { entity: "materias", id: "mat-coc-mayonesa", campos: { coste_medio: 0.0024, pendiente_coste: false } },        // 1,20 € / 500 ml
+      { entity: "materias", id: "mat-coc-trufa", campos: { coste_medio: 0.03875, pendiente_coste: false } },          // 3,10 € / 80 g
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

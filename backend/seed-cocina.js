@@ -274,6 +274,15 @@ const BATCHES = [
       { entity: "materias", id: "mat-coc-trufa", campos: { coste_medio: 0.03875, pendiente_coste: false } },          // 3,10 € / 80 g
     ],
   },
+  // IVA de coste al 4% (real de alimentación) en toda la comida. Baja el food cost.
+  {
+    flag: "cocina_seed_v9_iva4",
+    actualizaciones: [
+      "prod-crunch-origen", "prod-crunch-equilibrio", "prod-crunch-coleccion",
+      "prod-tosta-origen", "prod-tosta-equilibrio", "prod-tosta-coleccion",
+      "prod-croissant-pistacho", "prod-croissant-jyq",
+    ].map((id) => ({ entity: "productos", id, campos: { iva: 0.04 } })),
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

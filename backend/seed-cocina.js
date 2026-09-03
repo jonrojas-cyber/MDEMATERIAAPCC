@@ -240,6 +240,18 @@ const BATCHES = [
       { entity: "materias", id: "mat-coc-croissant", campos: { coste_medio: 0.60, pendiente_coste: false } }, // 0,60 €/ud
     ],
   },
+  // CORRECCIÓN: en Crunch Equilibrio "Poyo 80 g" era POLLO especiado, no payoyo.
+  {
+    flag: "cocina_seed_v7_pollo",
+    materias: [ M("mat-coc-pollo", "Pollo especiado", "g", "Charcutería") ],
+    actualizaciones: [
+      { entity: "productos", id: "prod-crunch-equilibrio", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 1 }, { materia_id: "mat-coc-edam", cantidad: 30 },
+        { materia_id: "mat-coc-pollo", cantidad: 80 }, { materia_id: "mat-coc-rucula", cantidad: 3 },
+        { materia_id: "mat-coc-chimichurri", cantidad: 12 }, { materia_id: "mat-coc-aceite", cantidad: 2 },
+        { materia_id: "mat-coc-pimienta", cantidad: GRINDER_PIM } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

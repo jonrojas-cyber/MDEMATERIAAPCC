@@ -26,7 +26,8 @@ test("siembra 8 productos, 2 elaboraciones y sus materias (create-if-missing)", 
   assert.ok(ranAny);
   assert.strictEqual(data.productos.length, 8, "8 productos");
   assert.strictEqual(data.recetas.length, 2, "2 elaboraciones");
-  assert.strictEqual(data.materias.length, MATERIAS.length, "todas las materias");
+  assert.ok(data.materias.length >= MATERIAS.length, "todas las materias base (+ las de lotes de corrección)");
+  assert.ok(MATERIAS.every((m) => data.materias.some((x) => x.id === m.id)), "cada materia base sembrada");
   assert.ok(insertados >= 8 + 2 + MATERIAS.length);
   // El lote v2 aplica los PVP reales de la carta.
   const co = data.productos.find((p) => p.id === "prod-crunch-origen");
@@ -43,6 +44,10 @@ test("siembra 8 productos, 2 elaboraciones y sus materias (create-if-missing)", 
   // Costes de factura aplicados.
   assert.strictEqual(data.materias.find((m) => m.id === "mat-coc-edam").coste_medio, 0.0075, "edam 7,50 €/kg");
   assert.strictEqual(data.materias.find((m) => m.id === "mat-coc-yogur").coste_medio, 0.00307, "yogur");
+  // Corrección: Crunch Equilibrio lleva POLLO (no payoyo).
+  const eq = data.productos.find((p) => p.id === "prod-crunch-equilibrio");
+  assert.ok(eq.ingredientes.some((i) => i.materia_id === "mat-coc-pollo" && i.cantidad === 80), "Equilibrio: pollo 80 g");
+  assert.ok(!eq.ingredientes.some((i) => i.materia_id === "mat-coc-payoyo"), "Equilibrio ya no lleva payoyo");
 });
 
 test("es idempotente: segunda pasada no duplica", () => {

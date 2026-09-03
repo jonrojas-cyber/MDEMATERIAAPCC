@@ -28,6 +28,12 @@ test("siembra 8 productos, 2 elaboraciones y sus materias (create-if-missing)", 
   assert.strictEqual(data.recetas.length, 2, "2 elaboraciones");
   assert.strictEqual(data.materias.length, MATERIAS.length, "todas las materias");
   assert.ok(insertados >= 8 + 2 + MATERIAS.length);
+  // El lote v2 aplica los PVP reales de la carta.
+  const co = data.productos.find((p) => p.id === "prod-crunch-origen");
+  assert.strictEqual(co.precio_venta, 4.80, "PVP Crunch Origen 4,80 €");
+  assert.strictEqual(co.pendiente_pvp, false);
+  const tc = data.productos.find((p) => p.id === "prod-tosta-coleccion");
+  assert.strictEqual(tc.precio_venta, 4.00, "PVP Tosta Colección 4,00 €");
 });
 
 test("es idempotente: segunda pasada no duplica", () => {
@@ -41,7 +47,7 @@ test("es idempotente: segunda pasada no duplica", () => {
 });
 
 test("no respawnea lo borrado: si el flag existe, no re-inserta", () => {
-  const data = { materias: [], recetas: [], productos: [], config: [{ id: "cocina_seed_v1", hecho: true }] };
+  const data = { materias: [], recetas: [], productos: [], config: [{ id: "cocina_seed_v1", hecho: true }, { id: "cocina_seed_v2_pvp", hecho: true }] };
   const st = fakeStore(data);
   const { ranAny } = aplicar(st);
   assert.strictEqual(ranAny, false);

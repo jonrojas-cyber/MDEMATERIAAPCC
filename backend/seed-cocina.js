@@ -163,6 +163,20 @@ const PRODUCTOS = [
 
 const BATCHES = [
   { flag: "cocina_seed_v1", materias: MATERIAS, recetas: RECETAS, productos: PRODUCTOS },
+  // PVP reales de la carta (foto). Marca el PVP como ya no pendiente.
+  {
+    flag: "cocina_seed_v2_pvp",
+    actualizaciones: [
+      { entity: "productos", id: "prod-crunch-origen", campos: { precio_venta: 4.80, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-crunch-equilibrio", campos: { precio_venta: 6.00, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-crunch-coleccion", campos: { precio_venta: 7.80, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-tosta-origen", campos: { precio_venta: 3.50, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-tosta-equilibrio", campos: { precio_venta: 4.80, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-tosta-coleccion", campos: { precio_venta: 4.00, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-croissant-pistacho", campos: { precio_venta: 2.80, pendiente_pvp: false } },
+      { entity: "productos", id: "prod-croissant-jyq", campos: { precio_venta: 4.00, pendiente_pvp: false } },
+    ],
+  },
 ];
 
 // Aplica los lotes pendientes sobre un store (real o inyectado en tests).
@@ -175,6 +189,7 @@ function aplicar(store) {
     (b.materias || []).forEach((m) => { if (!store.findById("materias", m.id)) { store.insert("materias", m); insertados++; } });
     (b.recetas || []).forEach((r) => { if (!store.findById("recetas", r.id)) { store.insert("recetas", { ...r, creado_en: new Date().toISOString() }); insertados++; } });
     (b.productos || []).forEach((p) => { if (!store.findById("productos", p.id)) { store.insert("productos", { ...p, creado_en: new Date().toISOString() }); insertados++; } });
+    (b.actualizaciones || []).forEach((u) => { if (store.findById(u.entity, u.id)) { store.update(u.entity, u.id, u.campos); insertados++; } });
     store.insert("config", { id: b.flag, hecho: true, fecha: new Date().toISOString() });
     ranAny = true;
   }

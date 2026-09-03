@@ -40,6 +40,9 @@ test("siembra 8 productos, 2 elaboraciones y sus materias (create-if-missing)", 
   assert.ok(co.ingredientes.some((i) => i.materia_id === "mat-coc-pan-centeno" && i.cantidad === 1), "Crunch usa 1 ud de centeno");
   const to = data.productos.find((p) => p.id === "prod-tosta-origen");
   assert.ok(to.ingredientes.some((i) => i.materia_id === "mat-coc-pan-centeno" && i.cantidad === 0.5), "Tosta usa 0,5 ud de centeno");
+  // Costes de factura aplicados.
+  assert.strictEqual(data.materias.find((m) => m.id === "mat-coc-edam").coste_medio, 0.0075, "edam 7,50 €/kg");
+  assert.strictEqual(data.materias.find((m) => m.id === "mat-coc-yogur").coste_medio, 0.00307, "yogur");
 });
 
 test("es idempotente: segunda pasada no duplica", () => {

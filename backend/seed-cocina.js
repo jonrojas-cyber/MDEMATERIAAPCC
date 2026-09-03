@@ -223,6 +223,15 @@ const BATCHES = [
       { entity: "materias", id: "mat-coc-aguacate", campos: { coste_medio: 0.0055, pendiente_coste: false } }, // 5,5 €/kg
     ],
   },
+  // Factura Comercial Maldonado Domínguez (11/08/2026), precios netos.
+  {
+    flag: "cocina_seed_v5_maldonado",
+    actualizaciones: [
+      { entity: "materias", id: "mat-coc-edam", campos: { coste_medio: 0.0075, pendiente_coste: false } }, // 7,50 €/ud · asumido 1 kg → €/g
+      { entity: "materias", id: "mat-coc-yogur", campos: { coste_medio: 0.00307, pendiente_coste: false } }, // 2,61 € / 850 g
+      { entity: "materias", id: "mat-leche-fresca", campos: { coste_medio: 0.001 } }, // 1,50 €/1,5 L = 1 €/L (café)
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

@@ -361,6 +361,14 @@ const BATCHES = [
       { entity: "productos", id: "prod-agora-iced-matcha-coleccion", campos: { ingredientes: [ { materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
     ],
   },
+  // BEBIDAS · cold brew: usa el cold brew que YA está en el sistema (receta
+  // rec-004 → materia mat-008). Vaso ~200 ml; el coste se encadena de su receta.
+  {
+    flag: "bebidas_coldbrew_v1",
+    actualizaciones: [
+      { entity: "productos", id: "prod-agora-coldbrew", campos: { ingredientes: [ { materia_id: "mat-008", cantidad: 200 } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

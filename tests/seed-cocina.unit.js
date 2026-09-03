@@ -24,7 +24,7 @@ test("siembra 8 productos, 2 elaboraciones y sus materias (create-if-missing)", 
   const st = fakeStore(data);
   const { ranAny, insertados } = aplicar(st);
   assert.ok(ranAny);
-  assert.strictEqual(data.productos.length, 8, "8 productos");
+  assert.ok(data.productos.length >= 8, "al menos los 8 productos base (+ splits)");
   assert.strictEqual(data.recetas.length, 2, "2 elaboraciones");
   assert.ok(data.materias.length >= MATERIAS.length, "todas las materias base (+ las de lotes de corrección)");
   assert.ok(MATERIAS.every((m) => data.materias.some((x) => x.id === m.id)), "cada materia base sembrada");

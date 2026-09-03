@@ -297,6 +297,21 @@ const BATCHES = [
       { entity: "materias", id: "mat-coc-crema-pistacho", campos: { coste_medio: 0.02, pendiente_coste: false } }, // 20 €/kg
     ],
   },
+  // Croissant Equilibrio "a elegir": se separan pistacho y dulce de leche.
+  {
+    flag: "cocina_seed_v12_croissant_split",
+    productos: [
+      { id: "prod-croissant-dulce-leche", clave: "Croissant dulce de leche", nombre: "Croissant · Dulce de leche",
+        categoria: "reposteria", descripcion: "", precio_venta: 2.80, iva: 0.04, activo: true,
+        cantidades_estimadas: false, pendiente_pvp: false,
+        ingredientes: [ { materia_id: "mat-coc-croissant", cantidad: 1 }, { materia_id: "mat-coc-dulce-leche", cantidad: 30 } ] },
+    ],
+    actualizaciones: [
+      // Croissant Pistacho: solo pistacho (se quita el dulce de leche).
+      { entity: "productos", id: "prod-croissant-pistacho", campos: { nombre: "Croissant · Pistacho", ingredientes: [
+        { materia_id: "mat-coc-croissant", cantidad: 1 }, { materia_id: "mat-coc-crema-pistacho", cantidad: 34.5 } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

@@ -96,8 +96,8 @@ async function capturarDiario(now = Date.now(), localId = "principal") {
 }
 
 // Serie temporal de los últimos N días (para gráficas y análisis/IA).
-function historico(dias = 90, localId = "principal") {
-  const desde = ymd(Date.now() - dias * DAY);
+function historico(dias = 90, localId = "principal", now = Date.now()) {
+  const desde = ymd(now - dias * DAY);
   return store.readAll("financial_snapshots")
     .filter((s) => s.local_id === localId && s.fecha >= desde)
     .sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
@@ -105,7 +105,7 @@ function historico(dias = 90, localId = "principal") {
 
 // Tendencia: último snapshot frente a ~7 y ~30 días atrás, para métricas clave.
 function tendencia(now = Date.now(), localId = "principal") {
-  const serie = historico(60, localId);
+  const serie = historico(60, localId, now);
   if (!serie.length) return { disponible: false };
   const ultimo = serie[serie.length - 1];
   const haceDias = (n) => {

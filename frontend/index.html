@@ -2510,6 +2510,7 @@ function modulosMeta(d) {
     cafes:        { num:"00", name:"Cafés", badge:"Escandallo por bebida", urgent:false },
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
+    cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
     informeCompras:{ num:"05", name:"Informe de compras", badge:"Por proveedor · familia · fecha", urgent:false },
@@ -2527,7 +2528,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Ventas · Config", ids:["menu","cafes","carta","analisis","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -9739,6 +9740,95 @@ async function irA_analisis(){
       masUsadas+barrasStock
     );
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── CIERRE DE MES ─────────────────────────────────────
+// Informe macro + micro del mes (admin). Compone /api/cierre-mes.
+async function irA_cierreMes(mes){
+  openSection("cierre-mes","Cierre de mes");
+  const mesSel = mes || (new Date().toISOString().slice(0,7));
+  try{
+    const inf = await api("/cierre-mes"+(mes?("?mes="+encodeURIComponent(mes)):""));
+    const E = (n)=> n==null?"—":(Math.round((Number(n)||0)*100)/100).toLocaleString("es-ES")+" €";
+    const P = (n)=> n==null?"—":n+" %";
+    const D = (n)=> n==null?"":` <span style="font-weight:700;color:${n>=0?'#2e7d32':'#c62828'}">${n>=0?'+':''}${n}%</span>`;
+    const kbox=(label,val,sub,warn)=>`<div class="kpi-box ${warn?'warn':''}"><div class="kpi-label">${esc(label)}</div><div class="kpi-val" style="${warn?'color:var(--warn)':''}">${val}</div><div class="kpi-sub">${esc(sub||'')}</div></div>`;
+    const m = inf.macro, py = m.pyl, be = m.break_even, cmp = inf.comparativas;
+
+    const avisos = (inf.avisos||[]).map(a=>{
+      const col = a.nivel==="critico"?"#D62A1C":(a.nivel==="advertencia"?"#7a5a1e":"#2e7d32");
+      const bg  = a.nivel==="critico"?"#fbe9e7":(a.nivel==="advertencia"?"#f6ecd5":"#e8f5e9");
+      return `<div style="border-radius:3px;padding:9px 12px;margin-bottom:6px;background:${bg};color:${col};font-size:12.5px;font-weight:600;">${esc(a.texto)}</div>`;
+    }).join("");
+
+    const toolbar = `<div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label style="font-size:12px;font-weight:600;">Mes
+        <input type="month" id="cm-mes" value="${mesSel}" style="margin-left:6px;padding:4px 6px;border:1px solid #cfc7b5;border-radius:3px;font-family:inherit;">
+      </label>
+      <button onclick="irA_cierreMes(document.getElementById('cm-mes').value)" style="padding:6px 12px;border:0;border-radius:3px;background:var(--ink);color:#f0ebe0;font-weight:600;cursor:pointer;">Ver mes</button>
+      <button onclick="cmCerrarMes()" style="padding:6px 12px;border:1px solid var(--ink);border-radius:3px;background:transparent;color:var(--ink);font-weight:600;cursor:pointer;">Congelar cierre</button>
+      <span style="font-size:11px;color:#888070;">${inf.estado_mes==='cerrado'?'Mes cerrado':'Mes en curso (parcial)'}</span>
+    </div>`;
+
+    const macroKpis = `<div class="section-label">Macro · ${esc(inf.mes)}</div><div class="home-kpis">
+      ${kbox("Ventas", E(py.ventas), cmp.mes_anterior?`vs mes ant.${D(cmp.mes_anterior.delta_ventas_pct)}`.replace(/<[^>]+>/g,m=>m):"")}
+      ${kbox("Food cost", P(py.food_cost_pct), "materia / ventas", py.food_cost_pct!=null&&py.food_cost_pct>35)}
+      ${kbox("Coste laboral", P(py.coste_laboral_pct), E(py.coste_laboral))}
+      ${kbox("Gastos fijos", E(py.gastos_fijos), "del mes")}
+      ${kbox("EBITDA", E(py.ebitda), "beneficio operativo", py.ebitda!=null&&py.ebitda<0)}
+      ${kbox("Margen op.", P(py.margen_operativo_pct), "sobre ventas")}
+      ${kbox("Beneficio neto est.", E(py.beneficio_neto_estimado), "tras intereses")}
+      ${kbox("Ticket medio", E(m.tickets&&m.tickets.ticket_medio), (m.tickets&&(m.tickets.numero!=null)?m.tickets.numero+" tickets":""))}
+      ${kbox("Break-even mes", E(be&&be.equilibrio_mes), be&&be.margen_seguridad_pct!=null?("seguridad "+be.margen_seguridad_pct+"%"):"", be&&be.en_perdidas)}
+      ${kbox("Patrimonio neto", E(m.patrimonio_neto&&m.patrimonio_neto.patrimonio_neto), "hoy")}
+    </div>`;
+
+    const comp = `<div class="section-label">Comparativas</div>
+      <div class="card"><div class="card-name">vs mes anterior (${esc(cmp.mes_anterior.mes)})</div>
+        <div class="card-meta">Ventas ${E(cmp.mes_anterior.pyl.ventas)}${D(cmp.mes_anterior.delta_ventas_pct)} · EBITDA ${E(cmp.mes_anterior.pyl.ebitda)}${D(cmp.mes_anterior.delta_ebitda_pct)}</div></div>
+      <div class="card"><div class="card-name">vs año anterior (${esc(cmp.anio_anterior.mes)})</div>
+        <div class="card-meta">Ventas ${E(cmp.anio_anterior.pyl.ventas)}${D(cmp.anio_anterior.delta_ventas_pct)} · EBITDA ${E(cmp.anio_anterior.pyl.ebitda)}${D(cmp.anio_anterior.delta_ebitda_pct)}</div></div>`;
+
+    const ig = inf.micro.ingenieria_menu;
+    const quad=(titulo, arr, color)=>`<div class="card"><div class="card-name" style="color:${color}">${esc(titulo)} · ${arr.length}</div>${arr.length?arr.map(x=>`<div class="card-meta">${esc(x.nombre)} — ${x.unidades} ud · margen ${P(x.margen_pct)}</div>`).join(""):'<div class="card-meta">—</div>'}</div>`;
+    const menuEng = `<div class="section-label">Micro · ingeniería de menú</div>
+      ${quad("★ Estrellas (populares y rentables)", ig.estrella, "#2e7d32")}
+      ${quad("Caballos de batalla (populares, poco margen)", ig.caballo_de_batalla, "#7a5a1e")}
+      ${quad("Enigmas (rentables, poco populares)", ig.enigma, "#1565c0")}
+      ${quad("Perros (ni populares ni rentables)", ig.perro, "#c62828")}`;
+
+    const topIngreso = section("Top por ingreso", inf.micro.por_ingreso.slice(0,10),
+      x=>card(x.nombre, `${x.unidades} ud · ${E(x.ingreso)} · food cost ${P(x.food_cost_pct)} · margen ${P(x.margen_pct)}`), "Sin ventas registradas en el mes.");
+
+    const esc2 = {estimado:"cantidades estimadas", sin_escandallo:"SIN escandallo", materias_sin_coste:"materias sin coste"};
+    const escPend = inf.detalle.escandallos.lista_pendientes||[];
+    const escandallos = `<div class="section-label">Escandallos pendientes (food cost aún no real) · ${inf.detalle.escandallos.pendientes}/${inf.detalle.escandallos.total}</div>`+
+      (escPend.length? escPend.map(x=>`<div class="card"><div class="card-name">${esc(x.nombre)} <span style="color:#c62828;font-size:10px;font-weight:700;">${esc(esc2[x.estado]||x.estado)}</span></div><div class="card-meta">${esc(x.categoria||'')} · food cost ${P(x.food_cost_pct)}${x.materias_sin_coste?` · ${x.materias_sin_coste} materia(s) sin coste`:''}</div></div>`).join("")
+        : `<div class="card"><div class="card-meta">Todos los productos activos tienen escandallo real. ✅</div></div>`);
+
+    const compras = section("Compras por proveedor (mes)", inf.detalle.compras_por_proveedor,
+      p=>card(p.label, E(p.value)), "Sin recepciones registradas en el mes.");
+    const mermas = section("Mermas por motivo (mes)", (inf.detalle.mermas&&inf.detalle.mermas.por_motivo)||[],
+      p=>card(p.label, E(p.value)), "Sin mermas registradas en el mes.");
+    const sinVenta = section("Productos activos sin ninguna venta", inf.micro.productos_sin_venta,
+      p=>card(p.nombre, p.categoria||""), "Todos los productos tuvieron ventas.");
+
+    setInner(
+      toolbar +
+      (avisos?`<div style="margin-bottom:10px;">${avisos}</div>`:"") +
+      macroKpis + comp + menuEng + escandallos + topIngreso + compras + mermas + sinVenta +
+      `<div class="card" style="font-size:10.5px;color:#888070;">Generado ${esc((inf.generado_en||'').slice(0,16).replace('T',' '))}. Todos los importes derivan de la única fuente de coste (escandallos + costes fijos + personal). El equipo no ve esta pantalla.</div>`
+    );
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+
+function cmCerrarMes(){
+  const inp = document.getElementById("cm-mes");
+  const mes = (inp && inp.value) || "";
+  if(!confirm("¿Congelar el cierre de "+(mes||"este mes")+"? Guarda una foto del informe en el histórico.")) return;
+  api("/cierre-mes/cerrar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mes})})
+    .then(r=>{ alert("Cierre de "+r.mes+" congelado."); irA_cierreMes(mes); })
+    .catch(e=>alert("No se pudo cerrar: "+e.message));
 }
 
 // ── MANUAL ────────────────────────────────────────────

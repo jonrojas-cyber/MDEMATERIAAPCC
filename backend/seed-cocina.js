@@ -350,6 +350,17 @@ const BATCHES = [
       { entity: "productos", id: "prod-agora-iced-latte", campos: { ingredientes: [ { materia_id: "mat-cafe-brasil", cantidad: 17 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
     ],
   },
+  // BEBIDAS · matcha: 2,5 g matcha + 180 ml leche (base, dato de Mónica). Los
+  // extras de equilibrio (plátano, chai) y colección (pistacho, choco blanco,
+  // coco) están sin costear todavía — se añaden cuando lleguen sus precios.
+  {
+    flag: "bebidas_matcha_v1",
+    actualizaciones: [
+      { entity: "productos", id: "prod-agora-iced-matcha-origen", campos: { ingredientes: [ { materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
+      { entity: "productos", id: "prod-agora-iced-matcha-equilibrio", campos: { ingredientes: [ { materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
+      { entity: "productos", id: "prod-agora-iced-matcha-coleccion", campos: { ingredientes: [ { materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

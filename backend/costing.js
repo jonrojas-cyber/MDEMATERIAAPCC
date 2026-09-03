@@ -12,12 +12,47 @@ function indiceMaterias(materias) {
   return idx;
 }
 
-// Coste de UN escandallo (lista de {materia_id, cantidad}).
-function costeEscandallo(ingredientes, idxMat) {
+// Índice de recetas por la materia que PRODUCEN (elaboraciones). Permite que el
+// coste de una materia elaborada (p. ej. "Salsa M") se derive de SUS ingredientes
+// en vez de un coste_medio fijo: así el food cost fluctúa con las facturas.
+function indiceRecetasProduccion(recetas) {
+  const idx = {};
+  (recetas || store.readAll("recetas")).forEach((r) => {
+    if (r && r.produce_materia_id) idx[r.produce_materia_id] = r;
+  });
+  return idx;
+}
+
+// Coste EFECTIVO por unidad de una materia. Si la materia la produce una receta
+// y NO tiene coste_medio propio (>0), se calcula desde la receta (recursivo, con
+// guardia anti-ciclos). Si tiene coste_medio, manda ese (no cambia lo existente).
+function costeMateriaEfectivo(materiaId, idxMat, idxRecProd, visitando) {
+  const m = idxMat[materiaId];
+  const costeDirecto = m ? Number(m.coste_medio) || 0 : 0;
+  if (costeDirecto > 0) return costeDirecto;
+  const rec = idxRecProd && idxRecProd[materiaId];
+  if (rec && !(visitando && visitando.has(materiaId))) {
+    const base = Number(rec.resultado_base) || 0;
+    if (base > 0) {
+      const vis = new Set(visitando || []);
+      vis.add(materiaId);
+      const costeLote = (rec.ingredientes || []).reduce(
+        (s, ing) => s + costeMateriaEfectivo(ing.materia_id, idxMat, idxRecProd, vis) * (Number(ing.cantidad) || 0),
+        0
+      );
+      return costeLote / base; // €/unidad producida
+    }
+  }
+  return costeDirecto;
+}
+
+// Coste de UN escandallo (lista de {materia_id, cantidad}). Encadena el coste de
+// las elaboraciones (materias producidas por receta) para que sea food cost vivo.
+function costeEscandallo(ingredientes, idxMat, idxRecProd) {
   const idx = idxMat || indiceMaterias();
+  const idxRec = idxRecProd || indiceRecetasProduccion();
   return (ingredientes || []).reduce((s, ing) => {
-    const m = idx[ing.materia_id];
-    return s + (m ? (Number(m.coste_medio) || 0) * (Number(ing.cantidad) || 0) : 0);
+    return s + costeMateriaEfectivo(ing.materia_id, idx, idxRec) * (Number(ing.cantidad) || 0);
   }, 0);
 }
 
@@ -123,7 +158,8 @@ function tamanosLote(receta) {
 }
 
 module.exports = {
-  indiceMaterias, costeEscandallo, costeReceta, costePorUnidad, costeProducto,
+  indiceMaterias, indiceRecetasProduccion, costeMateriaEfectivo,
+  costeEscandallo, costeReceta, costePorUnidad, costeProducto,
   margenProducto, margenMedioCarta, foodCostMedioCarta, valorStock, valorProduccion,
   costeMermas, tamanosLote, ivaDe, IVA_DEF,
 };

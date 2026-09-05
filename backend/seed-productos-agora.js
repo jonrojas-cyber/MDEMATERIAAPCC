@@ -51,6 +51,14 @@ const COSTES_REALES = [
 ];
 const FLAG_COSTES = "productos_agora_costes_v1";
 
+// Altas posteriores del catálogo de Ágora (aparecieron en el export de precios):
+// Ices americano (id 49) y México descafeinado (id 50). Sin coste inventado.
+const CATALOGO_EXTRA = [
+  ["Ices americano", "bebida", 0],
+  ["MÉXICO DESCAFEINADO", "bebida", 0],
+];
+const FLAG_EXTRA = "productos_agora_seed_v2_extra";
+
 // Aplica el lote sobre el store dado (inyectable para tests). Idempotente por flag.
 // No duplica: si ya existe un producto cuya clave/nombre coincide (sin distinguir
 // mayúsculas) con el de Ágora, se salta.
@@ -84,6 +92,30 @@ function aplicar(st) {
       creados++;
     });
     st.insert("config", { id: FLAG, hecho: true, fecha: new Date().toISOString() });
+    ranAny = true;
+  }
+
+  // Bloque 3 (independiente) · altas posteriores del catálogo de Ágora.
+  if (!hechos.has(FLAG_EXTRA)) {
+    const yaHay = new Set();
+    (st.readAll("productos") || []).forEach((p) => {
+      [p.clave, p.nombre, p.agora_ref].forEach((k) => { if (k) yaHay.add(String(k).toLowerCase()); });
+    });
+    CATALOGO_EXTRA.forEach(([nombre, categoria, pvp]) => {
+      if (yaHay.has(nombre.toLowerCase())) return;
+      const id = "prod-agora-" + slug(nombre);
+      const prod = {
+        id, clave: nombre, nombre, agora_ref: nombre,
+        categoria, descripcion: "Alta automática desde el catálogo de Ágora",
+        precio_venta: pvp, activo: true, ingredientes: [],
+        origen: "agora", creado_en: new Date().toISOString(),
+      };
+      if (st.findById("productos", id)) st.update("productos", id, prod);
+      else st.insert("productos", prod);
+      yaHay.add(nombre.toLowerCase());
+      creados++;
+    });
+    st.insert("config", { id: FLAG_EXTRA, hecho: true, fecha: new Date().toISOString() });
     ranAny = true;
   }
 

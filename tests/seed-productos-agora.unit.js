@@ -24,7 +24,7 @@ test("crea los artículos del catálogo con nombre exacto y sin escandallo", () 
   const st = fakeStore(data);
   const { creados, ranAny } = aplicar(st);
   assert.ok(ranAny);
-  assert.strictEqual(creados, CATALOGO.length); // Matcha latte no está en el catálogo (ya existía aparte)
+  assert.strictEqual(creados, CATALOGO.length + 2); // catálogo + 2 extra (Ices americano, México descafeinado)
   const lim = data.productos.find((p) => p.clave === "Limonada origen");
   assert.ok(lim, "crea Limonada origen");
   assert.strictEqual(lim.nombre, "Limonada origen");
@@ -63,7 +63,7 @@ test("no duplica un artículo ya presente con ese nombre", () => {
   const { creados } = aplicar(st);
   const colds = data.productos.filter((p) => (p.clave || "").toLowerCase() === "coldbrew");
   assert.strictEqual(colds.length, 1);                    // no se duplica
-  assert.strictEqual(creados, CATALOGO.length - 1);       // todos menos Coldbrew
+  assert.strictEqual(creados, CATALOGO.length - 1 + 2);   // todos menos Coldbrew, + 2 extra
 });
 
 test("es idempotente por flag", () => {

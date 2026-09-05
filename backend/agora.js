@@ -35,6 +35,13 @@ function num(v) {
   return Number.isFinite(n) ? n : parseFloat(v) || 0;
 }
 
+// Normaliza un nombre de producto para emparejar Ágora ↔ Control M sin que fallen
+// las TILDES, MAYÚSCULAS o ESPACIOS ("Té verde" == "te verde", "colección" ==
+// "coleccion", "Iced  Latte" == "iced latte"). Es la clave del índice de productos.
+function normProd(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+}
+
 // Importa ventas desde el texto CSV de Ágora. Descuenta stock de materias según
 // el escandallo de cada producto y registra cada venta. Devuelve un resumen.
 function importarVentas(texto, fuente = "csv") {
@@ -45,9 +52,7 @@ function importarVentas(texto, fuente = "csv") {
 
   const idxProd = {};
   productos.forEach((p) => {
-    if (p.clave) idxProd[p.clave.toLowerCase()] = p;
-    if (p.nombre) idxProd[p.nombre.toLowerCase()] = p;
-    if (p.id) idxProd[p.id.toLowerCase()] = p;
+    [p.clave, p.nombre, p.id, p.agora_ref].forEach((k) => { if (k) idxProd[normProd(k)] = p; });
   });
   const idxMat = {};
   materias.forEach((m) => (idxMat[m.id] = m));
@@ -62,7 +67,7 @@ function importarVentas(texto, fuente = "csv") {
     const fecha = buscarCampo(fila, ["fecha", "hora", "fechahora", "fecha_hora"]) || new Date().toISOString();
     if (!nombre) return;
 
-    const producto = idxProd[String(nombre).toLowerCase()];
+    const producto = idxProd[normProd(nombre)];
     if (!producto) {
       noReconocidos.push(nombre);
       return;
@@ -187,7 +192,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
 
   const idxProd = {};
   productos.forEach((p) => {
-    [p.clave, p.nombre, p.id, p.agora_ref].forEach((k) => { if (k) idxProd[String(k).toLowerCase()] = p; });
+    [p.clave, p.nombre, p.id, p.agora_ref].forEach((k) => { if (k) idxProd[normProd(k)] = p; });
   });
   const idxMat = {};
   materias.forEach((m) => (idxMat[m.id] = m));
@@ -221,7 +226,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       // Cantidad no válida (0, vacía o negativa/devolución): no vendemos ni
       // descontamos "1 por defecto" (evita ventas fantasma y descuentos erróneos).
       if (!(cantidad > 0)) return;
-      const producto = idxProd[String(nombre).toLowerCase()];
+      const producto = idxProd[normProd(nombre)];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
       resueltas.push({ producto, cantidad, importe, nombre });
     });

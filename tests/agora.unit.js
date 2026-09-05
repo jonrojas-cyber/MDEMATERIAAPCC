@@ -88,5 +88,16 @@ test("estructura real de Ágora (Invoice → InvoiceItems → Lines) descuenta s
   assert.ok(despues < antes, "descontó stock desde la estructura anidada");
 });
 
+test("empareja pese a TILDES / MAYÚSCULAS / ESPACIOS (no bloquea esas ventas)", () => {
+  store.writeAll("docs_agora", []);
+  const ps = store.readAll("productos");
+  ps.push({ id: "prod-test-acc", clave: "Colección Ñam", nombre: "Colección Ñam", agora_ref: "Colección Ñam", precio_venta: 2, activo: true, ingredientes: [] });
+  store.writeAll("productos", ps);
+  // Ágora manda el mismo producto SIN tildes, en mayúsculas y con espacios de más.
+  const r = agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 900, GlobalId: "uuid-acc", Lines: [{ ProductName: "COLECCION   NAM", Quantity: 1, Amount: 2 }] }] });
+  assert.strictEqual(r.bloqueados, 0, "no se bloquea por tildes/espacios/mayúsculas");
+  assert.strictEqual(r.procesados, 1, "empareja y procesa la venta");
+});
+
 console.log(fallos ? `\n${fallos} prueba(s) FALLIDA(s)` : "\nTodas las pruebas de Ágora OK");
 process.exit(fallos ? 1 : 0);

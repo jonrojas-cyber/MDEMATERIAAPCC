@@ -24,7 +24,7 @@ test("crea los artículos del catálogo con nombre exacto y sin escandallo", () 
   const st = fakeStore(data);
   const { creados, ranAny } = aplicar(st);
   assert.ok(ranAny);
-  assert.strictEqual(creados, CATALOGO.length + 2); // catálogo + 2 extra (Ices americano, México descafeinado)
+  assert.strictEqual(creados, CATALOGO.length + 2 + 1); // catálogo + 2 extra + Matcha latte (garantizado)
   const lim = data.productos.find((p) => p.clave === "Limonada origen");
   assert.ok(lim, "crea Limonada origen");
   assert.strictEqual(lim.nombre, "Limonada origen");
@@ -49,12 +49,14 @@ test("el motor de coste usa el coste directo cuando existe (costing)", () => {
   assert.ok(m.margen_bruto > 0.6 && m.margen_bruto < 0.72, "margen ≈ 69 %");
 });
 
-test("no duplica Matcha latte (ya existía)", () => {
+test("Matcha latte del catálogo (id 25) no se recrea desde CATALOGO", () => {
+  // Matcha latte NO está en CATALOGO (se excluye por existir en la carta base),
+  // así que el bloque 1 no lo toca; solo el bloque 4 garantiza el que casa con Ágora.
   const data = { productos: [{ id: "prod-005", clave: "Matcha latte", nombre: "Matcha latte", ingredientes: [{}] }], config: [] };
   const st = fakeStore(data);
   aplicar(st);
-  const matchas = data.productos.filter((p) => (p.clave || "").toLowerCase() === "matcha latte");
-  assert.strictEqual(matchas.length, 1);
+  assert.ok(!CATALOGO.some(([n]) => n.toLowerCase() === "matcha latte"), "Matcha latte no está en CATALOGO");
+  assert.ok(data.productos.some((p) => p.id === "prod-agora-matcha-latte"), "existe el Matcha latte que casa con Ágora");
 });
 
 test("no duplica un artículo ya presente con ese nombre", () => {
@@ -66,19 +68,18 @@ test("no duplica un artículo ya presente con ese nombre", () => {
   assert.strictEqual(creados, CATALOGO.length - 1 + 2 + 1); // −Coldbrew, +2 extra, +1 Matcha latte
 });
 
-test("asegura un 'Matcha latte' que case con Ágora (si falta), sin duplicar", () => {
-  // Falta: se crea con escandallo y agora_ref.
+test("GARANTIZA un 'Matcha latte' que case con Ágora (agora_ref + escandallo)", () => {
   const d1 = { productos: [], config: [] };
   aplicar(fakeStore(d1));
   const ml = d1.productos.find((p) => p.id === "prod-agora-matcha-latte");
-  assert.ok(ml, "crea Matcha latte cuando no existe");
+  assert.ok(ml, "crea Matcha latte");
   assert.strictEqual(ml.agora_ref, "Matcha latte");
   assert.strictEqual(ml.precio_venta, 3.30);
   assert.strictEqual(ml.ingredientes.length, 2);          // 2,5 g matcha + 180 ml leche
-  // Ya existe (aunque sea "Matcha Latte" con otra caja): no se crea otro.
-  const d2 = { productos: [{ id: "prod-005", clave: "Matcha latte", nombre: "Matcha Latte" }], config: [] };
-  aplicar(fakeStore(d2));
-  assert.ok(!d2.productos.find((p) => p.id === "prod-agora-matcha-latte"), "no duplica si ya hay Matcha latte");
+  // Es idempotente por id: correr otra vez no crea un segundo.
+  const st = fakeStore(d1);
+  aplicar(st); // ya está el flag → no re-crea
+  assert.strictEqual(d1.productos.filter((p) => p.id === "prod-agora-matcha-latte").length, 1);
 });
 
 test("es idempotente por flag", () => {

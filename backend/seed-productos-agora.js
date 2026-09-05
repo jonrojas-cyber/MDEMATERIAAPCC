@@ -70,7 +70,7 @@ const MATCHA_LATTE = {
   ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 }],
   origen: "agora",
 };
-const FLAG_MATCHA = "productos_agora_matcha_latte_v1";
+const FLAG_MATCHA = "productos_agora_matcha_latte_v2";
 
 // Aplica el lote sobre el store dado (inyectable para tests). Idempotente por flag.
 // No duplica: si ya existe un producto cuya clave/nombre coincide (sin distinguir
@@ -132,14 +132,15 @@ function aplicar(st) {
     ranAny = true;
   }
 
-  // Bloque 4 (independiente) · asegura que exista un "Matcha latte" que case con Ágora.
+  // Bloque 4 (independiente) · GARANTIZA un producto "Matcha latte" que case con
+  // Ágora. Fuerza el alta por id (upsert): si el "Matcha latte" plano no existe o
+  // no casaba, este SIEMPRE existe con agora_ref="Matcha latte" → deja de bloquear.
+  // Si ya hubiera otro "Matcha latte" que case, este es inofensivo (un ticket casa
+  // una sola vez, se cuenta una sola vez).
   if (!hechos.has(FLAG_MATCHA)) {
-    const ya = (st.readAll("productos") || []).some((p) =>
-      [p.clave, p.nombre, p.agora_ref].some((k) => k && String(k).toLowerCase() === "matcha latte"));
-    if (!ya && !st.findById("productos", MATCHA_LATTE.id)) {
-      st.insert("productos", { ...MATCHA_LATTE, creado_en: new Date().toISOString() });
-      creados++;
-    }
+    const row = { ...MATCHA_LATTE, creado_en: new Date().toISOString() };
+    if (st.findById("productos", MATCHA_LATTE.id)) st.update("productos", MATCHA_LATTE.id, row);
+    else { st.insert("productos", row); creados++; }
     st.insert("config", { id: FLAG_MATCHA, hecho: true, fecha: new Date().toISOString() });
     ranAny = true;
   }

@@ -1214,3 +1214,37 @@ test("EBITDA: el trabajador NO puede consultarlo", async ({ page }) => {
   });
   expect(blocked).toBe(true);
 });
+
+test("análisis diario: rayos X del día (admin) y bloqueado para el equipo", async ({ request }) => {
+  // Admin: recibe el análisis con la estructura esperada (venta + compra + rentabilidad).
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const r = await request.get("/api/analisis-diario?fecha=2026-06-30", { headers: { Authorization: `Bearer ${moni.token}` } });
+  expect(r.ok()).toBeTruthy();
+  const j = await r.json();
+  expect(j).toHaveProperty("fecha", "2026-06-30");
+  expect(j).toHaveProperty("dia_semana");
+  expect(j.ventas).toHaveProperty("total");
+  expect(j.ventas).toHaveProperty("tickets");
+  expect(j.ventas).toHaveProperty("por_categoria");
+  expect(j.compras).toHaveProperty("por_proveedor");
+  expect(j).toHaveProperty("rentabilidad");
+  expect(Array.isArray(j.alertas)).toBeTruthy();
+  // El equipo (Lara) NO ve el análisis diario (regla de negocio: sin dinero).
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const bloq = await request.get("/api/analisis-diario", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(bloq.status()).toBe(403);
+});
+
+test("análisis diario: la pantalla se abre sin errores de JS y navega entre días", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_analisisDiario("2026-06-30"));
+  await expect(page.locator(".screen-head")).toContainText(/an[áa]lisis diario/i);
+  await expect(page.locator(".ad-kpis")).toBeVisible();
+  await expect(page.locator(".ad-kpi", { hasText: /venta del d[íi]a/i })).toBeVisible();
+  // Navegar al día anterior recarga la fecha en el selector.
+  await page.evaluate(() => adNavDia(-1));
+  await expect(page.locator("#ad-fecha")).toHaveValue("2026-06-29");
+  expect(errors, "sin errores de JS").toEqual([]);
+});

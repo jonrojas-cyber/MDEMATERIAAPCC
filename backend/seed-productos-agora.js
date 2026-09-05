@@ -59,6 +59,19 @@ const CATALOGO_EXTRA = [
 ];
 const FLAG_EXTRA = "productos_agora_seed_v2_extra";
 
+// Ágora vende "Matcha latte" (a secas) pero en Control M solo quedaron variantes
+// ("Matcha Latte · entera/coco…") y el plano dejó de casar → sus tickets se
+// bloqueaban. Se crea el "Matcha latte" exacto con su escandallo (mismo criterio
+// que la cocina: 2,5 g matcha + 180 ml leche fresca, PVP 3,30). Sin duplicar: si
+// ya existe un producto que se llame así, no se crea.
+const MATCHA_LATTE = {
+  id: "prod-agora-matcha-latte", clave: "Matcha latte", nombre: "Matcha latte", agora_ref: "Matcha latte",
+  categoria: "bebida", descripcion: "Matcha latte (casa con Ágora)", precio_venta: 3.30, activo: true,
+  ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 }],
+  origen: "agora",
+};
+const FLAG_MATCHA = "productos_agora_matcha_latte_v1";
+
 // Aplica el lote sobre el store dado (inyectable para tests). Idempotente por flag.
 // No duplica: si ya existe un producto cuya clave/nombre coincide (sin distinguir
 // mayúsculas) con el de Ágora, se salta.
@@ -116,6 +129,18 @@ function aplicar(st) {
       creados++;
     });
     st.insert("config", { id: FLAG_EXTRA, hecho: true, fecha: new Date().toISOString() });
+    ranAny = true;
+  }
+
+  // Bloque 4 (independiente) · asegura que exista un "Matcha latte" que case con Ágora.
+  if (!hechos.has(FLAG_MATCHA)) {
+    const ya = (st.readAll("productos") || []).some((p) =>
+      [p.clave, p.nombre, p.agora_ref].some((k) => k && String(k).toLowerCase() === "matcha latte"));
+    if (!ya && !st.findById("productos", MATCHA_LATTE.id)) {
+      st.insert("productos", { ...MATCHA_LATTE, creado_en: new Date().toISOString() });
+      creados++;
+    }
+    st.insert("config", { id: FLAG_MATCHA, hecho: true, fecha: new Date().toISOString() });
     ranAny = true;
   }
 

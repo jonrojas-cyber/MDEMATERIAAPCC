@@ -63,7 +63,22 @@ test("no duplica un artículo ya presente con ese nombre", () => {
   const { creados } = aplicar(st);
   const colds = data.productos.filter((p) => (p.clave || "").toLowerCase() === "coldbrew");
   assert.strictEqual(colds.length, 1);                    // no se duplica
-  assert.strictEqual(creados, CATALOGO.length - 1 + 2);   // todos menos Coldbrew, + 2 extra
+  assert.strictEqual(creados, CATALOGO.length - 1 + 2 + 1); // −Coldbrew, +2 extra, +1 Matcha latte
+});
+
+test("asegura un 'Matcha latte' que case con Ágora (si falta), sin duplicar", () => {
+  // Falta: se crea con escandallo y agora_ref.
+  const d1 = { productos: [], config: [] };
+  aplicar(fakeStore(d1));
+  const ml = d1.productos.find((p) => p.id === "prod-agora-matcha-latte");
+  assert.ok(ml, "crea Matcha latte cuando no existe");
+  assert.strictEqual(ml.agora_ref, "Matcha latte");
+  assert.strictEqual(ml.precio_venta, 3.30);
+  assert.strictEqual(ml.ingredientes.length, 2);          // 2,5 g matcha + 180 ml leche
+  // Ya existe (aunque sea "Matcha Latte" con otra caja): no se crea otro.
+  const d2 = { productos: [{ id: "prod-005", clave: "Matcha latte", nombre: "Matcha Latte" }], config: [] };
+  aplicar(fakeStore(d2));
+  assert.ok(!d2.productos.find((p) => p.id === "prod-agora-matcha-latte"), "no duplica si ya hay Matcha latte");
 });
 
 test("es idempotente por flag", () => {

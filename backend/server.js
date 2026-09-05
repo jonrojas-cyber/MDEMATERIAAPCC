@@ -364,6 +364,15 @@ store
         }
       }
     } catch (e) { console.error("No se pudo limpiar los datos de prueba:", e.message); }
+    // Limpieza de PRODUCCIÓN: da de baja (reversible) materias y recetas que no
+    // componen ningún producto vendido. Solo en producción (Postgres) y una vez
+    // (flag); en dev/tests (JSON) no corre para no desactivar los fixtures.
+    try {
+      if (store.isUsingDb && store.isUsingDb()) {
+        const r = require("./limpieza-produccion").aplicar(store);
+        if (r.ranAny) { await store.flush(); console.log(`Limpieza de producción · ${r.materias} materias y ${r.recetas} recetas dadas de baja (reversible).`); }
+      }
+    } catch (e) { console.error("No se pudo limpiar la producción:", e.message); }
     // Reprograma los temporizadores de producción pendientes (avisos push).
     try { require("./sv-timers").init(); } catch (e) {}
 

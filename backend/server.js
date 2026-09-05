@@ -290,6 +290,7 @@ app.use("/api/targets", require("./routes/targets"));
 app.use("/api/business-health", require("./routes/business-health"));
 app.use("/api/business-calendar", require("./routes/business-calendar"));
 app.use("/api/business-time-machine", require("./routes/business-time-machine"));
+app.use("/api/analisis-diario", require("./routes/analisis-diario")); // rayos X del día (admin)
 
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última

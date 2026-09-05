@@ -2510,6 +2510,7 @@ function modulosMeta(d) {
     cafes:        { num:"00", name:"Cafés", badge:"Escandallo por bebida", urgent:false },
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
+    analisisDiario:{ num:"02", name:"Análisis diario", badge:"Rayos X · venta y compra del día", urgent:false },
     cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
@@ -2528,7 +2529,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -7596,6 +7597,128 @@ function infcExportarCSV(){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download=`compras_${window._infc.desde||""}_${window._infc.hasta||""}.csv`;
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+
+// ── ANÁLISIS DIARIO · rayos X de la venta y la compra de un día (solo admin) ──
+const adEur = (n) => (Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+const adNum = (n) => (Number(n)||0).toLocaleString("es-ES");
+function adDelta(v){
+  if(v==null) return `<span class="ad-delta ad-nil">—</span>`;
+  const up=v>=0; const col=up?"var(--ok,#3c7a4a)":"var(--alert,#b23b3b)";
+  return `<span class="ad-delta" style="color:${col};">${up?"▲":"▼"} ${Math.abs(v).toLocaleString("es-ES")}%</span>`;
+}
+async function irA_analisisDiario(fecha){
+  navInto(()=>irA_categoria("informes"));
+  openSection("analisisDiario","Análisis diario");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección ve el análisis diario.</div>`); return; }
+  const f = fecha || (window._adFecha) || new Date().toISOString().slice(0,10);
+  window._adFecha=f;
+  setInner(`<div class="empty">Analizando ${esc(f)}…</div>`);
+  try{
+    const d = await api("/analisis-diario?fecha="+encodeURIComponent(f));
+    adRender(d);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function adNavDia(delta){
+  const base=new Date((window._adFecha||new Date().toISOString().slice(0,10))+"T12:00:00Z");
+  const nd=new Date(base.getTime()+delta*86400000).toISOString().slice(0,10);
+  irA_analisisDiario(nd);
+}
+function adRender(d){
+  const v=d.ventas||{}, c=d.compras||{}, r=d.rentabilidad||{}, cmp=d.comparativa||{};
+  const sevCol={critico:"var(--alert,#b23b3b)",importante:"#c79a3a",ok:"var(--ok,#3c7a4a)",info:"var(--muted,#8a8577)"};
+  // Alertas del día (lo más importante, arriba).
+  const alertas=(d.alertas||[]).map(a=>`
+    <div class="ad-alert" style="border-left:3px solid ${sevCol[a.severidad]||'#8a8577'};">
+      <div class="ad-alert-t">${esc(a.titulo)}</div>
+      <div class="ad-alert-d">${esc(a.detalle||"")}</div>
+    </div>`).join("");
+  // KPIs de venta.
+  const kpis=`<div class="ad-kpis">
+    <div class="ad-kpi"><b>${adEur(v.total)}</b><span>venta del día</span></div>
+    <div class="ad-kpi"><b>${adNum(v.tickets)}</b><span>tickets</span></div>
+    <div class="ad-kpi"><b>${adEur(v.ticket_medio)}</b><span>ticket medio</span></div>
+    <div class="ad-kpi"><b>${adNum(v.unidades)}</b><span>unidades</span></div>
+    <div class="ad-kpi"><b>${adNum(v.unidades_por_ticket)}</b><span>uds/ticket</span></div>
+    <div class="ad-kpi"><b>${v.margen_pct!=null?v.margen_pct+"%":"—"}</b><span>margen*</span></div>
+  </div>`;
+  // Comparativas.
+  const cmpBlock=`<div class="section-label" style="margin-top:16px;">Comparativa</div>
+    <table class="lim-tab"><thead><tr><th></th><th>venta</th><th>tickets</th><th>ticket medio</th></tr></thead><tbody>
+      <tr><td class="n">vs ayer</td><td class="q">${adDelta(cmp.vs_ayer&&cmp.vs_ayer.total)}</td><td class="q">${adDelta(cmp.vs_ayer&&cmp.vs_ayer.tickets)}</td><td class="q">${adDelta(cmp.vs_ayer&&cmp.vs_ayer.ticket_medio)}</td></tr>
+      <tr><td class="n">vs ${esc((cmp.vs_semana_pasada&&cmp.vs_semana_pasada.dia_semana)||"sem. pasada")} pasado</td><td class="q">${adDelta(cmp.vs_semana_pasada&&cmp.vs_semana_pasada.total)}</td><td class="q">${adDelta(cmp.vs_semana_pasada&&cmp.vs_semana_pasada.tickets)}</td><td class="q">${adDelta(cmp.vs_semana_pasada&&cmp.vs_semana_pasada.ticket_medio)}</td></tr>
+    </tbody></table>`;
+  // Mix por categoría.
+  const cat=(v.por_categoria||[]).map(x=>`<tr><td class="n">${esc(x.categoria)}</td><td class="q">${adNum(x.unidades)}</td><td class="q big">${adEur(x.importe)}</td><td class="q">${x.pct}%</td></tr>`).join("");
+  // Top productos por importe.
+  const topImp=(v.top_por_importe||[]).map(x=>`<tr><td class="n">${esc(x.producto)}</td><td class="q">${adNum(x.unidades)}</td><td class="q big">${adEur(x.importe)}</td><td class="q">${x.margen_pct!=null?x.margen_pct+"%":"—"}</td></tr>`).join("");
+  // Menor margen.
+  const menorM=(v.menor_margen||[]).map(x=>`<tr><td class="n">${esc(x.producto)}</td><td class="q">${adEur(x.importe)}</td><td class="q">${x.margen_pct}%</td></tr>`).join("");
+  // Productos sin coste (venta no evaluable).
+  const sinC=(v.sin_coste||[]).map(x=>`<tr><td class="n">${esc(x.producto)}</td><td class="q">${adNum(x.unidades)}</td><td class="q big">${adEur(x.importe)}</td></tr>`).join("");
+  // Rentabilidad vs equilibrio.
+  let rentBlock="";
+  if(r.disponible){
+    const col=r.cubierto?"var(--ok,#3c7a4a)":"var(--alert,#b23b3b)";
+    rentBlock=`<div class="section-label" style="margin-top:16px;">¿Cubrió el día?</div>
+      <div class="lim-param"><div><b>${adEur(v.total)}</b><span>vendido</span></div><div><b>${adEur(r.ingreso_equilibrio_dia)}</b><span>equilibrio/día</span></div><div><b style="color:${col};">${r.cobertura_pct!=null?r.cobertura_pct+"%":"—"}</b><span>cobertura</span></div><div><b style="color:${col};">${r.diferencia_eur>=0?"+":""}${adEur(r.diferencia_eur)}</b><span>${r.cubierto?"por encima":"faltaron"}</span></div></div>`;
+  } else {
+    rentBlock=`<div class="ad-note" style="margin-top:12px;">Punto de equilibrio no disponible: ${esc(r.motivo||"faltan datos de carta/costes fijos/sueldos.")}</div>`;
+  }
+  // Compras del día.
+  let comprasBlock="";
+  if(c.recepciones>0){
+    const prov=(c.por_proveedor||[]).map(x=>`<tr><td class="n">${esc(x.proveedor)}</td><td class="q">${adNum(x.lineas)}</td><td class="q big">${adEur(x.importe)}</td></tr>`).join("");
+    const fam=(c.por_familia||[]).map(x=>`<tr><td class="n">${esc(x.familia)}</td><td class="q big">${adEur(x.importe)}</td></tr>`).join("");
+    const topC=(c.top_productos||[]).map(x=>`<tr><td class="n">${esc(x.producto)}</td><td class="q">${esc(x.familia||"")}</td><td class="q big">${adEur(x.importe)}</td></tr>`).join("");
+    const camb=(c.cambios_precio||[]).map(x=>`<tr><td class="n">${esc(x.producto)}</td><td class="q">${adEur(x.precio_anterior)}→${adEur(x.precio_nuevo)}</td><td class="q">${adDelta(x.variacion_pct)}</td></tr>`).join("");
+    comprasBlock=`<div class="section-label" style="margin-top:20px;">Compras del día</div>
+      <div class="lim-param"><div><b>${adNum(c.recepciones)}</b><span>albaranes</span></div><div><b>${adEur(c.total)}</b><span>total facturado</span></div><div><b>${adEur(c.total_lineas)}</b><span>en líneas</span></div></div>
+      <div class="section-label" style="margin-top:12px;">Por proveedor</div>
+      <table class="lim-tab"><thead><tr><th>proveedor</th><th>líneas</th><th>importe</th></tr></thead><tbody>${prov}</tbody></table>
+      ${(c.por_familia&&c.por_familia.length>1)?`<div class="section-label" style="margin-top:12px;">Por familia</div><table class="lim-tab"><tbody>${fam}</tbody></table>`:""}
+      ${topC?`<div class="section-label" style="margin-top:12px;">Productos comprados</div><table class="lim-tab"><tbody>${topC}</tbody></table>`:""}
+      ${camb?`<div class="section-label" style="margin-top:12px;">Cambios de precio de proveedor</div><table class="lim-tab"><thead><tr><th>producto</th><th>precio</th><th>Δ</th></tr></thead><tbody>${camb}</tbody></table>`:""}`;
+  } else {
+    comprasBlock=`<div class="section-label" style="margin-top:20px;">Compras del día</div><div class="ad-note">Sin albaranes registrados este día.</div>`;
+  }
+  setInner(`
+    <style>
+      .ad-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+      .ad-head input{flex:1;padding:8px;border:1px solid var(--line,#3a3a2e);border-radius:4px;background:transparent;color:inherit;font-family:var(--sans);}
+      .ad-head button{border:0;border-radius:4px;padding:8px 12px;background:var(--ink,#2a2a20);color:#f0ebe0;font-weight:700;cursor:pointer;}
+      .ad-dia{font-size:12px;color:var(--muted,#8a8577);text-transform:capitalize;margin-bottom:12px;}
+      .ad-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+      .ad-kpi{background:var(--card,#20201a);border-radius:6px;padding:10px 8px;text-align:center;}
+      .ad-kpi b{display:block;font-size:16px;font-weight:800;}
+      .ad-kpi span{font-size:10.5px;color:var(--muted,#8a8577);text-transform:uppercase;letter-spacing:.3px;}
+      .ad-alert{background:var(--card,#20201a);border-radius:5px;padding:9px 12px;margin-top:7px;}
+      .ad-alert-t{font-weight:700;font-size:13.5px;}
+      .ad-alert-d{font-size:12px;color:var(--muted,#8a8577);margin-top:2px;line-height:1.45;}
+      .ad-delta{font-weight:700;font-size:12.5px;}
+      .ad-delta.ad-nil{color:var(--muted,#8a8577);}
+      .ad-note{font-size:12.5px;color:var(--muted,#8a8577);background:var(--card,#20201a);border-radius:5px;padding:10px 12px;line-height:1.5;}
+      .ad-foot{font-size:11px;color:var(--muted,#8a8577);margin-top:14px;line-height:1.5;}
+    </style>
+    <div class="ad-head">
+      <button onclick="adNavDia(-1)" aria-label="Día anterior">‹</button>
+      <input id="ad-fecha" type="date" value="${esc(d.fecha)}" onchange="irA_analisisDiario(this.value)">
+      <button onclick="adNavDia(1)" aria-label="Día siguiente">›</button>
+    </div>
+    <div class="ad-dia">${esc(d.dia_semana)} · ${esc(d.fecha)}</div>
+    ${alertas?`<div class="section-label">Lo que importa hoy</div>${alertas}`:""}
+    <div class="section-label" style="margin-top:16px;">Venta del día</div>
+    ${kpis}
+    ${v.cobertura_coste_pct!=null&&v.cobertura_coste_pct<100?`<div class="ad-foot">*Margen calculado solo sobre el ${v.cobertura_coste_pct}% de la venta con coste real cargado (${adEur(v.importe_sin_coste)} € sin coste no se pueden evaluar).</div>`:""}
+    ${rentBlock}
+    ${cmpBlock}
+    ${cat?`<div class="section-label" style="margin-top:16px;">Mix por categoría</div><table class="lim-tab"><thead><tr><th>categoría</th><th>uds</th><th>importe</th><th>%</th></tr></thead><tbody>${cat}</tbody></table>`:""}
+    ${topImp?`<div class="section-label" style="margin-top:16px;">Top productos (por venta)</div><table class="lim-tab"><thead><tr><th>producto</th><th>uds</th><th>importe</th><th>margen</th></tr></thead><tbody>${topImp}</tbody></table>`:""}
+    ${menorM?`<div class="section-label" style="margin-top:16px;">Menor margen</div><table class="lim-tab"><thead><tr><th>producto</th><th>importe</th><th>margen</th></tr></thead><tbody>${menorM}</tbody></table>`:""}
+    ${sinC?`<div class="section-label" style="margin-top:16px;">Venta sin coste cargado</div><table class="lim-tab"><thead><tr><th>producto</th><th>uds</th><th>importe</th></tr></thead><tbody>${sinC}</tbody></table>`:""}
+    ${comprasBlock}
+    <div class="ad-foot">Datos reales de Ágora (ventas) y albaranes (compras). Generado ${esc((d.generado_en||"").slice(0,16).replace("T"," "))}.</div>
+  `);
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

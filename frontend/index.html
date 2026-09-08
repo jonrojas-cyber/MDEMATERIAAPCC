@@ -2511,6 +2511,7 @@ function modulosMeta(d) {
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     analisisDiario:{ num:"02", name:"Análisis diario", badge:"Rayos X · venta y compra del día", urgent:false },
+    dossier:      { num:"02", name:"Dossier para Claude", badge:"Todo el negocio · para asesoría", urgent:false },
     cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
@@ -2529,7 +2530,7 @@ const CATS = {
   produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","dossier","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -7719,6 +7720,69 @@ function adRender(d){
     ${comprasBlock}
     <div class="ad-foot">Datos reales de Ágora (ventas) y albaranes (compras). Generado ${esc((d.generado_en||"").slice(0,16).replace("T"," "))}.</div>
   `);
+}
+
+// ── DOSSIER PARA CLAUDE · todo el negocio en un documento (solo admin) ────────
+async function irA_dossier(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("dossier","Dossier para Claude");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección puede generar el dossier.</div>`); return; }
+  setInner(`<div class="empty">Preparando el dossier con tus datos reales…</div>`);
+  try{
+    const r = await api("/dossier?dias=90");
+    window._dossier = r;
+    dossierRender(r);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function dossierRender(r){
+  const d = r.dossier||{}, v = d.ventas||{}, q = d.equilibrio||{};
+  const conCoste = (d.carta_escandallo||[]).filter(x=>x.tiene_coste).length;
+  const totCarta = (d.carta_escandallo||[]).length;
+  setInner(`
+    <div class="section-label">Dossier para asesoría con Claude</div>
+    <div class="card">
+      <div style="font-size:13px;line-height:1.6;color:var(--muted,#8a8577);">
+        Reúne <b>todo</b> lo que el sistema sabe: escandallo (coste y margen por producto),
+        ventas por producto y familia, punto de equilibrio, costes fijos y créditos.
+        Con la <b>pregunta para Claude ya escrita</b> arriba del documento.
+      </div>
+      <div class="lim-param" style="margin-top:12px;">
+        <div><b>${(v.total||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})} €</b><span>ventas 90 días</span></div>
+        <div><b>${(v.ticket_medio||0).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2})} €</b><span>ticket medio</span></div>
+        <div><b>${conCoste}/${totCarta}</b><span>con escandallo</span></div>
+        <div><b>${q&&q.disponible&&q.ingreso_equilibrio_dia_abierto!=null?Math.round(q.ingreso_equilibrio_dia_abierto)+" €":"—"}</b><span>equilibrio/día</span></div>
+      </div>
+      <div class="card-actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="dossierDescargar('md')">↓ Descargar para Claude (.md)</button>
+        <button class="btn-ghost" onclick="dossierDescargar('json')">↓ Datos (.json)</button>
+        <button class="btn-ghost" onclick="dossierCopiar(this)">Copiar al portapapeles</button>
+      </div>
+    </div>
+    ${(d.productos_sin_coste&&d.productos_sin_coste.length)?`<div class="ad-note" style="margin-top:10px;">${d.productos_sin_coste.length} producto(s) aún sin escandallo cargado: ${d.productos_sin_coste.map(esc).join(", ")}. Se marcan como "pend." en el dossier (no se inventa su coste).</div>`:`<div class="ad-note" style="margin-top:10px;">Todos los productos de la carta tienen escandallo cargado. ✅</div>`}
+    <div class="section-label" style="margin-top:16px;">Vista previa</div>
+    <pre style="white-space:pre-wrap;font-size:11.5px;line-height:1.5;background:var(--card,#20201a);padding:12px;border-radius:6px;overflow-x:auto;max-height:60vh;">${esc(r.markdown||"")}</pre>
+  `);
+}
+function dossierDescargar(fmt){
+  const r = window._dossier; if(!r) return;
+  let contenido, tipo, nombre;
+  if(fmt==="json"){ contenido=JSON.stringify(r.dossier,null,2); tipo="application/json"; nombre="Dossier_m_de_materia.json"; }
+  else { contenido=r.markdown||""; tipo="text/markdown;charset=utf-8"; nombre="Dossier_m_de_materia.md"; }
+  const blob=new Blob(["﻿"+contenido],{type:tipo});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=nombre;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+function dossierCopiar(btn){
+  const r = window._dossier; if(!r) return;
+  const txt=r.markdown||"";
+  const ok=()=>{ if(btn){ const t=btn.textContent; btn.textContent="¡Copiado!"; setTimeout(()=>btn.textContent=t,1500); } };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok).catch(()=>fallbackCopy(txt,ok)); }
+  else fallbackCopy(txt,ok);
+}
+function fallbackCopy(txt,ok){
+  const ta=document.createElement("textarea"); ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); ok&&ok(); }catch(e){} ta.remove();
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

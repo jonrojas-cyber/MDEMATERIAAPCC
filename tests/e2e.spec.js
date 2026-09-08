@@ -1248,3 +1248,33 @@ test("análisis diario: la pantalla se abre sin errores de JS y navega entre dí
   await expect(page.locator("#ad-fecha")).toHaveValue("2026-06-29");
   expect(errors, "sin errores de JS").toEqual([]);
 });
+
+test("dossier: API admin-only, trae escandallo/markdown y bloquea al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const r = await request.get("/api/dossier?dias=90", { headers: { Authorization: `Bearer ${moni.token}` } });
+  expect(r.ok()).toBeTruthy();
+  const j = await r.json();
+  expect(j.dossier).toHaveProperty("carta_escandallo");
+  expect(Array.isArray(j.dossier.carta_escandallo)).toBeTruthy();
+  expect(j.dossier).toHaveProperty("ventas");
+  expect(typeof j.markdown).toBe("string");
+  expect(j.markdown).toContain("PROMPT");
+  // Descarga en Markdown con cabecera de adjunto.
+  const md = await request.get("/api/dossier?format=md", { headers: { Authorization: `Bearer ${moni.token}` } });
+  expect(md.headers()["content-disposition"]).toContain("Dossier_m_de_materia.md");
+  // El equipo (Lara) no puede.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const bloq = await request.get("/api/dossier", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(bloq.status()).toBe(403);
+});
+
+test("dossier: la pantalla se abre, previsualiza y ofrece descarga", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_dossier());
+  await expect(page.locator(".screen-head")).toContainText(/dossier/i);
+  await expect(page.locator("button", { hasText: /Descargar para Claude/i })).toBeVisible();
+  await expect(page.locator("pre")).toContainText(/PROMPT/);
+  expect(errors, "sin errores de JS").toEqual([]);
+});

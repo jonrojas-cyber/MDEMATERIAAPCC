@@ -100,8 +100,11 @@ async function leerDeAgora(c) {
   if (c.workplaces) p.set("workplaces", c.workplaces);
   const url = `${c.agora_base.replace(/\/$/, "")}/api/export/?${p.toString()}`;
   const r = await pedir(url, { headers: { "Api-Token": c.agora_token } });
-  if (r.status === 401 || r.status === 403) salir("Ágora rechazó el Api-Token (401/403). Revisa 'agora_token'.");
-  if (r.status >= 400) throw new Error(`Ágora respondió ${r.status}: ${r.texto.slice(0, 200)}`);
+  // IMPORTANTE: nunca matamos el proceso por un error de Ágora. Un 401/403 puede
+  // ser transitorio (Ágora reiniciándose, token recargándose). Lanzamos el error
+  // y el bucle lo reintenta; así el conector NO se "desconecta" solo.
+  if (r.status === 401 || r.status === 403) throw new Error(`Ágora rechazó el Api-Token (${r.status}). Si persiste, revisa 'agora_token' en config.json. Reintentando…`);
+  if (r.status >= 400) throw new Error(`Ágora respondió ${r.status}: ${String(r.texto).slice(0, 200)}`);
   return r.body || {};
 }
 
@@ -113,9 +116,10 @@ async function empujarAControlM(c, payload) {
     headers: { "X-Connector-Token": c.conector_token },
     body: payload,
   });
-  if (r.status === 401) salir("Control M rechazó el token del conector (401). 'conector_token' debe ser igual a AGORA_CONNECTOR_TOKEN en Control M.");
-  if (r.status === 503) throw new Error("Control M aún no tiene AGORA_CONNECTOR_TOKEN configurado (503).");
-  if (r.status >= 400) throw new Error(`Control M respondió ${r.status}: ${r.texto.slice(0, 200)}`);
+  // Igual que con Ágora: los errores se reintentan, nunca cierran el conector.
+  if (r.status === 401) throw new Error("Control M rechazó el token (401). Si persiste, 'conector_token' debe ser igual a AGORA_CONNECTOR_TOKEN en Control M. Reintentando…");
+  if (r.status === 503) throw new Error("Control M aún no tiene AGORA_CONNECTOR_TOKEN (503). Reintentando…");
+  if (r.status >= 400) throw new Error(`Control M respondió ${r.status}: ${String(r.texto).slice(0, 200)}`);
   return r.body || {};
 }
 
@@ -162,12 +166,28 @@ async function main() {
   log(`Conector Ágora → Control M iniciado. Cada ${c.cada_min} min.`);
   log(`  Ágora:    ${c.agora_base}`);
   log(`  Control M: ${c.controlm_base}`);
+
+  // Red de seguridad: pase lo que pase, el proceso NO se cae. Cualquier error no
+  // controlado se registra y el conector sigue vivo esperando la próxima vuelta.
+  process.on("uncaughtException", (e) => log("⚠  Error inesperado (el conector sigue vivo):", e && e.message));
+  process.on("unhandledRejection", (e) => log("⚠  Promesa rechazada (el conector sigue vivo):", e && e.message));
+
+  let fallosSeguidos = 0;
   const vuelta = async () => {
-    try { await sincronizar(c); }
-    catch (e) { log("Fallo en la sincronización (se reintenta):", e.message); }
+    try {
+      await sincronizar(c);
+      if (fallosSeguidos > 0) { log("✓ Reconectado con Ágora/Control M."); fallosSeguidos = 0; }
+    } catch (e) {
+      fallosSeguidos++;
+      log(`Fallo en la sincronización (nº ${fallosSeguidos}, se reintenta):`, e && e.message);
+    }
   };
+
   await vuelta(); // primera pasada al arrancar
   setInterval(vuelta, Math.max(1, c.cada_min) * 60 * 1000);
 }
 
-main();
+// Solo arranca el bucle si se ejecuta directamente (permite tests sin efectos).
+if (require.main === module) main();
+
+module.exports = { cargarConfig, pedir, leerDeAgora, empujarAControlM, confirmarAAgora, sincronizar };

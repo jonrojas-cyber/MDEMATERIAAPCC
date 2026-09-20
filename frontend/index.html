@@ -7821,19 +7821,30 @@ function crFilaPL(c){
 }
 function crRender(r){
   const c=r.cuenta||{};
-  const origen = c.ventas_origen==="manual_agora" ? `<span style="color:#c79a3a;">ventas introducidas a mano (cierre Ágora)</span>` : `ventas registradas en la app`;
+  const origenTxt = {
+    manual_agora: `<span style="color:#c79a3a;">ventas escritas a mano (cierre Ágora)</span>`,
+    cierre_guardado: `<span style="color:var(--ok,#3c7a4a);">cierre del mes guardado ✓ (cuadra con Ágora)</span>`,
+    produccion: `ventas registradas en la app (conector)`,
+  }[c.ventas_origen] || `ventas registradas en la app`;
+  // Si hay un cierre guardado, prefiere mostrarlo en el campo.
+  const valorCampo = (window._cr.ventas!=null && window._cr.ventas!=="") ? window._cr.ventas
+                   : (c.ventas_origen==="cierre_guardado" ? c.ingresos : "");
   const avisoMateria = c.coste_materia==null ? `<div class="ad-note" style="margin-top:10px;">No puedo calcular el coste de materia: no hay ventas registradas con escandallo en este mes. Arranca el conector de Ágora (o escribe las ventas del mes abajo) y carga los escandallos que falten.</div>` : "";
   setInner(`
     <div class="section-label">Cuenta de resultados</div>
     <div class="card">
-      <div class="field"><label>Mes</label><input id="cr-mes" type="month" value="${esc(r.mes)}" onchange="window._cr.mes=this.value;crCargar()" style="width:100%;"></div>
-      <div class="field"><label>Ventas netas del mes (opcional · del cierre de Ágora)</label>
-        <input id="cr-ventas" type="number" step="0.01" placeholder="dejar vacío = usa las ventas de la app" value="${esc(window._cr.ventas||"")}" style="width:100%;">
-        <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:3px;">Úsalo si el conector iba atrasado: pongo esa venta y calculo el coste con tu food cost real.</div>
+      <div class="field"><label>Mes</label><input id="cr-mes" type="month" value="${esc(r.mes)}" onchange="window._cr.mes=this.value;window._cr.ventas='';crCargar()" style="width:100%;"></div>
+      <div class="field"><label>Ventas netas del mes (del cierre de Ágora · sin IVA)</label>
+        <input id="cr-ventas" type="number" step="0.01" placeholder="vacío = usa las ventas de la app" value="${esc(valorCampo)}" style="width:100%;">
+        <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:3px;">Escribe el total neto del cierre y pulsa <b>Guardar cierre</b>: queda fijado para ese mes y cuadra con Ágora aunque el conector vaya atrasado.</div>
       </div>
-      <div class="card-actions" style="margin-top:6px;"><button class="btn-primary" onclick="window._cr.ventas=el('cr-ventas').value.trim();crCargar()">Calcular</button></div>
+      <div class="card-actions" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="window._cr.ventas=el('cr-ventas').value.trim();crCargar()">Calcular</button>
+        <button class="btn-ghost" onclick="crGuardarCierre(this)">Guardar cierre del mes</button>
+        ${c.ventas_origen==="cierre_guardado"?`<button class="btn-ghost" onclick="crBorrarCierre(this)">Quitar cierre guardado</button>`:""}
+      </div>
     </div>
-    <div class="ad-dia" style="margin-top:10px;">${esc(r.mes)} · ${r.en_curso?`mes en curso (${r.dias_transcurridos} de ${r.dias_mes} días)`:`mes cerrado`} · ${origen}</div>
+    <div class="ad-dia" style="margin-top:10px;">${esc(r.mes)} · ${r.en_curso?`mes en curso (${r.dias_transcurridos} de ${r.dias_mes} días)`:`mes cerrado`} · ${origenTxt}</div>
     ${avisoMateria}
     <div class="section-label" style="margin-top:8px;">${r.en_curso?"Hasta hoy":"Resultado del mes"}</div>
     ${crFilaPL(c)}
@@ -7844,6 +7855,26 @@ function crRender(r){
       <div class="ad-foot">Proyección lineal: escala la venta de los ${r.dias_transcurridos} días a los ${r.dias_mes} del mes. Es orientativa.</div>`:""}
     <div class="ad-foot">Fuente única del dinero: ventas (Ágora) × escandallos + gastos fijos + créditos. El coste de materia usa tus escandallos cargados.</div>
   `);
+}
+
+async function crGuardarCierre(btn){
+  const mes=window._cr.mes, ventas=el("cr-ventas").value.trim();
+  if(!ventas || Number(ventas)<=0){ alert("Escribe primero el total de ventas netas del mes."); return; }
+  if(btn) btn.disabled=true;
+  try{
+    const r=await api("/cuenta-resultados/cierre",{method:"POST",body:JSON.stringify({mes,ventas:Number(ventas)})});
+    window._cr.ventas=""; // ya está guardado; que lo lea del cierre
+    crRender(r);
+  }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function crBorrarCierre(btn){
+  const mes=window._cr.mes;
+  if(btn) btn.disabled=true;
+  try{
+    const r=await api("/cuenta-resultados/cierre",{method:"POST",body:JSON.stringify({mes,ventas:0})});
+    window._cr.ventas="";
+    crRender(r);
+  }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

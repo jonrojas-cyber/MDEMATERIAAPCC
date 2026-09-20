@@ -58,6 +58,17 @@ const BATCHES = [
       { id: "fc-luz", name: "Luz", category: "Luz", amount: 500, vat: 21, periodicity: "monthly", active: true, notes: "Importe real confirmado por la fundadora (antes 300 €)." },
     ],
   },
+  {
+    // CIERRE de ventas netas de septiembre 2026 (del Análisis de Ventas de Ágora):
+    // 9.124,59 € sin IVA. Se fija como cierre del mes para que la Cuenta de
+    // Resultados cuadre con Ágora aunque el conector fuera atrasado esos días.
+    // Editable/borrable desde la propia pantalla (botón "Quitar cierre guardado").
+    flag: "negocio_seed_v7_cierre_sept2026",
+    entity: "config",
+    upserts: [
+      { id: "ventas_mes_2026-09", valor: 9124.59 },
+    ],
+  },
 ];
 
 async function seedNegocio() {

@@ -113,11 +113,19 @@ function calcular(opts = {}) {
   const foodCostProd = ventasProd > 0 ? materiaProd / ventasProd : null;
 
   // Override de ventas (cierre de Ágora): recalcula la materia con el food cost real.
+  // Precedencia: parámetro explícito > cierre mensual GUARDADO > ventas de la app.
+  // El cierre guardado vive en config con id `ventas_mes_<YYYY-MM>` (persistente),
+  // para que la cuenta cuadre con Ágora aunque el conector vaya atrasado.
   let ventas = ventasProd, coste_materia = materiaProd, ventas_origen = "produccion";
   const ov = Number(opts.ventas);
+  const guardado = (store.readAll("config") || []).find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);
+  const ovGuardado = guardado ? Number(guardado.valor) : NaN;
   if (Number.isFinite(ov) && ov > 0) {
     ventas = ov; ventas_origen = "manual_agora";
     coste_materia = foodCostProd != null ? ov * foodCostProd : null;
+  } else if (Number.isFinite(ovGuardado) && ovGuardado > 0) {
+    ventas = ovGuardado; ventas_origen = "cierre_guardado";
+    coste_materia = foodCostProd != null ? ovGuardado * foodCostProd : null;
   } else if (ventasProd <= 0) {
     coste_materia = null; // sin ventas registradas no afirmamos coste
   }

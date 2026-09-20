@@ -54,6 +54,27 @@ test("mes cerrado: sin proyección", () => {
   assert.strictEqual(r.proyeccion, null);
 });
 
+test("un cierre mensual guardado en config manda sobre las ventas de la app", () => {
+  // Simula el store con un cierre guardado para el mes en curso.
+  const store = require("../backend/data-store");
+  const now = Date.now();
+  const R = CR.rangoMes(null, now);
+  const id = `ventas_mes_${R.etiqueta}`;
+  const prev = store.findById("config", id);
+  if (prev) store.update("config", id, { valor: 7777 }); else store.insert("config", { id, valor: 7777 });
+  try {
+    const r = CR.calcular({ now });
+    assert.strictEqual(r.cuenta.ingresos, 7777, "usa el cierre guardado");
+    assert.strictEqual(r.cuenta.ventas_origen, "cierre_guardado");
+    // El parámetro explícito gana incluso sobre el guardado.
+    const r2 = CR.calcular({ now, ventas: 5000 });
+    assert.strictEqual(r2.cuenta.ingresos, 5000);
+    assert.strictEqual(r2.cuenta.ventas_origen, "manual_agora");
+  } finally {
+    if (prev) store.update("config", id, { valor: prev.valor }); else store.remove("config", id);
+  }
+});
+
 test("rangoMes construye bien un mes dado y el mes en curso", () => {
   const r = CR.rangoMes("2026-09", new Date("2026-09-20T10:00:00").getTime());
   assert.strictEqual(r.etiqueta, "2026-09");

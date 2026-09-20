@@ -1293,6 +1293,15 @@ test("cuenta de resultados: API admin-only con estructura P&L y bloqueo al equip
   const ov = await (await request.get("/api/cuenta-resultados?mes=2026-06&ventas=10000", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
   expect(ov.cuenta.ingresos).toBe(10000);
   expect(ov.cuenta.ventas_origen).toBe("manual_agora");
+  // Guardar el cierre del mes lo fija (persistente) y la GET lo refleja.
+  const saved = await (await request.post("/api/cuenta-resultados/cierre", { headers: { Authorization: `Bearer ${moni.token}` }, data: { mes: "2026-06", ventas: 8500 } })).json();
+  expect(saved.cuenta.ingresos).toBe(8500);
+  expect(saved.cuenta.ventas_origen).toBe("cierre_guardado");
+  const again = await (await request.get("/api/cuenta-resultados?mes=2026-06", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
+  expect(again.cuenta.ingresos).toBe(8500);
+  // Borrarlo (ventas 0) vuelve a las ventas de la app.
+  const cleared = await (await request.post("/api/cuenta-resultados/cierre", { headers: { Authorization: `Bearer ${moni.token}` }, data: { mes: "2026-06", ventas: 0 } })).json();
+  expect(cleared.cuenta.ventas_origen).not.toBe("cierre_guardado");
   // El equipo (Lara) no puede.
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const bloq = await request.get("/api/cuenta-resultados", { headers: { Authorization: `Bearer ${lara.token}` } });

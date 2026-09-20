@@ -7838,6 +7838,11 @@ function crRender(r){
         <input id="cr-ventas" type="number" step="0.01" placeholder="vacío = usa las ventas de la app" value="${esc(valorCampo)}" style="width:100%;">
         <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:3px;">Escribe el total neto del cierre y pulsa <b>Guardar cierre</b>: queda fijado para ese mes y cuadra con Ágora aunque el conector vaya atrasado.</div>
       </div>
+      <div class="field"><label>Food cost % ${c.food_cost_origen==="manual"?'<span style="color:#c79a3a;">(manual, provisional)</span>':'<span style="color:var(--muted,#8a8577);">(calculado de escandallos)</span>'}</label>
+        <input id="cr-fc" type="number" step="0.1" placeholder="p. ej. 26" value="${esc(c.food_cost_pct!=null?c.food_cost_pct:"")}" style="width:100%;">
+        <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:3px;">Provisional mientras faltan escandallos. Cuando estén todos los productos, deja el campo vacío y guarda para usar el food cost REAL.</div>
+        <div class="card-actions" style="margin-top:6px;"><button class="btn-ghost" onclick="crGuardarFoodCost(this)">Guardar food cost</button></div>
+      </div>
       <div class="card-actions" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn-primary" onclick="window._cr.ventas=el('cr-ventas').value.trim();crCargar()">Calcular</button>
         <button class="btn-ghost" onclick="crGuardarCierre(this)">Guardar cierre del mes</button>
@@ -7864,6 +7869,14 @@ async function crGuardarCierre(btn){
   try{
     const r=await api("/cuenta-resultados/cierre",{method:"POST",body:JSON.stringify({mes,ventas:Number(ventas)})});
     window._cr.ventas=""; // ya está guardado; que lo lea del cierre
+    crRender(r);
+  }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function crGuardarFoodCost(btn){
+  const mes=window._cr.mes, fc=el("cr-fc").value.trim();
+  if(btn) btn.disabled=true;
+  try{
+    const r=await api("/cuenta-resultados/food-cost",{method:"POST",body:JSON.stringify({mes,food_cost:fc?Number(fc):0})});
     crRender(r);
   }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
 }

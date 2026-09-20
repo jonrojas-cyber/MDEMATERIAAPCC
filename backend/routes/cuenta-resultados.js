@@ -14,7 +14,25 @@ const esMes = (s) => /^\d{4}-\d{2}$/.test(String(s || ""));
 router.get("/", (req, res) => {
   if (!soloAdmin(req, res)) return;
   try {
-    res.json(cr.calcular({ mes: req.query.mes, ventas: req.query.ventas }));
+    res.json(cr.calcular({ mes: req.query.mes, ventas: req.query.ventas, foodCost: req.query.food_cost }));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Fijar (o borrar) el FOOD COST manual mientras faltan escandallos. % 0 → borra.
+router.post("/food-cost", express.json(), async (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  const val = Number(req.body && req.body.food_cost);
+  try {
+    if (Number.isFinite(val) && val > 0) {
+      if (store.findById("config", "food_cost_manual_pct")) store.update("config", "food_cost_manual_pct", { valor: val });
+      else store.insert("config", { id: "food_cost_manual_pct", valor: val });
+    } else if (store.findById("config", "food_cost_manual_pct")) {
+      store.remove("config", "food_cost_manual_pct");
+    }
+    await store.flush();
+    res.json(cr.calcular({ mes: (req.body && req.body.mes) || undefined }));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

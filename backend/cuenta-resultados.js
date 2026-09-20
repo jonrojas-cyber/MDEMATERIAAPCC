@@ -35,7 +35,7 @@ function componer(d) {
   const {
     etiqueta, diasMes, diasTranscurridos, enCurso,
     ventas, coste_materia, personal, otros_fijos, variables,
-    cuota_creditos, food_cost_pct, ventas_origen = "produccion",
+    cuota_creditos, food_cost_pct, ventas_origen = "produccion", food_cost_origen = "calculado",
   } = d;
 
   const tieneMateria = coste_materia != null;
@@ -47,6 +47,7 @@ function componer(d) {
     ingresos: eur(ventas),
     coste_materia: tieneMateria ? eur(coste_materia) : null,
     food_cost_pct: food_cost_pct != null ? Math.round(food_cost_pct * 100) : null,
+    food_cost_origen,
     margen_bruto,
     personal: eur(personal),
     otros_fijos: eur(otros_fijos),
@@ -112,22 +113,35 @@ function calcular(opts = {}) {
   const materiaProd = financials.costeMateriaVendidaEnRango(rango, idxMat, idxProd);
   const foodCostProd = ventasProd > 0 ? materiaProd / ventasProd : null;
 
-  // Override de ventas (cierre de Ágora): recalcula la materia con el food cost real.
-  // Precedencia: parámetro explícito > cierre mensual GUARDADO > ventas de la app.
-  // El cierre guardado vive en config con id `ventas_mes_<YYYY-MM>` (persistente),
-  // para que la cuenta cuadre con Ágora aunque el conector vaya atrasado.
-  let ventas = ventasProd, coste_materia = materiaProd, ventas_origen = "produccion";
+  const config = store.readAll("config") || [];
+
+  // FOOD COST efectivo. Mientras faltan escandallos, el calculado sale falso (bajo);
+  // se puede fijar un food cost MANUAL (config `food_cost_manual_pct`, %). Precedencia:
+  // parámetro > manual guardado > calculado de los escandallos.
+  const fcCfg = config.find((c) => c && c.id === "food_cost_manual_pct");
+  const fcManual = fcCfg ? Number(fcCfg.valor) : NaN;
+  const fcParam = Number(opts.foodCost);
+  let foodCost = foodCostProd, food_cost_origen = "calculado";
+  if (Number.isFinite(fcParam) && fcParam > 0) { foodCost = fcParam / 100; food_cost_origen = "manual"; }
+  else if (Number.isFinite(fcManual) && fcManual > 0) { foodCost = fcManual / 100; food_cost_origen = "manual"; }
+
+  // Override de ventas (cierre de Ágora): parámetro > cierre GUARDADO > ventas app.
+  let ventas = ventasProd, ventas_origen = "produccion";
   const ov = Number(opts.ventas);
-  const guardado = (store.readAll("config") || []).find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);
+  const guardado = config.find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);
   const ovGuardado = guardado ? Number(guardado.valor) : NaN;
-  if (Number.isFinite(ov) && ov > 0) {
-    ventas = ov; ventas_origen = "manual_agora";
-    coste_materia = foodCostProd != null ? ov * foodCostProd : null;
-  } else if (Number.isFinite(ovGuardado) && ovGuardado > 0) {
-    ventas = ovGuardado; ventas_origen = "cierre_guardado";
-    coste_materia = foodCostProd != null ? ovGuardado * foodCostProd : null;
-  } else if (ventasProd <= 0) {
-    coste_materia = null; // sin ventas registradas no afirmamos coste
+  if (Number.isFinite(ov) && ov > 0) { ventas = ov; ventas_origen = "manual_agora"; }
+  else if (Number.isFinite(ovGuardado) && ovGuardado > 0) { ventas = ovGuardado; ventas_origen = "cierre_guardado"; }
+
+  // Coste de materia: con food cost manual = ventas × food cost (fijo). Si es
+  // calculado, usa el real de producción (o el ratio si las ventas son override).
+  let coste_materia;
+  if (food_cost_origen === "manual") {
+    coste_materia = eur(ventas * foodCost);
+  } else if (ventas_origen !== "produccion") {
+    coste_materia = foodCostProd != null ? eur(ventas * foodCostProd) : null;
+  } else {
+    coste_materia = ventasProd > 0 ? materiaProd : null;
   }
 
   // Personal vs otros fijos, prorrateados al periodo transcurrido.
@@ -148,7 +162,7 @@ function calcular(opts = {}) {
   return componer({
     etiqueta: R.etiqueta, diasMes: R.diasMes, diasTranscurridos: R.diasTranscurridos, enCurso: R.enCurso,
     ventas, coste_materia, personal, otros_fijos: otrosFijos, variables,
-    cuota_creditos, food_cost_pct: foodCostProd, ventas_origen,
+    cuota_creditos, food_cost_pct: foodCost, food_cost_origen, ventas_origen,
   });
 }
 

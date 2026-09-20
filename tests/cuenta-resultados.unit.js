@@ -75,6 +75,31 @@ test("un cierre mensual guardado en config manda sobre las ventas de la app", ()
   }
 });
 
+test("food cost manual fija el coste de materia = ventas × food cost", () => {
+  const store = require("../backend/data-store");
+  const now = Date.now();
+  const R = CR.rangoMes(null, now);
+  const idV = `ventas_mes_${R.etiqueta}`;
+  const prevV = store.findById("config", idV);
+  const prevF = store.findById("config", "food_cost_manual_pct");
+  if (prevV) store.update("config", idV, { valor: 10000 }); else store.insert("config", { id: idV, valor: 10000 });
+  if (prevF) store.update("config", "food_cost_manual_pct", { valor: 26 }); else store.insert("config", { id: "food_cost_manual_pct", valor: 26 });
+  try {
+    const r = CR.calcular({ now });
+    assert.strictEqual(r.cuenta.food_cost_pct, 26, "usa el food cost manual");
+    assert.strictEqual(r.cuenta.food_cost_origen, "manual");
+    assert.strictEqual(r.cuenta.coste_materia, 2600, "10.000 × 26%");
+    assert.strictEqual(r.cuenta.margen_bruto, 7400);
+    // El parámetro puntual gana sobre el manual guardado.
+    const r2 = CR.calcular({ now, foodCost: 30 });
+    assert.strictEqual(r2.cuenta.food_cost_pct, 30);
+    assert.strictEqual(r2.cuenta.coste_materia, 3000);
+  } finally {
+    if (prevV) store.update("config", idV, { valor: prevV.valor }); else store.remove("config", idV);
+    if (prevF) store.update("config", "food_cost_manual_pct", { valor: prevF.valor }); else store.remove("config", "food_cost_manual_pct");
+  }
+});
+
 test("rangoMes construye bien un mes dado y el mes en curso", () => {
   const r = CR.rangoMes("2026-09", new Date("2026-09-20T10:00:00").getTime());
   assert.strictEqual(r.etiqueta, "2026-09");

@@ -69,6 +69,16 @@ const BATCHES = [
       { id: "ventas_mes_2026-09", valor: 9124.59 },
     ],
   },
+  {
+    // Food cost MANUAL provisional al 26 % (indicado por la fundadora), mientras
+    // se cargan los escandallos de todos los productos. Cuando estén, se borra
+    // este manual y la cuenta usa el food cost REAL. Editable desde la pantalla.
+    flag: "negocio_seed_v8_foodcost_26",
+    entity: "config",
+    upserts: [
+      { id: "food_cost_manual_pct", valor: 26 },
+    ],
+  },
 ];
 
 async function seedNegocio() {

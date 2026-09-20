@@ -1278,3 +1278,35 @@ test("dossier: la pantalla se abre, previsualiza y ofrece descarga", async ({ pa
   await expect(page.locator("pre")).toContainText(/PROMPT/);
   expect(errors, "sin errores de JS").toEqual([]);
 });
+
+test("cuenta de resultados: API admin-only con estructura P&L y bloqueo al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const r = await request.get("/api/cuenta-resultados?mes=2026-06", { headers: { Authorization: `Bearer ${moni.token}` } });
+  expect(r.ok()).toBeTruthy();
+  const j = await r.json();
+  expect(j).toHaveProperty("mes", "2026-06");
+  expect(j).toHaveProperty("cuenta");
+  expect(j.cuenta).toHaveProperty("ingresos");
+  expect(j.cuenta).toHaveProperty("personal");
+  expect(j.cuenta).toHaveProperty("ebitda");
+  // Override de ventas: recalcula ingresos.
+  const ov = await (await request.get("/api/cuenta-resultados?mes=2026-06&ventas=10000", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
+  expect(ov.cuenta.ingresos).toBe(10000);
+  expect(ov.cuenta.ventas_origen).toBe("manual_agora");
+  // El equipo (Lara) no puede.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const bloq = await request.get("/api/cuenta-resultados", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(bloq.status()).toBe(403);
+});
+
+test("cuenta de resultados: la pantalla se abre y muestra la cuenta P&L", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_cuentaResultados());
+  await expect(page.locator(".screen-head")).toContainText(/cuenta de resultados/i);
+  await expect(page.locator("#cr-mes")).toBeVisible();
+  await expect(page.locator(".lim-tab").first()).toContainText(/Ingresos/i);
+  await expect(page.locator(".lim-tab").first()).toContainText(/EBITDA/i);
+  expect(errors, "sin errores de JS").toEqual([]);
+});

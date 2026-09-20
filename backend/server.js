@@ -292,6 +292,7 @@ app.use("/api/business-calendar", require("./routes/business-calendar"));
 app.use("/api/business-time-machine", require("./routes/business-time-machine"));
 app.use("/api/analisis-diario", require("./routes/analisis-diario")); // rayos X del día (admin)
 app.use("/api/dossier", require("./routes/dossier")); // dossier para asesoría con Claude (admin)
+app.use("/api/cuenta-resultados", require("./routes/cuenta-resultados")); // P&L mensual (admin)
 
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última

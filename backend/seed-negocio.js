@@ -49,6 +49,15 @@ const BATCHES = [
       { id: "fc-seguro", active: false },
     ],
   },
+  {
+    // Corrección del importe real de la luz: 500 €/mes (estaba a 300), confirmado
+    // por la fundadora el 20/09/2026.
+    flag: "negocio_seed_v6_luz_500",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-luz", name: "Luz", category: "Luz", amount: 500, vat: 21, periodicity: "monthly", active: true, notes: "Importe real confirmado por la fundadora (antes 300 €)." },
+    ],
+  },
 ];
 
 async function seedNegocio() {

@@ -12,7 +12,9 @@ function test(nombre, fn) { try { fn(); console.log("  ✓ " + nombre); } catch 
 
 // Serie sintética de 30 días: patrimonio +100/día desde 1000; liquidez −50/día
 // desde 3000; ventas 200/día constantes; un pico de merma el último día.
-const base = new Date(2026, 5, 1).getTime();
+// Anclada a HOY (el último día es hoy) para que sea independiente de la fecha:
+// así el pico siempre cae dentro de la ventana de vigilancia (últimos 90 días).
+const base = new Date(new Date().setHours(12, 0, 0, 0)).getTime() - 29 * 86400000;
 const snaps = [];
 for (let i = 0; i < 30; i++) {
   const f = new Date(base + i * 86400000);

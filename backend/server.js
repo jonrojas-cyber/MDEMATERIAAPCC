@@ -274,6 +274,7 @@ app.use("/api/ventas", require("./routes/ventas"));
 app.use("/api/cierre-caja", require("./routes/cierre-caja"));
 app.use("/api/avisos", require("./routes/avisos"));
 app.use("/api/mbds", require("./routes/mbds")); // laboratorio de bebidas (MBDS)
+app.use("/api/turnos", require("./routes/turnos")); // cuadrante de turnos del equipo (lectura equipo, edición admin)
 
 // ── Centro de Control · capa financiera / negocio (solo admin) ─────────────────
 // Todos estos segmentos quedan FUERA de EQUIPO_ALLOWED en auth.js, por lo que el

@@ -2522,13 +2522,14 @@ function modulosMeta(d) {
     manual:       { num:"07", name:"La forma de hacer las cosas", badge:"Manual operativo", urgent:false },
     resumen:      { num:"08", name:"Resumen del día", badge:"KPIs · estado del negocio", urgent:false },
     decisiones:   { num:"01", name:"Tareas", badge:"Qué hacer ahora · riesgos", urgent: !!(d.alertas&&(d.alertas.caducados.length||d.alertas.bloqueados.length)) },
+    turnos:       { num:"04", name:"Turnos", badge:"Cuadrante y funciones del equipo", urgent:false },
   };
 }
 
 // Dashboard de 6 bloques. Tareas, Producción, APPCC y Etiquetas abren pantalla
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
-  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
+  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes · Turnos", ids:["preparaciones","revisiones","ajustes","turnos"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
   informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
@@ -7888,6 +7889,91 @@ async function crBorrarCierre(btn){
     window._cr.ventas="";
     crRender(r);
   }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+
+// ── TURNOS · cuadrante del equipo (equipo ve; admin edita) ───────────────────
+async function irA_turnos(){
+  navInto(()=>irA_categoria("produccion"));
+  openSection("turnos","Turnos");
+  try{
+    const d=await api("/turnos");
+    window._turnos=d;
+    turnosRender(d);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function turColorFuncion(f){
+  const map={"Barra / Café":"#7a5a3a","Cocina":"#8a6d3b","Sala":"#3c6e71","Caja":"#5a5a8a","Apertura":"#3c7a4a","Cierre":"#8a4a4a","Limpieza":"#5a7a5a","Brunch":"#a85a7a","Office":"#666"};
+  return map[f]||"#556";
+}
+function turnosRender(d){
+  const dias=d.dias||["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+  const funciones=d.funciones||[];
+  const admin=!!d.puede_editar;
+  const conocidos=["Jon","Lara","Daniel","Mónica"];
+  const personasExistentes=(d.resumen||[]).map(r=>r.persona);
+  const datalist=[...new Set([...conocidos,...personasExistentes])];
+  // Aviso de solapes.
+  const solapes=(d.solapes||[]).map(s=>`<div class="ad-alert" style="border-left:3px solid var(--alert,#b23b3b);"><div class="ad-alert-t">Choque de horario: ${esc(s.persona)} el ${esc(dias[s.dia-1])}</div><div class="ad-alert-d">${esc(s.a.inicio)}–${esc(s.a.fin)} y ${esc(s.b.inicio)}–${esc(s.b.fin)} se solapan.</div></div>`).join("");
+  // Formulario de alta (solo admin).
+  const form = admin ? `
+    <div class="card">
+      <div class="section-label" style="margin-top:0;">Añadir turno</div>
+      <div class="field"><label>Persona</label><input id="tur-persona" list="tur-personas" placeholder="Nombre (Lara, Daniel, Extra 1…)" style="width:100%;">
+        <datalist id="tur-personas">${datalist.map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
+      <div class="field"><label>Día</label><select id="tur-dia" style="width:100%;">${dias.map((n,i)=>`<option value="${i+1}">${esc(n)}</option>`).join("")}</select></div>
+      <div style="display:flex;gap:8px;">
+        <div class="field" style="flex:1;"><label>Entra</label><input id="tur-inicio" type="time" value="09:00" style="width:100%;"></div>
+        <div class="field" style="flex:1;"><label>Sale</label><input id="tur-fin" type="time" value="16:00" style="width:100%;"></div>
+      </div>
+      <div class="field"><label>Función</label><input id="tur-funcion" list="tur-funciones" placeholder="Barra, Cocina, Sala…" style="width:100%;">
+        <datalist id="tur-funciones">${funciones.map(f=>`<option value="${esc(f)}">`).join("")}</datalist></div>
+      <div class="card-actions" style="margin-top:6px;"><button class="btn-primary" onclick="turGuardar(this)">Añadir al cuadrante</button></div>
+    </div>` : "";
+  // Cuadrante por persona.
+  const resumen=d.resumen||[];
+  let bloques="";
+  if(!resumen.length){ bloques=`<div class="empty">Aún no hay turnos. ${admin?"Añade el primero arriba.":"Dirección aún no ha puesto el cuadrante."}</div>`; }
+  else{
+    const grid=(d.cuadrante&&d.cuadrante.grid)||{};
+    bloques=resumen.map(r=>{
+      const chips=(r.funciones||[]).map(f=>`<span style="display:inline-block;background:${turColorFuncion(f)};color:#f0ebe0;border-radius:10px;padding:1px 8px;font-size:10.5px;margin:1px 2px;">${esc(f)}</span>`).join("");
+      let filas="";
+      for(let dd=1;dd<=7;dd++){
+        const cel=(grid[r.persona]&&grid[r.persona][dd])||[];
+        if(!cel.length) continue;
+        const items=cel.map(t=>`<span style="white-space:nowrap;">${esc(t.inicio)}–${esc(t.fin)} <b style="color:${turColorFuncion(t.funcion)};">${esc(t.funcion||"—")}</b>${admin?` <a onclick="turBorrar('${t.id}')" style="color:var(--alert,#b23b3b);cursor:pointer;">✕</a>`:""}</span>`).join(" · ");
+        filas+=`<tr><td class="n" style="width:92px;">${esc(dias[dd-1])}</td><td>${items}</td></tr>`;
+      }
+      return `<div class="card" style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <div class="card-name">${esc(r.persona)}</div>
+          <div style="font-size:12px;color:var(--muted,#8a8577);">${r.horas} h/sem · ${r.turnos} turno(s)</div>
+        </div>
+        <div style="margin:4px 0 6px;">${chips}</div>
+        ${filas?`<table class="lim-tab"><tbody>${filas}</tbody></table>`:`<div class="cc-mini">Sin turnos.</div>`}
+      </div>`;
+    }).join("");
+  }
+  setInner(`
+    <div class="section-label">Turnos y funciones del equipo</div>
+    ${solapes?`<div style="margin-bottom:8px;">${solapes}</div>`:""}
+    ${form}
+    ${bloques}
+    <div class="ad-foot">El equipo ve su horario y función. Editar el cuadrante es cosa de dirección.</div>
+  `);
+}
+async function turGuardar(btn){
+  const b={ persona:el("tur-persona").value.trim(), dia:Number(el("tur-dia").value),
+    inicio:el("tur-inicio").value, fin:el("tur-fin").value, funcion:el("tur-funcion").value.trim() };
+  if(!b.persona){ alert("Escribe la persona."); return; }
+  if(btn) btn.disabled=true;
+  try{ await api("/turnos",{method:"POST",body:JSON.stringify(b)}); await irA_turnos(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function turBorrar(id){
+  if(!confirm("¿Quitar este turno?")) return;
+  try{ await api("/turnos/"+id,{method:"DELETE"}); await irA_turnos(); }
+  catch(e){ alert(e.message); }
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

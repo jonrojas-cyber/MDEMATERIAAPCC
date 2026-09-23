@@ -69,6 +69,8 @@ const ENTITIES = [
   "cierres_caja",      // cierres de caja por día/local/turno (estados + versiones, nunca se borran)
   // ── Lotes de producción (Burbujas/Spritz): litros producidos + hora exacta ──
   "lotes_produccion",  // registro de cada prebache: producto, litros, timestamp exacto
+  // ── Turnos del equipo: cuadrante semanal (persona · día · horario · función) ──
+  "turnos",            // turnos recurrentes por persona y día de la semana, con su función
 ];
 
 const cache = {};

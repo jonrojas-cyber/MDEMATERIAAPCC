@@ -2079,10 +2079,11 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 
 <!-- FOOTER (marco oliva) -->
 <!-- BARRA INFERIOR · 4 dominios fijos (estilo Spotify) -->
-<nav class="tabbar tabbar-3" id="tabbar" role="navigation" aria-label="Áreas">
+<nav class="tabbar" id="tabbar" role="navigation" aria-label="Áreas">
   <button class="tab" data-tab="materia" onclick="irDominio('materia', () => irA_categoria('materia'))"><span class="tab-ic" aria-hidden="true">▤</span><span class="tab-lb">Materia</span></button>
   <button class="tab" data-tab="lab"     onclick="irDominio('lab', () => irA_lab())"><span class="tab-ic" aria-hidden="true">◉</span><span class="tab-lb">Lab</span></button>
   <button class="tab" data-tab="appcc"   onclick="irDominio('appcc', () => irA_appcc())"><span class="tab-ic" aria-hidden="true">△</span><span class="tab-lb">APPCC</span></button>
+  <button class="tab" data-tab="equipo"  onclick="irDominio('equipo', () => irA_categoria('equipo'))"><span class="tab-ic" aria-hidden="true">◆</span><span class="tab-lb">Equipo</span></button>
 </nav>
 
 <!-- WIZARD -->
@@ -2530,7 +2531,8 @@ function modulosMeta(d) {
 // Dashboard de 6 bloques. Tareas, Producción, APPCC y Etiquetas abren pantalla
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
-  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes · Turnos · Fichaje", ids:["preparaciones","revisiones","ajustes","turnos","fichaje"] },
+  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
+  equipo:     { name:"Equipo", desc:"Turnos · Fichaje", ids:["turnos","fichaje"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
   informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
@@ -7902,7 +7904,7 @@ function turCodigo(t){
   return f||(t.funcion?t.funcion[0].toUpperCase():"·");
 }
 async function irA_turnos(semana){
-  navInto(()=>irA_categoria("produccion"));
+  navInto(()=>irA_categoria("equipo"));
   openSection("turnos","Turnos");
   const s=semana||window._turSem||turHoy();
   window._turSem=s;
@@ -8010,7 +8012,7 @@ const FIC_ESTADO={fuera:{txt:"Fuera",col:"#8a8577"},trabajando:{txt:"Trabajando"
 const FIC_ACCION={entrada:"Entrar",pausa_inicio:"Pausa",pausa_fin:"Volver",salida:"Salir"};
 function ficClockTick(){ const e=el("fic-clock"); if(!e){ if(window._ficTimer){clearInterval(window._ficTimer);window._ficTimer=null;} return;} const d=new Date(); e.textContent=d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
 async function irA_fichaje(){
-  navInto(()=>irA_categoria("produccion"));
+  navInto(()=>irA_categoria("equipo"));
   openSection("fichaje","Fichaje");
   try{ const d=await api("/fichaje"); window._fic=d; ficRender(d); }
   catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }

@@ -129,7 +129,7 @@ test("inicio: información importante · pulso del negocio, urgencias y rutina",
   await expect(page.locator(".home-sec")).toContainText(/importante/i);
   await expect(page.locator(".home-routine")).toBeVisible();
   // Navegación por dominios en la barra INFERIOR (4 fijos, estilo Spotify).
-  await expect(page.locator("#tabbar .tab")).toHaveCount(3);
+  await expect(page.locator("#tabbar .tab")).toHaveCount(4);
   // Tres acciones fijas arriba: inicio · buscar · ajustes (esta última, dueño).
   await expect(page.locator("#tb-buscar")).toBeVisible();
   await expect(page.locator("#tb-ajustes")).toBeVisible();
@@ -1386,6 +1386,18 @@ test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", 
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const bloq = await request.get("/api/fichaje/resumen", { headers: { Authorization: `Bearer ${lara.token}` } });
   expect(bloq.status()).toBe(403);
+});
+
+test("navegación: la pestaña Equipo abre Turnos y Fichaje (son accesibles)", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.locator("#tabbar .tab", { hasText: /Equipo/i }).click();
+  await expect(page.locator(".subtile", { hasText: /Turnos/i })).toBeVisible();
+  await expect(page.locator(".subtile", { hasText: /Fichaje/i })).toBeVisible();
+  await page.locator(".subtile", { hasText: /Fichaje/i }).click();
+  await expect(page.locator(".screen-head")).toContainText(/fichaje/i);
+  expect(errors, "sin errores de JS").toEqual([]);
 });
 
 test("fichaje: la pantalla del reloj se abre y muestra la gente", async ({ page }) => {

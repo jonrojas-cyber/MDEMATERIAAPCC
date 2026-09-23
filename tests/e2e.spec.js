@@ -1388,6 +1388,19 @@ test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", 
   expect(bloq.status()).toBe(403);
 });
 
+test("inicio: el botón de fichar está en la pantalla principal y abre el reloj", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  const btn = page.locator(".home-fichar");
+  await expect(btn).toBeVisible();
+  await expect(btn).toContainText(/Fichar/i);
+  await btn.click();
+  await expect(page.locator(".screen-head")).toContainText(/fichaje/i);
+  await expect(page.locator("#fic-clock")).toBeVisible();
+  expect(errors, "sin errores de JS").toEqual([]);
+});
+
 test("navegación: la pestaña Equipo abre Turnos y Fichaje (son accesibles)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

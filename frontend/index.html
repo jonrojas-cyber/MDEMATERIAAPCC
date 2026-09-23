@@ -2948,6 +2948,9 @@ async function loadHome() {
     el("home-content").innerHTML = `
       <div class="home-eyebrow home-hi">${esc(saludo)}${nombre?`, ${esc(nombre)}`:""} · ${hora}</div>
       ${window.__persistencia === "efimera" ? `<div class="home-efimera">⚠ Datos en modo efímero · configura PostgreSQL para no perderlos</div>` : ""}
+      <button class="home-fichar" onclick="irA_fichaje()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin:12px 0;padding:16px;border:0;border-radius:12px;background:var(--ok,#3c7a4a);color:#f0ebe0;font-family:var(--sans);font-size:16px;font-weight:800;letter-spacing:.02em;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.18);">
+        <span style="font-size:20px;">🕐</span> Fichar · entrada, pausa y salida
+      </button>
       ${esAdmin ? businessPulseHTML(kpis) : ""}
       <div class="home-sec">Lo importante ahora</div>
       ${homeImportantHTML(dec || {}, 4)}

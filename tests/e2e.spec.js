@@ -1388,6 +1388,62 @@ test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", 
   expect(bloq.status()).toBe(403);
 });
 
+test("equipo: sistema completo — ausencias, tablón, incidencias con permisos", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const hL = { Authorization: `Bearer ${lara.token}` };
+
+  // AUSENCIAS: Lara (equipo) solicita → queda pendiente; ella no puede aprobar.
+  const sol = await (await request.post("/api/ausencias", { headers: hL, data: { tipo: "vacaciones", desde: "2026-12-01", hasta: "2026-12-05", motivo: "viaje" } })).json();
+  expect(sol.estado).toBe("pendiente");
+  expect(sol.persona).toBe("Lara");
+  const noAprob = await request.post(`/api/ausencias/${sol.id}/aprobar`, { headers: hL });
+  expect(noAprob.status()).toBe(403);
+  // La admin aprueba.
+  const aprob = await request.post(`/api/ausencias/${sol.id}/aprobar`, { headers: hA });
+  expect(aprob.ok()).toBeTruthy();
+  expect((await aprob.json()).estado).toBe("aprobada");
+
+  // TABLÓN: la admin publica; el equipo lo lee pero no puede publicar.
+  const pub = await request.post("/api/tablon", { headers: hA, data: { titulo: "Brunch domingo", cuerpo: "Reserva 50 plazas", fijado: true } });
+  expect(pub.status()).toBe(201);
+  const readTab = await (await request.get("/api/tablon", { headers: hL })).json();
+  expect(readTab.avisos.some((a) => a.titulo === "Brunch domingo")).toBeTruthy();
+  expect(readTab.puede_publicar).toBe(false);
+  const noPub = await request.post("/api/tablon", { headers: hL, data: { titulo: "x" } });
+  expect(noPub.status()).toBe(403);
+
+  // INCIDENCIAS: el equipo abre una; la admin la resuelve; el equipo no puede.
+  const inc = await (await request.post("/api/incidencias", { headers: hL, data: { titulo: "Cafetera pierde agua", categoria: "avería", prioridad: "alta" } })).json();
+  expect(inc.estado).toBe("abierta");
+  const noRes = await request.post(`/api/incidencias/${inc.id}/resolver`, { headers: hL });
+  expect(noRes.status()).toBe(403);
+  const res = await request.post(`/api/incidencias/${inc.id}/resolver`, { headers: hA });
+  expect((await res.json()).estado).toBe("resuelta");
+
+  // HUB: agrega todo (ausencia aprobada, aviso, incidencia).
+  const hub = await (await request.get("/api/equipo/hub", { headers: hA })).json();
+  expect(hub).toHaveProperty("ahora");
+  expect(hub).toHaveProperty("turnos_hoy");
+  expect(Array.isArray(hub.avisos)).toBeTruthy();
+  expect(hub.avisos.some((a) => a.titulo === "Brunch domingo")).toBeTruthy();
+});
+
+test("equipo: el hub se abre desde la pestaña y navega a los módulos", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.locator("#tabbar .tab", { hasText: /Equipo/i }).click();
+  await expect(page.locator(".screen-head")).toContainText(/equipo/i);
+  await expect(page.locator(".subtile", { hasText: /Ausencias/i })).toBeVisible();
+  await expect(page.locator(".subtile", { hasText: /Tabl/i })).toBeVisible();
+  await page.locator(".subtile", { hasText: /Incidencias/i }).click();
+  await expect(page.locator(".screen-head")).toContainText(/incidencias/i);
+  await expect(page.locator("#inc-titulo")).toBeVisible();
+  expect(errors, "sin errores de JS").toEqual([]);
+});
+
 test("inicio: el botón de fichar está en la pantalla principal y abre el reloj", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -1401,14 +1457,14 @@ test("inicio: el botón de fichar está en la pantalla principal y abre el reloj
   expect(errors, "sin errores de JS").toEqual([]);
 });
 
-test("navegación: la pestaña Equipo abre Turnos y Fichaje (son accesibles)", async ({ page }) => {
+test("navegación: la pestaña Equipo abre el hub con accesos a los módulos", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.locator("#tabbar .tab", { hasText: /Equipo/i }).click();
   await expect(page.locator(".subtile", { hasText: /Turnos/i })).toBeVisible();
-  await expect(page.locator(".subtile", { hasText: /Fichaje/i })).toBeVisible();
-  await page.locator(".subtile", { hasText: /Fichaje/i }).click();
+  await expect(page.locator(".subtile", { hasText: /Fichar/i })).toBeVisible();
+  await page.locator(".subtile", { hasText: /Fichar/i }).click();
   await expect(page.locator(".screen-head")).toContainText(/fichaje/i);
   expect(errors, "sin errores de JS").toEqual([]);
 });

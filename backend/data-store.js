@@ -73,6 +73,10 @@ const ENTITIES = [
   "turnos",            // turnos recurrentes por persona y día de la semana, con su función
   // ── Fichaje: reloj de entrada/salida/pausa del equipo (eventos) ──────────────
   "fichajes",          // eventos de fichaje: persona · fecha · tipo (entrada/pausa/salida) · ts
+  // ── Sistema de Equipo (estilo operaciones): ausencias, tablón, incidencias ───
+  "ausencias",         // vacaciones/bajas/permisos: solicitud + aprobación
+  "tablon",            // comunicación interna: avisos/publicaciones para el equipo
+  "incidencias",       // partes del equipo: avería/stock/limpieza… con estado
 ];
 
 const cache = {};

@@ -2083,7 +2083,7 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
   <button class="tab" data-tab="materia" onclick="irDominio('materia', () => irA_categoria('materia'))"><span class="tab-ic" aria-hidden="true">▤</span><span class="tab-lb">Materia</span></button>
   <button class="tab" data-tab="lab"     onclick="irDominio('lab', () => irA_lab())"><span class="tab-ic" aria-hidden="true">◉</span><span class="tab-lb">Lab</span></button>
   <button class="tab" data-tab="appcc"   onclick="irDominio('appcc', () => irA_appcc())"><span class="tab-ic" aria-hidden="true">△</span><span class="tab-lb">APPCC</span></button>
-  <button class="tab" data-tab="equipo"  onclick="irDominio('equipo', () => irA_categoria('equipo'))"><span class="tab-ic" aria-hidden="true">◆</span><span class="tab-lb">Equipo</span></button>
+  <button class="tab" data-tab="equipo"  onclick="irDominio('equipo', () => irA_equipoHub())"><span class="tab-ic" aria-hidden="true">◆</span><span class="tab-lb">Equipo</span></button>
 </nav>
 
 <!-- WIZARD -->
@@ -2370,6 +2370,10 @@ async function api(path, opts = {}) {
   const headers = Object.assign({}, opts.headers || {});
   const t = getToken();
   if (t) headers["Authorization"] = "Bearer " + t;
+  // Cuerpo JSON: si es una cadena (JSON.stringify) y no se indicó el tipo, lo
+  // marcamos como application/json para que el servidor (express.json) lo lea.
+  // Los cuerpos no-string (FormData/blob) se dejan intactos.
+  if (opts.body && typeof opts.body === "string" && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
   const r = await fetch(API + path, Object.assign({}, opts, { headers }));
   if (r.status === 401) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Sesión expirada"); }
   if (!r.ok) {
@@ -2532,7 +2536,7 @@ function modulosMeta(d) {
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
   produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes", ids:["preparaciones","revisiones","ajustes"] },
-  equipo:     { name:"Equipo", desc:"Turnos · Fichaje", ids:["turnos","fichaje"] },
+  equipo:     { name:"Equipo", desc:"Fichaje · Turnos · Ausencias · Tablón · Incidencias", ids:["turnos","fichaje","ausencias","tablon","incidencias"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
   informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
@@ -7907,7 +7911,7 @@ function turCodigo(t){
   return f||(t.funcion?t.funcion[0].toUpperCase():"·");
 }
 async function irA_turnos(semana){
-  navInto(()=>irA_categoria("equipo"));
+  navInto(()=>irA_equipoHub());
   openSection("turnos","Turnos");
   const s=semana||window._turSem||turHoy();
   window._turSem=s;
@@ -8015,7 +8019,7 @@ const FIC_ESTADO={fuera:{txt:"Fuera",col:"#8a8577"},trabajando:{txt:"Trabajando"
 const FIC_ACCION={entrada:"Entrar",pausa_inicio:"Pausa",pausa_fin:"Volver",salida:"Salir"};
 function ficClockTick(){ const e=el("fic-clock"); if(!e){ if(window._ficTimer){clearInterval(window._ficTimer);window._ficTimer=null;} return;} const d=new Date(); e.textContent=d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
 async function irA_fichaje(){
-  navInto(()=>irA_categoria("equipo"));
+  navInto(()=>irA_equipoHub());
   openSection("fichaje","Fichaje");
   try{ const d=await api("/fichaje"); window._fic=d; ficRender(d); }
   catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
@@ -8100,6 +8104,175 @@ async function ficResumen(){
       <div class="ad-foot">Real = fichajes (horas trabajadas menos pausas). Plan = horas del cuadrante de turnos.</div>`);
   }catch(e){ alert(e.message); }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// SISTEMA DE EQUIPO · hub + ausencias + tablón + incidencias (estilo operaciones)
+// ════════════════════════════════════════════════════════════════════════════
+const EQ_ESTADO={trabajando:{t:"Trabajando",c:"#3c7a4a"},pausa:{t:"En pausa",c:"#b0863a"},fuera:{t:"Fuera",c:"#8a8577"}};
+const AUS_TIPO={vacaciones:"Vacaciones",baja:"Baja",permiso:"Permiso",dia_libre:"Día libre"};
+const AUS_EST={pendiente:{t:"Pendiente",c:"#b0863a"},aprobada:{t:"Aprobada",c:"#3c7a4a"},rechazada:{t:"Rechazada",c:"#b23b3b"}};
+function eqFechaLarga(ymd){ try{ return new Date(ymd+"T12:00:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"}); }catch(e){ return ymd; } }
+function eqDdMm(ymd){ return ymd?ymd.slice(8,10)+"/"+ymd.slice(5,7):""; }
+
+async function irA_equipoHub(){
+  navReset(); openSection("equipoHub","Equipo");
+  try{ const d=await api("/equipo/hub"); window._eqhub=d; equipoHubRender(d); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function equipoHubRender(d){
+  const admin=!!d.puede_editar;
+  const accesos=[
+    ["🕐","Fichar","irA_fichaje()"],["📅","Turnos","irA_turnos()"],
+    ["🌴","Ausencias","irA_ausencias()"],["📣","Tablón","irA_tablon()"],
+    ["🛠️","Incidencias","irA_incidencias()"],
+  ].map(([i,t,go])=>`<button class="subtile" onclick="${go}"><span class="subtile-name">${i} ${esc(t)}</span></button>`).join("");
+  // Ahora mismo.
+  const ahora=(d.ahora||[]).map(p=>{const e=EQ_ESTADO[p.estado]||EQ_ESTADO.fuera;return `<div class="cc-line"><span><b style="color:${e.c};">●</b> ${esc(p.nombre)} · ${e.t}${p.entrada_hm?` desde ${esc(p.entrada_hm)}`:""}</span><b>${p.horas} h</b></div>`;}).join("")||`<div class="cc-mini">Nadie fichado ahora mismo.</div>`;
+  // Turnos hoy.
+  const turnosHoy=(d.turnos_hoy||[]).map(t=>`<div class="cc-line"><span>${esc(t.persona)}</span><b>${esc(t.inicio)}–${esc(t.fin)}${t.funcion?" · "+esc(t.funcion):""}</b></div>`).join("")||`<div class="cc-mini">Sin turnos hoy.</div>`;
+  const ausHoy=(d.ausencias_hoy||[]).map(a=>`<div class="cc-line"><span>${esc(a.persona)} · ${esc(AUS_TIPO[a.tipo]||a.tipo)}</span><b>hasta ${eqDdMm(a.hasta)}</b></div>`).join("");
+  // Pendientes de aprobar (admin).
+  const pend=(d.ausencias_pendientes||[]);
+  const pendHtml=(admin&&pend.length)?`<div class="section-label" style="margin-top:16px;">Ausencias por aprobar (${pend.length})</div>`+pend.map(a=>`<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;"><div><b>${esc(a.persona)}</b> · ${esc(AUS_TIPO[a.tipo]||a.tipo)}<div class="cc-mini">${eqDdMm(a.desde)}–${eqDdMm(a.hasta)} · ${a.dias} día(s)</div></div></div><div class="card-actions" style="margin-top:6px;"><button class="btn-primary" onclick="ausResolver('${a.id}','aprobar')">Aprobar</button><button class="btn-ghost" onclick="ausResolver('${a.id}','rechazar')">Rechazar</button></div></div>`).join(""):"";
+  // Tablón.
+  const avisos=(d.avisos||[]).map(a=>`<div class="cc-line"><span>${a.fijado?"📌 ":""}${esc(a.titulo||a.cuerpo||"")}</span><b>${eqDdMm((a.fecha||"").slice(0,10))}</b></div>`).join("")||`<div class="cc-mini">Sin avisos.</div>`;
+  // Incidencias.
+  const incs=(d.incidencias_abiertas||[]).map(i=>`<div class="cc-line"><span>${esc(i.titulo)} <span class="cc-mini">(${esc(i.categoria)})</span></span><b style="color:${i.prioridad==='alta'?'var(--alert,#b23b3b)':'inherit'};">${esc(i.prioridad)}</b></div>`).join("")||`<div class="cc-mini">Sin incidencias abiertas.</div>`;
+  setInner(`
+    <div class="ad-dia" style="text-transform:capitalize;">${esc(eqFechaLarga(d.fecha))}</div>
+    <div class="submenu-grid" style="margin-bottom:6px;">${accesos}</div>
+    <div class="section-label" style="margin-top:14px;">Ahora mismo</div>
+    <div class="card">${ahora}</div>
+    <div class="section-label" style="margin-top:16px;">Turnos de hoy</div>
+    <div class="card">${turnosHoy}${ausHoy?`<div style="margin-top:6px;border-top:1px solid var(--line,#3a3a2e);padding-top:6px;"><div class="cc-mini" style="margin-bottom:2px;">De ausencia hoy:</div>${ausHoy}</div>`:""}</div>
+    ${pendHtml}
+    <div class="section-label" style="margin-top:16px;">Tablón <a onclick="irA_tablon()" style="float:right;font-size:11px;color:var(--muted,#8a8577);cursor:pointer;">ver todo →</a></div>
+    <div class="card">${avisos}</div>
+    <div class="section-label" style="margin-top:16px;">Incidencias abiertas${d.incidencias_abiertas_total?` (${d.incidencias_abiertas_total})`:""} <a onclick="irA_incidencias()" style="float:right;font-size:11px;color:var(--muted,#8a8577);cursor:pointer;">ver todo →</a></div>
+    <div class="card">${incs}</div>
+    <div class="ad-foot">Todo el equipo en un sitio: fichaje, turnos, ausencias, tablón e incidencias.</div>
+  `);
+}
+
+// ── AUSENCIAS ────────────────────────────────────────────────────────────────
+async function irA_ausencias(){
+  navInto(()=>irA_equipoHub()); openSection("ausencias","Ausencias");
+  try{ const d=await api("/ausencias"); window._aus=d; ausRender(d); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function ausRender(d){
+  const admin=!!d.puede_aprobar;
+  const hoy=new Date().toISOString().slice(0,10);
+  const tipos=d.tipos||["vacaciones","baja","permiso","dia_libre"];
+  const lista=(d.ausencias||[]).map(a=>{
+    const e=AUS_EST[a.estado]||AUS_EST.pendiente;
+    const acc=[];
+    if(admin&&a.estado==="pendiente"){ acc.push(`<button class="btn-primary" onclick="ausResolver('${a.id}','aprobar')">Aprobar</button>`); acc.push(`<button class="btn-ghost" onclick="ausResolver('${a.id}','rechazar')">Rechazar</button>`); }
+    if(admin||a.estado==="pendiente") acc.push(`<button class="btn-ghost" onclick="ausBorrar('${a.id}')">Borrar</button>`);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div><b>${esc(a.persona)}</b> · ${esc(AUS_TIPO[a.tipo]||a.tipo)}<div class="cc-mini">${eqDdMm(a.desde)}–${eqDdMm(a.hasta)} · ${a.dias} día(s)${a.motivo?" · "+esc(a.motivo):""}</div></div>
+      <span style="color:${e.c};font-weight:700;font-size:12px;">${e.t}${a.activa_hoy?" · hoy":""}</span></div>
+      ${acc.length?`<div class="card-actions" style="margin-top:6px;">${acc.join("")}</div>`:""}</div>`;
+  }).join("")||`<div class="empty">Sin ausencias registradas.</div>`;
+  setInner(`
+    <div class="section-label">${admin?"Añadir / solicitar ausencia":"Solicitar ausencia"}</div>
+    <div class="card">
+      ${admin?`<div class="field"><label>Persona</label><input id="aus-persona" list="aus-personas" placeholder="Nombre" style="width:100%;"><datalist id="aus-personas">${["Daniel","Lara","Jon","Mónica"].map(x=>`<option value="${x}">`).join("")}</datalist></div>`:""}
+      <div class="field"><label>Tipo</label><select id="aus-tipo" style="width:100%;">${tipos.map(t=>`<option value="${t}">${esc(AUS_TIPO[t]||t)}</option>`).join("")}</select></div>
+      <div style="display:flex;gap:8px;"><div class="field" style="flex:1;"><label>Desde</label><input id="aus-desde" type="date" value="${hoy}" style="width:100%;"></div><div class="field" style="flex:1;"><label>Hasta</label><input id="aus-hasta" type="date" value="${hoy}" style="width:100%;"></div></div>
+      <div class="field"><label>Motivo (opcional)</label><input id="aus-motivo" placeholder="p. ej. viaje familiar" style="width:100%;"></div>
+      <div class="card-actions" style="margin-top:6px;"><button class="btn-primary" onclick="ausGuardar(this)">${admin?"Añadir (aprobada)":"Enviar solicitud"}</button></div>
+    </div>
+    <div class="section-label" style="margin-top:16px;">Ausencias</div>
+    ${lista}`);
+}
+async function ausGuardar(btn){
+  const b={ tipo:el("aus-tipo").value, desde:el("aus-desde").value, hasta:el("aus-hasta").value, motivo:el("aus-motivo").value.trim() };
+  if(el("aus-persona")) b.persona=el("aus-persona").value.trim();
+  if(btn) btn.disabled=true;
+  try{ await api("/ausencias",{method:"POST",body:JSON.stringify(b)}); await irA_ausencias(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function ausResolver(id,accion){
+  try{ await api(`/ausencias/${id}/${accion}`,{method:"POST"}); const cur=currentSection; (cur==="equipoHub")?irA_equipoHub():irA_ausencias(); }
+  catch(e){ alert(e.message); }
+}
+async function ausBorrar(id){ if(!confirm("¿Borrar esta ausencia?"))return; try{ await api("/ausencias/"+id,{method:"DELETE"}); irA_ausencias(); }catch(e){ alert(e.message); } }
+
+// ── TABLÓN ───────────────────────────────────────────────────────────────────
+async function irA_tablon(){
+  navInto(()=>irA_equipoHub()); openSection("tablon","Tablón");
+  try{ const d=await api("/tablon"); window._tab=d; tablonRender(d); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function tablonRender(d){
+  const admin=!!d.puede_publicar;
+  const lista=(d.avisos||[]).map(a=>`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;"><div class="card-name">${a.fijado?"📌 ":""}${esc(a.titulo||"(sin título)")}</div><span class="cc-mini">${eqDdMm((a.fecha||"").slice(0,10))}</span></div>
+    ${a.cuerpo?`<div style="font-size:13px;line-height:1.5;margin-top:4px;white-space:pre-wrap;">${esc(a.cuerpo)}</div>`:""}
+    <div class="cc-mini" style="margin-top:4px;">— ${esc(a.autor||"")}</div>
+    ${admin?`<div class="card-actions" style="margin-top:6px;"><button class="btn-ghost" onclick="tabFijar('${a.id}',${!a.fijado})">${a.fijado?"Quitar fijado":"Fijar arriba"}</button><button class="btn-ghost" onclick="tabBorrar('${a.id}')">Borrar</button></div>`:""}
+  </div>`).join("")||`<div class="empty">No hay avisos todavía.</div>`;
+  setInner(`
+    ${admin?`<div class="section-label">Publicar aviso</div><div class="card">
+      <div class="field"><label>Título</label><input id="tab-titulo" placeholder="p. ej. Brunch del domingo" style="width:100%;"></div>
+      <div class="field"><label>Mensaje</label><textarea id="tab-cuerpo" rows="3" placeholder="Escribe el aviso para el equipo…" style="width:100%;"></textarea></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0;"><input id="tab-fijar" type="checkbox"> Fijar arriba</label>
+      <div class="card-actions"><button class="btn-primary" onclick="tabPublicar(this)">Publicar</button></div>
+    </div>`:""}
+    <div class="section-label" style="margin-top:${admin?16:0}px;">Avisos del equipo</div>
+    ${lista}`);
+}
+async function tabPublicar(btn){
+  const b={ titulo:el("tab-titulo").value.trim(), cuerpo:el("tab-cuerpo").value.trim(), fijado:el("tab-fijar").checked };
+  if(!b.titulo&&!b.cuerpo){ alert("Escribe algo."); return; }
+  if(btn) btn.disabled=true;
+  try{ await api("/tablon",{method:"POST",body:JSON.stringify(b)}); await irA_tablon(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function tabFijar(id,fijar){ try{ await api("/tablon/"+id,{method:"PUT",body:JSON.stringify({fijado:fijar})}); irA_tablon(); }catch(e){ alert(e.message); } }
+async function tabBorrar(id){ if(!confirm("¿Borrar este aviso?"))return; try{ await api("/tablon/"+id,{method:"DELETE"}); irA_tablon(); }catch(e){ alert(e.message); } }
+
+// ── INCIDENCIAS ──────────────────────────────────────────────────────────────
+async function irA_incidencias(){
+  navInto(()=>irA_equipoHub()); openSection("incidencias","Incidencias");
+  try{ const d=await api("/incidencias"); window._inc=d; incRender(d); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function incRender(d){
+  const admin=!!d.puede_resolver;
+  const cats=d.categorias||["avería","stock","limpieza","equipo","cliente","otro"];
+  const prs=d.prioridades||["baja","media","alta"];
+  const lista=(d.incidencias||[]).map(i=>{
+    const resuelta=i.estado==="resuelta";
+    const col=i.prioridad==="alta"?"var(--alert,#b23b3b)":i.prioridad==="media"?"#b0863a":"#8a8577";
+    const acc=admin?(resuelta?`<button class="btn-ghost" onclick="incEstado('${i.id}','reabrir')">Reabrir</button><button class="btn-ghost" onclick="incBorrar('${i.id}')">Borrar</button>`:`<button class="btn-primary" onclick="incEstado('${i.id}','resolver')">Resolver</button><button class="btn-ghost" onclick="incBorrar('${i.id}')">Borrar</button>`):"";
+    return `<div class="card" style="${resuelta?'opacity:.6;':''}border-left:3px solid ${col};">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;"><div class="card-name">${esc(i.titulo)}</div><span class="cc-mini">${eqDdMm((i.fecha||"").slice(0,10))}</span></div>
+      <div class="cc-mini" style="margin-top:2px;">${esc(i.categoria)} · prioridad ${esc(i.prioridad)} · ${esc(i.persona)}${resuelta?" · ✓ resuelta":""}</div>
+      ${i.descripcion?`<div style="font-size:13px;line-height:1.5;margin-top:4px;white-space:pre-wrap;">${esc(i.descripcion)}</div>`:""}
+      ${acc?`<div class="card-actions" style="margin-top:6px;">${acc}</div>`:""}</div>`;
+  }).join("")||`<div class="empty">Sin incidencias. 🎉</div>`;
+  setInner(`
+    <div class="section-label">Reportar incidencia</div>
+    <div class="card">
+      <div class="field"><label>¿Qué pasa?</label><input id="inc-titulo" placeholder="p. ej. La cafetera pierde agua" style="width:100%;"></div>
+      <div style="display:flex;gap:8px;"><div class="field" style="flex:1;"><label>Categoría</label><select id="inc-cat" style="width:100%;">${cats.map(c=>`<option value="${c}">${esc(c)}</option>`).join("")}</select></div><div class="field" style="flex:1;"><label>Prioridad</label><select id="inc-pri" style="width:100%;">${prs.map(p=>`<option value="${p}" ${p==="media"?"selected":""}>${esc(p)}</option>`).join("")}</select></div></div>
+      <div class="field"><label>Detalle (opcional)</label><textarea id="inc-desc" rows="2" placeholder="Cuenta más…" style="width:100%;"></textarea></div>
+      <div class="card-actions"><button class="btn-primary" onclick="incCrear(this)">Reportar</button></div>
+    </div>
+    <div class="section-label" style="margin-top:16px;">Partes ${d.abiertas?`· ${d.abiertas} abierta(s)`:""}</div>
+    ${lista}`);
+}
+async function incCrear(btn){
+  const b={ titulo:el("inc-titulo").value.trim(), categoria:el("inc-cat").value, prioridad:el("inc-pri").value, descripcion:el("inc-desc").value.trim() };
+  if(!b.titulo){ alert("Escribe qué pasa."); return; }
+  if(btn) btn.disabled=true;
+  try{ await api("/incidencias",{method:"POST",body:JSON.stringify(b)}); await irA_incidencias(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function incEstado(id,accion){ try{ await api(`/incidencias/${id}/${accion}`,{method:"POST"}); irA_incidencias(); }catch(e){ alert(e.message); } }
+async function incBorrar(id){ if(!confirm("¿Borrar esta incidencia?"))return; try{ await api("/incidencias/"+id,{method:"DELETE"}); irA_incidencias(); }catch(e){ alert(e.message); } }
 
 // ── PEDIDOS ───────────────────────────────────────────
 async function irA_pedidos(pre){

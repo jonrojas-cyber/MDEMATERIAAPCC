@@ -60,6 +60,10 @@ const EQUIPO_ALLOWED = new Set([
   "cierre-caja", // cierre de caja: responsable/empleado cuentan y cierran (acciones sensibles gated dentro)
   "turnos", // cuadrante de turnos: el equipo ve su horario y función (sin dinero); editar es admin
   "fichaje", // reloj de fichaje: la tablet del local ficha entrada/salida/pausa (resumen real-vs-plan gated a admin)
+  "equipo", // hub de Equipo (une turnos/fichaje/ausencias/tablón/incidencias) — sin dinero
+  "ausencias", // vacaciones/bajas/permisos: el equipo solicita; aprobar/rechazar gated a admin en la ruta
+  "tablon", // comunicación interna: el equipo lee; publicar gated a admin en la ruta
+  "incidencias", // partes del equipo: el equipo abre; resolver gated a admin en la ruta
 ]);
 
 // ── Hash de PIN (scrypt, sin dependencias externas) ─────────────────────────

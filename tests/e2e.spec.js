@@ -1372,9 +1372,9 @@ test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", 
   const ent = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "2222", tipo: "entrada" } });
   expect(ent.status()).toBe(201);
   expect((await ent.json()).jornada.estado).toBe("trabajando");
-  // PIN incorrecto → 401.
+  // PIN incorrecto → 422 (NO 401: un 401 haría que el front cerrara la sesión).
   const malo = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "0000", tipo: "entrada" } });
-  expect(malo.status()).toBe(401);
+  expect(malo.status()).toBe(422);
   // Transición inválida: no puede volver a "entrada" estando trabajando → 409.
   const bad = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "2222", tipo: "entrada" } });
   expect(bad.status()).toBe(409);

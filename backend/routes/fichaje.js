@@ -45,7 +45,10 @@ router.get("/", (req, res) => {
 router.post("/fichar", express.json(), async (req, res) => {
   const { usuario, pin, tipo } = req.body || {};
   const persona = auth.verificarPin(usuario, pin);
-  if (!persona) return res.status(401).json({ error: "PIN incorrecto." });
+  // 422 (no 401): un PIN de fichaje equivocado NO es una sesión caducada. Con 401
+  // el front cerraría la sesión de la tablet y volvería al inicio; con 422 solo
+  // avisa en el propio reloj y se puede reintentar.
+  if (!persona) return res.status(422).json({ error: "PIN incorrecto. Inténtalo de nuevo." });
   const fecha = hoyYmd();
   const now = Date.now();
   const evs = fichaje.eventosDe(store.readAll("fichajes"), persona.nombre, fecha);

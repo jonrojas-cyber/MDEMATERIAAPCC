@@ -1360,6 +1360,45 @@ test("turnos: la pantalla se abre con el calendario semanal y el alta (admin)", 
   expect(errors, "sin errores de JS").toEqual([]);
 });
 
+test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const h = { Authorization: `Bearer ${moni.token}` };
+  // Estado del reloj: sale la gente con su jornada.
+  const estado = await (await request.get("/api/fichaje", { headers: h })).json();
+  expect(Array.isArray(estado.gente)).toBeTruthy();
+  const lara0 = estado.gente.find((g) => g.nombre === "Lara");
+  expect(lara0.jornada.estado).toBe("fuera");
+  // Lara ficha ENTRADA con su PIN (2222).
+  const ent = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "2222", tipo: "entrada" } });
+  expect(ent.status()).toBe(201);
+  expect((await ent.json()).jornada.estado).toBe("trabajando");
+  // PIN incorrecto → 401.
+  const malo = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "0000", tipo: "entrada" } });
+  expect(malo.status()).toBe(401);
+  // Transición inválida: no puede volver a "entrada" estando trabajando → 409.
+  const bad = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "2222", tipo: "entrada" } });
+  expect(bad.status()).toBe(409);
+  // Salida cierra la jornada.
+  const sal = await request.post("/api/fichaje/fichar", { headers: h, data: { usuario: "Lara", pin: "2222", tipo: "salida" } });
+  expect(sal.status()).toBe(201);
+  expect((await sal.json()).jornada.estado).toBe("fuera");
+  // Resumen real vs plan es admin-only.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const bloq = await request.get("/api/fichaje/resumen", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(bloq.status()).toBe(403);
+});
+
+test("fichaje: la pantalla del reloj se abre y muestra la gente", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_fichaje());
+  await expect(page.locator(".screen-head")).toContainText(/fichaje/i);
+  await expect(page.locator("#fic-clock")).toBeVisible();
+  await expect(page.locator(".card-name").first()).toBeVisible();
+  expect(errors, "sin errores de JS").toEqual([]);
+});
+
 test("cuenta de resultados: la pantalla se abre y muestra la cuenta P&L", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

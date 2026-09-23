@@ -59,6 +59,7 @@ const EQUIPO_ALLOWED = new Set([
   "etiquetas",
   "cierre-caja", // cierre de caja: responsable/empleado cuentan y cierran (acciones sensibles gated dentro)
   "turnos", // cuadrante de turnos: el equipo ve su horario y función (sin dinero); editar es admin
+  "fichaje", // reloj de fichaje: la tablet del local ficha entrada/salida/pausa (resumen real-vs-plan gated a admin)
 ]);
 
 // ── Hash de PIN (scrypt, sin dependencias externas) ─────────────────────────
@@ -124,6 +125,16 @@ function ensureSeed() {
 
 function buscarUsuario(key) {
   return store.readAll("usuarios").find((u) => u.key === key || u.id === key) || null;
+}
+
+// Verifica el PIN de una persona por su key/id/nombre, SIN emitir token ni tocar
+// el bloqueo (para el reloj de fichaje: cada quien ficha con su PIN en la tablet).
+// Devuelve el usuario si el PIN es correcto, o null.
+function verificarPin(keyOrNombre, pin) {
+  const k = String(keyOrNombre || "");
+  const u = store.readAll("usuarios").find((x) => x.key === k || x.id === k || (x.nombre && x.nombre.toLowerCase() === k.toLowerCase()));
+  if (!u) return null;
+  return verifyPin(pin, u.pin_hash) ? { key: u.key, nombre: u.nombre, rol: u.rol, local_id: u.local_id || "principal" } : null;
 }
 
 // ── Login con bloqueo por intentos ──────────────────────────────────────────
@@ -199,4 +210,4 @@ function requerido(req, res, next) {
   next();
 }
 
-module.exports = { login, cambiarPin, verificar, requerido, tokenDe, ensureSeed, hashPin };
+module.exports = { login, cambiarPin, verificar, requerido, tokenDe, ensureSeed, hashPin, verificarPin };

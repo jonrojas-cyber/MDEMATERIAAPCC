@@ -2523,13 +2523,14 @@ function modulosMeta(d) {
     resumen:      { num:"08", name:"Resumen del día", badge:"KPIs · estado del negocio", urgent:false },
     decisiones:   { num:"01", name:"Tareas", badge:"Qué hacer ahora · riesgos", urgent: !!(d.alertas&&(d.alertas.caducados.length||d.alertas.bloqueados.length)) },
     turnos:       { num:"04", name:"Turnos", badge:"Cuadrante y funciones del equipo", urgent:false },
+    fichaje:      { num:"05", name:"Fichaje", badge:"Reloj · entrada, pausa y salida", urgent:false },
   };
 }
 
 // Dashboard de 6 bloques. Tareas, Producción, APPCC y Etiquetas abren pantalla
 // propia; Materia e Informes son submenús que agrupan módulos relacionados.
 const CATS = {
-  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes · Turnos", ids:["preparaciones","revisiones","ajustes","turnos"] },
+  produccion: { name:"Producción", desc:"Producir · Revisiones · Ajustes · Turnos · Fichaje", ids:["preparaciones","revisiones","ajustes","turnos","fichaje"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
   informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
@@ -8002,6 +8003,97 @@ async function turBorrar(id){
   if(!confirm("¿Quitar este turno?")) return;
   try{ await api("/turnos/"+id,{method:"DELETE"}); await irA_turnos(window._turSem); }
   catch(e){ alert(e.message); }
+}
+
+// ── FICHAJE · reloj del equipo (tablet) ──────────────────────────────────────
+const FIC_ESTADO={fuera:{txt:"Fuera",col:"#8a8577"},trabajando:{txt:"Trabajando",col:"#3c7a4a"},pausa:{txt:"En pausa",col:"#b0863a"}};
+const FIC_ACCION={entrada:"Entrar",pausa_inicio:"Pausa",pausa_fin:"Volver",salida:"Salir"};
+function ficClockTick(){ const e=el("fic-clock"); if(!e){ if(window._ficTimer){clearInterval(window._ficTimer);window._ficTimer=null;} return;} const d=new Date(); e.textContent=d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
+async function irA_fichaje(){
+  navInto(()=>irA_categoria("produccion"));
+  openSection("fichaje","Fichaje");
+  try{ const d=await api("/fichaje"); window._fic=d; ficRender(d); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function ficRender(d){
+  const admin=mbdsEsAdmin();
+  const cards=(d.gente||[]).map(g=>{
+    const j=g.jornada||{}, est=FIC_ESTADO[j.estado]||FIC_ESTADO.fuera, tr=g.turno||{};
+    const turnoTxt=tr.con_turno?`Turno ${esc(tr.turno_inicio)}–${esc(tr.turno_fin)}${tr.funcion?" · "+esc(tr.funcion):""}`:"Sin turno hoy";
+    const retraso=(tr.retraso_min>0)?`<span style="color:var(--alert,#b23b3b);"> · +${tr.retraso_min} min tarde</span>`:"";
+    return `<button class="card" style="text-align:left;border-left:4px solid ${est.col};cursor:pointer;" onclick="ficAbrir('${esc(g.nombre).replace(/'/g,"\\'")}')">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <div class="card-name">${esc(g.nombre)}</div>
+        <div style="font-weight:700;color:${est.col};font-size:12.5px;">${est.txt}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted,#8a8577);margin-top:3px;">
+        ${j.entrada_hm?`Entró ${esc(j.entrada_hm)}`:""}${j.salida_hm?` · Salió ${esc(j.salida_hm)}`:""}
+        ${j.horas_trabajadas?` · <b>${j.horas_trabajadas} h</b>`:""}${j.pausa_min?` · pausa ${j.pausa_min}′`:""}
+      </div>
+      <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:2px;">${turnoTxt}${retraso}</div>
+    </button>`;
+  }).join("")||`<div class="empty">No hay personas para fichar. Añade cuentas de equipo en Ajustes.</div>`;
+  setInner(`
+    <div style="text-align:center;margin:6px 0 14px;">
+      <div id="fic-clock" style="font-size:40px;font-weight:800;letter-spacing:1px;">--:--:--</div>
+      <div style="font-size:12px;color:var(--muted,#8a8577);">${esc(new Date(d.fecha+"T12:00:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"}))}</div>
+    </div>
+    <div class="section-label">Pulsa tu nombre para fichar</div>
+    ${cards}
+    ${admin?`<div class="card-actions" style="margin-top:12px;"><button class="btn-ghost" onclick="ficResumen()">Ver horas: real vs. planificado</button></div>`:""}
+    <div class="ad-foot">Cada persona ficha con su PIN. Entrada, pausa y salida. Se compara con su turno del día.</div>
+  `);
+  ficClockTick(); if(window._ficTimer) clearInterval(window._ficTimer); window._ficTimer=setInterval(ficClockTick,1000);
+}
+function ficAbrir(nombre){
+  const g=(window._fic&&window._fic.gente||[]).find(x=>x.nombre===nombre); if(!g) return;
+  const perm=(g.jornada&&g.jornada.permitidos)||["entrada"];
+  const botones=perm.map(t=>`<button class="btn-primary" style="margin:4px;" onclick="ficFichar('${esc(nombre).replace(/'/g,"\\'")}','${t}')">${FIC_ACCION[t]||t}</button>`).join("");
+  const ov=document.createElement("div"); ov.id="fic-modal";
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;";
+  ov.innerHTML=`<div style="background:var(--card,#20201a);border-radius:12px;padding:20px;max-width:340px;width:100%;text-align:center;">
+    <div style="font-size:18px;font-weight:800;margin-bottom:2px;">${esc(nombre)}</div>
+    <div style="font-size:12px;color:var(--muted,#8a8577);margin-bottom:12px;">Introduce tu PIN y pulsa la acción</div>
+    <input id="fic-pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="width:100%;font-size:22px;text-align:center;letter-spacing:6px;padding:10px;border:1px solid var(--line,#3a3a2e);border-radius:8px;background:transparent;color:inherit;margin-bottom:12px;">
+    <div>${botones}</div>
+    <div id="fic-err" style="color:var(--alert,#b23b3b);font-size:12px;min-height:16px;margin-top:8px;"></div>
+    <button class="btn-ghost" style="margin-top:6px;" onclick="ficCerrar()">Cancelar</button>
+  </div>`;
+  ov.addEventListener("click",e=>{ if(e.target===ov) ficCerrar(); });
+  document.body.appendChild(ov);
+  setTimeout(()=>{ const p=el("fic-pin"); if(p) p.focus(); },50);
+}
+function ficCerrar(){ const m=el("fic-modal"); if(m) m.remove(); }
+function ficToast(msg){
+  const t=document.createElement("div");
+  t.style.cssText="position:fixed;left:50%;bottom:32px;transform:translateX(-50%);background:var(--ok,#3c7a4a);color:#f0ebe0;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:600;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,.3);max-width:90%;text-align:center;";
+  t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>{ t.style.transition="opacity .4s"; t.style.opacity="0"; setTimeout(()=>t.remove(),400); },2200);
+}
+async function ficFichar(nombre,tipo){
+  const pin=(el("fic-pin")&&el("fic-pin").value||"").trim();
+  const err=el("fic-err");
+  if(!pin){ if(err) err.textContent="Escribe tu PIN."; return; }
+  try{
+    const r=await api("/fichaje/fichar",{method:"POST",body:JSON.stringify({usuario:nombre,pin,tipo})});
+    ficCerrar();
+    ficToast(`${esc(nombre)}: ${FIC_ACCION[r.tipo]||r.tipo} a las ${esc(r.hora)}`);
+    const d=await api("/fichaje"); window._fic=d; ficRender(d);
+  }catch(e){ if(err) err.textContent=e.message; }
+}
+async function ficResumen(){
+  if(!mbdsEsAdmin()) return;
+  try{
+    const r=await api("/fichaje/resumen");
+    const filas=(r.resumen||[]).map(x=>{
+      const col=x.diferencia<0?"var(--alert,#b23b3b)":"var(--ok,#3c7a4a)";
+      return `<tr><td class="n">${esc(x.persona)}</td><td class="q">${x.horas_reales} h</td><td class="q">${x.horas_plan} h</td><td class="q" style="color:${col};">${x.diferencia>=0?"+":""}${x.diferencia} h</td></tr>`;
+    }).join("")||`<tr><td colspan="4" class="empty">Sin fichajes en el periodo.</td></tr>`;
+    navInto(()=>irA_fichaje()); openSection("fichajeResumen","Horas: real vs plan");
+    setInner(`<div class="section-label">Horas reales vs planificadas · ${esc(r.desde)} → ${esc(r.hasta)}</div>
+      <table class="lim-tab"><thead><tr><th>persona</th><th>real</th><th>plan</th><th>dif.</th></tr></thead><tbody>${filas}</tbody></table>
+      <div class="ad-foot">Real = fichajes (horas trabajadas menos pausas). Plan = horas del cuadrante de turnos.</div>`);
+  }catch(e){ alert(e.message); }
 }
 
 // ── PEDIDOS ───────────────────────────────────────────

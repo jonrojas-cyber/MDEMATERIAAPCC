@@ -71,6 +71,8 @@ const ENTITIES = [
   "lotes_produccion",  // registro de cada prebache: producto, litros, timestamp exacto
   // ── Turnos del equipo: cuadrante semanal (persona · día · horario · función) ──
   "turnos",            // turnos recurrentes por persona y día de la semana, con su función
+  // ── Fichaje: reloj de entrada/salida/pausa del equipo (eventos) ──────────────
+  "fichajes",          // eventos de fichaje: persona · fecha · tipo (entrada/pausa/salida) · ts
 ];
 
 const cache = {};

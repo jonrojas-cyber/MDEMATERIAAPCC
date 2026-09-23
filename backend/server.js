@@ -275,6 +275,7 @@ app.use("/api/cierre-caja", require("./routes/cierre-caja"));
 app.use("/api/avisos", require("./routes/avisos"));
 app.use("/api/mbds", require("./routes/mbds")); // laboratorio de bebidas (MBDS)
 app.use("/api/turnos", require("./routes/turnos")); // cuadrante de turnos del equipo (lectura equipo, edición admin)
+app.use("/api/fichaje", require("./routes/fichaje")); // reloj de fichaje (tablet); resumen real-vs-plan es admin
 
 // ── Centro de Control · capa financiera / negocio (solo admin) ─────────────────
 // Todos estos segmentos quedan FUERA de EQUIPO_ALLOWED en auth.js, por lo que el

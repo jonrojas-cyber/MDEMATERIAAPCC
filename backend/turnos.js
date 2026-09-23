@@ -1,11 +1,20 @@
-// TURNOS · cuadrante semanal del equipo (persona · día · horario · función).
-// Agregación pura (inyectable para tests): horas por persona, por día y avisos de
-// solape. No toca dinero: el equipo puede ver el cuadrante (coste laboral vive en
-// el Centro de Control, aparte). Fuente única de horas = estos turnos.
+// TURNOS · calendario del equipo POR FECHA (rotación real, no semana fija).
+// Cada turno = persona · fecha (YYYY-MM-DD) · horario · función. Agregación pura
+// (inyectable para tests): horas, cuadrante semanal, resumen y solapes. No toca
+// dinero: el equipo ve su turno; el coste laboral vive en el Centro de Control.
 
-const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]; // 1..7
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]; // idx 0..6 = Lun..Dom
+const DIAS_CORTO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-// Minutos desde medianoche de "HH:MM" (tolerante). null si no válido.
+// Tipos de turno de m de materia (código → horario + función). Fuente única.
+const TURNO_DEF = {
+  A: { inicio: "07:00", fin: "15:00", funcion: "Apertura" },
+  C: { inicio: "09:00", fin: "17:00", funcion: "Cierre" },
+  P: { inicio: "10:00", fin: "14:00", funcion: "Apoyo" },
+  R: { inicio: "11:00", fin: "17:00", funcion: "Vuelta" },
+};
+
+function ymd(d) { return String(d || "").slice(0, 10); }
 function aMin(hhmm) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "").trim());
   if (!m) return null;
@@ -13,8 +22,7 @@ function aMin(hhmm) {
   if (h < 0 || h > 23 || mi < 0 || mi > 59) return null;
   return h * 60 + mi;
 }
-
-// Horas de un turno (fin − inicio). Si fin <= inicio, cruza medianoche (+24h).
+// Horas de un turno (fin − inicio; si fin <= inicio, cruza medianoche).
 function horasTurno(t) {
   const a = aMin(t.inicio), b = aMin(t.fin);
   if (a == null || b == null) return 0;
@@ -22,23 +30,51 @@ function horasTurno(t) {
   return Math.round((dur / 60) * 100) / 100;
 }
 
-// ¿Se solapan dos turnos el MISMO día? (para avisar de choques).
+// Índice de día de la semana 0..6 (Lun..Dom) sin líos de zona horaria.
+function diaIdx(fecha) {
+  const d = new Date(ymd(fecha) + "T12:00:00Z");
+  const g = d.getUTCDay(); // 0=Dom..6=Sáb
+  return g === 0 ? 6 : g - 1;
+}
+// Lunes (YYYY-MM-DD) de la semana que contiene `fecha`.
+function lunesDe(fecha) {
+  const d = new Date(ymd(fecha) + "T12:00:00Z");
+  const off = diaIdx(fecha);
+  return new Date(d.getTime() - off * 86400000).toISOString().slice(0, 10);
+}
+// Las 7 fechas (YYYY-MM-DD) de la semana que empieza en `lunesYmd`.
+function fechasSemana(lunesYmd) {
+  const base = new Date(ymd(lunesYmd) + "T12:00:00Z").getTime();
+  return Array.from({ length: 7 }, (_, i) => new Date(base + i * 86400000).toISOString().slice(0, 10));
+}
+
+// ¿Se solapan dos turnos la MISMA fecha?
 function solapan(t1, t2) {
-  if (Number(t1.dia) !== Number(t2.dia)) return false;
+  if (ymd(t1.fecha) !== ymd(t2.fecha)) return false;
   const a1 = aMin(t1.inicio), b1 = aMin(t1.fin), a2 = aMin(t2.inicio), b2 = aMin(t2.fin);
   if ([a1, b1, a2, b2].some((x) => x == null)) return false;
   const f1 = b1 > a1 ? b1 : b1 + 1440, f2 = b2 > a2 ? b2 : b2 + 1440;
   return a1 < f2 && a2 < f1;
 }
+function solapesDe(turnos = []) {
+  const out = [];
+  const porClave = {};
+  turnos.forEach((t) => { const k = (t.persona || "—") + "|" + ymd(t.fecha); (porClave[k] = porClave[k] || []).push(t); });
+  Object.values(porClave).forEach((lista) => {
+    for (let i = 0; i < lista.length; i++) for (let j = i + 1; j < lista.length; j++) {
+      if (solapan(lista[i], lista[j])) out.push({ persona: lista[i].persona, fecha: ymd(lista[i].fecha), a: lista[i], b: lista[j] });
+    }
+  });
+  return out;
+}
 
-// Resumen: horas/semana por persona, nº de turnos y funciones que cubre.
+// Resumen de horas por persona sobre un conjunto de turnos (una semana, un ciclo…).
 function resumenPorPersona(turnos = []) {
   const g = {};
   turnos.forEach((t) => {
     const k = t.persona || "—";
     if (!g[k]) g[k] = { persona: k, horas: 0, turnos: 0, funciones: new Set() };
-    g[k].horas += horasTurno(t);
-    g[k].turnos += 1;
+    g[k].horas += horasTurno(t); g[k].turnos += 1;
     if (t.funcion) g[k].funciones.add(t.funcion);
   });
   return Object.values(g)
@@ -46,33 +82,24 @@ function resumenPorPersona(turnos = []) {
     .sort((a, b) => b.horas - a.horas);
 }
 
-// Solapes dentro de la misma persona (choques de horario a avisar).
-function solapesDe(turnos = []) {
-  const out = [];
-  const porPersona = {};
-  turnos.forEach((t) => { (porPersona[t.persona || "—"] = porPersona[t.persona || "—"] || []).push(t); });
-  Object.values(porPersona).forEach((lista) => {
-    for (let i = 0; i < lista.length; i++) {
-      for (let j = i + 1; j < lista.length; j++) {
-        if (solapan(lista[i], lista[j])) out.push({ persona: lista[i].persona, dia: Number(lista[i].dia), a: lista[i], b: lista[j] });
-      }
-    }
-  });
-  return out;
-}
-
-// Cuadrante: matriz persona × día con los turnos de cada celda.
-function cuadrante(turnos = []) {
-  const personas = [...new Set(turnos.map((t) => t.persona || "—"))];
+// Cuadrante de UNA semana: persona × 7 fechas, con horas de la semana por persona.
+function cuadranteSemana(turnos = [], lunesYmd) {
+  const lunes = lunesDe(lunesYmd);
+  const fechas = fechasSemana(lunes);
+  const set = new Set(fechas);
+  const dela = turnos.filter((t) => set.has(ymd(t.fecha)));
+  const personas = [...new Set(dela.map((t) => t.persona || "—"))].sort();
   const grid = {};
-  personas.forEach((p) => { grid[p] = {}; for (let d = 1; d <= 7; d++) grid[p][d] = []; });
-  turnos.forEach((t) => {
-    const p = t.persona || "—", d = Number(t.dia);
-    if (grid[p] && grid[p][d]) grid[p][d].push(t);
-  });
-  // ordena cada celda por hora de inicio
-  personas.forEach((p) => { for (let d = 1; d <= 7; d++) grid[p][d].sort((a, b) => (aMin(a.inicio) || 0) - (aMin(b.inicio) || 0)); });
-  return { personas, grid };
+  personas.forEach((p) => { grid[p] = {}; fechas.forEach((f) => (grid[p][f] = [])); });
+  dela.forEach((t) => { const p = t.persona || "—", f = ymd(t.fecha); if (grid[p] && grid[p][f]) grid[p][f].push(t); });
+  personas.forEach((p) => fechas.forEach((f) => grid[p][f].sort((a, b) => (aMin(a.inicio) || 0) - (aMin(b.inicio) || 0))));
+  return {
+    lunes,
+    fechas: fechas.map((f, i) => ({ fecha: f, dia: DIAS[i], corto: DIAS_CORTO[i], num: Number(f.slice(8, 10)) })),
+    personas, grid,
+    resumen: resumenPorPersona(dela),
+    solapes: solapesDe(dela),
+  };
 }
 
-module.exports = { DIAS, aMin, horasTurno, solapan, resumenPorPersona, solapesDe, cuadrante };
+module.exports = { DIAS, DIAS_CORTO, TURNO_DEF, aMin, horasTurno, diaIdx, lunesDe, fechasSemana, solapan, solapesDe, resumenPorPersona, cuadranteSemana };

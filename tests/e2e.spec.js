@@ -1308,41 +1308,55 @@ test("cuenta de resultados: API admin-only con estructura P&L y bloqueo al equip
   expect(bloq.status()).toBe(403);
 });
 
-test("turnos: admin crea turno y lee el cuadrante; el equipo lee pero no edita", async ({ request }) => {
+test("turnos: admin crea turno por fecha y lo ve en su semana; el equipo lee, no edita", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const hA = { Authorization: `Bearer ${moni.token}` };
-  // Admin crea un turno.
-  const crea = await request.post("/api/turnos", { headers: hA, data: { persona: "Lara", dia: 7, inicio: "09:00", fin: "16:00", funcion: "Brunch" } });
+  // Admin crea un turno con fecha (domingo 13 sep, Brunch).
+  const crea = await request.post("/api/turnos", { headers: hA, data: { persona: "TestPersona", fecha: "2026-09-13", inicio: "09:00", fin: "16:00", funcion: "Brunch" } });
   expect(crea.status()).toBe(201);
   const t = await crea.json();
   expect(t.id).toBeTruthy();
-  // Se ve en el cuadrante con horas calculadas.
-  const list = await (await request.get("/api/turnos", { headers: hA })).json();
+  // Se ve en el cuadrante de esa semana, con horas.
+  const list = await (await request.get("/api/turnos?semana=2026-09-13", { headers: hA })).json();
   expect(list.puede_editar).toBe(true);
-  const lara = list.resumen.find((r) => r.persona === "Lara");
-  expect(lara.horas).toBeGreaterThanOrEqual(7);
-  // El equipo (Lara) LEE el cuadrante...
+  expect(list.lunes).toBe("2026-09-07");
+  const p = list.resumen.find((r) => r.persona === "TestPersona");
+  expect(p.horas).toBe(7);
+  expect(list.grid["TestPersona"]["2026-09-13"].length).toBe(1);
+  // Sin fecha → 400.
+  const malo = await request.post("/api/turnos", { headers: hA, data: { persona: "X", inicio: "09:00", fin: "10:00" } });
+  expect(malo.status()).toBe(400);
+  // El equipo (Lara) LEE...
   const lara2 = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const hL = { Authorization: `Bearer ${lara2.token}` };
   const readEquipo = await request.get("/api/turnos", { headers: hL });
   expect(readEquipo.ok()).toBeTruthy();
   expect((await readEquipo.json()).puede_editar).toBe(false);
   // ...pero NO puede crear.
-  const bloq = await request.post("/api/turnos", { headers: hL, data: { persona: "Lara", dia: 1, inicio: "09:00", fin: "10:00" } });
+  const bloq = await request.post("/api/turnos", { headers: hL, data: { persona: "Lara", fecha: "2026-09-13", inicio: "09:00", fin: "10:00" } });
   expect(bloq.status()).toBe(403);
-  // Limpieza: admin borra el turno creado.
-  const del = await request.delete(`/api/turnos/${t.id}`, { headers: hA });
-  expect(del.ok()).toBeTruthy();
+  // Limpieza.
+  expect((await request.delete(`/api/turnos/${t.id}`, { headers: hA })).ok()).toBeTruthy();
 });
 
-test("turnos: la pantalla se abre con el cuadrante y el alta (admin)", async ({ page }) => {
+test("turnos: la rotación sembrada está cargada (Jon abre el lunes 7 sep)", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const list = await (await request.get("/api/turnos?semana=2026-09-07", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
+  expect(list.personas).toEqual(expect.arrayContaining(["Daniel", "Lara", "Jon"]));
+  const jonLunes = list.grid["Jon"]["2026-09-07"];
+  expect(jonLunes.length).toBe(1);
+  expect(jonLunes[0].funcion).toBe("Apertura");
+});
+
+test("turnos: la pantalla se abre con el calendario semanal y el alta (admin)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  await page.evaluate(() => irA_turnos());
+  await page.evaluate(() => irA_turnos("2026-09-07"));
   await expect(page.locator(".screen-head")).toContainText(/turnos/i);
+  await expect(page.locator(".ad-head")).toContainText(/Semana del/i);
   await expect(page.locator("#tur-persona")).toBeVisible();
-  await expect(page.locator("button", { hasText: /Añadir al cuadrante/i })).toBeVisible();
+  await expect(page.locator("button", { hasText: /^Añadir$/ })).toBeVisible();
   expect(errors, "sin errores de JS").toEqual([]);
 });
 

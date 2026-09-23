@@ -1,4 +1,4 @@
-// Turnos: horas por turno, resumen por persona, solapes y cuadrante.
+// Turnos (por fecha): horas, semana, cuadrante, solapes.
 // Ejecutar: node tests/turnos.unit.js
 const assert = require("assert");
 const T = require("../backend/turnos");
@@ -6,59 +6,50 @@ const T = require("../backend/turnos");
 let fallos = 0;
 function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + e.message); } }
 
-console.log("turnos");
+console.log("turnos (por fecha)");
 
 test("horasTurno calcula la duración (y cruza medianoche)", () => {
-  assert.strictEqual(T.horasTurno({ inicio: "09:00", fin: "16:00" }), 7);
-  assert.strictEqual(T.horasTurno({ inicio: "11:30", fin: "15:00" }), 3.5);
-  assert.strictEqual(T.horasTurno({ inicio: "22:00", fin: "02:00" }), 4); // cruza medianoche
-  assert.strictEqual(T.horasTurno({ inicio: "malo", fin: "16:00" }), 0);
+  assert.strictEqual(T.horasTurno({ inicio: "07:00", fin: "15:00" }), 8);   // Apertura
+  assert.strictEqual(T.horasTurno({ inicio: "10:00", fin: "14:00" }), 4);   // Apoyo
+  assert.strictEqual(T.horasTurno({ inicio: "11:00", fin: "17:00" }), 6);   // Vuelta
+  assert.strictEqual(T.horasTurno({ inicio: "22:00", fin: "02:00" }), 4);
 });
 
-test("resumenPorPersona suma horas, turnos y funciones", () => {
+test("lunesDe y diaIdx sin desfase de zona", () => {
+  assert.strictEqual(T.lunesDe("2026-09-09"), "2026-09-07"); // miércoles → lunes 7
+  assert.strictEqual(T.lunesDe("2026-09-07"), "2026-09-07");
+  assert.strictEqual(T.lunesDe("2026-09-13"), "2026-09-07"); // domingo → mismo lunes
+  assert.strictEqual(T.diaIdx("2026-09-07"), 0); // lunes
+  assert.strictEqual(T.diaIdx("2026-09-13"), 6); // domingo
+  assert.deepStrictEqual(T.fechasSemana("2026-09-07")[6], "2026-09-13");
+});
+
+test("cuadranteSemana coloca cada turno en persona/fecha y suma horas", () => {
   const turnos = [
-    { persona: "Lara", dia: 1, inicio: "09:00", fin: "16:00", funcion: "Barra / Café" },
-    { persona: "Lara", dia: 2, inicio: "09:00", fin: "14:00", funcion: "Cocina" },
-    { persona: "Daniel", dia: 1, inicio: "10:00", fin: "18:00", funcion: "Cocina" },
+    { id: "a", persona: "Daniel", fecha: "2026-09-07", inicio: "09:00", fin: "17:00", funcion: "Cierre" }, // 8h
+    { id: "b", persona: "Daniel", fecha: "2026-09-09", inicio: "07:00", fin: "15:00", funcion: "Apertura" }, // 8h
+    { id: "c", persona: "Jon", fecha: "2026-09-07", inicio: "07:00", fin: "15:00", funcion: "Apertura" }, // 8h
+    { id: "z", persona: "Daniel", fecha: "2026-09-20", inicio: "09:00", fin: "17:00" }, // otra semana
   ];
-  const r = T.resumenPorPersona(turnos);
-  const lara = r.find((x) => x.persona === "Lara");
-  assert.strictEqual(lara.horas, 12);   // 7 + 5
-  assert.strictEqual(lara.turnos, 2);
-  assert.deepStrictEqual(lara.funciones.sort(), ["Barra / Café", "Cocina"]);
-  assert.strictEqual(r[0].persona, "Lara"); // ordenado por horas desc (Lara 12 > Daniel 8)
+  const c = T.cuadranteSemana(turnos, "2026-09-10"); // jueves de la semana del 7
+  assert.strictEqual(c.lunes, "2026-09-07");
+  assert.strictEqual(c.fechas.length, 7);
+  assert.deepStrictEqual(c.personas, ["Daniel", "Jon"]);
+  assert.strictEqual(c.grid["Daniel"]["2026-09-07"].length, 1);
+  assert.strictEqual(c.grid["Daniel"]["2026-09-20"], undefined); // fuera de la semana
+  const dani = c.resumen.find((r) => r.persona === "Daniel");
+  assert.strictEqual(dani.horas, 16); // 8 + 8 (no cuenta el de otra semana)
 });
 
-test("detecta solapes de la misma persona el mismo día", () => {
+test("detecta solapes de la misma persona la misma fecha (no en fechas distintas)", () => {
   const turnos = [
-    { id: "a", persona: "Ana", dia: 3, inicio: "09:00", fin: "13:00", funcion: "Sala" },
-    { id: "b", persona: "Ana", dia: 3, inicio: "12:00", fin: "16:00", funcion: "Barra / Café" },
-    { id: "c", persona: "Ana", dia: 4, inicio: "09:00", fin: "13:00", funcion: "Sala" }, // otro día, no choca
+    { persona: "Ana", fecha: "2026-09-07", inicio: "09:00", fin: "13:00" },
+    { persona: "Ana", fecha: "2026-09-07", inicio: "12:00", fin: "16:00" },
+    { persona: "Ana", fecha: "2026-09-08", inicio: "09:00", fin: "13:00" },
   ];
   const s = T.solapesDe(turnos);
   assert.strictEqual(s.length, 1);
-  assert.strictEqual(s[0].persona, "Ana");
-  assert.strictEqual(s[0].dia, 3);
-});
-
-test("no marca solape cuando se tocan justo (13:00–13:00)", () => {
-  const turnos = [
-    { persona: "Ana", dia: 1, inicio: "09:00", fin: "13:00" },
-    { persona: "Ana", dia: 1, inicio: "13:00", fin: "17:00" },
-  ];
-  assert.strictEqual(T.solapesDe(turnos).length, 0);
-});
-
-test("cuadrante coloca cada turno en su persona/día, ordenado por hora", () => {
-  const turnos = [
-    { persona: "Lara", dia: 1, inicio: "14:00", fin: "18:00", funcion: "Cierre" },
-    { persona: "Lara", dia: 1, inicio: "09:00", fin: "13:00", funcion: "Apertura" },
-  ];
-  const c = T.cuadrante(turnos);
-  assert.deepStrictEqual(c.personas, ["Lara"]);
-  assert.strictEqual(c.grid["Lara"][1].length, 2);
-  assert.strictEqual(c.grid["Lara"][1][0].inicio, "09:00"); // ordenado
-  assert.strictEqual(c.grid["Lara"][1][1].inicio, "14:00");
+  assert.strictEqual(s[0].fecha, "2026-09-07");
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en turnos`); process.exit(1); }

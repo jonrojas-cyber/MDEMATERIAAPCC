@@ -39,7 +39,7 @@ const DAY = 86400000;
   await test("es idempotente: dos capturas el mismo día = un solo registro", async () => {
     const dup = await snap.capturarDiario(NOW);
     assert.strictEqual(dup.nuevo, false, "la segunda captura del día NO es nueva");
-    assert.strictEqual(snap.historico(90).length, 1, "solo un registro por día");
+    assert.strictEqual(snap.historico(90, "principal", NOW).length, 1, "solo un registro por día");
   });
 
   await test("la tendencia compara el último snapshot con ~7 días atrás", async () => {
@@ -55,7 +55,7 @@ const DAY = 86400000;
   });
 
   await test("historico devuelve la serie ordenada por fecha ascendente", async () => {
-    const serie = snap.historico(90);
+    const serie = snap.historico(90, "principal", NOW);
     for (let i = 1; i < serie.length; i++) assert.ok(serie[i - 1].fecha <= serie[i].fecha, "orden ascendente");
     assert.ok(serie.length >= 2, "al menos dos snapshots en la serie");
   });

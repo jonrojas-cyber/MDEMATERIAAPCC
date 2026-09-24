@@ -22,9 +22,20 @@ function getDoc(id, fecha) {
   return store.readAll("apertura").find((a) => a.id === id) || { id, fecha, pasos: {} };
 }
 
+// Responsable(s) de la rutina SEGÚN EL HORARIO: quien tenga hoy la función
+// "Apertura" (para abrir) o "Cierre" (para cerrar) en el cuadrante de turnos.
+function responsablesDe(rutina, fecha) {
+  const fn = rutina === "cierre" ? "cierre" : "apertura";
+  return store.readAll("turnos")
+    .filter((t) => String(t.fecha).slice(0, 10) === fecha && String(t.funcion || "").toLowerCase() === fn)
+    .sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)))
+    .map((t) => ({ persona: t.persona, inicio: t.inicio, fin: t.fin }));
+}
+
 router.get("/", (req, res) => {
   const rutina = normRutina(req.query.rutina);
-  res.json(getDoc(docId(rutina, hoyStr()), hoyStr()));
+  const doc = getDoc(docId(rutina, hoyStr()), hoyStr());
+  res.json({ ...doc, responsables: responsablesDe(rutina, hoyStr()) });
 });
 
 // Marca / desmarca un paso del checklist de hoy (apertura o cierre).

@@ -1388,6 +1388,24 @@ test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", 
   expect(bloq.status()).toBe(403);
 });
 
+test("rutinas: el responsable de apertura/cierre sale del turno del día", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const h = { Authorization: `Bearer ${moni.token}` };
+  const hoy = new Date().toISOString().slice(0, 10);
+  // Asigna hoy: Daniel Apertura, Lara Cierre.
+  const a = await request.post("/api/turnos", { headers: h, data: { persona: "DaniTest", fecha: hoy, inicio: "07:00", fin: "15:00", funcion: "Apertura" } });
+  const c = await request.post("/api/turnos", { headers: h, data: { persona: "LaraTest", fecha: hoy, inicio: "09:00", fin: "17:00", funcion: "Cierre" } });
+  const ta = await a.json(), tc = await c.json();
+  // La rutina de apertura trae a DaniTest; la de cierre, a LaraTest.
+  const aper = await (await request.get("/api/apertura?rutina=apertura", { headers: h })).json();
+  expect(aper.responsables.some((r) => r.persona === "DaniTest")).toBeTruthy();
+  const cier = await (await request.get("/api/apertura?rutina=cierre", { headers: h })).json();
+  expect(cier.responsables.some((r) => r.persona === "LaraTest")).toBeTruthy();
+  // Limpieza.
+  await request.delete(`/api/turnos/${ta.id}`, { headers: h });
+  await request.delete(`/api/turnos/${tc.id}`, { headers: h });
+});
+
 test("equipo: sistema completo — ausencias, tablón, incidencias con permisos", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const hA = { Authorization: `Bearer ${moni.token}` };

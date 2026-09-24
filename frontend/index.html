@@ -2960,12 +2960,12 @@ async function loadHome() {
       ${homeImportantHTML(dec || {}, 4)}
       <div class="home-routine">
         <button class="rrow" onclick="irA_apertura()">
-          <span class="rlbl">Apertura del local ${aperCompleta?`<span>· lista</span>`:`<span>· faltan ${aperTotal-aperHechos}</span>`}</span>
+          <span class="rlbl">Apertura del local ${(aper&&aper.responsables&&aper.responsables.length)?`<span>· abre ${esc(aper.responsables[0].persona)}</span>`:(aperCompleta?`<span>· lista</span>`:`<span>· faltan ${aperTotal-aperHechos}</span>`)}</span>
           <span class="rmeter"><i style="width:${aperPct}%"></i></span>
           <span class="rfrac">${aperHechos}/${aperTotal}</span>
         </button>
         ${mostrarCierre?`<button class="rrow" onclick="irA_cierre()">
-          <span class="rlbl">Cierre del local ${cierCompleta?`<span>· hecho</span>`:`<span>· faltan ${cierTotal-cierHechos}</span>`}</span>
+          <span class="rlbl">Cierre del local ${(cier&&cier.responsables&&cier.responsables.length)?`<span>· cierra ${esc(cier.responsables[0].persona)}</span>`:(cierCompleta?`<span>· hecho</span>`:`<span>· faltan ${cierTotal-cierHechos}</span>`)}</span>
           <span class="rmeter"><i style="width:${cierPct}%"></i></span>
           <span class="rfrac">${cierHechos}/${cierTotal}</span>
         </button>`:""}
@@ -5140,6 +5140,7 @@ async function irA_rutina(rutina){
   try{
     const d=await api("/apertura?rutina="+r).catch(()=>({pasos:{}}));
     window._aperPasos=(d&&d.pasos)||{};
+    window._aperResp=(d&&d.responsables)||[];
     renderRutina();
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
@@ -5149,9 +5150,14 @@ function renderRutina(){
   const u=getUser(), r=window._rutina||"apertura", cfg=RUTINAS[r], PASOS=cfg.pasos, pasos=window._aperPasos||{};
   const hechos=PASOS.filter(p=>pasos[p.k]).length, total=PASOS.length;
   const pct=Math.round(hechos/total*100);
+  const resp=window._aperResp||[];
+  const respBanner=resp.length
+    ? `<div class="card" style="border-left:4px solid var(--olive,#A7B96E);margin-bottom:12px;"><b>Hoy ${r==="apertura"?"abre":"cierra"}:</b> ${resp.map(x=>`${esc(x.persona)} <span class="cc-mini">(${esc(x.inicio)}–${esc(x.fin)})</span>`).join(" · ")}<div class="cc-mini" style="margin-top:2px;">Según el cuadrante de turnos. Cualquiera puede ir marcando lo hecho.</div></div>`
+    : `<div class="ad-note" style="margin-bottom:12px;">Nadie con función "${r==="apertura"?"Apertura":"Cierre"}" en el turno de hoy. Asígnalo en Equipo → Turnos.</div>`;
   let html=`${r==="apertura"?saludoHTML(u):""}
     <div class="section-label">Rutina de ${r==="apertura"?"apertura":"cierre"} · ${hechos}/${total}</div>
-    <div style="height:6px;background:var(--olive-light);border-radius:3px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:var(--ink);transition:width .3s;"></div></div>`;
+    <div style="height:6px;background:var(--olive-light);border-radius:3px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:var(--ink);transition:width .3s;"></div></div>
+    ${respBanner}`;
   html+=PASOS.map(p=>{
     const done=!!pasos[p.k];
     const quien=(done&&pasos[p.k].responsable)?` · ${esc(pasos[p.k].responsable)}`:"";

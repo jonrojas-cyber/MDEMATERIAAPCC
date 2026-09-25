@@ -39,14 +39,15 @@ test("crea materias e ingredientes con el coste indicado", () => {
   assert.strictEqual(matcha.coste_medio, 0.20);                // 200 €/kg
 });
 
-test("food cost del Ice Latte proteico ≈ 1,88 € (con lata)", () => {
+test("food cost del Ice Latte proteico ≈ 1,47 € (doble espresso 17 g + lata)", () => {
   const data = { materias: [...materiasBase], productos: [], config: [] };
   aplicar(fakeStore(data));
   const idxMat = costing.indiceMaterias(data.materias);
   const p = data.productos.find((x) => x.id === "prod-fit-ice-latte");
   const coste = costing.costeProducto(p, idxMat);
-  // 34×0,0239 + 160×0,0024 + 10×0,028 + 0,40 lata = 1,4766 + 0,40 = 1,8766
-  assert.ok(Math.abs(coste - 1.8766) < 0.001, "coste=" + coste);
+  // 17×0,0239 + 160×0,0024 + 10×0,028 + 0,40 lata = 1,0703 + 0,40 = 1,4703
+  assert.ok(Math.abs(coste - 1.4703) < 0.001, "coste=" + coste);
+  assert.strictEqual(p.precio_venta, 4.90);                 // PVP fijado
 });
 
 test("food cost del Matcha colágeno ≈ 1,41 € (matcha 200 €/kg + lata)", () => {
@@ -57,6 +58,7 @@ test("food cost del Matcha colágeno ≈ 1,41 € (matcha 200 €/kg + lata)", (
   const coste = costing.costeProducto(p, idxMat);
   // 0,40 matcha + 0,005 agua + 0,32 coco + 0,285714 colágeno + 0,40 lata = 1,410714
   assert.ok(Math.abs(coste - 1.4107) < 0.001, "coste=" + coste);
+  assert.strictEqual(p.precio_venta, 4.90);                 // PVP fijado
 });
 
 test("es idempotente por flag", () => {

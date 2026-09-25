@@ -12,7 +12,7 @@
 
 const store = require("./data-store");
 
-const FLAG = "productos_fit_v3";
+const FLAG = "productos_fit_v4";
 
 // Materias nuevas (upsert por id). coste_medio en €/unidad NETO.
 const MATERIAS = [
@@ -28,21 +28,21 @@ const PRODUCTOS = [
   {
     id: "prod-fit-ice-latte",
     nombre: "Ice Latte proteico · lata", clave: "Ice Latte proteico", categoria: "bebida",
-    origen: "fit", activo: true, precio_venta: 0, // PVP pendiente de fijar
+    origen: "fit", activo: true, precio_venta: 4.90,
     ingredientes: [
-      { materia_id: "mat-cafe-brasil", cantidad: 34 },   // doble espresso Brasil (17 g × 2)
+      { materia_id: "mat-cafe-brasil", cantidad: 17 },   // doble espresso Brasil (doppio, 17 g)
       { materia_id: "mat-009", cantidad: 160 },           // leche de avena (ml)
       { materia_id: "mat-proteina", cantidad: 10 },       // proteína (g)
       { materia_id: "mat-lata", cantidad: 1 },            // envase (0,40 €)
     ],
-    descripcion: "Línea fit · lata. POR UNIDAD: doble espresso de Brasil (34 g de café), 160 ml de leche de avena, 10 g de proteína, + envase (0,40 €). " +
+    descripcion: "Línea fit · lata. PVP 4,90 €. POR UNIDAD: doble espresso de Brasil (17 g de café), 160 ml de leche de avena, 10 g de proteína, + envase (0,40 €). " +
       "ESCALAR Y EMBOTELLAR (× nº de latas): 1) Extrae el doble espresso de cada lata y enfría rápido. 2) En frío, disuelve la proteína en la leche de avena batiendo hasta que no queden grumos. 3) Une el café con la base de leche+proteína y homogeneiza. 4) Enfría a 0-4 °C. 5) Envasa/enlata en frío y cierra. 6) Conserva 0-4 °C. " +
-      "Para 50 latas: 1,7 kg de café, 8 L de leche de avena, 500 g de proteína, 50 latas. Food cost ≈ 1,88 €/lata (1,48 receta + 0,40 lata).",
+      "Para 50 latas: 850 g de café, 8 L de leche de avena, 500 g de proteína, 50 latas. Food cost ≈ 1,47 €/lata (1,07 receta + 0,40 lata) · food cost 33 %.",
   },
   {
     id: "prod-fit-matcha-colageno",
     nombre: "Matcha colágeno lima-limón · lata", clave: "Matcha colágeno", categoria: "bebida",
-    origen: "fit", activo: true, precio_venta: 0,
+    origen: "fit", activo: true, precio_venta: 4.90,
     ingredientes: [
       { materia_id: "mat-matcha", cantidad: 2 },          // matcha (g) · 200 €/kg
       { materia_id: "mat-017", cantidad: 25 },            // agua filtrada (ml) — coste ~0
@@ -50,9 +50,9 @@ const PRODUCTOS = [
       { materia_id: "mat-colageno-limon", cantidad: 5 },  // colágeno lima-limón (g)
       { materia_id: "mat-lata", cantidad: 1 },            // envase (0,40 €)
     ],
-    descripcion: "Línea fit · lata. POR UNIDAD: 2 g de matcha, 25 ml de agua filtrada, 160 ml de agua de coco, 5 g de colágeno lima-limón, + envase (0,40 €). " +
+    descripcion: "Línea fit · lata. PVP 4,90 €. POR UNIDAD: 2 g de matcha, 25 ml de agua filtrada, 160 ml de agua de coco, 5 g de colágeno lima-limón, + envase (0,40 €). " +
       "ESCALAR Y EMBOTELLAR (× nº de latas): 1) Bate el matcha con el agua filtrada templada hasta emulsionar (sin grumos). 2) Añade el agua de coco fría y el colágeno y bate hasta disolver del todo. 3) Enfría a 0-4 °C. 4) Envasa/enlata en frío y cierra. 5) Conserva 0-4 °C. " +
-      "Para 50 latas: 100 g de matcha, 1,25 L de agua filtrada, 8 L de agua de coco, 250 g de colágeno, 50 latas. Food cost ≈ 1,41 €/lata (1,01 receta + 0,40 lata).",
+      "Para 50 latas: 100 g de matcha, 1,25 L de agua filtrada, 8 L de agua de coco, 250 g de colágeno, 50 latas. Food cost ≈ 1,41 €/lata (1,01 receta + 0,40 lata) · food cost 32 %.",
   },
 ];
 

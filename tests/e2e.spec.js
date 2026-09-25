@@ -430,10 +430,17 @@ test("inventario: recuento físico calcula descuadre en vivo", async ({ page }) 
   await login(page);
   await page.evaluate(() => irA_inventario());
   await expect(page.locator(".inv-row").first()).toBeVisible();
-  // Cuenta la primera materia por debajo del teórico → descuadre negativo.
-  const teo = await page.locator(".inv-row").first().getAttribute("data-teo");
-  await page.locator(".inv-row .inv-fisico").first().fill(String(Math.max(0, Number(teo) - 5)));
-  await expect(page.locator(".inv-row").first()).toHaveClass(/inv-desc/);
+  // Elige la primera materia con teórico suficiente para provocar un descuadre.
+  const rows = page.locator(".inv-row");
+  const n = await rows.count();
+  let idx = -1, teo = 0;
+  for (let i = 0; i < n; i++) {
+    const t = Number(await rows.nth(i).getAttribute("data-teo"));
+    if (t >= 10) { idx = i; teo = t; break; }
+  }
+  expect(idx, "hay al menos una materia con teórico ≥ 10").toBeGreaterThanOrEqual(0);
+  await rows.nth(idx).locator(".inv-fisico").fill(String(teo - 5)); // 5 por debajo del teórico
+  await expect(rows.nth(idx)).toHaveClass(/inv-desc/);
   await expect(page.locator("#inv-resumen")).toContainText(/descuadre/i);
   expect(errors).toEqual([]);
 });

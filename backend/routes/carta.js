@@ -54,6 +54,7 @@ function escandallar(producto, materias) {
     nombre: producto.nombre,
     descripcion: producto.descripcion,
     categoria: producto.categoria,
+    origen: producto.origen || null,
     activo: producto.activo !== false,
     precio_venta: precio,
     coste,

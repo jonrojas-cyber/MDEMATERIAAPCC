@@ -1019,6 +1019,53 @@ test("spritz: Origen calcula escandallo y escala; pendientes y enlace a producto
   expect(errors).toEqual([]);
 });
 
+// Módulo Latas fit: producción por nº de latas de las bebidas fit (Ice Latte
+// proteico y Matcha colágeno). La receta y el coste vienen del backend (fuente
+// única). El admin ve escandallo/coste; el equipo NO ve coste ni margen.
+test("latas fit: escala por nº de latas y el admin ve el escandallo", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page); // Moni es admin
+  await page.evaluate(() => irA_fit());
+  await expect(page.locator(".lim-tab").first()).toBeVisible({ timeout: 10000 });
+  // Están las dos bebidas fit.
+  await expect(page.locator("body")).toContainText(/Ice Latte proteico/);
+  await expect(page.locator("body")).toContainText(/Matcha colágeno/);
+  // Selecciona el Ice Latte proteico y pon 24 latas: la proteína (10 g/lata)
+  // escala a 240 g en el lote.
+  await page.evaluate(() => { const p = (window._fitData || []).find((x) => /ice latte/i.test(x.nombre)); if (p) fitSetProd(p.id); fitSetN(24); });
+  await expect(page.locator(".lim-h")).toContainText(/Ice Latte proteico/);
+  await expect(page.locator(".lim-tab").first()).toContainText(/Proteína/);
+  await expect(page.locator(".lim-tab").first()).toContainText(/240 g/);   // 10 g × 24
+  // PVP visible y, por ser admin, escandallo + coste por lata.
+  await expect(page.locator("body")).toContainText(/4,90 €/);
+  await expect(page.locator("body")).toContainText(/Escandallo · lata/);
+  await expect(page.locator(".lim-param")).toContainText(/coste \/lata/i);
+  expect(errors).toEqual([]);
+});
+
+// El equipo (rol equipo) puede producir la línea fit pero NUNCA ve coste ni
+// margen: se filtra en el front con mbdsEsAdmin().
+test("latas fit: el equipo produce pero no ve coste ni margen", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara", { timeout: 30_000 });
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") {
+    await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  }
+  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  await page.evaluate(() => irA_fit());
+  await expect(page.locator(".lim-tab")).toBeVisible({ timeout: 10000 });
+  // Ve la producción (ingredientes y latas) y el PVP…
+  await expect(page.locator(".lim-tab")).toContainText(/Proteína/);
+  await expect(page.locator("body")).toContainText(/4,90 €/);
+  // …pero NO el escandallo ni el coste por lata ni el food cost.
+  await expect(page.locator("body")).not.toContainText(/Escandallo/);
+  await expect(page.locator("body")).not.toContainText(/coste \/lata/i);
+  await expect(page.locator("body")).not.toContainText(/food cost/i);
+});
+
 test("cierre de caja: sincroniza, concilia en vivo, cuadra y cierra idempotente", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

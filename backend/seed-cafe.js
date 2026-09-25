@@ -97,7 +97,7 @@ const BATCHES = [
     // El coste_medio es orientativo: edítalo con el precio real de tu albarán.
     flag: "cafe_seed_v6_matcha",
     materias: [
-      { id: "mat-matcha", nombre: "Matcha en polvo", unidad: "g", coste_medio: 0.35, categoria: "Matcha",
+      { id: "mat-matcha", nombre: "Matcha en polvo", unidad: "g", coste_medio: 0.20, categoria: "Matcha",
         macro: "Materia Prima", subcategoria: "Café, Matcha y Té", ubicacion: "Barra", disponibilidad_actual: 200 },
     ],
     productos: [],
@@ -138,13 +138,13 @@ const BATCHES = [
     ],
   },
   {
-    // Precio real del matcha (albarán): 190 €/kg neto = 0,19 €/g (antes 0,35
-    // provisional). Baja el coste de todos los matchas y sube su margen.
+    // Precio del matcha: 200 €/kg = 0,20 €/g (unificado con v12; el flag v9 ya
+    // existe en producción, se mantiene el valor coherente para BD nuevas).
     flag: "cafe_seed_v9_matcha_precio",
     materias: [],
     productos: [],
     actualizaciones: [
-      { entity: "materias", id: "mat-matcha", campos: { coste_medio: 0.19 } },
+      { entity: "materias", id: "mat-matcha", campos: { coste_medio: 0.20 } },
     ],
   },
   {
@@ -175,6 +175,20 @@ const BATCHES = [
       { entity: "productos", id: "prod-cafe-avena-eti", campos: { ingredientes: [{ materia_id: "mat-cafe-inef-shoondhisa", cantidad: 17 }, { materia_id: "mat-leche-avena", cantidad: 160 }] } },
     ],
   },
+  {
+    // Precio real del matcha: TODO el matcha del negocio es el mismo, a 200 €/kg
+    // = 0,20 €/g (decisión de la fundadora). Se unifica el coste en las dos
+    // materias de matcha que existen en producción: mat-matcha (matchas de barra
+    // y línea fit) y mat-007 "Matcha base" (concentrado on-tap). Así cualquier
+    // producto con matcha deriva su coste a 200 €/kg desde una única cifra.
+    flag: "cafe_seed_v12_matcha_200",
+    materias: [],
+    productos: [],
+    actualizaciones: [
+      { entity: "materias", id: "mat-matcha", campos: { coste_medio: 0.20 } },
+      { entity: "materias", id: "mat-007", campos: { coste_medio: 0.20 } },
+    ],
+  },
 ];
 
 async function seedCafe() {
@@ -197,4 +211,4 @@ async function seedCafe() {
   }
 }
 
-module.exports = { seedCafe };
+module.exports = { seedCafe, BATCHES };

@@ -1,0 +1,72 @@
+// Línea fit: verifica que el escandallo (ingredientes + coste_medio) da el food
+// cost esperado por costing. Ejecutar: node tests/seed-fit.unit.js
+const assert = require("assert");
+const { aplicar, MATERIAS } = require("../backend/seed-fit");
+const costing = require("../backend/costing");
+
+let fallos = 0;
+function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + e.message); } }
+
+function fakeStore(data) {
+  return {
+    readAll: (e) => data[e] || [],
+    findById: (e, id) => (data[e] || []).find((r) => r.id === id) || null,
+    insert: (e, r) => { (data[e] = data[e] || []).push(r); return r; },
+    update: (e, id, patch) => { const r = (data[e] || []).find((x) => x.id === id); if (r) Object.assign(r, patch); return r; },
+  };
+}
+
+// Materias existentes que reutiliza la línea fit (mismos costes que en el sistema).
+const materiasBase = [
+  { id: "mat-cafe-brasil", nombre: "Café Brasil", unidad: "g", coste_medio: 0.0239 },
+  { id: "mat-009", nombre: "Leche avena", unidad: "ml", coste_medio: 0.0024 },
+  { id: "mat-007", nombre: "Matcha base", unidad: "g", coste_medio: 0.018 },
+  { id: "mat-017", nombre: "Agua filtrada", unidad: "ml", coste_medio: 0.0002 },
+];
+
+console.log("seed línea fit");
+
+test("crea materias e ingredientes con el coste indicado", () => {
+  const data = { materias: [...materiasBase], productos: [], config: [] };
+  const r = aplicar(fakeStore(data));
+  assert.ok(r.ranAny);
+  const prot = data.materias.find((m) => m.id === "mat-proteina");
+  assert.strictEqual(prot.coste_medio, 0.028);                 // 28 €/kg
+  const coco = data.materias.find((m) => m.id === "mat-agua-coco");
+  assert.strictEqual(coco.coste_medio, 0.002);                 // 2 €/L
+  const col = data.materias.find((m) => m.id === "mat-colageno-limon");
+  assert.ok(Math.abs(col.coste_medio - 20 / 350) < 1e-9);      // 20 €/350 g
+});
+
+test("food cost del Ice Latte proteico ≈ 1,48 €", () => {
+  const data = { materias: [...materiasBase], productos: [], config: [] };
+  aplicar(fakeStore(data));
+  const idxMat = costing.indiceMaterias(data.materias);
+  const p = data.productos.find((x) => x.id === "prod-fit-ice-latte");
+  const coste = costing.costeProducto(p, idxMat);
+  // 34×0,0239 + 160×0,0024 + 10×0,028 = 0,8126 + 0,384 + 0,28 = 1,4766
+  assert.ok(Math.abs(coste - 1.4766) < 0.001, "coste=" + coste);
+});
+
+test("food cost del Matcha colágeno ≈ 0,65 €", () => {
+  const data = { materias: [...materiasBase], productos: [], config: [] };
+  aplicar(fakeStore(data));
+  const idxMat = costing.indiceMaterias(data.materias);
+  const p = data.productos.find((x) => x.id === "prod-fit-matcha-colageno");
+  const coste = costing.costeProducto(p, idxMat);
+  // 2×0,018 + 25×0,0002 + 160×0,002 + 5×(20/350) = 0,036 + 0,005 + 0,32 + 0,285714 = 0,646714
+  assert.ok(Math.abs(coste - 0.6467) < 0.001, "coste=" + coste);
+});
+
+test("es idempotente por flag", () => {
+  const data = { materias: [...materiasBase], productos: [], config: [] };
+  const st = fakeStore(data);
+  aplicar(st);
+  const n = data.productos.length;
+  const r2 = aplicar(st);
+  assert.strictEqual(r2.ranAny, false);
+  assert.strictEqual(data.productos.length, n);
+});
+
+if (fallos) { console.error(`\n${fallos} fallo(s) en seed-fit`); process.exit(1); }
+console.log("  seed-fit OK");

@@ -349,6 +349,7 @@ store
     // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
     require("./seed-negocio").seedNegocio().catch(() => {});
     require("./seed-turnos").seedTurnos().catch(() => {}); // rotación de turnos (7 sep–15 nov 2026)
+    require("./seed-fit").seedFit().catch(() => {}); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
     // Siembra idempotente de proveedores reales (Frutería y siguientes).
     require("./seed-proveedores").seedProveedores().catch(() => {});
     // Siembra idempotente de los productos de venta de Ágora que Control M no

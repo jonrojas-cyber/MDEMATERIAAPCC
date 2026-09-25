@@ -39,24 +39,24 @@ test("crea materias e ingredientes con el coste indicado", () => {
   assert.strictEqual(matcha.coste_medio, 0.20);                // 200 €/kg
 });
 
-test("food cost del Ice Latte proteico ≈ 1,48 €", () => {
+test("food cost del Ice Latte proteico ≈ 1,88 € (con lata)", () => {
   const data = { materias: [...materiasBase], productos: [], config: [] };
   aplicar(fakeStore(data));
   const idxMat = costing.indiceMaterias(data.materias);
   const p = data.productos.find((x) => x.id === "prod-fit-ice-latte");
   const coste = costing.costeProducto(p, idxMat);
-  // 34×0,0239 + 160×0,0024 + 10×0,028 = 0,8126 + 0,384 + 0,28 = 1,4766
-  assert.ok(Math.abs(coste - 1.4766) < 0.001, "coste=" + coste);
+  // 34×0,0239 + 160×0,0024 + 10×0,028 + 0,40 lata = 1,4766 + 0,40 = 1,8766
+  assert.ok(Math.abs(coste - 1.8766) < 0.001, "coste=" + coste);
 });
 
-test("food cost del Matcha colágeno ≈ 1,01 € (matcha 200 €/kg)", () => {
+test("food cost del Matcha colágeno ≈ 1,41 € (matcha 200 €/kg + lata)", () => {
   const data = { materias: [...materiasBase], productos: [], config: [] };
   aplicar(fakeStore(data));
   const idxMat = costing.indiceMaterias(data.materias);
   const p = data.productos.find((x) => x.id === "prod-fit-matcha-colageno");
   const coste = costing.costeProducto(p, idxMat);
-  // 2×0,20 + 25×0,0002 + 160×0,002 + 5×(20/350) = 0,40 + 0,005 + 0,32 + 0,285714 = 1,010714
-  assert.ok(Math.abs(coste - 1.0107) < 0.001, "coste=" + coste);
+  // 0,40 matcha + 0,005 agua + 0,32 coco + 0,285714 colágeno + 0,40 lata = 1,410714
+  assert.ok(Math.abs(coste - 1.4107) < 0.001, "coste=" + coste);
 });
 
 test("es idempotente por flag", () => {

@@ -2511,7 +2511,7 @@ function modulosMeta(d) {
     // APPCC
     lotes:        { num:"01", name:"Lotes y caducidades", badge: pendLotes?`${pendLotes} requieren atención`:"Sin alertas", urgent: !!pendLotes },
     // Informes y configuración
-    menu:         { num:"00", name:"Carta por categorías", badge:"Café · Matcha · Burbujas · Zumos · Comida", urgent:false },
+    menu:         { num:"00", name:"Carta por categorías", badge:"Café · Matcha · Limonadas · Zumos · Comida", urgent:false },
     cafes:        { num:"00", name:"Cafés", badge:"Escandallo por bebida", urgent:false },
     carta:        { num:"01", name:"Carta y márgenes", badge: k.margen_medio_carta!=null?`Margen medio ${Math.round(k.margen_medio_carta*100)}%`:"Escandallos", urgent:false },
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
@@ -3010,7 +3010,7 @@ async function irA_lab(){
     <div class="appcc-grid">
       ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
-      ${tile("Burbujas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
+      ${tile("Limonadas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
       ${tile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
       ${tile("Cocina · sándwiches y tostas", "Fichas técnicas · escandallo · montaje · versiones", "irA_labCocina()", "")}
       ${tile("Estación de trabajo", "Mise en place en frío · derivada de la carta · imprimible", "irA_estacion()", "")}
@@ -3041,7 +3041,7 @@ async function irA_mbds(){
       <div class="cc-links" style="margin-bottom:12px;">
         <button class="cc-link" onclick="irA_mbdsBiblioteca()">Biblioteca sensorial</button>
         <button class="cc-link" onclick="irA_mbdsCordiales()">Cordiales</button>
-        <button class="cc-link cc-link-wide" onclick="irA_burbujas()">Módulo Burbujas · producción →</button>
+        <button class="cc-link cc-link-wide" onclick="irA_burbujas()">Módulo Limonadas · producción →</button>
         ${admin?`<button class="cc-link cc-link-wide" onclick="formBebidaMBDS()">+ Nueva bebida</button>`:""}
       </div>
       <div class="section-label">Bebidas</div>
@@ -3201,12 +3201,11 @@ const LIMONADAS_DATA = {
   },
   recetas: {
     R4: {
-      nombre: "Lima · hoja de lima kaffir", sabor: "lima · hoja de lima kaffir", prod: "Burbujas Origen", fase: "limonada · lima · hoja de lima kaffir", pvp: "2,30 €",
+      nombre: "Lima · hoja de lima kaffir", sabor: "lima · hoja de lima kaffir", prod: "Limonadas Origen", fase: "limonada · lima · hoja de lima kaffir", pvp: "2,30 €",
       bx: "9,0", acidez: "0,82 %", co2: "3,2 vol",
       lineas: [
         { n: "Piel verde de lima sin albedo", v: 10.36, u: "g" },
-        { n: "Zumo de lima",       v: 31.1,  u: "g" },
-        { n: "Hoja de lima kaffir", v: 1.84, u: "g" },
+        { n: "Hoja de lima kaffir", v: 2.21, u: "g" },
         { n: "Ácido cítrico",      v: 11.1,  u: "g" },
         { n: "Ácido málico",       v: 1.22,  u: "g" },
         { n: "Azúcar",             v: 61,    u: "g" },
@@ -3215,10 +3214,10 @@ const LIMONADAS_DATA = {
         { n: "Sal",                v: 0.61,  u: "g" },
         { n: "Pectinasa Pectinex Ultra SP-L", v: 2, u: "g" }
       ],
-      nota: "Limonada · rendimiento 5 L (cantidades base por litro). Elaboración: 1) Pon 3,8 L de agua filtrada en la batidora. 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de lima, el zumo de lima y las hojas de lima kaffir. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 9) Deja actuar 90 min a 35-40 °C y luego 2-3 h en frío (alternativa operativa: 12-18 h directamente en refrigeración). 10) Cuela y filtra fino. 11) Completa con agua filtrada hasta 5 L exactos. 12) Envasa o pasa a barril. Conservación: 0-4 °C."
+      nota: "Limonada · rendimiento 5 L (cantidades base por litro). SIN zumo: el zumo de lima se sustituye por agua (va al total). Hoja de lima kaffir subida un 20 % (1,84 → 2,21 g/L). Elaboración: 1) Pon ≈3,95 L de agua filtrada en la batidora (incluye el agua que antes era zumo). 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de lima y las hojas de lima kaffir. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 9) Deja actuar 90 min a 35-40 °C y luego 2-3 h en frío (alternativa operativa: 12-18 h directamente en refrigeración). 10) Cuela y filtra fino. 11) Completa con agua filtrada hasta 5 L exactos. 12) Envasa o pasa a barril. Conservación: 0-4 °C."
     },
     R5: {
-      nombre: "Pomelo · romero · Lapsang Souchong", sabor: "pomelo · romero · lapsang souchong", prod: "Burbujas Colección", fase: "limonada · pomelo · romero · lapsang souchong", pvp: "2,50 €",
+      nombre: "Pomelo · romero · Lapsang Souchong", sabor: "pomelo · romero · lapsang souchong", prod: "Limonadas Colección", fase: "limonada · pomelo · romero · lapsang souchong", pvp: "2,50 €",
       bx: "~8", acidez: "0,89 %", co2: "3,2 vol",
       lineas: [
         { n: "Zumo de pomelo rosa", v: 200, u: "g" },
@@ -3236,7 +3235,7 @@ const LIMONADAS_DATA = {
       nota: "Limonada · rendimiento 5 L (cantidades base por litro). Elaboración: 1) Calienta 1 L de agua filtrada a 85 °C. 2) Infusiona el Lapsang Souchong 4 min. 3) Cuela de inmediato y enfría. 4) Pon la infusión fría y ~2,5 L más de agua en la batidora. 5) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 6) Tritura hasta disolver. 7) Incorpora el zumo, la piel de pomelo y el romero. 8) Tritura 30 s, reposa 30 s y tritura otros 15 s. 9) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 10) Deja actuar 60-90 min. 11) Refrigera 8-12 h. 12) Cuela y filtra fino. 13) Completa con agua filtrada hasta 5 L exactos. 14) Envasa o pasa a barril. Conservación: 0-4 °C."
     },
     R6: {
-      nombre: "Fruta de la pasión · hierbabuena", sabor: "fruta de la pasión · hierbabuena", prod: "Burbujas Equilibrio", fase: "limonada · fruta de la pasión · hierbabuena", pvp: "2,90 €",
+      nombre: "Fruta de la pasión · hierbabuena", sabor: "fruta de la pasión · hierbabuena", prod: "Limonadas Equilibrio", fase: "limonada · fruta de la pasión · hierbabuena", pvp: "2,90 €",
       bx: "9,0", acidez: "0,80 %", co2: "2,8 vol",
       lineas: [
         { n: "Puré de fruta de la pasión Boiron", v: 150, u: "g" },
@@ -3262,6 +3261,23 @@ const LIMONADAS_DATA = {
         { n: "Ácido ascórbico",    v: 0.2, u: "g" }
       ],
       nota: "Zumo · rendimiento 5 L / 5.000 g (cantidades base por litro). Sal: una pizca por lote. Elaboración: 1) Tritura el jengibre con 1.400 g de agua (280 g/L) durante 90 s. 2) Añade el zumo de naranja, el zumo de pomelo, la pectinasa, el ácido ascórbico y la sal. 3) Tritura 30 s sin calentar el producto. 4) Deja actuar 60 min a temperatura ambiente controlada. 5) Refrigera 8-12 h. 6) Cuela primero con filtro fino y después con superbag. 7) Completa con agua filtrada hasta 5.000 g exactos. 8) Envasa de inmediato. Conservación: 0-4 °C. Vida útil operativa: 5 días refrigerado (0-4 °C); no indicar 7 días salvo control higiénico validado y pH ≤ 4,0."
+    },
+    R8: {
+      nombre: "Naranja · pomelo · albahaca", sabor: "naranja · pomelo · albahaca", prod: "Limonadas · naranja pomelo albahaca", fase: "limonada · naranja · pomelo · albahaca", pvp: "",
+      bx: "9,0", acidez: "0,82 %", co2: "3,2 vol",
+      lineas: [
+        { n: "Piel de naranja sin albedo", v: 5.18, u: "g" },
+        { n: "Piel de pomelo sin albedo",  v: 5.18, u: "g" },
+        { n: "Albahaca fresca",    v: 2.21,  u: "g" },
+        { n: "Ácido cítrico",      v: 11.1,  u: "g" },
+        { n: "Ácido málico",       v: 1.22,  u: "g" },
+        { n: "Azúcar",             v: 61,    u: "g" },
+        { n: "Fructosa",           v: 43,    u: "g" },
+        { n: "Glutamato monosódico", v: 0.25, u: "g" },
+        { n: "Sal",                v: 0.61,  u: "g" },
+        { n: "Pectinasa Pectinex Ultra SP-L", v: 2, u: "g" }
+      ],
+      nota: "Limonada · rendimiento 5 L (cantidades base por litro). NUEVA: copia de la de lima, SIN zumo (agua), con piel de naranja + piel de pomelo (50/50) en lugar de piel de lima, y albahaca en lugar de hoja de lima kaffir. Elaboración: 1) Pon ≈3,95 L de agua filtrada en la batidora. 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de naranja, la piel de pomelo y la albahaca. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 9) Deja actuar 90 min a 35-40 °C y luego 2-3 h en frío (alternativa operativa: 12-18 h directamente en refrigeración). 10) Cuela y filtra fino. 11) Completa con agua filtrada hasta 5 L exactos. 12) Envasa o pasa a barril. Conservación: 0-4 °C. PVP pendiente de fijar."
     }
   }
 };
@@ -3280,7 +3296,7 @@ function irA_burbujas(){
   navInto(()=>irA_mbds());
   const keys=Object.keys(LIMONADAS_DATA.recetas);
   if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16, dia:1, carbonatar:null };
-  openSection("burbujas","Burbujas");
+  openSection("burbujas","Limonadas");
   limRender();
 }
 function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; window._lim.lote=null; window._lim.limitaMsg=""; limRender(); } }
@@ -3474,7 +3490,7 @@ function limRender(){
     <div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(r.prod)}</b> en la carta · PVP ${esc(r.pvp)}. Esta receta es la producción de ese producto.</div>
     <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
       <button class="btn-primary" onclick="burVerProducto('${esc(r.prod)}')">Ver «${esc(r.nombre)}» en productos →</button>
-      <button class="btn-ghost" onclick="burVerEnCarta()">Todas en carta · Burbujas</button>
+      <button class="btn-ghost" onclick="burVerEnCarta()">Todas en carta · Limonadas</button>
       <button class="btn-ghost" onclick="limOleo()">Óleo saccharum</button>
     </div>`;
   const diaActivo = prueba ? 3 : (s.dia||1);
@@ -3483,7 +3499,7 @@ function limRender(){
   const bloqueLote = (diaActivo===1?dia1HTML : diaActivo===2?dia2HTML : dia3HTML);
 
   setInner(`
-    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Burbujas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>
+    <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Limonadas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:16px 0;">
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Receta</label><select id="lim-rsel" onchange="limSetRec(this.value)" style="min-width:230px;">${recSel}</select></div>
       <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Litros de lote</label><input id="lim-litros" type="number" min="0.5" step="0.5" value="${s.litros}" inputmode="decimal" oninput="limLeerLitros()" style="width:110px;"></div>
@@ -4601,7 +4617,7 @@ function limOleoDesdePiel(pielG){
 function limOleo(){
   if(!window._lim) window._lim={};
   if(window._lim.peel==null) window._lim.peel=334; // lo que hay ahora en bandeja
-  openSection("burbujas","Burbujas");
+  openSection("burbujas","Limonadas");
   limOleoRender();
 }
 function limLeerPeel(){ const a=el("lim-peel"); if(a) window._lim.peel=Math.max(0,parseFloat(a.value)||0); }
@@ -9909,10 +9925,11 @@ const CARTA_ARBOL = {
       { n:"Matcha Ice Latte · soja",   cat:"matcha", desc:"2,5 g matcha + 180 ml leche de soja" },
     ]},
   }},
-  burbujas: { nombre:"Burbujas", items:[
-    { n:"Burbujas Origen",     cat:"burbujas", desc:"Carbonatada · lima · lima kaffir · PVP 2,30 €" },
-    { n:"Burbujas Equilibrio", cat:"burbujas", desc:"Carbonatada · fruta de la pasión · hierbabuena · PVP 2,90 €" },
-    { n:"Burbujas Colección",  cat:"burbujas", desc:"Carbonatada · pomelo · romero · lapsang · PVP 2,50 €" },
+  burbujas: { nombre:"Limonadas", items:[
+    { n:"Limonadas Origen",     cat:"burbujas", desc:"Carbonatada · lima · lima kaffir · PVP 2,30 €" },
+    { n:"Limonadas Equilibrio", cat:"burbujas", desc:"Carbonatada · fruta de la pasión · hierbabuena · PVP 2,90 €" },
+    { n:"Limonadas Colección",  cat:"burbujas", desc:"Carbonatada · pomelo · romero · lapsang · PVP 2,50 €" },
+    { n:"Limonada Naranja·pomelo·albahaca", cat:"burbujas", desc:"Carbonatada · piel de naranja + pomelo · albahaca · PVP pendiente" },
   ]},
   spritz: { nombre:"Spritz", items:[
     { n:"Spritz Origen",     cat:"spritz", desc:"Aperol · Chardonnay Pernales · 400:600:3000 · bebida ~0,57 €/lata 250 ml" },

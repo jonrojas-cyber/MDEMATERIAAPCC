@@ -880,32 +880,43 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
 
 // Módulo Limonadas/Zumo: escalador que calcula las recetas (todo a la batidora
 // + clarificado con pectinasa). Cantidades base por litro; a 5 L dan el gramaje real.
-test("burbujas: el escalador calcula las 4 recetas cerradas por litros", async ({ page }) => {
+test("limonadas: el escalador calcula las 5 recetas cerradas por litros", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_burbujas());
-  // Selector con las 4 recetas (3 limonadas + zumo).
+  // Selector con las 5 recetas (4 limonadas + zumo).
   await expect(page.locator(".lim-tab")).toBeVisible();
-  await expect(page.locator("#lim-rsel option")).toHaveCount(4);
+  await expect(page.locator("#lim-rsel option")).toHaveCount(5);
   // Limonada de lima·kaffir a 5 L: azúcar 61 g/L escala a 305 g; piel de lima a 51,8 g.
   await page.evaluate(() => { limSetRec("R4"); limSetL(5); });
-  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Lima · hoja de lima kaffir/);
+  await expect(page.locator(".lim-h")).toContainText(/Limonadas · Lima · hoja de lima kaffir/);
   await expect(page.locator(".lim-tab")).toContainText(/Piel verde de lima sin albedo/);
   await expect(page.locator(".lim-tab")).toContainText(/61 g\/L/);
   await expect(page.locator(".lim-tab")).toContainText(/305 g/);
   await expect(page.locator(".lim-tab")).toContainText(/51,8 g/);       // 10,36 g/L × 5
+  // Ya NO lleva zumo (pasó al agua) y la hoja de lima kaffir subió a 2,21 g/L.
+  await expect(page.locator(".lim-tab")).not.toContainText(/Zumo de lima/);
+  await expect(page.locator(".lim-tab")).toContainText(/2,21 g\/L/);
+  // Receta NUEVA (R8): naranja + pomelo (piel 50/50) y albahaca, sin zumo.
+  await page.evaluate(() => { limSetRec("R8"); limSetL(5); });
+  await expect(page.locator(".lim-h")).toContainText(/Limonadas · Naranja · pomelo · albahaca/);
+  await expect(page.locator(".lim-tab")).toContainText(/Piel de naranja sin albedo/);
+  await expect(page.locator(".lim-tab")).toContainText(/Piel de pomelo sin albedo/);
+  await expect(page.locator(".lim-tab")).toContainText(/Albahaca fresca/);
+  await expect(page.locator(".lim-tab")).not.toContainText(/Zumo/);
+  await expect(page.locator(".lim-tab")).toContainText(/25,9 g/);       // 5,18 g/L × 5 (cada piel)
   // Estas recetas no llevan sub-preparaciones (todo a la batidora).
   await page.evaluate(() => { limSetRec("R4"); limSetDia(1); });
   await expect(page.locator("body")).toContainText(/Esta receta no lleva preparaciones previas/);
   // Pomelo·romero·Lapsang: cambia el nombre y muestra el zumo de pomelo.
   await page.evaluate(() => { limSetRec("R5"); limSetL(5); });
-  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Pomelo · romero · Lapsang Souchong/);
+  await expect(page.locator(".lim-h")).toContainText(/Limonadas · Pomelo · romero · Lapsang Souchong/);
   await expect(page.locator(".lim-tab")).toContainText(/Zumo de pomelo rosa/);
   await expect(page.locator(".lim-tab")).toContainText(/200 g\/L/);     // 1000 g a 5 L
   // Pasión·hierbabuena: el puré de Boiron a 750 g (150 g/L × 5).
   await page.evaluate(() => { limSetRec("R6"); limSetL(5); });
-  await expect(page.locator(".lim-h")).toContainText(/Burbujas · Fruta de la pasión · hierbabuena/);
+  await expect(page.locator(".lim-h")).toContainText(/Limonadas · Fruta de la pasión · hierbabuena/);
   await expect(page.locator(".lim-tab")).toContainText(/Puré de fruta de la pasión Boiron/);
   await expect(page.locator(".lim-tab")).toContainText(/750 g/);
   // Zumo (Naranja·pomelo·jengibre): nueva receta R7 con su zumo de naranja.
@@ -949,9 +960,9 @@ test("burbujas: el escalador calcula las 4 recetas cerradas por litros", async (
   // Carbonatación por confirmar → se puede fijar sí/no.
   await page.evaluate(() => limToggleCarbonatar(true));
   await expect(page.locator("body")).toContainText(/Carbonata a/);
-  // Enlace con productos: lleva a la categoría Burbujas de la carta.
+  // Enlace con productos: lleva a la categoría Limonadas de la carta.
   await page.evaluate(() => burVerEnCarta());
-  await expect(page.locator("body")).toContainText(/Burbujas Origen/);
+  await expect(page.locator("body")).toContainText(/Limonadas Origen/);
   // Temporizador de sous-vide: arranca la cuenta atrás y muestra la barra flotante,
   // que persiste aunque cambies de pantalla; dispara al llegar a cero.
   await page.evaluate(() => svtStart(0.02, "AL · test"));

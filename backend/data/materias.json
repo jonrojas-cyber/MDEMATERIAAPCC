@@ -76,7 +76,7 @@
     "nombre": "Matcha base",
     "unidad": "g",
     "proveedor_id": "prov-009",
-    "coste_medio": 0.018,
+    "coste_medio": 0.2,
     "disponibilidad_actual": 250,
     "stock_minimo": 300,
     "stock_ideal": 1200,

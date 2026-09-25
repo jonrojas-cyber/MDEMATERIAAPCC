@@ -3012,6 +3012,7 @@ async function irA_lab(){
       ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
       ${tile("Limonadas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
       ${tile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
+      ${tile("Latas fit", "Ice Latte proteico · Matcha colágeno — escala por latas", "irA_fit()", "")}
       ${tile("Cocina · sándwiches y tostas", "Fichas técnicas · escandallo · montaje · versiones", "irA_labCocina()", "")}
       ${tile("Estación de trabajo", "Mise en place en frío · derivada de la carta · imprimible", "irA_estacion()", "")}
       ${tile("Plan de producción", "Qué preparar · diario y semanal · imprimible", "irA_planProduccion()", "")}
@@ -4156,6 +4157,139 @@ function spzRender(){
   // Enlace a productos también para las recetas pendientes.
   const enlacePend=r.pendiente?`<div class="card-actions" style="margin-top:14px;"><button class="btn-ghost" onclick="spzVerEnCarta()">Ver Spritz en productos →</button></div>`:"";
   setInner(head+controles+cuerpo+enlacePend);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LATAS FIT · producción por unidades (latas). Ice Latte proteico y Matcha
+// colágeno. La receta, el escandallo y el coste vienen del BACKEND (/api/carta,
+// fuente única del dinero); aquí solo se escala por nº de latas y se guía el
+// montaje. COSTE / food cost / margen: SOLO admin (mbdsEsAdmin). El PVP y las
+// cantidades de producción los ve todo el equipo.
+// ════════════════════════════════════════════════════════════════════════════
+function fitEur(x){ return (Math.round((Number(x)||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
+
+// Extrae del texto de la ficha los tres bloques: intro (POR UNIDAD), pasos
+// numerados (ESCALAR Y EMBOTELLAR) y la nota de escala (Para 50 latas).
+function fitParsear(desc){
+  const t=String(desc||"");
+  const out={ porUnidad:"", pasos:[], escala:"" };
+  const mUnidad=t.match(/POR UNIDAD:\s*([^.]*\.)/i);
+  if(mUnidad) out.porUnidad=mUnidad[1].trim();
+  const iEsc=t.search(/ESCALAR Y EMBOTELLAR/i);
+  if(iEsc>=0){
+    const iEscala=t.search(/Para \d+ latas/i);
+    const bloque=t.slice(iEsc, iEscala>iEsc?iEscala:undefined);
+    const pasos=bloque.split(/\s(?=\d+\)\s)/).filter(s=>/^\d+\)/.test(s.trim()));
+    out.pasos=pasos.map(s=>s.replace(/^\d+\)\s*/,"").trim()).filter(Boolean);
+  }
+  const mEscala=t.match(/Para \d+ latas:[^.]*\./i);
+  if(mEscala) out.escala=mEscala[0].trim();
+  return out;
+}
+
+async function irA_fit(){
+  navInto(()=>irA_lab());
+  if(!window._fit) window._fit={ pid:null, n:24 };
+  openSection("fit","Latas fit");
+  fitRender();
+}
+function fitSetProd(pid){ window._fit.pid=pid; window._fit.lote=null; fitRender(); }
+function fitSetN(n){ window._fit.n=Math.max(1,Math.round(n)); fitRender(); }
+function fitLeerN(){ const i=el("fit-n"); if(i) window._fit.n=Math.max(1,Math.round(parseFloat(i.value)||0)); fitRender(); }
+async function fitVerEnCarta(pid){ await irA_menu(); }
+async function fitGenerarLote(){
+  const f=window._fit, p=(window._fitData||[]).find(x=>x.id===f.pid); if(!p) return;
+  if(!(f.n>0)){ alert("Indica cuántas latas produces."); return; }
+  try{
+    const u=getUser();
+    const lote=await api("/lotes-produccion",{method:"POST",body:JSON.stringify({tipo:"fit",rk:p.id,producto:p.nombre,unidades:f.n,responsable:(u&&u.nombre)||""})});
+    window._fit.lote=lote; fitRender();
+  }catch(e){ alert("No se pudo registrar el lote: "+(e.message||e)); }
+}
+function fitImprimirEtiquetaLote(){
+  const f=window._fit, p=(window._fitData||[]).find(x=>x.id===f.pid), lote=f.lote; if(!lote||!p) return;
+  irA_etiquetaProd({ nombre:(lote.producto||p.nombre)+" · "+lote.codigo, cantidad:(lote.unidades||f.n)+" latas", vidaDias:5 });
+}
+
+async function fitRender(){
+  const f=window._fit, admin=mbdsEsAdmin();
+  try{
+    const data=await api("/carta");
+    const fits=(data.productos||[]).filter(p=>p.origen==="fit").sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre)));
+    window._fitData=fits;
+    if(!fits.length){ setInner(`<div class="empty">Aún no hay bebidas de la línea fit.</div>`); return; }
+    if(!f.pid || !fits.some(p=>p.id===f.pid)) f.pid=fits[0].id;
+    const p=fits.find(x=>x.id===f.pid);
+    const n=f.n;
+
+    const selChips=fits.map(x=>`<button class="${x.id===f.pid?"on":""}" onclick="fitSetProd('${x.id}')">${esc(x.clave||x.nombre)}</button>`).join("");
+    const presets=[1,12,24,50].map(k=>`<button class="${n===k?"on":""}" onclick="fitSetN(${k})">${k}</button>`).join("");
+
+    const head=`<div class="lim-head"><div><div class="lim-eyebrow">Control m · producción · latas fit</div><div class="lim-h">${esc(p.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">escala por nº de latas · embotellado en frío</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${n} lata${n===1?"":"s"}</div></div>`;
+
+    const controles=`
+      <div class="lim-presets" style="margin:14px 0 6px;">${selChips}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin:6px 0 4px;">
+        <div><label class="lim-eyebrow" style="display:block;margin-bottom:5px;">Nº de latas</label><input id="fit-n" type="number" min="1" step="1" value="${n}" inputmode="numeric" oninput="fitLeerN()" style="width:110px;"></div>
+        <div class="lim-presets" style="margin:0;">${presets}</div>
+      </div>`;
+
+    // Tabla de producción: por lata + total del lote (× n). Coste solo admin.
+    const rows=(p.ingredientes||[]).map(ing=>{
+      const total=Math.round((ing.cantidad*n)*100)/100;
+      const costeCol=admin?`<td class="q">${ing.coste>0?fitEur(ing.coste):"—"}</td>`:"";
+      return `<tr><td class="n">${esc(ing.nombre)}</td><td class="q">${limFmt(ing.cantidad)} ${esc(ing.unidad)}</td><td class="q big">${limFmt(total)} ${esc(ing.unidad)}</td>${costeCol}</tr>`;
+    }).join("");
+    const thCoste=admin?"<th>coste/lata</th>":"";
+    const totCoste=admin?`<td class="q big">${fitEur(p.coste)}</td>`:"";
+    const tabla=`<table class="lim-tab"><thead><tr><th>ingrediente</th><th>por lata</th><th>× ${n} latas</th>${thCoste}</tr></thead><tbody>${rows}
+      <tr class="tot"><td class="n">Total lote</td><td class="q">1 lata</td><td class="q big">${n} latas</td>${totCoste}</tr></tbody></table>`;
+
+    // Parámetros: PVP para todos; coste/food cost/margen solo admin.
+    const fcPct=p.precio_venta>0?Math.round((p.food_cost||0)*100):null;
+    const param=admin?`<div class="lim-param">
+        <div><b>${fitEur(p.coste)}</b><span>coste /lata</span></div>
+        <div><b>${fcPct!=null?fcPct+" %":"—"}</b><span>food cost</span></div>
+        <div><b>${fitEur(p.margen_euros)}</b><span>margen /lata</span></div>
+        <div><b>${p.precio_venta>0?fitEur(p.precio_venta):"—"}</b><span>pvp</span></div>
+      </div>`:`<div class="lim-param">
+        <div><b>${p.precio_venta>0?fitEur(p.precio_venta):"—"}</b><span>pvp</span></div>
+        <div><b>${n}</b><span>latas del lote</span></div>
+      </div>`;
+
+    // Montaje guiado (paso a paso) desde la ficha del producto.
+    const parsed=fitParsear(p.descripcion);
+    const pasosHtml=parsed.pasos.length
+      ? `<div class="section-label" style="margin-top:16px;">Montaje · escalar y embotellar</div>
+         <div class="card">${parsed.pasos.map((s,i)=>`<div class="lim-prem-row"${i?' style="margin-top:6px;"':''}><b>${i+1}.</b> ${esc(s)}</div>`).join("")}
+         <div class="card-meta" style="margin-top:10px;">Envasa/enlata siempre en frío (0-4 °C) y cierra. Conserva 0-4 °C.</div></div>`
+      : `<div class="lim-nota">${esc(p.descripcion||"")}</div>`;
+
+    const escalaHtml=parsed.escala?`<div class="lim-nota" style="border-left-color:var(--olive);"><b>Referencia:</b> ${esc(parsed.escala)}</div>`:"";
+
+    // Escandallo por lata (solo admin).
+    let escandallo="";
+    if(admin){
+      const escFilas=(p.ingredientes||[]).map(ing=>`<tr><td class="n">${esc(ing.nombre)} <small>${limFmt(ing.cantidad)} ${esc(ing.unidad)}</small></td><td class="q">${ing.coste>0?fitEur(ing.coste):"—"}</td></tr>`).join("");
+      escandallo=`<div class="section-label" style="margin-top:6px;">Escandallo · lata</div>
+        <table class="lim-tab"><tbody>${escFilas}
+          <tr class="tot"><td class="n">Food cost por lata</td><td class="q big">${fitEur(p.coste)}${fcPct!=null?` · ${fcPct}%`:""}</td></tr></tbody></table>`;
+    }
+
+    // Registrar producción (lote por unidades, hora sellada en servidor).
+    const lote=f.lote;
+    const loteCard=lote?`<div class="card" style="border-left:3px solid var(--olive);margin-bottom:10px;">
+        <div style="font-weight:800;color:var(--olive);">✅ Lote registrado · ${esc(lote.codigo)}</div>
+        <div class="lim-prem-row" style="margin-top:4px;"><b>${esc(lote.producto||p.nombre)}</b> · ${lote.unidades||n} latas</div>
+        <div class="lim-prem-row">Hora exacta · ${esc(limFechaHora(lote.fecha))}</div>
+        <div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="fitImprimirEtiquetaLote()">🏷️ imprimir etiqueta del lote</button></div>
+      </div>`:"";
+    const registrar=`<div class="section-label" style="margin-top:16px;">Registrar producción · lote</div>${loteCard}
+      <div class="card"><div class="card-meta">Al terminar el lote, regístralo: guarda las <b>latas</b> producidas y la <b>hora exacta</b> para la trazabilidad.</div>
+        <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="fitGenerarLote()">✅ Generar lote de ${n} lata${n===1?"":"s"}</button></div></div>`;
+
+    setInner(head+controles+param+tabla+pasosHtml+escalaHtml+escandallo+registrar);
+  }catch(e){ setInner(`<div class="err">${esc(e.message||String(e))}</div>`); }
 }
 
 // ════════════════════════════════════════════════════════════════════════════

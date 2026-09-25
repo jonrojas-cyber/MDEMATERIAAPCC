@@ -12,13 +12,14 @@
 
 const store = require("./data-store");
 
-const FLAG = "productos_fit_v1";
+const FLAG = "productos_fit_v2";
 
 // Materias nuevas (upsert por id). coste_medio en €/unidad NETO.
 const MATERIAS = [
   { id: "mat-proteina", nombre: "Proteína (fit)", categoria: "Fit", unidad: "g", coste_medio: 0.028, disponibilidad_actual: 0, notas: "28 €/kg" },
   { id: "mat-agua-coco", nombre: "Agua de coco", categoria: "Fit", unidad: "ml", coste_medio: 0.002, disponibilidad_actual: 0, notas: "2 €/L (Mercadona)" },
   { id: "mat-colageno-limon", nombre: "Colágeno lima-limón", categoria: "Fit", unidad: "g", coste_medio: 20 / 350, disponibilidad_actual: 0, notas: "bote 350 g = 20 €" },
+  { id: "mat-matcha", nombre: "Matcha", categoria: "Matcha", unidad: "g", coste_medio: 0.20, disponibilidad_actual: 0, notas: "200 €/kg" },
 ];
 
 // Productos con su escandallo (ingredientes = materia_id + cantidad por lata).
@@ -41,14 +42,14 @@ const PRODUCTOS = [
     nombre: "Matcha colágeno lima-limón · lata", clave: "Matcha colágeno", categoria: "bebida",
     origen: "fit", activo: true, precio_venta: 0,
     ingredientes: [
-      { materia_id: "mat-007", cantidad: 2 },             // matcha (g)
+      { materia_id: "mat-matcha", cantidad: 2 },          // matcha (g) · 200 €/kg
       { materia_id: "mat-017", cantidad: 25 },            // agua filtrada (ml) — coste ~0
       { materia_id: "mat-agua-coco", cantidad: 160 },     // agua de coco (ml)
       { materia_id: "mat-colageno-limon", cantidad: 5 },  // colágeno lima-limón (g)
     ],
     descripcion: "Línea fit · lata. POR UNIDAD: 2 g de matcha, 25 ml de agua filtrada, 160 ml de agua de coco, 5 g de colágeno lima-limón. " +
       "ESCALAR Y EMBOTELLAR (× nº de latas): 1) Bate el matcha con el agua filtrada templada hasta emulsionar (sin grumos). 2) Añade el agua de coco fría y el colágeno y bate hasta disolver del todo. 3) Enfría a 0-4 °C. 4) Envasa/enlata en frío y cierra. 5) Conserva 0-4 °C. " +
-      "Para 50 latas: 100 g de matcha, 1,25 L de agua filtrada, 8 L de agua de coco, 250 g de colágeno. Food cost ≈ 0,65 €/lata.",
+      "Para 50 latas: 100 g de matcha, 1,25 L de agua filtrada, 8 L de agua de coco, 250 g de colágeno. Food cost ≈ 1,01 €/lata (matcha 200 €/kg).",
   },
 ];
 

@@ -1066,6 +1066,49 @@ test("latas fit: el equipo produce pero no ve coste ni margen", async ({ page })
   await expect(page.locator("body")).not.toContainText(/food cost/i);
 });
 
+// Panel Análisis del mes: lee el snapshot mensual (sembrado de sept 2026) y
+// muestra mix por familia, día de semana, ticket medio y serie. Solo admin.
+test("análisis del mes: el panel muestra el mix y el ticket medio de septiembre", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page); // Moni admin
+  await page.evaluate(() => irA_analisisMes());
+  await expect(page.locator(".lim-param").first()).toBeVisible({ timeout: 10000 });
+  // KPIs y mix reales de septiembre.
+  await expect(page.locator("body")).toContainText(/Ticket medio|ticket medio/i);
+  await expect(page.locator("body")).toContainText(/Mix por familia/);
+  await expect(page.locator("body")).toContainText(/Comida/);
+  await expect(page.locator("body")).toContainText(/Cafés/);
+  await expect(page.locator("body")).toContainText(/Por día de semana/);
+  // El importador explica de dónde salen los datos (conector / export).
+  await expect(page.locator("body")).toContainText(/conector de Ágora/);
+  expect(errors).toEqual([]);
+});
+
+// El endpoint de importación acepta el CSV del export de Ágora y guarda el mes.
+test("análisis del mes: importar CSV de Ágora crea el snapshot y fija el cierre", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const headers = { Authorization: `Bearer ${sesion.token}` };
+  const csv = [
+    " ;Familia;Formato;Cantidad;Base;Total;Coste;Margen",
+    "01/07/2026;;;10;100;110;0;100",
+    "01/07/2026 -> T/001;;;3;30;33;0;30",
+    ";Cafes;Latte;2;4;4,4;0;4",
+    "02/07/2026;;;5;50;55;0;50",
+    "02/07/2026 -> T/002;;;5;50;55;0;50",
+  ].join("\n");
+  const r = await request.post("/api/analisis-mes/importar", { headers: { ...headers, "Content-Type": "text/csv" }, data: csv });
+  expect(r.ok()).toBeTruthy();
+  const j = await r.json();
+  expect(j.snapshot.mes).toBe("2026-07");
+  expect(j.snapshot.neto).toBe(150);
+  expect(j.snapshot.tickets).toBe(2);
+  // El equipo (Lara) NO puede ver ni importar el análisis (es dinero).
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const rr = await request.get("/api/analisis-mes", { headers: { Authorization: `Bearer ${lara.token}` } });
+  expect(rr.status()).toBe(403);
+});
+
 test("cierre de caja: sincroniza, concilia en vivo, cuadra y cierra idempotente", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

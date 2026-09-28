@@ -2518,6 +2518,7 @@ function modulosMeta(d) {
     analisisDiario:{ num:"02", name:"Análisis diario", badge:"Rayos X · venta y compra del día", urgent:false },
     dossier:      { num:"02", name:"Dossier para Claude", badge:"Todo el negocio · para asesoría", urgent:false },
     cuentaResultados:{ num:"03", name:"Cuenta de resultados", badge:"P&L del mes · ingresos, gastos, resultado", urgent:false },
+    analisisMes:  { num:"03", name:"Análisis del mes", badge:"Ventas · mix · día de semana · ticket medio", urgent:false },
     cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
@@ -2539,7 +2540,7 @@ const CATS = {
   equipo:     { name:"Equipo", desc:"Fichaje · Turnos · Ausencias · Tablón · Incidencias", ids:["turnos","fichaje","ausencias","tablon","incidencias"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","analisisMes","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -7955,6 +7956,121 @@ function fallbackCopy(txt,ok){
 
 // ── CUENTA DE RESULTADOS · P&L mensual (solo admin) ──────────────────────────
 function crMesActual(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+// ════════════════════════════════════════════════════════════════════════════
+// ANÁLISIS DEL MES · panel de ventas (mix, día de semana, ticket medio, serie).
+// Los datos vienen de la app: los mete el CONECTOR de Ágora (automático) o se
+// importa el export "Análisis de Ventas" (CSV) para meses sin conector. Solo
+// dirección (dinero). El break-even y el P&L los trae la Cuenta de Resultados.
+// ════════════════════════════════════════════════════════════════════════════
+async function irA_analisisMes(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("analisisMes","Análisis del mes");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección ve el análisis del mes.</div>`); return; }
+  window._am = window._am || { mes:null };
+  await amCargar();
+}
+async function amCargar(){
+  const s=window._am;
+  setInner(`<div class="empty">Cargando análisis…</div>`);
+  try{
+    const qs=new URLSearchParams(); if(s.mes) qs.set("mes",s.mes);
+    const r=await api("/analisis-mes?"+qs.toString());
+    window._am.mes=r.mes;
+    amRender(r);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function amBar(pct,color){ return `<span style="display:block;height:8px;border-radius:4px;background:${color||"var(--olive,#6b7a3a)"};width:${Math.max(2,Math.min(100,pct))}%;"></span>`; }
+function amRender(r){
+  const s=r.snapshot, c=r.cuenta&&r.cuenta.cuenta;
+  const mesSel=`<div class="field"><label>Mes</label><select id="am-mes" onchange="window._am.mes=this.value;amCargar()" style="width:100%;">
+    ${(r.meses&&r.meses.length?r.meses:[r.mes]).map(m=>`<option value="${m}" ${m===r.mes?"selected":""}>${esc(m)}</option>`).join("")}
+  </select></div>`;
+  const importador=`<div class="card" style="margin-top:12px;">
+      <div class="lim-eyebrow" style="margin-bottom:4px;">de dónde salen estos datos</div>
+      <div class="card-meta">Los mete solo el <b>conector de Ágora</b> cuando está conectado. Si un mes no entró, exporta de Ágora el <b>«Análisis de Ventas» en CSV</b> y súbelo aquí:</div>
+      <div class="card-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input id="am-file" type="file" accept=".csv,text/csv,text/plain" style="font-size:12px;">
+        <button class="btn-primary" onclick="amImportar(this)">Importar CSV</button>
+        <button class="btn-ghost" onclick="amDesdeVentas(this)">Recalcular desde conector</button>
+      </div>
+    </div>`;
+  if(!s){
+    setInner(`<div class="section-label">Análisis del mes</div>${mesSel}
+      <div class="ad-note" style="margin-top:10px;">Aún no hay datos de ventas para <b>${esc(r.mes)}</b>. Cuando el conector de Ágora esté al día se llena solo; o importa el «Análisis de Ventas» (CSV) de Ágora aquí abajo.</div>
+      ${importador}`);
+    return;
+  }
+  const kpi=(l,v)=>`<div><b>${v}</b><span>${l}</span></div>`;
+  const kpis=`<div class="lim-param">
+    ${kpi("ventas netas", adEur(s.neto))}
+    ${kpi("con IVA", adEur(s.total))}
+    ${kpi("tickets", s.tickets)}
+  </div>
+  <div class="lim-param" style="margin-top:6px;">
+    ${kpi("ticket medio", adEur(s.ticket_medio))}
+    ${kpi("uds/ticket", s.uds_por_ticket)}
+    ${kpi("€/día", adEur(s.neto_dia_medio))}
+  </div>`;
+  const maxFam=Math.max(...s.por_familia.map(f=>f.neto),1);
+  const COL=["#6b7a3a","#8a9a52","#b0a15a","#c79a3a","#9c7b4a","#7a8a6a","#5a6a4a"];
+  const mix=`<div class="section-label" style="margin-top:14px;">Mix por familia</div>
+    <table class="lim-tab"><tbody>${s.por_familia.map((f,i)=>`<tr>
+      <td class="n" style="min-width:90px;">${esc(f.familia)}</td>
+      <td style="width:52%;">${amBar(f.neto/maxFam*100,COL[i%COL.length])}</td>
+      <td class="q" style="white-space:nowrap;">${f.pct}% · ${adEur(f.neto)}</td></tr>`).join("")}</tbody></table>`;
+  const maxWd=Math.max(...s.por_dia_semana.map(d=>d.neto_medio),1);
+  const semana=`<div class="section-label" style="margin-top:16px;">Por día de semana (media/día)</div>
+    <table class="lim-tab"><tbody>${s.por_dia_semana.map(d=>`<tr>
+      <td class="n" style="min-width:90px;">${esc(d.dia)} <small>(${d.dias})</small></td>
+      <td style="width:52%;">${amBar(d.neto_medio/maxWd*100,"#6b7a3a")}</td>
+      <td class="q" style="white-space:nowrap;">${adEur(d.neto_medio)}</td></tr>`).join("")}</tbody></table>`;
+  const maxDia=Math.max(...s.serie.map(d=>d.neto),1);
+  const serie=`<div class="section-label" style="margin-top:16px;">Ventas por día (${s.dias_venta} días)</div>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:90px;padding:6px 2px;overflow-x:auto;">
+      ${s.serie.map(d=>`<div title="${esc(d.fecha)} · ${adEur(d.neto)}" style="flex:0 0 12px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;">
+        <span style="display:block;background:var(--olive,#6b7a3a);border-radius:2px 2px 0 0;height:${Math.max(3,d.neto/maxDia*100)}%;"></span>
+        <span style="font-size:8px;color:var(--muted,#8a8577);text-align:center;margin-top:2px;">${d.fecha.slice(8)}</span>
+      </div>`).join("")}
+    </div>`;
+  // Punto de equilibrio + resultado desde la cuenta de resultados.
+  let plBox="";
+  if(c){
+    const eq=r.cuenta.equilibrio_mes;
+    plBox=`<div class="section-label" style="margin-top:16px;">Resultado del mes</div>
+      <div class="lim-param">
+        ${kpi("EBITDA", adEur(c.ebitda))}
+        ${kpi("margen EBITDA", (c.margen_ebitda_pct!=null?c.margen_ebitda_pct+"%":"—"))}
+        ${kpi("resultado caja", adEur(c.resultado_caja))}
+        ${kpi("food cost", (c.food_cost_pct!=null?c.food_cost_pct+"%":"—"))}
+      </div>
+      ${eq!=null?`<div class="ad-note" style="margin-top:8px;">Punto de equilibrio del mes: <b>${adEur(eq)}</b>. ${s.neto>=eq?`Lo superas (venta ${adEur(s.neto)}). ✓`:`Te faltan ${adEur(eq-s.neto)} para cubrir.`}</div>`:""}
+      <div class="ad-foot" style="margin-top:6px;">El dinero (coste, food cost, resultado) sale de la Cuenta de Resultados — fuente única.</div>`;
+  }
+  setInner(`<div class="section-label">Análisis del mes · ${esc(r.mes)}</div>${mesSel}
+    <div class="ad-dia" style="margin-top:6px;">${s.dias_venta} días de venta · origen: ${s.origen==="agora_export"?"export de Ágora":(s.origen==="conector"?"conector de Ágora":esc(s.origen))}</div>
+    ${kpis}${mix}${semana}${serie}${plBox}${importador}`);
+}
+async function amImportar(btn){
+  const inp=el("am-file"); const f=inp&&inp.files&&inp.files[0];
+  if(!f){ alert("Elige primero el fichero CSV del «Análisis de Ventas» de Ágora."); return; }
+  if(btn){ btn.disabled=true; btn.textContent="Importando…"; }
+  try{
+    const texto=await f.text();
+    const r=await api("/analisis-mes/importar",{method:"POST",headers:{"Content-Type":"text/csv"},body:texto});
+    window._am.mes=r.snapshot.mes;
+    alert(`Importado ${r.snapshot.mes}: ${adEur(r.snapshot.neto)} netos · ${r.snapshot.tickets} tickets.`);
+    await amCargar();
+  }catch(e){ alert("No se pudo importar: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Importar CSV"; } }
+}
+async function amDesdeVentas(btn){
+  if(btn){ btn.disabled=true; btn.textContent="Recalculando…"; }
+  try{
+    const r=await api("/analisis-mes/desde-ventas?mes="+encodeURIComponent(window._am.mes),{method:"POST",body:"{}"});
+    alert(`Recalculado desde el conector: ${adEur(r.snapshot.neto)} netos · ${r.snapshot.tickets} tickets.`);
+    await amCargar();
+  }catch(e){ alert("No se pudo recalcular: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Recalcular desde conector"; } }
+}
+
 async function irA_cuentaResultados(){
   navInto(()=>irA_categoria("informes"));
   openSection("cuentaResultados","Cuenta de resultados");

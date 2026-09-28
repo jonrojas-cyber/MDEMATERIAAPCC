@@ -79,6 +79,17 @@ const BATCHES = [
       { id: "food_cost_manual_pct", valor: 26 },
     ],
   },
+  {
+    // Actualización del cierre de septiembre 2026 con el Análisis de Ventas
+    // completo de Ágora (1–28 sep, 20 días de venta): 12.492,72 € netos sin IVA
+    // (14.015,68 € con IVA). Sustituye la cifra parcial anterior (9.124,59 €).
+    // Quedan ~2-3 días de venta; se actualizará al cierre real del mes.
+    flag: "negocio_seed_v9_cierre_sept2026_actualizado",
+    entity: "config",
+    upserts: [
+      { id: "ventas_mes_2026-09", valor: 12492.72 },
+    ],
+  },
 ];
 
 async function seedNegocio() {

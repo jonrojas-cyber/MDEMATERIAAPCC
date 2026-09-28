@@ -1305,9 +1305,11 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
    en móvil ocupa todo el ancho igual que antes. */
 #inner-content { max-width: 1080px; margin: 0 auto; width: 100%; }
 /* Submenús como rejilla cuadrada que LLENA la pantalla (sin scroll), como la portada */
-#screen-inner.submenu { overflow: hidden; display: flex; flex-direction: column; }
+#screen-inner.submenu { overflow-y: auto; display: flex; flex-direction: column; }
 #screen-inner.submenu > #inner-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.submenu-grid { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 11px; min-height: 0; }
+/* grid-auto-rows con altura MÍNIMA: pocos tiles llenan la pantalla (1fr), muchos
+   mantienen su tamaño legible y el contenedor hace scroll (nunca se solapan). */
+.submenu-grid { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(94px, 1fr); gap: 11px; min-height: 0; }
 .subtile { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 6px; text-align: left;
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px; cursor: pointer; min-height: 0;
   transition: border-color .12s; }
@@ -2540,7 +2542,7 @@ const CATS = {
   equipo:     { name:"Equipo", desc:"Fichaje · Turnos · Ausencias · Tablón · Incidencias", ids:["turnos","fichaje","ausencias","tablon","incidencias"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Costes · Márgenes · Cierre de mes · Ventas · Config", ids:["menu","cafes","carta","analisis","analisisDiario","analisisMes","dossier","cuentaResultados","cierreMes","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Márgenes · Análisis · Ventas · Config", ids:["menu","carta","analisisDiario","analisisMes","cuentaResultados","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.

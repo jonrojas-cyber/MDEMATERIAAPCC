@@ -1,0 +1,206 @@
+{
+  "id": "am-2026-09",
+  "mes": "2026-09",
+  "neto": 12484.81,
+  "total": 14006.98,
+  "uds": 9216,
+  "tickets": 1902,
+  "ticket_medio": 6.56,
+  "uds_por_ticket": 4.85,
+  "dias_venta": 19,
+  "neto_dia_medio": 657.1,
+  "por_familia": [
+    {
+      "familia": "Comida",
+      "uds": 3608,
+      "neto": 6136.82,
+      "pct": 49.15
+    },
+    {
+      "familia": "Cafés",
+      "uds": 4999,
+      "neto": 4706.38,
+      "pct": 37.7
+    },
+    {
+      "familia": "Matcha",
+      "uds": 315,
+      "neto": 1015.19,
+      "pct": 8.13
+    },
+    {
+      "familia": "Limonadas",
+      "uds": 257,
+      "neto": 538.4,
+      "pct": 4.31
+    },
+    {
+      "familia": "Zumos",
+      "uds": 19,
+      "neto": 55.72,
+      "pct": 0.45
+    },
+    {
+      "familia": "Infusiones",
+      "uds": 25,
+      "neto": 40.21,
+      "pct": 0.32
+    }
+  ],
+  "por_dia_semana": [
+    {
+      "dia": "Lunes",
+      "dias": 3,
+      "neto_medio": 593.67,
+      "uds_medio": 398
+    },
+    {
+      "dia": "Martes",
+      "dias": 4,
+      "neto_medio": 793.93,
+      "uds_medio": 606
+    },
+    {
+      "dia": "Miércoles",
+      "dias": 2,
+      "neto_medio": 727.6,
+      "uds_medio": 555
+    },
+    {
+      "dia": "Jueves",
+      "dias": 3,
+      "neto_medio": 529.56,
+      "uds_medio": 385
+    },
+    {
+      "dia": "Viernes",
+      "dias": 4,
+      "neto_medio": 671.11,
+      "uds_medio": 501
+    },
+    {
+      "dia": "Sábado",
+      "dias": 3,
+      "neto_medio": 599.92,
+      "uds_medio": 444
+    }
+  ],
+  "serie": [
+    {
+      "fecha": "2026-09-01",
+      "uds": 281,
+      "neto": 373,
+      "total": 422.07
+    },
+    {
+      "fecha": "2026-09-02",
+      "uds": 310,
+      "neto": 392.96,
+      "total": 442.74
+    },
+    {
+      "fecha": "2026-09-03",
+      "uds": 346,
+      "neto": 458.43,
+      "total": 513.74
+    },
+    {
+      "fecha": "2026-09-04",
+      "uds": 364,
+      "neto": 486.62,
+      "total": 544.22
+    },
+    {
+      "fecha": "2026-09-05",
+      "uds": 463,
+      "neto": 593.52,
+      "total": 674.39
+    },
+    {
+      "fecha": "2026-09-07",
+      "uds": 433,
+      "neto": 601.05,
+      "total": 677.37
+    },
+    {
+      "fecha": "2026-09-08",
+      "uds": 1040,
+      "neto": 1319.34,
+      "total": 1491.41
+    },
+    {
+      "fecha": "2026-09-10",
+      "uds": 470,
+      "neto": 654.56,
+      "total": 737.29
+    },
+    {
+      "fecha": "2026-09-11",
+      "uds": 755,
+      "neto": 994.9,
+      "total": 1112.01
+    },
+    {
+      "fecha": "2026-09-14",
+      "uds": 418,
+      "neto": 632.68,
+      "total": 715.58
+    },
+    {
+      "fecha": "2026-09-15",
+      "uds": 756,
+      "neto": 1004.13,
+      "total": 1122.87
+    },
+    {
+      "fecha": "2026-09-17",
+      "uds": 339,
+      "neto": 475.68,
+      "total": 534.28
+    },
+    {
+      "fecha": "2026-09-18",
+      "uds": 487,
+      "neto": 646.83,
+      "total": 721.77
+    },
+    {
+      "fecha": "2026-09-19",
+      "uds": 370,
+      "neto": 490.89,
+      "total": 540.98
+    },
+    {
+      "fecha": "2026-09-21",
+      "uds": 342,
+      "neto": 547.27,
+      "total": 609.94
+    },
+    {
+      "fecha": "2026-09-22",
+      "uds": 347,
+      "neto": 479.26,
+      "total": 534.77
+    },
+    {
+      "fecha": "2026-09-23",
+      "uds": 799,
+      "neto": 1062.24,
+      "total": 1193.59
+    },
+    {
+      "fecha": "2026-09-25",
+      "uds": 398,
+      "neto": 556.1,
+      "total": 616.74
+    },
+    {
+      "fecha": "2026-09-26",
+      "uds": 498,
+      "neto": 715.35,
+      "total": 801.22
+    }
+  ],
+  "origen": "agora_export",
+  "generado_en": "2026-09-28T07:02:11.754Z"
+}

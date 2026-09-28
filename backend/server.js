@@ -299,6 +299,7 @@ app.use("/api/business-time-machine", require("./routes/business-time-machine"))
 app.use("/api/analisis-diario", require("./routes/analisis-diario")); // rayos X del día (admin)
 app.use("/api/dossier", require("./routes/dossier")); // dossier para asesoría con Claude (admin)
 app.use("/api/cuenta-resultados", require("./routes/cuenta-resultados")); // P&L mensual (admin)
+app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)
 
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última
@@ -350,6 +351,7 @@ store
     require("./seed-negocio").seedNegocio().catch(() => {});
     require("./seed-turnos").seedTurnos().catch(() => {}); // rotación de turnos (7 sep–15 nov 2026)
     require("./seed-fit").seedFit().catch(() => {}); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
+    require("./seed-analisis-mes").seedAnalisisMes().catch(() => {}); // snapshot de análisis del mes (sept 2026)
     // Siembra idempotente de proveedores reales (Frutería y siguientes).
     require("./seed-proveedores").seedProveedores().catch(() => {});
     // Siembra idempotente de los productos de venta de Ágora que Control M no

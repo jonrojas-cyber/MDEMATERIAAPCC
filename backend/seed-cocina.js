@@ -391,6 +391,21 @@ const BATCHES = [
         { materia_id: "mat-coc-croissant", cantidad: 1 }, { materia_id: "mat-coc-crema-pistacho", cantidad: 17 } ] } },
     ],
   },
+  // Food cost REAL + mapeo de Ágora (sin inventar precios):
+  //  · prod-005 (Matcha Latte) y prod-006 (Cold brew nitro): la receta ya es la
+  //    real (matcha 2,5 g + leche 180; cold brew 250 ml), pero arrastraban la
+  //    marca "cantidades_estimadas". Se confirma → dejan de contar como estimados.
+  //  · agora_ref: enlaza los nombres de Ágora "Dulce origen" (croissant solo) y
+  //    "Dulce colección" (cookie) con su ficha, para que el conector los case.
+  {
+    flag: "cocina_real_y_agora_v1",
+    actualizaciones: [
+      { entity: "productos", id: "prod-005", campos: { cantidades_estimadas: false } },
+      { entity: "productos", id: "prod-006", campos: { cantidades_estimadas: false } },
+      { entity: "productos", id: "prod-rep-croissant", campos: { agora_ref: "Dulce origen" } },
+      { entity: "productos", id: "prod-rep-cookie", campos: { agora_ref: "Dulce colección" } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

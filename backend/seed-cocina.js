@@ -382,6 +382,15 @@ const BATCHES = [
       ].map((id) => ({ entity: "productos", id, campos: { activo: false, archivado_motivo: "duplicado matcha (no en carta)" } })),
     ],
   },
+  // Croissant Pistacho: la crema de pistacho (34,5 g) disparaba el food cost al
+  // 48 %. Se baja a 17 g (decisión de la fundadora) → food cost ≈ 35 % a 2,80 €.
+  {
+    flag: "cocina_croissant_pistacho_17g_v1",
+    actualizaciones: [
+      { entity: "productos", id: "prod-croissant-pistacho", campos: { ingredientes: [
+        { materia_id: "mat-coc-croissant", cantidad: 1 }, { materia_id: "mat-coc-crema-pistacho", cantidad: 17 } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

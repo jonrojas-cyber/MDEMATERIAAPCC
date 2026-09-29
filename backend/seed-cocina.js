@@ -406,6 +406,19 @@ const BATCHES = [
       { entity: "productos", id: "prod-rep-cookie", campos: { agora_ref: "Dulce colección" } },
     ],
   },
+  // BEBIDAS · limonadas (Burbujas): coste ESTIMADO. La receta (super juice) está
+  // en el sistema pero faltan precios reales de ácido cítrico/málico/glutamato.
+  // Estimación con precios de mercado: super juice ~0,00103 €/ml, ~40 ml/vaso →
+  // coste ~0,05 € (son agua carbonatada). Marcado estimado; se afina con precios.
+  {
+    flag: "bebidas_limonadas_est_v1",
+    materias: [ { id: "mat-coc-superjuice-est", nombre: "Super juice cítrico (estimado)", unidad: "ml", categoria: "Bebidas", coste_medio: 0.00103, disponibilidad_actual: 0, ubicacion: "Barra", estimado: true } ],
+    actualizaciones: [
+      { entity: "productos", id: "prod-agora-limonada-origen", campos: { cantidades_estimadas: true, ingredientes: [ { materia_id: "mat-coc-superjuice-est", cantidad: 40 } ] } },
+      { entity: "productos", id: "prod-agora-limonada-equilibrio", campos: { cantidades_estimadas: true, ingredientes: [ { materia_id: "mat-coc-superjuice-est", cantidad: 40 } ] } },
+      { entity: "productos", id: "prod-agora-limonada-coleccion", campos: { cantidades_estimadas: true, ingredientes: [ { materia_id: "mat-coc-superjuice-est", cantidad: 40 } ] } },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

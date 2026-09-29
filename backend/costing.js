@@ -106,20 +106,30 @@ function margenProducto(producto, idxMat) {
 }
 
 // Margen bruto medio de la carta (productos activos con precio).
+// Solo se promedian productos con coste REAL (>0). Incluir los que aún no tienen
+// escandallo (coste 0) los cuenta como 0 % de food cost / 100 % de margen y
+// falsea la media (bajaba el food cost al 21 % en vez del 28 % real).
+function cartaCosteada(productos, idx) {
+  return (productos || store.readAll("productos"))
+    .filter((p) => p.activo !== false && Number(p.precio_venta) > 0)
+    .map((p) => ({ p, mm: margenProducto(p, idx) }))
+    .filter((x) => x.mm.coste > 0);
+}
+
 function margenMedioCarta(productos, idxMat) {
   const idx = idxMat || indiceMaterias();
-  const items = (productos || store.readAll("productos")).filter((p) => p.activo !== false && Number(p.precio_venta) > 0);
+  const items = cartaCosteada(productos, idx);
   if (!items.length) return 0;
-  const suma = items.reduce((s, p) => s + margenProducto(p, idx).margen_bruto, 0);
+  const suma = items.reduce((s, x) => s + x.mm.margen_bruto, 0);
   return Math.round((suma / items.length) * 1000) / 1000;
 }
 
 // Food cost medio de la carta (%). Devuelve número tipo 32.5 o null.
 function foodCostMedioCarta(productos, idxMat) {
   const idx = idxMat || indiceMaterias();
-  const items = (productos || store.readAll("productos")).filter((p) => p.activo !== false && Number(p.precio_venta) > 0);
+  const items = cartaCosteada(productos, idx);
   if (!items.length) return null;
-  const suma = items.reduce((s, p) => s + margenProducto(p, idx).food_cost, 0);
+  const suma = items.reduce((s, x) => s + x.mm.food_cost, 0);
   return Math.round((suma / items.length) * 1000) / 10;
 }
 

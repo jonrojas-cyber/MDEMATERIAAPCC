@@ -89,17 +89,25 @@ router.get("/", (req, res) => {
   const productos = store.readAll("productos").filter((p) => p.activo !== false);
   const items = productos.map((p) => escandallar(p, materias));
 
+  // La media de margen/food cost solo puede promediar productos que TIENEN coste
+  // real (coste > 0). Si se cuelan los que aún no tienen escandallo (coste 0),
+  // cuentan como 0 % de food cost y falsean la media a la baja (p. ej. 21 % en
+  // vez del 28 % real). Se promedia solo sobre los costeados.
   const conPrecio = items.filter((i) => i.precio_venta > 0);
-  const margenMedio = conPrecio.length
-    ? Math.round((conPrecio.reduce((s, i) => s + i.margen_bruto, 0) / conPrecio.length) * 1000) / 1000
+  const conCoste = conPrecio.filter((i) => i.coste > 0);
+  const base = conCoste.length ? conCoste : conPrecio;
+  const margenMedio = base.length
+    ? Math.round((base.reduce((s, i) => s + i.margen_bruto, 0) / base.length) * 1000) / 1000
     : 0;
 
   res.json({
     margen_medio: margenMedio,
-    food_cost_medio: conPrecio.length
-      ? Math.round((conPrecio.reduce((s, i) => s + i.food_cost, 0) / conPrecio.length) * 1000) / 1000
+    food_cost_medio: base.length
+      ? Math.round((base.reduce((s, i) => s + i.food_cost, 0) / base.length) * 1000) / 1000
       : 0,
     total_productos: items.length,
+    productos_costeados: conCoste.length,      // sobre cuántos se calcula la media
+    productos_sin_coste: conPrecio.length - conCoste.length,
     hay_estimaciones: items.some((i) => i.coste_estimado),
     productos: items.sort((a, b) => b.margen_bruto - a.margen_bruto),
   });

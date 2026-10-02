@@ -1269,29 +1269,37 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   await expect(page.locator("body")).not.toContainText(/food cost/);
 });
 
-test("etiquetas: prueba manual (nombre a mano + estado 'Por testear' + vida útil libre)", async ({ page }) => {
+test("etiquetas: etiqueta libre (nombre a mano + vida útil libre + observaciones)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_etiquetaProd());
-  await expect(page.locator("body")).toContainText(/estado · pruebas/i);
-  await expect(page.locator("body")).toContainText(/Por testear/);
-  // Escribe a mano algo que nunca ha estado en carta y marca su estado de prueba.
-  const url = await page.evaluate(() => {
-    document.getElementById("etq-nombre").value = "sirope de té chai";
-    document.getElementById("etq-nota").value = "prueba 2";
-    etqLeer();
-    etqEstado("Prueba");
+  // Pantalla de búsqueda rediseñada: buscador grande + atajo "✎ Libre".
+  await expect(page.locator("#etq-buscar")).toBeVisible();
+  await expect(page.locator("#etq-buscar")).toHaveAttribute("placeholder", /Buscar producto para etiquetar/i);
+  // Escribe a mano algo que nunca ha estado en carta y abre la ficha libre.
+  const res = await page.evaluate(() => {
+    document.getElementById("etq-buscar").value = "sirope de té chai";
+    etqManual();                         // ✎ Libre → abre la ficha con ese nombre
+    window._etq.vidaH = 10 * 24;         // vida útil libre: 10 días
+    document.getElementById("etq-cant").value = "500 ml";
+    document.getElementById("etq-obs").value = "prueba 2";
+    etqLeerFicha();
     let opened = null;
     const orig = window.open; window.open = (u) => { opened = u; return null; };
-    etqGenerar();
+    etqImprimirFicha();
     window.open = orig;
-    return opened;
+    // El parámetro d es base64 del JSON de especificaciones del lote.
+    const d = decodeURIComponent(opened.split("d=")[1].split("&")[0]);
+    const especs = JSON.parse(decodeURIComponent(escape(atob(d))));
+    return { url: opened, especs };
   });
-  expect(url).toContain("/etiqueta/prep");
-  const dec = decodeURIComponent(url).replace(/\+/g, " ");
-  expect(dec).toContain("n=sirope de té chai");
-  expect(dec).toContain("est=Prueba · prueba 2");
+  expect(res.url).toContain("/etiqueta/lote");
+  expect(res.url).toContain("print=win");
+  expect(res.especs[0].n).toBe("sirope de té chai");
+  expect(res.especs[0].c).toBe("500 ml");
+  expect(res.especs[0].est).toContain("prueba 2");
+  expect(res.especs[0].v).toBe(10 * 24);
   expect(errors).toEqual([]);
 });
 

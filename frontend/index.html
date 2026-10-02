@@ -4842,6 +4842,9 @@ function etqLeer(){
   const s=window._etq;
   const n=el("etq-nombre"), c=el("etq-cant"), r=el("etq-resp"), no=el("etq-nota");
   if(n) s.nombre=n.value.trim();
+  // Si el nombre se escribe a mano y ya no coincide con el producto elegido,
+  // se desliga del ref (es una etiqueta libre, sin ficha de ese producto).
+  if(s.refNombre && s.nombre!==s.refNombre){ s.ref=null; s.refNombre=null; }
   if(c) s.cantidad=c.value.trim();
   if(r) s.resp=r.value.trim();
   if(no) s.nota=no.value.trim();
@@ -4858,6 +4861,27 @@ function etqRender(){
   const chips=ETQ_PRODUCTOS.map(p=>`<button class="${s.nombre===p.n?"on":""}" onclick="etqPreset('${p.n.replace(/'/g,"\\'")}',${p.v})">${esc(p.n)}</button>`).join("");
   const vidas=ETQ_VIDAS.map(v=>`<button class="${s.vidaH===v.h?"on":""}" onclick="etqVida(${v.h})">${v.t}</button>`).join("");
   const estados=ETQ_ESTADOS.map(e=>`<button class="${s.estado===e.k?"on":""}" onclick="etqEstado('${e.k}')">${esc(e.t)}</button>`).join("");
+  const lote = window._etqLote||[];
+  const loteTotal = lote.reduce((a,x)=>a+x.copies,0);
+  const loteHTML = lote.length ? `
+    <div class="lim-eyebrow" style="margin:18px 0 6px">lote a imprimir · ${loteTotal} etiqueta${loteTotal===1?"":"s"}</div>
+    ${lote.map((x,i)=>`<div class="card" style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px">
+      <div style="flex:1;min-width:0"><b style="font-size:13px">${esc(x.nombre)}</b>
+        <div style="font-size:11px;color:var(--muted)">${x.vidaH>0?limNum(x.vidaH/24,1)+" d":'<span style="color:#c79a3a">sin vida</span>'}${x.cant?" · "+esc(x.cant):""}</div></div>
+      <button class="btn-ghost" style="padding:4px 10px" onclick="etqLoteCopias(${i},-1)">−</button>
+      <b style="min-width:22px;text-align:center">${x.copies}</b>
+      <button class="btn-ghost" style="padding:4px 10px" onclick="etqLoteCopias(${i},1)">+</button>
+      <button class="btn-ghost" style="padding:4px 8px" onclick="etqQuitarLote(${i})">✕</button>
+    </div>`).join("")}
+    <div class="card-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="etqImprimirLote()">🖨️ Imprimir lote (${loteTotal})</button>
+      <button class="btn-ghost" onclick="etqVaciarLote()">vaciar</button>
+    </div>` : "";
+  const vidaNota = s.ref
+    ? (s.vidaH>0
+        ? `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">De la ficha APPCC de <b>${esc(s.nombre)}</b> · ${limNum(s.vidaH/24,1)} días. Puedes cambiarla (se guarda al imprimir).</div>`
+        : `<div style="font-size:11.5px;color:#c79a3a;font-weight:600;margin-bottom:6px">⚠ <b>${esc(s.nombre)}</b> no tiene vida útil definida. Elígela aquí para la caducidad — se guardará en su ficha APPCC y se recordará.</div>`)
+    : "";
   const body=`<div class="card" id="pbt-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
       <span id="pbt-estado" style="font-size:13px;font-weight:700;">● comprobando impresora…</span>
       <button class="btn-ghost" style="margin-left:auto" onclick="pbtConectarManual()">Conectar impresora (Bluetooth)</button>
@@ -4865,44 +4889,84 @@ function etqRender(){
       <button class="btn-ghost" onclick="etqImprimirCable()">🖥️ Imprimir por cable (Windows)</button>
     </div>
     <div class="lim-lead">Datea cualquier cosa que preparas —también pruebas que no están en carta—: escribes el nombre a mano, la cantidad y la vida útil, y sale con la fecha, un QR y (si quieres) su estado de prueba.</div>
-    <div class="lim-eyebrow" style="margin-bottom:6px">producto (o escríbelo a mano)</div>
-    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${chips}</div>
-    <input id="etq-nombre" class="etq-in" type="text" placeholder="nombre · ej. sirope de té chai" value="${esc(s.nombre)}" oninput="etqLeer()" style="margin-top:10px">
+    <div class="lim-eyebrow" style="margin-bottom:6px">buscar producto</div>
+    <input id="etq-buscar" class="etq-in" type="text" placeholder="busca: limonada, super juice, salsa, cold brew…" autocomplete="off" oninput="etqBuscar(this.value)">
+    <div id="etq-resultados" class="lim-presets" style="margin-top:8px;justify-content:flex-start;max-height:38vh;overflow:auto"></div>
+    <div class="lim-eyebrow" style="margin:14px 0 6px">o escríbelo a mano</div>
+    <input id="etq-nombre" class="etq-in" type="text" placeholder="nombre · ej. sirope de té chai" value="${esc(s.nombre)}" oninput="etqLeer()">
     <input id="etq-cant" class="etq-in" type="text" placeholder="cantidad · ej. 601 ml, 2 L, 30 uds" value="${esc(s.cantidad)}" oninput="etqLeer()">
     <div class="lim-eyebrow" style="margin:16px 0 6px">estado · pruebas (opcional)</div>
     <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${estados}</div>
     <input id="etq-nota" class="etq-in" type="text" placeholder="nº o nota de prueba · ej. prueba 2, v3" value="${esc(s.nota)}" oninput="etqLeer()">
-    <div class="lim-eyebrow" style="margin:16px 0 6px">vida útil</div>
+    <div class="lim-eyebrow" style="margin:16px 0 6px">vida útil (APPCC)</div>
+    ${vidaNota}
     <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${vidas}</div>
     <div class="etq-libre"><input id="etq-vida-libre" type="number" min="0" step="0.5" placeholder="otros" inputmode="decimal" oninput="etqVidaLibre(this.value)"><span>días</span><span id="etq-vida-libre-val" class="etq-libre-val"></span></div>
     <div class="lim-eyebrow" style="margin:16px 0 6px">responsable</div>
-    <input id="etq-resp" class="etq-in" type="text" placeholder="quién lo prepara" value="${esc(s.resp)}" oninput="etqLeer()">`;
+    <input id="etq-resp" class="etq-in" type="text" placeholder="quién lo prepara" value="${esc(s.resp)}" oninput="etqLeer()">
+    ${loteHTML}`;
   const foot=`<button class="btn-ghost" onclick="goBack()">← Salir</button>
+    <button class="btn-ghost" onclick="etqAnadirLote()">➕ al lote</button>
     <button class="btn-primary" onclick="etqGenerar()">imprimir etiqueta →</button>`;
   el("inner-content").innerHTML=`<div id="lim"><div id="etq">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div></div>`;
   pbtActualizarEstado();
+  etqCargarResultados("");   // carga el catálogo del buscador al abrir
+}
+// ── Buscador del catálogo de etiquetas de producción ────────────────────────
+var _etqBuscarT=null;
+function etqBuscar(q){ if(_etqBuscarT) clearTimeout(_etqBuscarT); _etqBuscarT=setTimeout(function(){ etqCargarResultados(q); }, 160); }
+async function etqCargarResultados(q){
+  var cont=el("etq-resultados"); if(!cont) return;
+  try{
+    var list=await api("/etiquetas/catalogo?q="+encodeURIComponent(q||""));
+    window._etqResultados=list;
+    if(!list.length){
+      cont.innerHTML='<span style="font-size:12px;color:var(--muted)">Sin resultados.</span>'+
+        ((q&&q.trim())?` <button class="btn-ghost" style="margin-left:8px" onclick="etqAnadirCatalogo()">+ añadir «${esc(q.trim())}» a la lista</button>`:"");
+      return;
+    }
+    cont.innerHTML=list.map(function(it,i){
+      var on=(window._etq&&window._etq.ref===it.ref)?"on":"";
+      var vida=(it.vida_dias!=null)?` <small style="opacity:.55">· ${it.vida_dias}d</small>`:` <small style="opacity:.5;color:#c79a3a">· sin vida</small>`;
+      var src=it.fuente==="agora"?' <small style="opacity:.4">Ágora</small>':"";
+      return `<button class="${on}" onclick="etqElegir(${i})" title="${esc(it.categoria||"")}">${esc(it.nombre)}${vida}${src}</button>`;
+    }).join("");
+  }catch(e){ cont.innerHTML='<span style="font-size:12px;color:var(--alert,#b23b3b)">No se pudo cargar el catálogo.</span>'; }
+}
+function etqElegir(i){
+  var it=(window._etqResultados||[])[i]; if(!it) return;
+  etqLeer();
+  window._etq.nombre=it.nombre;
+  window._etq.refNombre=it.nombre;
+  window._etq.ref=it.ref;
+  window._etq.fuente=it.fuente;
+  window._etq.vidaH=(it.vida_dias!=null)?it.vida_dias*24:0;   // 0 = vida útil SIN fijar (no se inventa)
+  etqRender();   // rellena el nombre y, si la hay, la vida útil
+}
+async function etqAnadirCatalogo(){
+  var inp=el("etq-buscar"); var q=(inp&&inp.value.trim())||(window._etq&&window._etq.nombre)||"";
+  if(!q){ alert("Escribe el nombre del producto a añadir."); return; }
+  var vida=Math.max(1,Math.round(((window._etq&&window._etq.vidaH)||72)/24));
+  try{
+    await api("/etiquetas/catalogo",{method:"POST",body:JSON.stringify({nombre:q,vida_dias:vida,categoria:"Preparación"})});
+    window._etq.nombre=q;
+    pbtToast("Añadido a la lista ✓",1400);
+    etqCargarResultados(q);
+  }catch(e){ alert("No se pudo añadir: "+((e&&e.message)||e)); }
 }
 function etqGenerar(){
   etqLeer();
   const s=window._etq;
   if(!s.nombre){ alert("Ponle un nombre al producto"); const n=el("etq-nombre"); if(n) n.focus(); return; }
-  const qs=new URLSearchParams();
-  qs.set("n", s.nombre);
-  if(s.cantidad) qs.set("c", s.cantidad);
-  if(s.vidaH>0) qs.set("v", s.vidaH);
-  if(s.resp) qs.set("r", s.resp);
-  const est=[s.estado, s.nota].filter(Boolean).join(" · ");   // ej. "Prueba · prueba 2"
-  if(est) qs.set("est", est);
-  qs.set("p", new Date().toISOString()); // sella el momento de la impresión
-  pbtImprimir("/etiqueta/prep?"+qs.toString());
+  if(!(s.vidaH>0)){
+    if(!confirm("Este producto no tiene vida útil definida, así que la etiqueta saldrá SIN caducidad (solo fecha de producción).\n\nPara una etiqueta APPCC con caducidad, define la vida útil abajo. ¿Imprimir igual sin caducidad?")) return;
+  }
+  etqGuardarFicha();  // persiste la vida útil en la ficha APPCC del producto
+  pbtImprimir("/etiqueta/prep?"+etqQS().toString());
 }
-// Imprimir por CABLE (USB → driver de Windows): abre la etiqueta y lanza el
-// diálogo de impresión de Windows. No usa Bluetooth. Ideal si la Phomemo está
-// instalada como impresora de Windows por cable.
-function etqImprimirCable(){
-  etqLeer();
+// Construye los parámetros de la etiqueta (sella fecha/hora de impresión).
+function etqQS(){
   const s=window._etq;
-  if(!s.nombre){ alert("Ponle un nombre al producto"); const n=el("etq-nombre"); if(n) n.focus(); return; }
   const qs=new URLSearchParams();
   qs.set("n", s.nombre);
   if(s.cantidad) qs.set("c", s.cantidad);
@@ -4911,6 +4975,53 @@ function etqImprimirCable(){
   const est=[s.estado, s.nota].filter(Boolean).join(" · ");
   if(est) qs.set("est", est);
   qs.set("p", new Date().toISOString());
+  return qs;
+}
+// ── Etiquetas por LOTES ─────────────────────────────────────────────────────
+function etqAnadirLote(){
+  etqLeer(); const s=window._etq;
+  if(!s.nombre){ alert("Elige un producto del buscador o escríbelo a mano."); return; }
+  etqGuardarFicha();   // persiste la vida útil del producto en su ficha APPCC
+  (window._etqLote=window._etqLote||[]).push({
+    nombre:s.nombre, ref:s.ref||null, vidaH:s.vidaH||0, cant:s.cantidad||"",
+    est:[s.estado,s.nota].filter(Boolean).join(" · "), resp:s.resp||"", copies:1,
+  });
+  pbtToast("Añadido al lote ✓",1100);
+  etqRender();
+}
+function etqLoteCopias(i,d){ var l=window._etqLote||[]; if(!l[i])return; l[i].copies=Math.max(1,l[i].copies+d); etqRender(); }
+function etqQuitarLote(i){ var l=window._etqLote||[]; l.splice(i,1); etqRender(); }
+function etqVaciarLote(){ window._etqLote=[]; etqRender(); }
+function etqImprimirLote(){
+  var l=window._etqLote||[]; if(!l.length){ alert("El lote está vacío."); return; }
+  var now=new Date().toISOString(), especs=[];
+  l.forEach(function(x){ for(var k=0;k<x.copies;k++) especs.push({ n:x.nombre, c:x.cant, v:x.vidaH>0?x.vidaH:0, est:x.est, r:x.resp, p:now }); });
+  // Una sola impresión con todas las etiquetas (salto de página entre ellas).
+  var b64=btoa(unescape(encodeURIComponent(JSON.stringify(especs))));
+  window.open("/etiqueta/lote?d="+encodeURIComponent(b64)+"&print=win","_blank");
+}
+// Guarda la vida útil (y nombre visto) en la ficha APPCC del producto, para que
+// se recuerde la próxima vez y PERSISTA aunque Ágora cambie el nombre/precio.
+function etqGuardarFicha(){
+  const s=window._etq;
+  if(!s.ref) return; // etiqueta libre (sin producto): no hay ficha que guardar
+  try{
+    api("/etiquetas/ficha/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify({
+      vida_util_dias: s.vidaH>0 ? Math.round((s.vidaH/24)*10)/10 : null,
+      nombre: s.nombre,
+    })}).catch(function(){});
+  }catch(e){}
+}
+// Imprimir por CABLE (USB → driver de Windows): abre la etiqueta y lanza el
+// diálogo de impresión de Windows. No usa Bluetooth. Ideal si la Phomemo está
+// instalada como impresora de Windows por cable.
+function etqImprimirCable(){
+  etqLeer();
+  const s=window._etq;
+  if(!s.nombre){ alert("Ponle un nombre al producto"); const n=el("etq-nombre"); if(n) n.focus(); return; }
+  if(!(s.vidaH>0)){ if(!confirm("Sin vida útil definida: la etiqueta saldrá SIN caducidad. ¿Imprimir igual?")) return; }
+  etqGuardarFicha();
+  const qs=etqQS();
   qs.set("print", "win");  // la página se auto-imprime por el driver de Windows
   window.open("/etiqueta/prep?"+qs.toString(), "_blank");
 }

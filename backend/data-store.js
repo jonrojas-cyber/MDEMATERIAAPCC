@@ -79,6 +79,11 @@ const ENTITIES = [
   "incidencias",       // partes del equipo: avería/stock/limpieza… con estado
   // ── Análisis del mes: snapshot mensual de ventas (mix, día de semana, serie) ──
   "analisis_mes",      // un registro por mes (id am-YYYY-MM) con los agregados de Ágora
+  // ── Catálogo de etiquetas de producción: productos/preparaciones con vida útil ──
+  "etiquetas_catalogo",// {id, nombre, vida_dias, categoria} para el buscador de etiquetas
+  // ── Fichas APPCC por producto: datos de manipulación/vida útil que PERSISTEN
+  //    aunque Ágora cambie nombre/precio/familia (keyed por ref estable) ──
+  "appcc_fichas",      // {id: ref, vida_util_dias, conservacion, notas, alergenos, actualizado_en/por}
 ];
 
 const cache = {};

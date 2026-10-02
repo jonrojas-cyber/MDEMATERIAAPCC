@@ -1274,27 +1274,29 @@ test("lab: producir se divide en Bebidas y Comida, con navegación coherente", a
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_lab());
-  await expect(page.locator("body")).toContainText(/¿qué vas a producir\?/i);
-  await expect(page.locator(".appcc-tile-name", { hasText: /Bebidas/ })).toBeVisible();
-  await expect(page.locator(".appcc-tile-name", { hasText: /Comida/ })).toBeVisible();
+  // Índice de producción: SOLO dos paneles (bebidas, comida). Nada más en el menú.
+  await expect(page.locator(".lab-panel")).toHaveCount(2);
+  await expect(page.locator(".lab-title", { hasText: /^bebidas$/ })).toBeVisible();
+  await expect(page.locator(".lab-title", { hasText: /^comida$/ })).toBeVisible();
   // Bebidas → las cuatro líneas.
   await page.evaluate(() => irA_labBebidas());
-  for (const n of ["Limonadas", "Latas fit", "Cold brew", "Spritz"]) {
-    await expect(page.locator(".appcc-tile-name", { hasText: new RegExp("^" + n) })).toBeVisible();
+  for (const n of [/limonadas/i, /latas fit/i, /cold brew/i, /spritz/i]) {
+    await expect(page.locator(".lr-name", { hasText: n })).toBeVisible();
   }
-  // Back vuelve al hub de Lab.
+  // Back vuelve al hub de Lab (dos paneles).
   await page.evaluate(() => goBack());
-  await expect(page.locator("body")).toContainText(/¿qué vas a producir\?/i);
+  await expect(page.locator(".lab-panel")).toHaveCount(2);
   // Comida → producciones reales + la salsa con trufa como PENDIENTE (sin inventar receta).
   await page.evaluate(() => irA_labComida());
-  await expect(page.locator(".appcc-tile-name", { hasText: /Salsa Verde Materia/ })).toBeVisible();
-  await expect(page.locator(".appcc-tile-name", { hasText: /Salsa Materia con trufa/ })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /Salsa Verde Materia/i })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /Salsa Materia con trufa/i })).toBeVisible();
+  await expect(page.locator(".lab-row.pend .lab-pend")).toBeVisible();   // marcada pendiente
   // Abrir la salsa con trufa: ficha pendiente, no inventa ingredientes.
   await page.evaluate(() => labAbrirFicha("base", "ST"));
   await expect(page.locator("body")).toContainText(/No invento nada|Receta por definir/i);
   // Back vuelve a Comida (destino dinámico _labVolver).
   await page.evaluate(() => goBack());
-  await expect(page.locator(".appcc-tile-name", { hasText: /Salsa Materia con trufa/ })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /Salsa Materia con trufa/i })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

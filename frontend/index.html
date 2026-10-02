@@ -1144,6 +1144,46 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .dashcard-badge { position: absolute; top: 12px; right: 12px; min-width: 22px; text-align: center; font-size: 12px; font-weight: 700;
   color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .dashcard-badge.rojo { color: #fff; background: #D62A1C; border-color: #D62A1C; }
+
+/* ── LAB · índice de producción (bebidas / comida) ───────────────────────────
+   Lenguaje de marca: panel de keyline, Courier en minúsculas, imagotipo de tres
+   barras como marca, notación de laboratorio. Sin iconos infantiles. Restraint. */
+.lab-wrap { display: flex; flex-direction: column; gap: 12px; }
+.lab-panel { position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 24px 22px;
+  transition: border-color .16s ease, background .16s ease; }
+.lab-panel:hover { border-color: var(--ink); background: #37413A; }
+.lab-mark { display: inline-block; width: 15px; height: 26px; background: var(--olive);
+  -webkit-mask: var(--ig-mask) center/contain no-repeat; mask: var(--ig-mask) center/contain no-repeat; }
+.lab-eyebrow { font-size: 9.5px; letter-spacing: .22em; text-transform: lowercase; color: var(--muted); margin-top: 12px; }
+.lab-title { font-family: var(--font); font-size: clamp(27px, 8.5vw, 34px); font-weight: 700; text-transform: lowercase;
+  letter-spacing: -.015em; line-height: 1; color: var(--ink); margin-top: 7px; }
+.lab-rule { border-top: 1px solid var(--line); margin: 15px 0 11px; }
+.lab-list { font-size: 12px; color: var(--muted); letter-spacing: .03em; line-height: 1.55; }
+.lab-arrow { position: absolute; top: 24px; right: 22px; color: var(--muted); font-size: 17px; line-height: 1; }
+.lab-panel:hover .lab-arrow { color: var(--ink); }
+/* Pie de utilidades: discreto, tipográfico, nunca cajas. */
+.lab-foot { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 7px 18px; align-items: center; }
+.lab-foot .lab-foot-lb { font-size: 9.5px; letter-spacing: .2em; text-transform: lowercase; color: var(--muted); opacity: .75; width: 100%; margin-bottom: 2px; }
+.lab-foot button { font-size: 11.5px; color: var(--muted); letter-spacing: .04em; text-transform: lowercase;
+  background: none; border: 0; padding: 0; cursor: pointer; transition: color .14s ease; }
+.lab-foot button:hover { color: var(--ink); }
+/* Sub-hub (bebidas / comida): filas de notación con keyline a hilo. */
+.lab-rows { display: flex; flex-direction: column; }
+.lab-row { display: grid; grid-template-columns: 15px 1fr auto; gap: 15px; align-items: center; width: 100%; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid var(--line); padding: 19px 2px; cursor: pointer; color: inherit; font: inherit; }
+.lab-rows .lab-row:last-child { border-bottom: 0; }
+.lab-row .lr-mark { width: 9px; height: 17px; background: var(--olive); align-self: center;
+  -webkit-mask: var(--ig-mask) center/contain no-repeat; mask: var(--ig-mask) center/contain no-repeat; }
+.lab-row.pend .lr-mark { background: var(--sev-warn); }
+.lab-row .lr-name { display: block; font-size: 16.5px; font-weight: 700; text-transform: lowercase; letter-spacing: .005em; line-height: 1.12; }
+.lab-row .lr-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: .02em; line-height: 1.4; }
+.lab-row .lr-arrow { color: var(--muted); font-size: 16px; }
+.lab-row:hover .lr-name { color: var(--ink); }
+.lab-row:hover .lr-arrow { color: var(--ink); }
+.lab-pend { font-size: 9px; letter-spacing: .1em; text-transform: lowercase; color: var(--sev-warn);
+  border: 1px solid var(--sev-warn); border-radius: 3px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
 /* ═══════════════════════════════════════════════════════════════
    INICIO · CEREBRO DE DECISIONES · una pantalla, una pregunta.
    El sistema calcula qué hacer (motor /decisiones) y lo presenta
@@ -2998,64 +3038,84 @@ function mbdsNum(x,d){ return (x==null||x==="")?"—":(typeof x==="number"?(d!=n
 // LAB · carpeta madre que reúne Producción y el laboratorio de diseño (MBDS).
 // Producir arriba (lo diario); debajo, el laboratorio y las herramientas.
 // Helper de tile reutilizable por los hubs de Lab.
-function labTile(nombre, sub, onclick, badge){
-  return `<button class="appcc-tile" onclick="${onclick}">
-    <span class="appcc-tile-name">${nombre}</span>
-    <span class="appcc-tile-sub">${sub}</span>
-    ${badge ? `<span class="appcc-badge">${badge}</span>` : ""}
+// Panel de categoría (bebidas/comida): imagotipo de tres barras + título en
+// minúsculas + notación del contenido. Lenguaje de laboratorio, sin iconos.
+function labPanel(titulo, lista, onclick){
+  return `<button class="lab-panel" onclick="${onclick}">
+    <span class="lab-arrow" aria-hidden="true">→</span>
+    <span class="lab-mark" aria-hidden="true"></span>
+    <div class="lab-eyebrow">producción</div>
+    <div class="lab-title">${titulo}</div>
+    <div class="lab-rule"></div>
+    <div class="lab-list">${lista}</div>
   </button>`;
 }
-// HUB DE LAB · página de producir. Dos categorías: Bebidas y Comida. Debajo, las
-// herramientas de taller (producir, laboratorio de bebidas, base de matcha,
-// estación, plan, etiquetas). _labVolver guarda a dónde debe volver cada módulo.
+// Fila de sub-hub (una línea de producción o una elaboración).
+function labRow(nombre, sub, onclick, pend){
+  return `<button class="lab-row${pend?' pend':''}" onclick="${onclick}">
+    <span class="lr-mark" aria-hidden="true"></span>
+    <span style="min-width:0">
+      <span class="lr-name">${nombre}${pend?'<span class="lab-pend">pendiente</span>':''}</span>
+      <span class="lr-sub">${sub}</span>
+    </span>
+    <span class="lr-arrow" aria-hidden="true">→</span>
+  </button>`;
+}
+// HUB DE LAB · índice de producción. SOLO dos dominios: bebidas y comida. El resto
+// de herramientas vive en un pie discreto, no en el menú principal.
+// _labVolver guarda a dónde debe volver cada módulo que se abra.
 async function irA_lab(){
   navReset(); openSection("lab", "Lab");
   if (typeof setTab === "function") setTab("lab");
   window._labVolver = irA_lab;
   let pend = 0;
   try { const d = await api("/inicio"); pend = (d.preparar || []).length; } catch (e) {}
+  const pendTxt = pend ? ` · ${pend}` : "";
   setInner(`
-    <div class="section-label">Producción · ¿qué vas a producir?</div>
-    <div class="appcc-grid">
-      ${labTile("🥤 Bebidas", "Limonadas · Latas fit · Cold brew · Spritz", "irA_labBebidas()", "")}
-      ${labTile("🍽️ Comida", "Salsas y producciones · sándwiches y tostas", "irA_labComida()", "")}
+    <div class="lab-eyebrow" style="margin:0 0 15px">control m · producción</div>
+    <div class="lab-wrap">
+      ${labPanel("bebidas", "limonadas · latas fit · cold brew · spritz", "irA_labBebidas()")}
+      ${labPanel("comida", "salsas · sándwiches · tostas", "irA_labComida()")}
     </div>
-    <div class="section-label" style="margin-top:20px">Herramientas de taller</div>
-    <div class="appcc-grid">
-      ${labTile("Producir", "Recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
-      ${labTile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
-      ${labTile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
-      ${labTile("Estación de trabajo", "Mise en place en frío · imprimible", "irA_estacion()", "")}
-      ${labTile("Plan de producción", "Qué preparar · diario y semanal", "irA_planProduccion()", "")}
-      ${labTile("Etiquetas", "APPCC · vida útil · lotes de producción", "irA_etiquetaProd()", "")}
+    <div class="lab-foot">
+      <span class="lab-foot-lb">otras herramientas</span>
+      <button onclick="irA_preparaciones()">producir${pendTxt}</button>
+      <button onclick="irA_planProduccion()">plan de producción</button>
+      <button onclick="irA_estacion()">estación</button>
+      <button onclick="irA_etiquetaProd()">etiquetas</button>
     </div>`);
 }
-// Sub-hub BEBIDAS: las cuatro líneas de bebida.
+// Sub-hub BEBIDAS: las cuatro líneas; laboratorio de bebidas y base de matcha al pie.
 function irA_labBebidas(){
   navInto(()=>irA_lab()); openSection("labbebidas", "Bebidas");
   window._labVolver = irA_labBebidas;
   setInner(`
-    <div class="section-label">Bebidas · ¿qué vas a producir?</div>
-    <div class="appcc-grid">
-      ${labTile("Limonadas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
-      ${labTile("Latas fit", "Ice Latte proteico · Matcha colágeno — escala por latas", "irA_fit()", "")}
-      ${labTile("Cold brew", "Maceración · lote, cálculo y etiquetas", "irA_maceracion()", "")}
-      ${labTile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
+    <div class="lab-eyebrow" style="margin:0 0 4px">producción · bebidas</div>
+    <div class="lab-rows">
+      ${labRow("limonadas", "origen · equilibrio · colección — escala por litros", "irA_burbujas()")}
+      ${labRow("latas fit", "ice latte proteico · matcha colágeno — por latas", "irA_fit()")}
+      ${labRow("cold brew", "maceración · lote, cálculo y etiquetas", "irA_maceracion()")}
+      ${labRow("spritz", "origen · equilibrio · colección — con escandallo", "irA_spritz()")}
+    </div>
+    <div class="lab-foot">
+      <span class="lab-foot-lb">laboratorio</span>
+      <button onclick="irA_mbds()">laboratorio de bebidas</button>
+      <button onclick="irA_matchaBase()">base de matcha</button>
     </div>`);
 }
-// Sub-hub COMIDA: las producciones (salsas/bases, sin inventar nada) + platos.
+// Sub-hub COMIDA: producciones (salsas/bases, sin inventar nada) + platos de carta.
 function irA_labComida(){
   navInto(()=>irA_lab()); openSection("labcomida", "Comida");
   window._labVolver = irA_labComida;
   const bases = Object.values(LAB_DATA.base || {});
-  const basesHTML = bases.map((b)=>labTile(esc(b.nombre), b.pendiente ? "pendiente de receta" : esc((b.carta||"").slice(0,70)), `labAbrirFicha('base','${b.cod}')`, b.pendiente ? "pendiente" : "")).join("");
+  const basesHTML = bases.map((b)=>labRow(esc(b.nombre), b.pendiente ? "pendiente de tu receta" : esc((b.carta||"").slice(0,60)), `labAbrirFicha('base','${b.cod}')`, !!b.pendiente)).join("");
   setInner(`
-    <div class="section-label">Comida · producciones</div>
-    <div class="appcc-grid">${basesHTML}</div>
-    <div class="section-label" style="margin-top:20px">Platos de carta</div>
-    <div class="appcc-grid">
-      ${labTile("Sándwiches", "Fichas técnicas · escandallo · montaje", "labAbrirFicha('sandwich','SO')", "")}
-      ${labTile("Tostas", "Fichas técnicas · escandallo · montaje", "labAbrirFicha('tosta','TO')", "")}
+    <div class="lab-eyebrow" style="margin:0 0 4px">producción · comida · elaboraciones</div>
+    <div class="lab-rows">${basesHTML}</div>
+    <div class="lab-foot">
+      <span class="lab-foot-lb">platos de carta</span>
+      <button onclick="labAbrirFicha('sandwich','SO')">sándwiches</button>
+      <button onclick="labAbrirFicha('tosta','TO')">tostas</button>
     </div>`);
 }
 // Abre la ficha de cocina directamente en un ítem concreto (salsa/sándwich/tosta).

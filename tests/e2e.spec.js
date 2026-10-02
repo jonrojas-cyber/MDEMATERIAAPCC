@@ -1277,6 +1277,12 @@ test("etiquetas: etiqueta libre (nombre a mano → operación preparación previ
   // Pantalla de búsqueda rediseñada: buscador grande + atajo "✎ Libre".
   await expect(page.locator("#etq-buscar")).toBeVisible();
   await expect(page.locator("#etq-buscar")).toHaveAttribute("placeholder", /Buscar producto para etiquetar/i);
+  // Al entrar NO se vuelca el listado completo: solo se ve con el buscador.
+  await expect(page.locator("#etq-resultados")).toContainText(/Escribe arriba para buscar/i);
+  await expect(page.locator("#etq-resultados .btn-primary")).toHaveCount(0);
+  // Al escribir, aparecen resultados con su botón "Etiquetar".
+  await page.fill("#etq-buscar", "croissant");
+  await expect(page.locator("#etq-resultados .btn-primary").first()).toBeVisible();
   // Escribe a mano algo que nunca ha estado en carta, abre su ficha libre y
   // registra una "preparación previa" (etiqueta sin producto de Ágora).
   const res = await page.evaluate(async () => {

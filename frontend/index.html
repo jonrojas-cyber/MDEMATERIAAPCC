@@ -4804,52 +4804,29 @@ function limOleoVivo(){
   if(out) out.innerHTML=`<tbody>${limOleoFilas(limOleoDesdePiel(window._lim.peel))}</tbody>`;
 }
 
-// ── Etiquetas de producción ───────────────────────────────────────────────────
-// Etiquetado de producción (APPCC). El buscador carga el catálogo real desde el
-// backend (/etiquetas/catalogo, derivado de Ágora + recetas + preparaciones) y la
-// ficha de impresión rápida pide solo lo que cambia por lote. La vida útil vive en
-// la ficha APPCC del producto (persiste aunque Ágora cambie nombre/precio).
-const ETQ_VIDAS = [
-  { h:12,  t:"12 h" }, { h:24, t:"1 día" }, { h:72, t:"3 días" },
-  { h:168, t:"1 sem" }, { h:336, t:"2 sem" }, { h:720, t:"1 mes" },
-];
+// ── Etiquetas de producción · APPCC ───────────────────────────────────────────
+// El buscador carga el catálogo real (/etiquetas/catalogo: Ágora + recetas +
+// preparaciones). Al elegir un producto se abre su FICHA APPCC AMPLIADA, que
+// separa la información comercial (de Ágora, solo lectura) de la sanitaria y
+// operativa (vida útil, conservación, alérgenos). Cada manipulación se registra
+// como un LOTE INTERNO con trazabilidad completa (ver appcc-lotes.js en backend).
 function irA_etiquetaProd(pre){
   pre = pre || {};
   const u = getUser();
-  const tiene = !!(pre.nombre); // viene prellenado desde otro módulo → abre la ficha directa
   window._etq = {
-    vista: tiene ? "ficha" : "buscar",
-    item: null, ref: null, refNombre: null, fuente: null, favorito: false,
-    nombre: pre.nombre || "",
-    cantidad: pre.cantidad || "",
-    vidaH: pre.vidaDias != null ? pre.vidaDias * 24 : (pre.vidaH != null ? pre.vidaH : 0),
+    vista: "buscar", modo: "resumen",
+    item: null, ref: null, fuente: null, favorito: false, nombre: "",
+    ficha: null, op: null, opDatos: {}, opErrores: [], ultimoLote: null, lotesTraza: [],
     resp: (u && u.nombre) || "",
-    estado: pre.estado || "", nota: pre.nota || "",
-    fechaProd: new Date().toISOString(), copies: 1,
-    lote_prov: "", cad_original: "", proveedor: "", obs: "", impreso: 0,
   };
   window._etqQ = ""; window._etqFiltro = "";
   navReset(); openSection("etiquetaprod", "Etiquetas");
   etqRender();
   pbtReconectarSilencioso();   // reconecta la impresora ya emparejada → imprimir será instantáneo
+  // Si viene prellenado desde otro módulo, abre su ficha directamente.
+  if (pre.nombre) etqAbrirProducto({ ref: pre.ref || null, nombre: pre.nombre, fuente: pre.fuente || null, favorito: false });
 }
-function etqLeer(){
-  const s=window._etq;
-  const n=el("etq-nombre"), c=el("etq-cant"), r=el("etq-resp"), no=el("etq-nota");
-  if(n) s.nombre=n.value.trim();
-  // Si el nombre se escribe a mano y ya no coincide con el producto elegido,
-  // se desliga del ref (es una etiqueta libre, sin ficha de ese producto).
-  if(s.refNombre && s.nombre!==s.refNombre){ s.ref=null; s.refNombre=null; }
-  if(c) s.cantidad=c.value.trim();
-  if(r) s.resp=r.value.trim();
-  if(no) s.nota=no.value.trim();
-}
-function etqVida(h){ if(window._etq.vista==="ficha"){ if(typeof etqLeerFicha==="function") etqLeerFicha(); } else etqLeer(); window._etq.vidaH=h; etqRender(); }
-function etqVidaLibre(dias){ const d=Math.max(0,parseFloat(dias)||0); window._etq.vidaH=d*24; const box=el("etq-vida-libre-val"); if(box) box.textContent=d?`${limNum(d,1)} días de vida útil`:""; document.querySelectorAll("#etq .lim-presets button").forEach(b=>b.classList.remove("on")); }
-function etqVidas(){ const s=window._etq; return ETQ_VIDAS.map(v=>`<button class="${s.vidaH===v.h?"on":""}" onclick="etqVida(${v.h})">${v.t}</button>`).join(""); }
-function etqEstadoTxt(e){ return ({sincronizado:"sincronizado",manual:"manual",inactivo:"inactivo",appcc_incompleta:"APPCC incompleta",listo:"listo"})[e]||e||""; }
 function etqFechaCorta(iso){ try{ return new Date(iso).toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"}); }catch(e){ return ""; } }
-function etqToLocalInput(iso){ try{ const d=new Date(iso); const p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes()); }catch(e){ return ""; } }
 
 function etqRender(){
   const s=window._etq; if(!s.vista) s.vista="buscar";
@@ -4862,22 +4839,6 @@ function etqRender(){
   }
   // ── VISTA BUSCAR ──
   const admin=mbdsEsAdmin();
-  const lote = window._etqLote||[];
-  const loteTotal = lote.reduce((a,x)=>a+x.copies,0);
-  const loteHTML = lote.length ? `
-    <div class="lim-eyebrow" style="margin:18px 0 6px">lote a imprimir · ${loteTotal} etiqueta${loteTotal===1?"":"s"}</div>
-    ${lote.map((x,i)=>`<div class="card" style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px">
-      <div style="flex:1;min-width:0"><b style="font-size:13px">${esc(x.nombre)}</b>
-        <div style="font-size:11px;color:var(--muted)">${x.vidaH>0?limNum(x.vidaH/24,1)+" d":'<span style="color:#c79a3a">sin vida</span>'}${x.cant?" · "+esc(x.cant):""}</div></div>
-      <button class="btn-ghost" style="padding:4px 10px" onclick="etqLoteCopias(${i},-1)">−</button>
-      <b style="min-width:22px;text-align:center">${x.copies}</b>
-      <button class="btn-ghost" style="padding:4px 10px" onclick="etqLoteCopias(${i},1)">+</button>
-      <button class="btn-ghost" style="padding:4px 8px" onclick="etqQuitarLote(${i})">✕</button>
-    </div>`).join("")}
-    <div class="card-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-primary" onclick="etqImprimirLote()">🖨️ Imprimir lote (${loteTotal})</button>
-      <button class="btn-ghost" onclick="etqVaciarLote()">vaciar</button>
-    </div>` : "";
   const atajos=[{k:"",t:"Todos"},{k:"favoritos",t:"★ Favoritos"},{k:"recientes",t:"Recientes"},{k:"masusados",t:"Más usados"},{k:"pendientes",t:"Pendientes"}]
     .map(a=>`<button class="${(window._etqFiltro||"")===a.k?"on":""}" onclick="etqAtajo('${a.k}')">${a.t}</button>`).join("");
   const puedeEscanear = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && ('BarcodeDetector' in window);
@@ -4894,7 +4855,6 @@ function etqRender(){
       <button class="btn-ghost" onclick="etqSyncAgora(this)">⟳ Actualizar desde Ágora</button>
     </div>`:""}
     <div id="etq-resultados" style="margin-top:10px"></div>
-    ${loteHTML}
     <div class="card" id="pbt-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;">
       <span id="pbt-estado" style="font-size:12.5px;font-weight:700;">● impresora</span>
       <button class="btn-ghost" style="margin-left:auto;font-size:12px" onclick="pbtConectarManual()">Conectar BT</button>
@@ -4906,59 +4866,168 @@ function etqRender(){
   etqCargarResultados(window._etqQ||"");
 }
 
-// Ficha de impresión rápida: datos fijos ya puestos; solo pide lo que cambia.
+// ── FICHA APPCC AMPLIADA (comercial de Ágora ↔ sanitaria/operativa de la app) ──
+// Despacha por modo: resumen (operaciones) · op (formulario) · traza · fichaedit.
 function etqFichaHTML(){
-  const s=window._etq, it=s.item||{}, admin=mbdsEsAdmin();
-  if(!s.fechaProd) s.fechaProd=new Date().toISOString();
-  if(!s.copies) s.copies=(it.etiquetas_default||1);
-  const vidaTxt = s.vidaH>0?limNum(s.vidaH/24,1)+" días":'<span style="color:#c79a3a">— sin definir</span>';
-  const meta=[it.familia, it.origen, it.estado?etqEstadoTxt(it.estado):"", it.ultima_etiqueta?("últ. "+etqFechaCorta(it.ultima_etiqueta)):""].filter(Boolean).join(" · ");
-  const vidaNota = s.ref && !(s.vidaH>0)
-    ? `<div style="font-size:11.5px;color:#c79a3a;font-weight:600;margin:4px 0 6px">⚠ Sin vida útil: define una abajo (se guarda en la ficha APPCC) o imprime sin caducidad.</div>` : "";
-  const post = s.impreso ? `<div class="card" style="border-left:3px solid var(--olive,#6b7a3a);margin-top:12px">
-      <div style="font-weight:800;color:var(--olive,#6b7a3a)">✅ Impreso · ${s.impreso} etiqueta${s.impreso===1?"":"s"}</div>
-      <div class="card-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-ghost" onclick="etqImprimirFicha()">↻ reimprimir</button>
-        <button class="btn-ghost" onclick="etqOtroLote()">+ otro lote</button>
-        <button class="btn-ghost" onclick="etqVolverBuscar()">← volver al buscador</button>
-      </div></div>` : "";
-  const inp=(id,ph,val,type)=>`<input id="${id}" class="etq-in" type="${type||"text"}" placeholder="${ph}" value="${esc(val||"")}" oninput="etqLeerFicha()">`;
+  var s=window._etq; if(!s.modo) s.modo="resumen";
+  if(s.modo==="op")        return etqOpFormHTML();
+  if(s.modo==="traza")     return etqTrazaHTML();
+  if(s.modo==="fichaedit") return etqFichaEditHTML();
+  return etqResumenHTML();
+}
+// Catálogo de operaciones (se pide una vez y se cachea).
+async function etqOpsCargar(){ if(window._etqOps) return window._etqOps; try{ window._etqOps=await api("/etiquetas/operaciones"); }catch(e){ window._etqOps=[]; } return window._etqOps; }
+function etqOpDef(k){ return (window._etqOps||[]).find(function(o){return o.k===k;})||null; }
+// Operaciones mostradas: las habilitadas en la ficha (si las hay), si no, todas.
+function etqOpsDisponibles(){
+  var f=window._etq.ficha||{}, all=window._etqOps||[];
+  if(Array.isArray(f.operaciones)&&f.operaciones.length) return all.filter(function(o){return f.operaciones.indexOf(o.k)>=0;});
+  return all;
+}
+// Vida útil que aplica a una operación (específica por operación o la general).
+function etqVidaOp(k){ var f=window._etq.ficha||{}; var vo=f.vidas_por_operacion&&f.vidas_por_operacion[k]; if(vo!=null&&Number(vo)>0) return Number(vo); if(f.vida_util_dias!=null&&Number(f.vida_util_dias)>0) return Number(f.vida_util_dias); return null; }
+
+function etqCabeceraProducto(){
+  var s=window._etq, it=s.item||{};
+  var metaL=[it.familia, it.origen].filter(Boolean).join(" · ");
+  return `<div class="card" style="display:flex;align-items:flex-start;gap:8px">
+    <div style="flex:1;min-width:0"><div style="font-size:19px;font-weight:800;line-height:1.1">${esc(s.nombre)}</div>
+      ${metaL?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(metaL)}</div>`:""}</div>
+    <button class="btn-ghost" style="font-size:18px;padding:4px 10px" title="favorito" onclick="etqFav()">${s.favorito?"★":"☆"}</button>
+  </div>`;
+}
+// RESUMEN: comercial (Ágora, solo lectura) · sanitaria/operativa (app) · operaciones.
+function etqResumenHTML(){
+  var s=window._etq, it=s.item||{}, f=s.ficha||{}, admin=mbdsEsAdmin();
+  var com=[];
+  if(it.agora_id) com.push(["ID Ágora", it.agora_id]);
+  if(it.familia) com.push(["Familia", it.familia]);
+  if(it.subfamilia) com.push(["Subfamilia", it.subfamilia]);
+  if(it.codigo) com.push(["Código", it.codigo]);
+  if(it.codigo_barras) com.push(["Cód. barras", it.codigo_barras]);
+  var fila=function(k,v){return `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0"><span style="color:var(--muted)">${esc(k)}</span><b style="text-align:right">${v}</b></div>`;};
+  var comHTML = s.ref ? `
+    <div class="lim-eyebrow" style="margin:14px 0 6px">información comercial · desde Ágora</div>
+    <div class="card" style="padding:10px 12px">
+      ${com.length?com.map(function(r){return fila(r[0],esc(r[1]));}).join(""):'<div style="font-size:12px;color:var(--muted)">Sin datos comerciales de Ágora.</div>'}
+      <div style="font-size:10.5px;color:var(--muted);margin-top:6px">Se actualiza al sincronizar con Ágora · no editable aquí.</div>
+    </div>` : `<div class="lim-eyebrow" style="margin:14px 0 6px">etiqueta libre · sin producto de Ágora</div>`;
+  var vida = (f.vida_util_dias!=null)?limNum(f.vida_util_dias,1)+" días":'<span style="color:#c79a3a">sin definir</span>';
+  var aler = (Array.isArray(f.alergenos)&&f.alergenos.length)?esc(f.alergenos.join(", ")):"—";
+  var sanHTML = `
+    <div class="lim-eyebrow" style="margin:16px 0 6px">información sanitaria y operativa · gestionada en la app</div>
+    <div class="card" style="padding:10px 12px">
+      ${fila("Vida útil",vida)}
+      ${fila("Conservación",esc(f.conservacion||"—"))}
+      ${fila("Alérgenos",aler)}
+      ${admin?`<button class="btn-ghost" style="margin-top:8px;font-size:12px" onclick="etqAbrirFichaEdit()">✎ Editar ficha APPCC</button>`:""}
+    </div>`;
+  var ops = etqOpsDisponibles();
+  var opHTML = `<div class="lim-eyebrow" style="margin:16px 0 6px">¿qué operación vas a registrar?</div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+    ${ops.map(function(o){return `<button class="card etq-op" style="display:flex;align-items:center;gap:10px;text-align:left;padding:11px 12px;cursor:pointer;width:100%" onclick="etqAbrirOp('${o.k}')">
+      <span style="font-size:20px;flex:0 0 auto">${o.icono||"•"}</span>
+      <span style="flex:1;min-width:0"><b style="font-size:14px">${esc(o.nombre)}</b><div style="font-size:11px;color:var(--muted);margin-top:1px">${esc(o.descripcion||"")}</div></span>
+      <span style="color:var(--muted);font-size:18px;flex:0 0 auto">›</span>
+    </button>`;}).join("")}
+    </div>`;
+  var nTraza=(s.lotesTraza&&s.lotesTraza.length)||0;
   return `<div class="lim-body">
     <button class="btn-ghost" style="margin-bottom:10px" onclick="etqVolverBuscar()">← buscar</button>
-    <div class="card" style="display:flex;align-items:flex-start;gap:8px">
-      <div style="flex:1;min-width:0"><div style="font-size:19px;font-weight:800;line-height:1.1">${esc(s.nombre)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(meta)}</div></div>
-      <button class="btn-ghost" style="font-size:18px;padding:4px 10px" title="favorito" onclick="etqFav()">${s.favorito?"★":"☆"}</button>
-    </div>
-
-    <div class="lim-eyebrow" style="margin:14px 0 6px">vida útil (APPCC) · ${vidaTxt}</div>
-    ${vidaNota}
-    <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${etqVidas()}</div>
-    <div class="etq-libre"><input id="etq-vida-libre" type="number" min="0" step="0.5" placeholder="otros" inputmode="decimal" oninput="etqVidaLibre(this.value)"><span>días</span><span id="etq-vida-libre-val" class="etq-libre-val"></span></div>
-
-    <div class="lim-eyebrow" style="margin:16px 0 6px">esta impresión</div>
-    <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:3px">fecha y hora de elaboración ${admin?"":"(automática)"}</label>
-    <input id="etq-fecha" class="etq-in" type="datetime-local" value="${etqToLocalInput(s.fechaProd)}" ${admin?"":"readonly"} oninput="etqLeerFicha()">
-    ${inp("etq-cant","cantidad · ej. 601 ml, 2 L, 30 uds",s.cantidad)}
-    ${inp("etq-lote-prov","lote original del proveedor (si lo lleva)",s.lote_prov)}
-    <label style="display:block;font-size:11px;color:var(--muted);margin:6px 0 3px">caducidad/consumo pref. original (si viene del proveedor)</label>
-    <input id="etq-cad-orig" class="etq-in" type="date" value="${esc(s.cad_original||"")}" oninput="etqLeerFicha()">
-    ${inp("etq-prov","proveedor (si varía)",s.proveedor)}
-    ${inp("etq-obs","observaciones (opcional)",s.obs)}
-
-    <div class="lim-eyebrow" style="margin:16px 0 6px">nº de etiquetas</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="btn-ghost" style="font-size:20px;padding:6px 16px" onclick="etqFichaCopias(-1)">−</button>
-      <b style="font-size:22px;min-width:40px;text-align:center">${s.copies}</b>
-      <button class="btn-ghost" style="font-size:20px;padding:6px 16px" onclick="etqFichaCopias(1)">+</button>
-    </div>
-
-    <div class="card-actions" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-primary" style="flex:1" onclick="etqImprimirFicha()">🖨️ Imprimir ${s.copies} etiqueta${s.copies===1?"":"s"}</button>
-      <button class="btn-ghost" onclick="etqAnadirLoteFicha()">➕ al lote</button>
-    </div>
-    ${post}
+    ${etqCabeceraProducto()}
+    ${comHTML}
+    ${sanHTML}
+    ${opHTML}
+    <button class="btn-ghost" style="margin-top:14px;width:100%" onclick="etqVerTraza()">📑 Ver trazabilidad${nTraza?" ("+nTraza+")":""}</button>
   </div>`;
+}
+// FORMULARIO de una operación: solo los campos necesarios + lo que se registra solo.
+function etqOpFormHTML(){
+  var s=window._etq, op=etqOpDef(s.op), admin=mbdsEsAdmin();
+  if(!op) return `<div class="lim-body"><button class="btn-ghost" onclick="etqAtrasResumen()">← volver</button><p style="margin-top:14px">Operación no disponible.</p></div>`;
+  var d=s.opDatos||(s.opDatos={});
+  var err=function(campo){ var e=(s.opErrores||[]).find(function(x){return x.campo===campo;}); return e?`<div style="font-size:11.5px;color:#b23b3b;font-weight:600;margin:2px 0 2px">${esc(e.mensaje)}</div>`:""; };
+  var reqMark=function(c){ return c.req?' <span style="color:#b23b3b">*</span>':''; };
+  var campoHTML=function(c){
+    var lab=`<label style="display:block;font-size:11.5px;color:var(--muted);margin:8px 0 3px">${esc(c.label)}${reqMark(c)}</label>`;
+    if(c.tipo==="numero"){
+      var n=parseInt(d[c.k],10)||((s.ficha&&s.ficha.etiquetas_default)||1);
+      return lab+err(c.k)+`<div style="display:flex;align-items:center;gap:12px">
+        <button class="btn-ghost" style="font-size:20px;padding:6px 16px" onclick="etqOpNum('${c.k}',-1)">−</button>
+        <b style="font-size:22px;min-width:40px;text-align:center">${n}</b>
+        <button class="btn-ghost" style="font-size:20px;padding:6px 16px" onclick="etqOpNum('${c.k}',1)">+</button></div>`;
+    }
+    if(c.tipo==="fecha") return lab+err(c.k)+`<input id="etqop-${c.k}" class="etq-in" type="date" value="${esc(d[c.k]||"")}" onchange="etqOpLeer();etqRenderLimite()">`;
+    if(c.tipo==="textarea") return lab+err(c.k)+`<textarea id="etqop-${c.k}" class="etq-in" rows="2" oninput="etqOpLeer()">${esc(d[c.k]||"")}</textarea>`;
+    if(c.tipo==="lotes_origen") return lab+`<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Un ingrediente por línea · «producto · lote» (para trazar hacia atrás).</div>`+err(c.k)+`<textarea id="etqop-lotes_origen" class="etq-in" rows="3" placeholder="salsa verde · L-20261001-...\naceite oliva · LC-88" oninput="etqOpLeer()">${esc(d._lotes_origen_txt||"")}</textarea>`;
+    if(c.tipo==="lote_existente"){
+      var lotes=(s.lotesTraza||[]).filter(function(l){return l.estado!=="descartado"&&l.estado!=="caducado";});
+      if(!lotes.length) return lab+`<div style="font-size:12px;color:#c79a3a;padding:4px 0">No hay lotes internos de este producto. Crea uno primero (apertura/reenvasado/…).</div>`;
+      return lab+err(c.k)+`<select id="etqop-lote_existente" class="etq-in" onchange="etqOpLeer()">
+        <option value="">— elige un lote —</option>
+        ${lotes.map(function(l){var sel=d.lote_existente===l.id?"selected":"";return `<option value="${esc(l.id)}" ${sel}>${esc(l.id)} · ${esc(l.operacion_nombre||l.operacion)}${l.fecha_limite_interna?" · cad "+etqFechaCorta(l.fecha_limite_interna):""}</option>`;}).join("")}
+      </select>`;
+    }
+    return lab+err(c.k)+`<input id="etqop-${c.k}" class="etq-in" type="text" value="${esc(d[c.k]||"")}" oninput="etqOpLeer()">`;
+  };
+  // Observaciones (siempre disponible, opcional).
+  var obsHTML = op.crea_lote ? `<label style="display:block;font-size:11.5px;color:var(--muted);margin:8px 0 3px">Observaciones (opcional)</label><input id="etqop-observaciones" class="etq-in" type="text" value="${esc(d.observaciones||"")}" oninput="etqOpLeer()">` : "";
+  // Lo que se registra automáticamente.
+  var u=getUser();
+  var autoHTML = op.crea_lote ? `
+    <div class="lim-eyebrow" style="margin:16px 0 6px">se registra automáticamente</div>
+    <div class="card" style="padding:9px 12px;font-size:12px;color:var(--muted)">
+      <div>· Fecha y hora de ${esc(op.nombre.toLowerCase())} — al imprimir</div>
+      <div>· Responsable — <b style="color:var(--text,#222)">${esc((u&&u.nombre)||"usuario")}</b></div>
+      <div>· Identificador interno de lote — único e inmutable</div>
+      <div id="etq-limite-auto">${etqLimiteTxt(op)}</div>
+    </div>` : "";
+  var num=parseInt((d.num_etiquetas),10)|| ((s.ficha&&s.ficha.etiquetas_default)||1);
+  var btnTxt = op.crea_lote ? `🖨️ Registrar e imprimir ${num} etiqueta${num===1?"":"s"}` : `🖨️ Reimprimir ${num} copia${num===1?"":"s"}`;
+  return `<div class="lim-body">
+    <button class="btn-ghost" style="margin-bottom:8px" onclick="etqAtrasResumen()">← ${esc(s.nombre)}</button>
+    <div style="font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px"><span>${op.icono||""}</span>${esc(op.nombre)}</div>
+    <div style="font-size:12px;color:var(--muted);margin:2px 0 4px">${esc(op.descripcion||"")}</div>
+    ${op.campos.map(campoHTML).join("")}
+    ${obsHTML}
+    ${autoHTML}
+    <div class="card-actions" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-primary" style="flex:1" onclick="etqCrearLote()">${btnTxt}</button>
+    </div>
+    ${s.ultimoLote?etqLotePostHTML():""}
+  </div>`;
+}
+// Texto de la fecha límite interna (preview; el servidor la recalcula al guardar).
+function etqLimiteTxt(op){
+  var s=window._etq, d=s.opDatos||{};
+  if(op.k==="division"||op.k==="reimpresion"){
+    var lo=(s.lotesTraza||[]).find(function(l){return l.id===d.lote_existente;});
+    if(lo&&lo.fecha_limite_interna) return "· Fecha límite interna — "+etqFechaCorta(lo.fecha_limite_interna)+" (heredada del lote)";
+    return "· Fecha límite interna — heredada del lote elegido";
+  }
+  if(!op.calcula_limite) return "";
+  var vida=etqVidaOp(op.k);
+  if(vida==null) return '· Fecha límite interna — <span style="color:#c79a3a">no se calcula (sin vida útil configurada)</span>';
+  var lim=new Date(Date.now()+vida*86400000);
+  var cad=d.caducidad_original?new Date(d.caducidad_original+"T00:00:00"):null;
+  var tope=false;
+  if(cad&&!isNaN(cad)&&lim>cad){ lim=cad; tope=true; }
+  return "· Fecha límite interna — <b style=\"color:var(--text,#222)\">"+etqFechaCorta(lim.toISOString())+"</b>"+(tope?" (tope: caducidad del fabricante)":" ("+limNum(vida,1)+" días)");
+}
+function etqRenderLimite(){ var op=etqOpDef(window._etq.op); var box=el("etq-limite-auto"); if(op&&box) box.innerHTML=etqLimiteTxt(op); }
+// Bloque tras crear/imprimir un lote: su id + acciones (reimprimir / otro lote / traza).
+function etqLotePostHTML(){
+  var l=window._etq.ultimoLote;
+  return `<div class="card" style="border-left:3px solid var(--olive,#6b7a3a);margin-top:14px">
+    <div style="font-weight:800;color:var(--olive,#6b7a3a)">✅ Lote registrado e impreso</div>
+    <div style="font-size:12px;margin-top:4px">Lote interno · <b>${esc(l.id)}</b> · ${l.num_etiquetas} etiqueta${l.num_etiquetas===1?"":"s"}</div>
+    ${l.fecha_limite_interna?`<div style="font-size:12px;color:var(--muted)">Consumir antes · ${etqFechaCorta(l.fecha_limite_interna)}</div>`:(l.caducidad_original?`<div style="font-size:12px;color:var(--muted)">Caducidad original · ${etqFechaCorta(l.caducidad_original)}</div>`:'<div style="font-size:12px;color:#c79a3a">Sin caducidad (sin vida útil configurada)</div>')}
+    <div class="card-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-ghost" onclick="etqReimprimirLoteId('${esc(l.id)}')">↻ reimprimir</button>
+      <button class="btn-ghost" onclick="etqOtroLote()">+ otro lote</button>
+      <button class="btn-ghost" onclick="etqVerTraza()">📑 trazabilidad</button>
+      <button class="btn-ghost" onclick="etqVolverBuscar()">← buscador</button>
+    </div></div>`;
 }
 // ── Buscador del catálogo de etiquetas de producción ────────────────────────
 var _etqBuscarT=null;
@@ -4994,76 +5063,203 @@ async function etqCargarResultados(q){
     }).join("");
   }catch(e){ cont.innerHTML='<span style="font-size:12px;color:var(--alert,#b23b3b)">No se pudo cargar el catálogo.</span>'; }
 }
-// Abrir la FICHA de impresión rápida del producto elegido.
-function etqElegir(i){
+// Abrir la FICHA APPCC del producto elegido (carga ficha + operaciones + lotes).
+async function etqElegir(i){
   var it=(window._etqResultados||[])[i]; if(!it) return;
+  await etqAbrirProducto(it);
+}
+async function etqAbrirProducto(it){
   var s=window._etq;
-  s.item=it; s.ref=it.ref; s.refNombre=it.nombre; s.nombre=it.nombre; s.fuente=it.fuente;
-  s.favorito=!!it.favorito;
-  s.vidaH=(it.vida_dias!=null)?it.vida_dias*24:0;
-  // Reinicia los datos variables de esta impresión.
-  s.fechaProd=new Date().toISOString(); s.copies=(it.etiquetas_default||1);
-  s.cantidad=""; s.lote_prov=""; s.cad_original=""; s.proveedor=it.proveedor||""; s.obs=""; s.estado=""; s.nota=""; s.impreso=0;
-  s.vista="ficha";
+  s.item=it; s.ref=it.ref||null; s.nombre=it.nombre||""; s.fuente=it.fuente||null; s.favorito=!!it.favorito;
+  s.ficha=null; s.opDatos={}; s.opErrores=[]; s.op=null; s.ultimoLote=null; s.lotesTraza=[];
+  s.vista="ficha"; s.modo="resumen";
+  await etqOpsCargar();
+  // Ficha APPCC (vida útil, conservación, alérgenos, operaciones, vida por operación).
+  if(s.ref){ try{ var r=await api("/etiquetas/ficha/"+encodeURIComponent(s.ref)); s.ficha=(r&&r.ficha)||{}; if(s.ficha.vida_util_dias==null && r&&r.vida_receta!=null) s.ficha.vida_util_dias=r.vida_receta; }catch(e){ s.ficha={}; } }
+  await etqTrazaCargar();
   etqRender();
 }
-// Etiqueta LIBRE (a mano), sin producto.
-function etqManual(){
+// Etiqueta LIBRE (a mano), sin producto de Ágora.
+async function etqManual(){
   var q=(el("etq-buscar")&&el("etq-buscar").value.trim())||"";
-  var s=window._etq;
-  s.item=null; s.ref=null; s.refNombre=null; s.nombre=q; s.fuente=null; s.favorito=false;
-  s.vidaH=0; s.fechaProd=new Date().toISOString(); s.copies=1;
-  s.cantidad=""; s.lote_prov=""; s.cad_original=""; s.proveedor=""; s.obs=""; s.impreso=0;
-  s.vista="ficha"; etqRender();
+  await etqAbrirProducto({ ref:null, nombre:q, fuente:null, favorito:false });
 }
-function etqVolverBuscar(){ window._etq.vista="buscar"; window._etq.impreso=0; etqRender(); }
-function etqOtroLote(){ var s=window._etq; s.fechaProd=new Date().toISOString(); s.lote_prov=""; s.cad_original=""; s.obs=""; s.impreso=0; etqRender(); }
-// Lee los campos de la ficha rápida.
-function etqLeerFicha(){
-  var s=window._etq, g=function(id){ var e=el(id); return e?e.value:undefined; };
-  var n=g("etq-cant"); if(n!==undefined) s.cantidad=n.trim();
-  var lp=g("etq-lote-prov"); if(lp!==undefined) s.lote_prov=lp.trim();
-  var co=g("etq-cad-orig"); if(co!==undefined) s.cad_original=co;
-  var pr=g("etq-prov"); if(pr!==undefined) s.proveedor=pr.trim();
-  var ob=g("etq-obs"); if(ob!==undefined) s.obs=ob.trim();
-  var f=g("etq-fecha"); if(f){ var d=new Date(f); if(!isNaN(d)) s.fechaProd=d.toISOString(); }
-}
-function etqFichaCopias(d){ var s=window._etq; s.copies=Math.max(1,(s.copies||1)+d); etqRender(); }
+function etqVolverBuscar(){ var s=window._etq; s.vista="buscar"; s.modo="resumen"; s.op=null; s.ultimoLote=null; etqRender(); }
+function etqAtrasResumen(){ var s=window._etq; s.modo="resumen"; s.op=null; s.opErrores=[]; etqRender(); }
+// Repetir operación con otro lote: limpia el formulario pero mantiene la operación.
+function etqOtroLote(){ var s=window._etq; s.opDatos={}; s.opErrores=[]; s.ultimoLote=null; etqRender(); }
 async function etqFav(){
-  var s=window._etq; if(!s.ref){ s.favorito=!s.favorito; etqRender(); return; }
-  s.favorito=!s.favorito;
-  try{ await api("/etiquetas/favorito/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify({favorito:s.favorito})}); }catch(e){}
+  var s=window._etq; s.favorito=!s.favorito;
+  if(s.ref){ try{ await api("/etiquetas/favorito/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify({favorito:s.favorito})}); }catch(e){} }
   etqRender();
 }
-function etqAnadirLoteFicha(){ etqLeerFicha(); etqAnadirLote(); etqVolverBuscar(); }
-// Imprime la ficha: N copias en una sola impresión (cable/Windows), guarda ficha y uso.
-async function etqImprimirFicha(){
-  etqLeerFicha();
-  var s=window._etq;
-  if(!s.nombre){ alert("Elige o escribe un producto."); return; }
-  if(!(s.vidaH>0) && !s.cad_original){
-    if(!confirm("Sin vida útil ni caducidad original: la etiqueta saldrá SIN caducidad. ¿Imprimir igual?")) return;
+// Abrir el formulario de una operación concreta.
+function etqAbrirOp(k){ var s=window._etq; s.op=k; s.opErrores=[]; s.ultimoLote=null; if(!s.opDatos) s.opDatos={}; if(s.opDatos.num_etiquetas==null) s.opDatos.num_etiquetas=(s.ficha&&s.ficha.etiquetas_default)||1; s.modo="op"; etqRender(); }
+function etqOpNum(campo,d){ var s=window._etq; s.opDatos[campo]=Math.max(1,(parseInt(s.opDatos[campo],10)||1)+d); etqRender(); }
+// Lee los inputs del formulario de operación al estado (sin re-render).
+function etqOpLeer(){
+  var s=window._etq, op=etqOpDef(s.op); if(!op) return;
+  op.campos.forEach(function(c){
+    if(c.tipo==="numero") return; // el stepper ya actualiza el estado
+    if(c.tipo==="lotes_origen"){ var t=el("etqop-lotes_origen"); if(t){ s.opDatos._lotes_origen_txt=t.value; s.opDatos.lotes_origen=t.value.split(/\n+/).map(function(l){ l=l.trim(); if(!l) return null; var p=l.split("·"); return { producto:(p[0]||"").trim(), lote_id:(p[1]||"").trim() }; }).filter(Boolean); } return; }
+    var e=el("etqop-"+c.k); if(e) s.opDatos[c.k]=e.value;
+  });
+  var ob=el("etqop-observaciones"); if(ob) s.opDatos.observaciones=ob.value;
+}
+// Valida en cliente (mensajes concretos) y crea el lote interno + imprime todo de una vez.
+async function etqCrearLote(){
+  var s=window._etq, op=etqOpDef(s.op); if(!op) return;
+  etqOpLeer();
+  // Validación cliente (espejo del servidor) para feedback inmediato.
+  var errores=[];
+  op.campos.forEach(function(c){
+    if(!c.req) return;
+    var v=s.opDatos[c.k], vacio;
+    if(c.tipo==="numero") vacio=!(parseInt(v,10)>=1);
+    else if(c.tipo==="lote_existente") vacio=!String(s.opDatos.lote_existente||"").trim();
+    else vacio=!String(v==null?"":v).trim();
+    if(vacio) errores.push({ campo:c.k, mensaje:c.msg||("Falta «"+c.label+"».") });
+  });
+  s.opErrores=errores;
+  if(errores.length){ etqRender(); return; }
+  try{
+    var r=await api("/etiquetas/lotes",{method:"POST",body:JSON.stringify({ ref:s.ref, nombre:s.nombre, operacion:op.k, datos:s.opDatos })});
+    s.ultimoLote=r.lote;
+    etqImprimirEspecs(r.especs);
+    await etqTrazaCargar();
+    etqRender();
+  }catch(e){
+    // El servidor devuelve {error, errores:[{campo,mensaje}]} si faltan obligatorios.
+    var det=(e&&e.data&&e.data.errores)||(e&&e.errores)||null;
+    if(det){ s.opErrores=det; etqRender(); }
+    else alert("No se pudo registrar el lote: "+((e&&e.message)||e));
   }
-  etqGuardarFichaCompleta();            // persiste vida útil + proveedor en la ficha APPCC
-  if(s.ref){ try{ await api("/etiquetas/uso/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify({copies:s.copies})}); }catch(e){} }
-  var est=[s.lote_prov?("lote "+s.lote_prov):"", s.obs].filter(Boolean).join(" · ");
-  var espec={ n:s.nombre, c:s.cantidad, v:s.vidaH>0?s.vidaH:0, est:est, r:s.resp||"", p:s.fechaProd };
-  if(s.cad_original){ espec.cad=new Date(s.cad_original+"T00:00:00").toISOString(); espec.venceLabel="consumir antes"; }
-  var especs=[]; for(var k=0;k<s.copies;k++) especs.push(espec);
+}
+// Abre la página de etiquetas (N en una sola impresión por cable/Windows).
+function etqImprimirEspecs(especs){
+  if(!especs||!especs.length) return;
   var b64=btoa(unescape(encodeURIComponent(JSON.stringify(especs))));
   window.open("/etiqueta/lote?d="+encodeURIComponent(b64)+"&print=win","_blank");
-  s.impreso=s.copies;
-  etqRender();
 }
-// Guarda en la ficha APPCC lo que debe persistir (vida útil, proveedor).
-function etqGuardarFichaCompleta(){
-  var s=window._etq; if(!s.ref) return;
+// Reimpresión de un lote existente (no crea lote nuevo; registra en el historial).
+async function etqReimprimirLoteId(id,copies){
   try{
-    api("/etiquetas/ficha/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify({
-      vida_util_dias: s.vidaH>0 ? Math.round((s.vidaH/24)*10)/10 : null,
-      proveedor: s.proveedor||undefined, nombre: s.nombre,
-    })}).catch(function(){});
-  }catch(e){}
+    var r=await api("/etiquetas/lotes/"+encodeURIComponent(id)+"/reimprimir",{method:"POST",body:JSON.stringify({copies:copies||1})});
+    etqImprimirEspecs(r.especs);
+    await etqTrazaCargar();
+    if(window._etq.modo==="traza") etqRender();
+  }catch(e){ alert("No se pudo reimprimir: "+((e&&e.message)||e)); }
+}
+// Cambiar el estado de un lote (consumido/agotado/retirado/caducado/descartado).
+async function etqCambiarEstadoLote(id){
+  var estados=["activo","consumido","agotado","retirado","caducado","descartado"];
+  var e=prompt("Nuevo estado ("+estados.join(" / ")+"):","consumido");
+  if(!e) return; e=e.trim().toLowerCase();
+  if(estados.indexOf(e)<0){ alert("Estado no válido."); return; }
+  var inc=(e==="retirado"||e==="descartado"||e==="caducado")?(prompt("Incidencia / motivo (opcional):")||""):"";
+  try{ await api("/etiquetas/lotes/"+encodeURIComponent(id)+"/estado",{method:"POST",body:JSON.stringify({estado:e,incidencias:inc})}); await etqTrazaCargar(); etqRender(); }
+  catch(err){ alert("No se pudo cambiar el estado: "+((err&&err.message)||err)); }
+}
+// ── TRAZABILIDAD: lotes internos del producto ───────────────────────────────
+async function etqTrazaCargar(){ var s=window._etq; if(!s.ref){ s.lotesTraza=[]; return; } try{ s.lotesTraza=await api("/etiquetas/lotes?ref="+encodeURIComponent(s.ref)); }catch(e){ s.lotesTraza=[]; } }
+function etqVerTraza(){ var s=window._etq; s.modo="traza"; etqTrazaCargar().then(etqRender); etqRender(); }
+function etqEstadoColor(e){ return ({activo:"#3c7a4a",consumido:"#6b7a3a",agotado:"#8a7a3a",retirado:"#b23b3b",caducado:"#b23b3b",descartado:"#777"})[e]||"#555"; }
+function etqTrazaHTML(){
+  var s=window._etq, lotes=s.lotesTraza||[];
+  var filas = lotes.length ? lotes.map(function(l){
+    var hist=(l.historial||[]);
+    var imps=hist.filter(function(h){return h.tipo==="impresion"||h.tipo==="reimpresion";}).reduce(function(a,h){return a+(h.copies||0);},0);
+    return `<div class="card" style="padding:11px 12px;margin-bottom:7px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <b style="font-size:12.5px;flex:1;min-width:0;word-break:break-all">${esc(l.id)}</b>
+        <span style="font-size:10.5px;font-weight:800;text-transform:uppercase;color:${etqEstadoColor(l.estado)};border:1px solid ${etqEstadoColor(l.estado)};border-radius:5px;padding:1px 6px">${esc(l.estado||"")}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:3px">${esc(l.operacion_nombre||l.operacion||"")} · ${etqFechaCorta(l.fecha_manipulacion)} · ${esc(l.usuario||"")}</div>
+      <div style="font-size:11.5px;margin-top:3px">
+        ${l.lote_original?`lote prov. <b>${esc(l.lote_original)}</b> · `:""}${l.fecha_limite_interna?`consumir antes <b>${etqFechaCorta(l.fecha_limite_interna)}</b>`:(l.caducidad_original?`cad. fabricante <b>${etqFechaCorta(l.caducidad_original)}</b>`:'<span style="color:#c79a3a">sin caducidad</span>')}
+        · ${imps} impresa${imps===1?"":"s"}${l.lote_padre?` · dividido de ${esc(l.lote_padre)}`:""}
+      </div>
+      ${(l.lotes_origen&&l.lotes_origen.length)?`<div style="font-size:11px;color:var(--muted);margin-top:2px">ingredientes: ${esc(l.lotes_origen.map(function(x){return x.producto+(x.lote_id?" ("+x.lote_id+")":"");}).join(", "))}</div>`:""}
+      ${l.incidencias?`<div style="font-size:11px;color:#b23b3b;margin-top:2px">⚠ ${esc(l.incidencias)}</div>`:""}
+      <div class="card-actions" style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px" onclick="etqReimprimirLoteId('${esc(l.id)}')">↻ reimprimir</button>
+        <button class="btn-ghost" style="font-size:11.5px;padding:5px 10px" onclick="etqCambiarEstadoLote('${esc(l.id)}')">estado</button>
+      </div>
+    </div>`;
+  }).join("") : '<div style="font-size:12.5px;color:var(--muted);padding:8px 2px">Aún no hay lotes internos de este producto.</div>';
+  return `<div class="lim-body">
+    <button class="btn-ghost" style="margin-bottom:8px" onclick="etqAtrasResumen()">← ${esc(s.nombre)}</button>
+    <div class="lim-eyebrow" style="margin:4px 0 8px">trazabilidad · lotes internos</div>
+    ${filas}
+  </div>`;
+}
+// ── EDICIÓN de la ficha APPCC (solo admin): vida útil, conservación, alérgenos,
+//    vida por operación, operaciones habilitadas, tipo de fecha ───────────────
+function etqAbrirFichaEdit(){ window._etq.modo="fichaedit"; etqRender(); }
+function etqFichaEditHTML(){
+  var s=window._etq, f=s.ficha||{}, ops=window._etqOps||[];
+  var habil = Array.isArray(f.operaciones)?f.operaciones:[];
+  var opsChecks = ops.map(function(o){
+    var on = habil.length? habil.indexOf(o.k)>=0 : true;
+    return `<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;padding:3px 0"><input type="checkbox" id="etqfe-op-${o.k}" ${on?"checked":""}> ${o.icono||""} ${esc(o.nombre)}</label>`;
+  }).join("");
+  var vidasOp = ops.filter(function(o){return o.calcula_limite;}).map(function(o){
+    var v=(f.vidas_por_operacion&&f.vidas_por_operacion[o.k]!=null)?f.vidas_por_operacion[o.k]:"";
+    return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="flex:1;font-size:12px;color:var(--muted)">${esc(o.nombre)}</span><input id="etqfe-vida-${o.k}" class="etq-in" style="max-width:90px" type="number" min="0" step="0.5" placeholder="días" value="${v}"></div>`;
+  }).join("");
+  return `<div class="lim-body">
+    <button class="btn-ghost" style="margin-bottom:8px" onclick="etqAtrasResumen()">← ${esc(s.nombre)}</button>
+    <div class="lim-eyebrow" style="margin:4px 0 8px">ficha APPCC · ${esc(s.nombre)}</div>
+    <label style="display:block;font-size:11.5px;color:var(--muted);margin:6px 0 3px">Vida útil general (días)</label>
+    <input id="etqfe-vida" class="etq-in" type="number" min="0" step="0.5" placeholder="días" value="${f.vida_util_dias!=null?f.vida_util_dias:""}">
+    <label style="display:block;font-size:11.5px;color:var(--muted);margin:8px 0 3px">Conservación</label>
+    <input id="etqfe-cons" class="etq-in" type="text" placeholder="ej. 0-4 °C, refrigerado" value="${esc(f.conservacion||"")}">
+    <label style="display:block;font-size:11.5px;color:var(--muted);margin:8px 0 3px">Alérgenos (separados por comas)</label>
+    <input id="etqfe-aler" class="etq-in" type="text" placeholder="gluten, lácteos, frutos secos" value="${esc((f.alergenos||[]).join(', '))}">
+    <label style="display:block;font-size:11.5px;color:var(--muted);margin:8px 0 3px">Tipo de fecha</label>
+    <select id="etqfe-tipofecha" class="etq-in">
+      <option value="caducidad" ${f.tipo_fecha!=="consumo_preferente"?"selected":""}>Caducidad</option>
+      <option value="consumo_preferente" ${f.tipo_fecha==="consumo_preferente"?"selected":""}>Consumo preferente</option>
+    </select>
+    <label style="display:block;font-size:11.5px;color:var(--muted);margin:8px 0 3px">Nº de etiquetas por defecto</label>
+    <input id="etqfe-ndef" class="etq-in" type="number" min="1" step="1" placeholder="1" value="${f.etiquetas_default!=null?f.etiquetas_default:""}">
+    <div class="lim-eyebrow" style="margin:14px 0 4px">vida útil por operación (opcional)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Si una operación tiene vida distinta (p. ej. tras apertura vs tras descongelación).</div>
+    ${vidasOp}
+    <div class="lim-eyebrow" style="margin:14px 0 4px">operaciones permitidas</div>
+    ${opsChecks}
+    <div class="card-actions" style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1" onclick="etqGuardarFichaEdit()">Guardar ficha</button>
+      <button class="btn-ghost" onclick="etqAtrasResumen()">Cancelar</button>
+    </div>
+  </div>`;
+}
+async function etqGuardarFichaEdit(){
+  var s=window._etq, ops=window._etqOps||[];
+  var g=function(id){ var e=el(id); return e?e.value:""; };
+  var vida=g("etqfe-vida").trim();
+  var aler=g("etqfe-aler").split(",").map(function(a){return a.trim();}).filter(Boolean);
+  var ndef=parseInt(g("etqfe-ndef"),10);
+  var vidas_por_operacion={}, operaciones=[];
+  ops.forEach(function(o){
+    var cb=el("etqfe-op-"+o.k); if(cb&&cb.checked) operaciones.push(o.k);
+    var vi=el("etqfe-vida-"+o.k); if(vi&&vi.value.trim()!==""){ var n=Number(vi.value); if(n>0) vidas_por_operacion[o.k]=n; }
+  });
+  var body={
+    vida_util_dias: vida===""?null:Number(vida),
+    conservacion: g("etqfe-cons").trim(),
+    alergenos: aler,
+    tipo_fecha: g("etqfe-tipofecha"),
+    operaciones: (operaciones.length===ops.length)?[]:operaciones, // todas → sin restricción
+    vidas_por_operacion: vidas_por_operacion,
+    nombre: s.nombre,
+  };
+  if(Number.isFinite(ndef)&&ndef>0) body.etiquetas_default=ndef;
+  try{
+    var r=await api("/etiquetas/ficha/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify(body)});
+    s.ficha=(r&&r.ficha)||s.ficha;
+    s.modo="resumen"; etqRender();
+  }catch(e){ alert("No se pudo guardar la ficha: "+((e&&e.message)||e)); }
 }
 // Escanear código de barras (si el dispositivo lo permite) → busca por ese código.
 async function etqEscanear(){
@@ -5110,41 +5306,6 @@ async function etqSyncAgora(btn){
     etqCargarResultados((el("etq-buscar")||{}).value||"");
   }catch(e){ alert("No se pudo sincronizar: "+((e&&e.message)||e)); }
   if(btn){ btn.disabled=false; btn.textContent="⟳ Actualizar desde Ágora"; }
-}
-// ── Etiquetas por LOTES ─────────────────────────────────────────────────────
-function etqAnadirLote(){
-  etqLeer(); const s=window._etq;
-  if(!s.nombre){ alert("Elige un producto del buscador o escríbelo a mano."); return; }
-  etqGuardarFicha();   // persiste la vida útil del producto en su ficha APPCC
-  (window._etqLote=window._etqLote||[]).push({
-    nombre:s.nombre, ref:s.ref||null, vidaH:s.vidaH||0, cant:s.cantidad||"",
-    est:[s.estado,s.nota].filter(Boolean).join(" · "), resp:s.resp||"", copies:1,
-  });
-  pbtToast("Añadido al lote ✓",1100);
-  etqRender();
-}
-function etqLoteCopias(i,d){ var l=window._etqLote||[]; if(!l[i])return; l[i].copies=Math.max(1,l[i].copies+d); etqRender(); }
-function etqQuitarLote(i){ var l=window._etqLote||[]; l.splice(i,1); etqRender(); }
-function etqVaciarLote(){ window._etqLote=[]; etqRender(); }
-function etqImprimirLote(){
-  var l=window._etqLote||[]; if(!l.length){ alert("El lote está vacío."); return; }
-  var now=new Date().toISOString(), especs=[];
-  l.forEach(function(x){ for(var k=0;k<x.copies;k++) especs.push({ n:x.nombre, c:x.cant, v:x.vidaH>0?x.vidaH:0, est:x.est, r:x.resp, p:now }); });
-  // Una sola impresión con todas las etiquetas (salto de página entre ellas).
-  var b64=btoa(unescape(encodeURIComponent(JSON.stringify(especs))));
-  window.open("/etiqueta/lote?d="+encodeURIComponent(b64)+"&print=win","_blank");
-}
-// Guarda la vida útil (y nombre visto) en la ficha APPCC del producto, para que
-// se recuerde la próxima vez y PERSISTA aunque Ágora cambie el nombre/precio.
-function etqGuardarFicha(){
-  const s=window._etq;
-  if(!s.ref) return; // etiqueta libre (sin producto): no hay ficha que guardar
-  try{
-    api("/etiquetas/ficha/"+encodeURIComponent(s.ref),{method:"POST",body:JSON.stringify({
-      vida_util_dias: s.vidaH>0 ? Math.round((s.vidaH/24)*10)/10 : null,
-      nombre: s.nombre,
-    })}).catch(function(){});
-  }catch(e){}
 }
 // ── IMPRESORA BLUETOOTH · conexión persistente en la app (impresión instantánea)
 // Conecta una vez por Bluetooth LE con la Phomemo D520BT y mantiene el canal

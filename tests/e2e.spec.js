@@ -1269,7 +1269,7 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   await expect(page.locator("body")).not.toContainText(/food cost/);
 });
 
-test("etiquetas: etiqueta libre (nombre a mano + vida útil libre + observaciones)", async ({ page }) => {
+test("etiquetas: etiqueta libre (nombre a mano → operación preparación previa)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
@@ -1277,29 +1277,85 @@ test("etiquetas: etiqueta libre (nombre a mano + vida útil libre + observacione
   // Pantalla de búsqueda rediseñada: buscador grande + atajo "✎ Libre".
   await expect(page.locator("#etq-buscar")).toBeVisible();
   await expect(page.locator("#etq-buscar")).toHaveAttribute("placeholder", /Buscar producto para etiquetar/i);
-  // Escribe a mano algo que nunca ha estado en carta y abre la ficha libre.
-  const res = await page.evaluate(() => {
+  // Escribe a mano algo que nunca ha estado en carta, abre su ficha libre y
+  // registra una "preparación previa" (etiqueta sin producto de Ágora).
+  const res = await page.evaluate(async () => {
     document.getElementById("etq-buscar").value = "sirope de té chai";
-    etqManual();                         // ✎ Libre → abre la ficha con ese nombre
-    window._etq.vidaH = 10 * 24;         // vida útil libre: 10 días
-    document.getElementById("etq-cant").value = "500 ml";
-    document.getElementById("etq-obs").value = "prueba 2";
-    etqLeerFicha();
+    await etqManual();                        // ✎ Libre → abre la ficha con ese nombre
+    const libreOk = /etiqueta libre/i.test(document.body.innerText);
+    etqAbrirOp("preparacion");
+    document.getElementById("etqop-cantidad").value = "500 ml";
+    document.getElementById("etqop-observaciones").value = "prueba 2";
+    window._etq.opDatos.num_etiquetas = 2;
     let opened = null;
     const orig = window.open; window.open = (u) => { opened = u; return null; };
-    etqImprimirFicha();
+    await etqCrearLote();
     window.open = orig;
-    // El parámetro d es base64 del JSON de especificaciones del lote.
     const d = decodeURIComponent(opened.split("d=")[1].split("&")[0]);
     const especs = JSON.parse(decodeURIComponent(escape(atob(d))));
-    return { url: opened, especs };
+    return { url: opened, especs, libreOk, lote: window._etq.ultimoLote };
   });
+  expect(res.libreOk).toBe(true);
   expect(res.url).toContain("/etiqueta/lote");
   expect(res.url).toContain("print=win");
+  expect(res.especs.length).toBe(2);
   expect(res.especs[0].n).toBe("sirope de té chai");
   expect(res.especs[0].c).toBe("500 ml");
   expect(res.especs[0].est).toContain("prueba 2");
-  expect(res.especs[0].v).toBe(10 * 24);
+  expect(res.lote.operacion).toBe("preparacion");
+  expect(errors).toEqual([]);
+});
+
+test("etiquetas APPCC: reenvasado (jamón) valida campos obligatorios y crea lote interno con trazabilidad", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  const res = await page.evaluate(async () => {
+    // Producto determinista + ficha APPCC con vida útil 5 días.
+    const prod = await api("/etiquetas/catalogo", { method: "POST", body: JSON.stringify({ nombre: "Jamón braseado e2e" }) });
+    const ref = prod.item.ref;
+    await api("/etiquetas/ficha/" + encodeURIComponent(ref), { method: "POST", body: JSON.stringify({ vida_util_dias: 5, conservacion: "0-4 °C", alergenos: [] }) });
+    irA_etiquetaProd();
+    await etqAbrirProducto({ ref, nombre: "Jamón braseado e2e", fuente: "catalogo" });
+    const resumenOk = /información sanitaria y operativa/i.test(document.body.innerText) && /Reenvasado/.test(document.body.innerText);
+    // 1) Intentar reenvasar SIN campos → mensajes concretos, sin crear lote.
+    etqAbrirOp("reenvasado");
+    await etqCrearLote();
+    const huboError = /obligatori/i.test(document.body.innerText);
+    const sinLote = !window._etq.ultimoLote;
+    // 2) Rellenar (proveedor + lote + caducidad del fabricante 04/10) y crear 3 etiquetas.
+    document.getElementById("etqop-proveedor").value = "Campofrío";
+    document.getElementById("etqop-lote_original").value = "LC-9931";
+    document.getElementById("etqop-caducidad_original").value = "2026-10-04";
+    window._etq.opDatos.num_etiquetas = 3;
+    let opened = null; const orig = window.open; window.open = (u) => { opened = u; return null; };
+    await etqCrearLote();
+    window.open = orig;
+    const lote = window._etq.ultimoLote;
+    // 3) Trazabilidad por API.
+    const lotes = await api("/etiquetas/lotes?ref=" + encodeURIComponent(ref));
+    // 4) Reimpresión (no crea lote nuevo).
+    let opened2 = null; const o2 = window.open; window.open = (u) => { opened2 = u; return null; };
+    await etqReimprimirLoteId(lote.id, 2);
+    window.open = o2;
+    const loteTrasReimp = await api("/etiquetas/lotes/" + encodeURIComponent(lote.id));
+    return { resumenOk, huboError, sinLote, opened, lote, nLotes: lotes.length, opened2, hist: loteTrasReimp.historial.map((h) => h.tipo) };
+  });
+  expect(res.resumenOk).toBe(true);
+  expect(res.huboError).toBe(true);       // valida con mensajes concretos
+  expect(res.sinLote).toBe(true);         // no crea lote si faltan obligatorios
+  expect(res.opened).toContain("/etiqueta/lote");
+  expect(res.lote).toBeTruthy();
+  expect(res.lote.operacion).toBe("reenvasado");
+  expect(res.lote.num_etiquetas).toBe(3);
+  expect(res.lote.proveedor).toBe("Campofrío");
+  expect(res.lote.lote_original).toBe("LC-9931");
+  // La fecha límite interna nunca supera la caducidad original del fabricante.
+  expect(res.lote.fecha_limite_interna).toBe(new Date("2026-10-04T00:00:00Z").toISOString());
+  expect(res.lote.id).toMatch(/^L-/);     // id único e inmutable
+  expect(res.nLotes).toBeGreaterThanOrEqual(1);
+  expect(res.opened2).toContain("/etiqueta/lote");
+  expect(res.hist).toEqual(["impresion", "reimpresion"]);
   expect(errors).toEqual([]);
 });
 

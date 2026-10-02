@@ -2352,7 +2352,7 @@ function _ocultaBurbujas() {
   });
 }
 function irA_maceracion() {
-  navInto(() => irA_lab());
+  var _lv=window._labVolver||irA_lab; navInto(function(){_lv();});
   currentSection = "maceracion";
   _sectionTitle = "Maceración";
   document.getElementById("topbar-section").textContent = "Maceración";
@@ -2997,36 +2997,73 @@ function mbdsNum(x,d){ return (x==null||x==="")?"—":(typeof x==="number"?(d!=n
 
 // LAB · carpeta madre que reúne Producción y el laboratorio de diseño (MBDS).
 // Producir arriba (lo diario); debajo, el laboratorio y las herramientas.
+// Helper de tile reutilizable por los hubs de Lab.
+function labTile(nombre, sub, onclick, badge){
+  return `<button class="appcc-tile" onclick="${onclick}">
+    <span class="appcc-tile-name">${nombre}</span>
+    <span class="appcc-tile-sub">${sub}</span>
+    ${badge ? `<span class="appcc-badge">${badge}</span>` : ""}
+  </button>`;
+}
+// HUB DE LAB · página de producir. Dos categorías: Bebidas y Comida. Debajo, las
+// herramientas de taller (producir, laboratorio de bebidas, base de matcha,
+// estación, plan, etiquetas). _labVolver guarda a dónde debe volver cada módulo.
 async function irA_lab(){
   navReset(); openSection("lab", "Lab");
   if (typeof setTab === "function") setTab("lab");
+  window._labVolver = irA_lab;
   let pend = 0;
   try { const d = await api("/inicio"); pend = (d.preparar || []).length; } catch (e) {}
-  const tile = (nombre, sub, onclick, badge) => `
-    <button class="appcc-tile" onclick="${onclick}">
-      <span class="appcc-tile-name">${nombre}</span>
-      <span class="appcc-tile-sub">${sub}</span>
-      ${badge ? `<span class="appcc-badge">${badge}</span>` : ""}
-    </button>`;
   setInner(`
-    <div class="section-label">Taller · producción y laboratorio</div>
+    <div class="section-label">Producción · ¿qué vas a producir?</div>
     <div class="appcc-grid">
-      ${tile("Producir", "Preparar recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
-      ${tile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
-      ${tile("Limonadas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
-      ${tile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
-      ${tile("Latas fit", "Ice Latte proteico · Matcha colágeno — escala por latas", "irA_fit()", "")}
-      ${tile("Cocina · sándwiches y tostas", "Fichas técnicas · escandallo · montaje · versiones", "irA_labCocina()", "")}
-      ${tile("Estación de trabajo", "Mise en place en frío · derivada de la carta · imprimible", "irA_estacion()", "")}
-      ${tile("Plan de producción", "Qué preparar · diario y semanal · imprimible", "irA_planProduccion()", "")}
-      ${tile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
-      ${tile("Maceración", "Cold brew · lote, cálculo y etiquetas", "irA_maceracion()", "")}
-      ${tile("Etiquetas", "Datea cualquier cosa que preparas · vida útil", "irA_etiquetaProd()", "")}
+      ${labTile("🥤 Bebidas", "Limonadas · Latas fit · Cold brew · Spritz", "irA_labBebidas()", "")}
+      ${labTile("🍽️ Comida", "Salsas y producciones · sándwiches y tostas", "irA_labComida()", "")}
+    </div>
+    <div class="section-label" style="margin-top:20px">Herramientas de taller</div>
+    <div class="appcc-grid">
+      ${labTile("Producir", "Recetas y elaboraciones del día", "irA_preparaciones()", pend ? `${pend} pendiente${pend > 1 ? "s" : ""}` : "")}
+      ${labTile("Laboratorio de bebidas", "Diseño · MBDS · biblioteca sensorial", "irA_mbds()", "")}
+      ${labTile("Base de matcha", "Gel fluido · matcha + agua + gellan", "irA_matchaBase()", "")}
+      ${labTile("Estación de trabajo", "Mise en place en frío · imprimible", "irA_estacion()", "")}
+      ${labTile("Plan de producción", "Qué preparar · diario y semanal", "irA_planProduccion()", "")}
+      ${labTile("Etiquetas", "APPCC · vida útil · lotes de producción", "irA_etiquetaProd()", "")}
     </div>`);
 }
+// Sub-hub BEBIDAS: las cuatro líneas de bebida.
+function irA_labBebidas(){
+  navInto(()=>irA_lab()); openSection("labbebidas", "Bebidas");
+  window._labVolver = irA_labBebidas;
+  setInner(`
+    <div class="section-label">Bebidas · ¿qué vas a producir?</div>
+    <div class="appcc-grid">
+      ${labTile("Limonadas", "Origen · Equilibrio · Colección — escala por litros", "irA_burbujas()", "")}
+      ${labTile("Latas fit", "Ice Latte proteico · Matcha colágeno — escala por latas", "irA_fit()", "")}
+      ${labTile("Cold brew", "Maceración · lote, cálculo y etiquetas", "irA_maceracion()", "")}
+      ${labTile("Spritz", "Origen · Equilibrio · Colección — con escandallo", "irA_spritz()", "")}
+    </div>`);
+}
+// Sub-hub COMIDA: las producciones (salsas/bases, sin inventar nada) + platos.
+function irA_labComida(){
+  navInto(()=>irA_lab()); openSection("labcomida", "Comida");
+  window._labVolver = irA_labComida;
+  const bases = Object.values(LAB_DATA.base || {});
+  const basesHTML = bases.map((b)=>labTile(esc(b.nombre), b.pendiente ? "pendiente de receta" : esc((b.carta||"").slice(0,70)), `labAbrirFicha('base','${b.cod}')`, b.pendiente ? "pendiente" : "")).join("");
+  setInner(`
+    <div class="section-label">Comida · producciones</div>
+    <div class="appcc-grid">${basesHTML}</div>
+    <div class="section-label" style="margin-top:20px">Platos de carta</div>
+    <div class="appcc-grid">
+      ${labTile("Sándwiches", "Fichas técnicas · escandallo · montaje", "labAbrirFicha('sandwich','SO')", "")}
+      ${labTile("Tostas", "Fichas técnicas · escandallo · montaje", "labAbrirFicha('tosta','TO')", "")}
+    </div>`);
+}
+// Abre la ficha de cocina directamente en un ítem concreto (salsa/sándwich/tosta).
+function labAbrirFicha(tipo, cod){ if(labProd(tipo,cod)){ window._labc = { tipo, cod }; } irA_labCocina(); }
 
 async function irA_mbds(){
   navReset(); openSection("mbds","Laboratorio · MBDS");
+  window._labVolver = irA_mbds;
   try{
     const bebidas=await api("/mbds/bebidas");
     const admin=mbdsEsAdmin();
@@ -3297,7 +3334,7 @@ function limFmt(x){
 }
 
 function irA_burbujas(){
-  navInto(()=>irA_mbds());
+  var _lv=window._labVolver||irA_mbds; navInto(function(){_lv();});
   const keys=Object.keys(LIMONADAS_DATA.recetas);
   if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16, dia:1, carbonatar:null };
   openSection("burbujas","Limonadas");
@@ -4011,7 +4048,7 @@ function spzCosteMezclaL(r){ // €/L de mezcla (neto, criterio del escandallo)
 function spzTecnicosL(){ return SPRITZ_DATA.tecnicosL || 0; } // €/L (CO₂ + agua)
 
 function irA_spritz(){
-  navInto(()=>irA_mbds());
+  var _lv=window._labVolver||irA_mbds; navInto(function(){_lv();});
   const keys=Object.keys(SPRITZ_DATA.recetas);
   if(!window._spz || !window._spz.rk || !SPRITZ_DATA.recetas[window._spz.rk]) window._spz={ rk:keys[0], litros:16 };
   openSection("spritz","Spritz");
@@ -4191,7 +4228,7 @@ function fitParsear(desc){
 }
 
 async function irA_fit(){
-  navInto(()=>irA_lab());
+  var _lv=window._labVolver||irA_lab; navInto(function(){_lv();});
   if(!window._fit) window._fit={ pid:null, n:24 };
   openSection("fit","Latas fit");
   fitRender();
@@ -4447,12 +4484,19 @@ const LAB_DATA = {
       ],
       cata:[ { f:"cata 1", punt:9, nota:"El toque argentino: chimichurri (perejil, ajo, orégano, vinagre, guindilla) emulsionado en mayonesa. Cremosa, herbal y con acidez; borda el pollo al curry." } ],
       versiones:[ { v:"v1.0", f:"cierre", cambio:"Mayonesa de chimichurri como salsa del Sándwich Equilibrio (sustituye a la salsa verde en el sándwich)." } ] },
+    ST: { cod:"ST", tipo:"base", esBase:true, nombre:"Salsa Materia con trufa", estado:"prueba", pendiente:true,
+      carta:"salsa Materia con trufa. receta por definir.",
+      rinde:"—", usadaEn:"por asignar", tiempoMontaje:"—", vidaUtil:"—", mermas:"—",
+      ingredientes:[],
+      montaje:[],
+      cata:[],
+      versiones:[ { v:"—", f:"pendiente", cambio:"Pendiente de tu receta (ingredientes, cantidades y coste de la trufa). No invento ingredientes." } ] },
   },
 };
 function labEur(n){ return (Math.round((n||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
 function labProd(tipo,cod){ return (LAB_DATA[tipo]||{})[cod]; }
 function irA_labCocina(){
-  navInto(()=>irA_lab());
+  var _lv=window._labVolver||irA_lab; navInto(function(){_lv();});
   if(!window._labc || !labProd(window._labc.tipo, window._labc.cod)) window._labc = { tipo:"sandwich", cod:"SO" };
   openSection("labcocina","Cocina · Lab");
   labRender();

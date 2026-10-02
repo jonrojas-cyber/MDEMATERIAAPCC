@@ -62,22 +62,94 @@ function construirCatalogo() {
     let estado;
     if (p) estado = sync.estadoProducto(p, ficha);
     else estado = (vida != null) ? "listo" : "appcc_incompleta"; // recetas / preparaciones internas
-    return {
+    const familia = p ? (p.familia || p.categoria || null) : it.categoria;
+    const item = {
       ref: it.ref, nombre: it.nombre, categoria: it.categoria, fuente: it.fuente,
       vida_dias: vida, tiene_ficha: !!ficha, estado, inactivo,
+      origen: (it.fuente === "agora") ? "Ágora" : (it.fuente === "receta" ? "Elaboración" : "Manual"),
       agora_id: p ? (p.agora_id || null) : null,
-      familia: p ? (p.familia || p.categoria || null) : it.categoria,
+      familia, subfamilia: p ? (p.subfamilia || null) : null,
+      codigo: p ? (p.codigo || null) : null,
+      codigo_barras: p ? (p.codigo_barras || null) : null,
+      proveedor: (ficha && ficha.proveedor) || (p && p.proveedor) || null,
+      alias: (ficha && Array.isArray(ficha.alias)) ? ficha.alias : [],
+      favorito: !!(ficha && ficha.favorito),
+      ultima_etiqueta: (ficha && ficha.ultima_etiqueta) || null,
+      veces: (ficha && Number(ficha.veces)) || 0,
     };
+    // Haystack normalizado para buscar por todos los campos a la vez.
+    item._hay = norm([item.nombre, familia, item.subfamilia, item.codigo, item.codigo_barras, item.proveedor, (item.alias || []).join(" ")].filter(Boolean).join(" "));
+    return item;
   });
 }
 
+// ── Búsqueda difusa y ranking ───────────────────────────────────────────────
+function desplural(t) { return t.replace(/(es|s)$/i, "") || t; }
+function tokens(s) { return norm(s).split(" ").filter(Boolean).map(desplural); }
+function lev(a, b) { // distancia de edición (para errores tipográficos pequeños)
+  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+function casaToken(palabras, t) {
+  return palabras.some((w) => {
+    const wp = desplural(w);
+    if (wp === t) return true;
+    if (t.length >= 2 && wp.includes(t)) return true;      // la palabra contiene el término
+    if (wp.length >= 3 && t.includes(wp)) return true;     // el término contiene la palabra (evita 'm','x'…)
+    if (t.length >= 4 && lev(wp, t) <= 1) return true;     // error tipográfico pequeño
+    return false;
+  });
+}
+function buscar(items, qraw) {
+  const qn = norm(qraw);
+  const qtok = tokens(qraw);
+  if (!qtok.length) return items;
+  const out = [];
+  items.forEach((it) => {
+    const palabras = it._hay.split(" ").filter(Boolean);
+    if (!qtok.every((t) => casaToken(palabras, t))) return;
+    const nombreN = norm(it.nombre);
+    out.push({ it, exact: nombreN === qn, starts: nombreN.startsWith(qn) || nombreN.indexOf(qn) >= 0 });
+  });
+  return ordenar(out);
+}
+// Orden: 1) exacta 2) favoritos 3) recientes 4) parciales 5) menos usados.
+function ordenar(arr) {
+  const rec = (x) => (x.it.ultima_etiqueta ? Date.parse(x.it.ultima_etiqueta) || 0 : 0);
+  arr.sort((a, b) =>
+    (b.exact - a.exact) ||
+    (b.it.favorito - a.it.favorito) ||
+    (rec(b) - rec(a)) ||
+    (b.starts - a.starts) ||
+    (b.it.veces - a.it.veces) ||
+    String(a.it.nombre).localeCompare(String(b.it.nombre))
+  );
+  return arr.map((x) => x.it);
+}
+
 router.get("/catalogo", (req, res) => {
-  const q = norm(req.query.q);
   const verInactivos = req.query.inactivos === "1" || req.query.inactivos === "true";
+  const filtro = String(req.query.filtro || "");
   let out = construirCatalogo();
   if (!verInactivos) out = out.filter((it) => !it.inactivo);
-  if (q) out = out.filter((it) => norm(it.nombre).includes(q));
-  out.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  // Atajos (sin buscador): recientes / favoritos / más usados / pendientes.
+  if (filtro === "favoritos") out = out.filter((it) => it.favorito);
+  else if (filtro === "recientes") out = out.filter((it) => it.ultima_etiqueta);
+  else if (filtro === "pendientes") out = out.filter((it) => it.estado === "appcc_incompleta");
+  if (req.query.q) { out = buscar(out, req.query.q); }
+  else {
+    // Sin búsqueda: favoritos → recientes → más usados → nombre.
+    const rec = (x) => (x.ultima_etiqueta ? Date.parse(x.ultima_etiqueta) || 0 : 0);
+    out.sort((a, b) => (b.favorito - a.favorito) || (rec(b) - rec(a)) || (b.veces - a.veces) || String(a.nombre).localeCompare(String(b.nombre)));
+    if (filtro === "masusados") out.sort((a, b) => (b.veces - a.veces) || String(a.nombre).localeCompare(String(b.nombre)));
+    if (filtro === "recientes") out.sort((a, b) => rec(b) - rec(a));
+  }
+  const lim = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 60));
+  out = out.slice(0, lim).map((it) => { const c = { ...it }; delete c._hay; return c; });
   res.json(out);
 });
 
@@ -153,6 +225,19 @@ router.post("/ficha/:ref", express.json(), async (req, res) => {
   if (b.conservacion != null) campos.conservacion = String(b.conservacion).slice(0, 80);
   if (b.notas != null) campos.notas = String(b.notas).slice(0, 400);
   if (Array.isArray(b.alergenos)) campos.alergenos = b.alergenos.map((a) => String(a).slice(0, 40)).slice(0, 20);
+  // Campos PROPIOS de APPCC (no se sobrescriben desde Ágora).
+  if (b.proveedor != null) campos.proveedor = String(b.proveedor).slice(0, 80);
+  if (b.tipo_producto != null) campos.tipo_producto = String(b.tipo_producto).slice(0, 60);
+  if (b.tipo_fecha != null) campos.tipo_fecha = String(b.tipo_fecha).slice(0, 20); // "caducidad" | "consumo_preferente"
+  if (b.temperatura != null) campos.temperatura = String(b.temperatura).slice(0, 40);
+  if (b.instrucciones_apertura != null) campos.instrucciones_apertura = String(b.instrucciones_apertura).slice(0, 200);
+  if (b.plantilla != null) campos.plantilla = String(b.plantilla).slice(0, 40);
+  if (b.favorito != null) campos.favorito = !!b.favorito;
+  if (b.impresion_rapida != null) campos.impresion_rapida = !!b.impresion_rapida;
+  if (b.necesita_lote_original != null) campos.necesita_lote_original = !!b.necesita_lote_original;
+  if (b.necesita_caducidad_original != null) campos.necesita_caducidad_original = !!b.necesita_caducidad_original;
+  if (b.etiquetas_default != null) { const n = parseInt(b.etiquetas_default, 10); if (Number.isFinite(n) && n > 0) campos.etiquetas_default = Math.min(99, n); }
+  if (Array.isArray(b.alias)) campos.alias = b.alias.map((a) => String(a).slice(0, 60)).slice(0, 10);
   campos.nombre_visto = String(b.nombre || prev.nombre_visto || "").slice(0, 120); // último nombre conocido (informativo)
   campos.actualizado_en = new Date().toISOString();
   campos.actualizado_por = (req.user && req.user.nombre) || "";
@@ -160,6 +245,30 @@ router.post("/ficha/:ref", express.json(), async (req, res) => {
   else store.insert("appcc_fichas", { ...prev, ...campos });
   await store.flush();
   res.json({ ok: true, ficha: store.findById("appcc_fichas", ref) });
+});
+
+// Registra el USO al etiquetar (para "última vez etiquetado" y ranking de uso).
+router.post("/uso/:ref", express.json(), async (req, res) => {
+  const ref = decodeURIComponent(req.params.ref);
+  const copies = Math.max(1, parseInt((req.body && req.body.copies), 10) || 1);
+  const prev = store.findById("appcc_fichas", ref) || { id: ref };
+  const campos = { id: ref, veces: (Number(prev.veces) || 0) + copies, ultima_etiqueta: new Date().toISOString() };
+  if (store.findById("appcc_fichas", ref)) store.update("appcc_fichas", ref, campos);
+  else store.insert("appcc_fichas", { ...prev, ...campos });
+  await store.flush();
+  res.json({ ok: true, veces: campos.veces, ultima_etiqueta: campos.ultima_etiqueta });
+});
+
+// Marca/desmarca favorito.
+router.post("/favorito/:ref", express.json(), async (req, res) => {
+  const ref = decodeURIComponent(req.params.ref);
+  const fav = !!(req.body && req.body.favorito);
+  const prev = store.findById("appcc_fichas", ref) || { id: ref };
+  const campos = { id: ref, favorito: fav };
+  if (store.findById("appcc_fichas", ref)) store.update("appcc_fichas", ref, campos);
+  else store.insert("appcc_fichas", { ...prev, ...campos });
+  await store.flush();
+  res.json({ ok: true, favorito: fav });
 });
 
 // Añadir una preparación interna al catálogo (lo que NO está en Ágora/recetas).

@@ -518,7 +518,9 @@ async function renderEtiquetasLoteHTML(req, especs, { autoprintWin } = {}) {
     const e = lista[i] || {};
     const prod = e.p || new Date().toISOString();
     const vidaH = Number(e.v) || 0;
-    const caduca = vidaH > 0 ? new Date(new Date(prod).getTime() + vidaH * 3600000).toISOString() : null;
+    // Caducidad: explícita (producto comprado con su fecha original) o calculada de la vida.
+    const caduca = e.cad ? e.cad : (vidaH > 0 ? new Date(new Date(prod).getTime() + vidaH * 3600000).toISOString() : null);
+    const venceTxt = (e.venceLabel ? String(e.venceLabel) : "consumir antes").toLowerCase();
     const qr = await generateQRCode(urlFichaPrep(req, { n: e.n, c: e.c, v: e.v, r: e.r, p: prod }));
     const partes = String(e.n || "").split(" · ");
     const titulo = escapeHTML(partes[0] || "");
@@ -534,7 +536,7 @@ async function renderEtiquetasLoteHTML(req, especs, { autoprintWin } = {}) {
         ${subt ? `<div class="subtitulo">${subt}</div>` : ""}
         <div class="rule"></div>
         <div class="fecha">elaborado · <b>${fechaSello(prod)}</b></div>
-        ${caduca ? `<div class="fecha vence">consumir antes · <b>${fechaSello(caduca)}</b></div>` : `<div class="fecha">sin caducidad definida</div>`}
+        ${caduca ? `<div class="fecha vence">${venceTxt} · <b>${fechaSello(caduca)}</b></div>` : `<div class="fecha">sin caducidad definida</div>`}
         ${resp ? `<div class="fecha">resp · ${resp}</div>` : ""}
         ${est ? `<div class="prueba">${est}</div>` : ""}
       </div><div class="foot"><div class="legal">Elaborado con ingredientes de origen natural. Sin colorantes. Sin conservantes.</div></div></div>

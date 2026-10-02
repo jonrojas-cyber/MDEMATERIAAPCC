@@ -1269,6 +1269,35 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   await expect(page.locator("body")).not.toContainText(/food cost/);
 });
 
+test("lab: producir se divide en Bebidas y Comida, con navegación coherente", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_lab());
+  await expect(page.locator("body")).toContainText(/¿qué vas a producir\?/i);
+  await expect(page.locator(".appcc-tile-name", { hasText: /Bebidas/ })).toBeVisible();
+  await expect(page.locator(".appcc-tile-name", { hasText: /Comida/ })).toBeVisible();
+  // Bebidas → las cuatro líneas.
+  await page.evaluate(() => irA_labBebidas());
+  for (const n of ["Limonadas", "Latas fit", "Cold brew", "Spritz"]) {
+    await expect(page.locator(".appcc-tile-name", { hasText: new RegExp("^" + n) })).toBeVisible();
+  }
+  // Back vuelve al hub de Lab.
+  await page.evaluate(() => goBack());
+  await expect(page.locator("body")).toContainText(/¿qué vas a producir\?/i);
+  // Comida → producciones reales + la salsa con trufa como PENDIENTE (sin inventar receta).
+  await page.evaluate(() => irA_labComida());
+  await expect(page.locator(".appcc-tile-name", { hasText: /Salsa Verde Materia/ })).toBeVisible();
+  await expect(page.locator(".appcc-tile-name", { hasText: /Salsa Materia con trufa/ })).toBeVisible();
+  // Abrir la salsa con trufa: ficha pendiente, no inventa ingredientes.
+  await page.evaluate(() => labAbrirFicha("base", "ST"));
+  await expect(page.locator("body")).toContainText(/No invento nada|Receta por definir/i);
+  // Back vuelve a Comida (destino dinámico _labVolver).
+  await page.evaluate(() => goBack());
+  await expect(page.locator(".appcc-tile-name", { hasText: /Salsa Materia con trufa/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("etiquetas: etiqueta libre (nombre a mano → operación preparación previa)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

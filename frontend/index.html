@@ -5051,8 +5051,12 @@ async function etqCargarResultados(q){
     var list=await api(p);
     window._etqResultados=list;
     if(!list.length){
-      cont.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:6px 2px">Sin resultados.'+
-        ((q&&q.trim())?` <button class="btn-ghost" style="margin-left:6px" onclick="etqManual()">✎ etiqueta libre «${esc(q.trim())}»</button>`:"")+'</div>';
+      var qt=(q&&q.trim())||"";
+      cont.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:6px 2px">Sin resultados'+(qt?' para «'+esc(qt)+'»':'')+'.</div>'+
+        (qt?`<div class="card-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn-primary" style="padding:8px 14px" onclick="etqAnadirProducto()">➕ Añadir «${esc(qt)}» al catálogo</button>
+          <button class="btn-ghost" onclick="etqManual()">✎ etiqueta libre (sin guardar)</button>
+        </div>`:"");
       return;
     }
     cont.innerHTML=list.map(function(it,i){
@@ -5085,6 +5089,17 @@ async function etqAbrirProducto(it){
   if(s.ref){ try{ var r=await api("/etiquetas/ficha/"+encodeURIComponent(s.ref)); s.ficha=(r&&r.ficha)||{}; if(s.ficha.vida_util_dias==null && r&&r.vida_receta!=null) s.ficha.vida_util_dias=r.vida_receta; }catch(e){ s.ficha={}; } }
   await etqTrazaCargar();
   etqRender();
+}
+// Añade un suministro/ingrediente que no estaba (jamón braseado, mortadela…) al
+// catálogo (persistente, con su ficha APPCC) y abre su ficha directamente.
+async function etqAnadirProducto(nombre){
+  nombre=(nombre!=null?nombre:((el("etq-buscar")&&el("etq-buscar").value)||"")).trim(); if(!nombre) return;
+  try{
+    var r=await api("/etiquetas/catalogo",{method:"POST",body:JSON.stringify({nombre:nombre, categoria:"Materia prima"})});
+    var it=r.item||{ ref:null, nombre:nombre, fuente:"catalogo" };
+    pbtToast(r.ya_existia?"Ya existía ✓":"Añadido al catálogo ✓",1200);
+    await etqAbrirProducto(it);
+  }catch(e){ alert("No se pudo añadir: "+((e&&e.message)||e)); }
 }
 // Etiqueta LIBRE (a mano), sin producto de Ágora.
 async function etqManual(){

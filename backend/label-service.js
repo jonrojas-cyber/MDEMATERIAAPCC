@@ -102,7 +102,7 @@ function fechaSello(iso) {
 // regla, los datos de fecha, la cantidad en vertical a la derecha y la coletilla
 // legal abajo. El QR de trazabilidad (vida útil en vivo) va en la columna
 // izquierda. Negro puro sobre blanco para que la térmica salga nítida.
-async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, qrUrl, venceLabel, cantidad }) {
+async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, autoprintWin, qrUrl, venceLabel, cantidad }) {
   const qrTexto = qrUrl || urlFichaLote(req, lote.id);
   const qrDataUrl = await generateQRCode(qrTexto);
   const nombreRaw = String((receta ? receta.nombre : lote.receta_id) || "");
@@ -370,6 +370,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, q
   })();
   </script>
   ${autoprint ? "<script>window.addEventListener('load',function(){var b=document.querySelector('.toolbar .primary'); if(b) b.focus();});</script>" : ""}
+  ${autoprintWin ? "<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},350);});</script>" : ""}
 </body></html>`;
 }
 

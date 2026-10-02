@@ -35,14 +35,20 @@ function construirCatalogo() {
   // 2) Recetas (elaboraciones) — su vida útil real se usa como fallback.
   (store.readAll("recetas") || []).forEach((r) => {
     items.push({ ref: "rec:" + r.id, nombre: r.nombre, categoria: "Elaboración", fuente: "receta",
-      vida_receta: r.vida_util_horas != null ? Math.round((r.vida_util_horas / 24) * 10) / 10 : null });
+      vida_dato: r.vida_util_horas != null ? Math.round((r.vida_util_horas / 24) * 10) / 10 : null });
   });
-  // 3) Preparaciones internas del catálogo editable.
+  // 3) Materias primas / suministros (embutidos, lácteos, verduras…): es lo que más
+  //    se etiqueta en APPCC (apertura/reenvasado). Vida útil real si la lleva; nunca inventada.
+  (store.readAll("materias") || []).forEach((m) => {
+    items.push({ ref: "mat:" + m.id, nombre: m.nombre, categoria: "Materia prima", fuente: "materia",
+      vida_dato: m.vida_util_horas != null ? Math.round((m.vida_util_horas / 24) * 10) / 10 : null });
+  });
+  // 4) Preparaciones internas del catálogo editable.
   (store.readAll("etiquetas_catalogo") || []).forEach((c) => {
     items.push({ ref: c.id, nombre: c.nombre, categoria: c.categoria || "Preparación", fuente: "catalogo" });
   });
-  // Dedupe por nombre normalizado (preferencia: agora > producto > receta > catalogo).
-  const prio = { agora: 0, producto: 1, receta: 2, catalogo: 3 };
+  // Dedupe por nombre normalizado (preferencia: agora > producto > receta > materia > catalogo).
+  const prio = { agora: 0, producto: 1, receta: 2, materia: 3, catalogo: 4 };
   const porNombre = new Map();
   items.forEach((it) => {
     const k = norm(it.nombre); if (!k) return;
@@ -53,21 +59,22 @@ function construirCatalogo() {
   const prodById = {};
   (store.readAll("productos") || []).forEach((p) => { prodById[p.id] = p; });
   const sync = require("../agora-sync");
-  // Resuelve vida útil: ficha APPCC (explícita) > vida de receta > null. NUNCA inventada.
+  // Resuelve vida útil: ficha APPCC (explícita) > vida real de receta/materia > null. NUNCA inventada.
+  const origenTxt = { agora: "Ágora", producto: "Carta", receta: "Elaboración", materia: "Materia prima", catalogo: "Manual" };
   return [...porNombre.values()].map((it) => {
     const ficha = fichas[it.ref];
     const vida = ficha && ficha.vida_util_dias != null ? Number(ficha.vida_util_dias)
-      : (it.vida_receta != null ? it.vida_receta : null);
+      : (it.vida_dato != null ? it.vida_dato : null);
     const p = prodById[it.ref];
     const inactivo = !!(p && (p.activo === false || p.activo_agora === false));
     let estado;
     if (p) estado = sync.estadoProducto(p, ficha);
-    else estado = (vida != null) ? "listo" : "appcc_incompleta"; // recetas / preparaciones internas
+    else estado = (vida != null) ? "listo" : "appcc_incompleta"; // recetas / materias / preparaciones
     const familia = p ? (p.familia || p.categoria || null) : it.categoria;
     const item = {
       ref: it.ref, nombre: it.nombre, categoria: it.categoria, fuente: it.fuente,
       vida_dias: vida, tiene_ficha: !!ficha, estado, inactivo,
-      origen: (it.fuente === "agora") ? "Ágora" : (it.fuente === "receta" ? "Elaboración" : "Manual"),
+      origen: origenTxt[it.fuente] || "Manual",
       agora_id: p ? (p.agora_id || null) : null,
       familia, subfamilia: p ? (p.subfamilia || null) : null,
       codigo: p ? (p.codigo || null) : null,
@@ -209,9 +216,10 @@ router.get("/sync-agora/ultimo", (req, res) => {
 router.get("/ficha/:ref", (req, res) => {
   const ref = decodeURIComponent(req.params.ref);
   const f = store.findById("appcc_fichas", ref) || null;
-  // Fallback de vida: receta (dato real existente), nunca inventado.
+  // Fallback de vida: receta o materia (dato real existente), nunca inventado.
   let vidaReceta = null;
   if (ref.startsWith("rec:")) { const r = store.findById("recetas", ref.slice(4)); if (r && r.vida_util_horas != null) vidaReceta = Math.round((r.vida_util_horas / 24) * 10) / 10; }
+  else if (ref.startsWith("mat:")) { const m = store.findById("materias", ref.slice(4)); if (m && m.vida_util_horas != null) vidaReceta = Math.round((m.vida_util_horas / 24) * 10) / 10; }
   res.json({ ref, ficha: f, vida_receta: vidaReceta });
 });
 
@@ -326,6 +334,7 @@ function datosProducto(ref) {
   const p = store.findById("productos", ref);
   if (p) return { nombre: p.nombre, agora_id: p.agora_id || null };
   if (ref && ref.startsWith("rec:")) { const r = store.findById("recetas", ref.slice(4)); if (r) return { nombre: r.nombre, agora_id: null }; }
+  if (ref && ref.startsWith("mat:")) { const m = store.findById("materias", ref.slice(4)); if (m) return { nombre: m.nombre, agora_id: null }; }
   const c = store.findById("etiquetas_catalogo", ref);
   if (c) return { nombre: c.nombre, agora_id: null };
   return { nombre: "", agora_id: null };

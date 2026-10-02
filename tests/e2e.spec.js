@@ -1317,6 +1317,10 @@ test("etiquetas APPCC: reenvasado (jamón) valida campos obligatorios y crea lot
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   const res = await page.evaluate(async () => {
+    // Las materias primas / ingredientes de escandallos aparecen en el buscador
+    // (apertura/reenvasado de embutidos y suministros es el caso APPCC principal).
+    const catMateria = await api("/etiquetas/catalogo?q=jamon");
+    const hayMateria = catMateria.some((x) => x.origen === "Materia prima");
     // Producto determinista + ficha APPCC con vida útil 5 días.
     const prod = await api("/etiquetas/catalogo", { method: "POST", body: JSON.stringify({ nombre: "Jamón braseado e2e" }) });
     const ref = prod.item.ref;
@@ -1345,8 +1349,9 @@ test("etiquetas APPCC: reenvasado (jamón) valida campos obligatorios y crea lot
     await etqReimprimirLoteId(lote.id, 2);
     window.open = o2;
     const loteTrasReimp = await api("/etiquetas/lotes/" + encodeURIComponent(lote.id));
-    return { resumenOk, huboError, sinLote, opened, lote, nLotes: lotes.length, opened2, hist: loteTrasReimp.historial.map((h) => h.tipo) };
+    return { hayMateria, resumenOk, huboError, sinLote, opened, lote, nLotes: lotes.length, opened2, hist: loteTrasReimp.historial.map((h) => h.tipo) };
   });
+  expect(res.hayMateria).toBe(true);      // los ingredientes de escandallos están en el buscador
   expect(res.resumenOk).toBe(true);
   expect(res.huboError).toBe(true);       // valida con mensajes concretos
   expect(res.sinLote).toBe(true);         // no crea lote si faltan obligatorios

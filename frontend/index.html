@@ -4858,7 +4858,12 @@ function etqRender(){
   const chips=ETQ_PRODUCTOS.map(p=>`<button class="${s.nombre===p.n?"on":""}" onclick="etqPreset('${p.n.replace(/'/g,"\\'")}',${p.v})">${esc(p.n)}</button>`).join("");
   const vidas=ETQ_VIDAS.map(v=>`<button class="${s.vidaH===v.h?"on":""}" onclick="etqVida(${v.h})">${v.t}</button>`).join("");
   const estados=ETQ_ESTADOS.map(e=>`<button class="${s.estado===e.k?"on":""}" onclick="etqEstado('${e.k}')">${esc(e.t)}</button>`).join("");
-  const body=`<div class="lim-lead">Datea cualquier cosa que preparas —también pruebas que no están en carta—: escribes el nombre a mano, la cantidad y la vida útil, y sale con la fecha, un QR y (si quieres) su estado de prueba.</div>
+  const body=`<div class="card" id="pbt-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <span id="pbt-estado" style="font-size:13px;font-weight:700;">● comprobando impresora…</span>
+      <button class="btn-ghost" style="margin-left:auto" onclick="pbtConectarManual()">Conectar impresora</button>
+      <button class="btn-ghost" onclick="pbtImprimirPrueba()">Imprimir prueba</button>
+    </div>
+    <div class="lim-lead">Datea cualquier cosa que preparas —también pruebas que no están en carta—: escribes el nombre a mano, la cantidad y la vida útil, y sale con la fecha, un QR y (si quieres) su estado de prueba.</div>
     <div class="lim-eyebrow" style="margin-bottom:6px">producto (o escríbelo a mano)</div>
     <div class="lim-presets" style="margin-top:0;justify-content:flex-start">${chips}</div>
     <input id="etq-nombre" class="etq-in" type="text" placeholder="nombre · ej. sirope de té chai" value="${esc(s.nombre)}" oninput="etqLeer()" style="margin-top:10px">
@@ -4874,6 +4879,7 @@ function etqRender(){
   const foot=`<button class="btn-ghost" onclick="goBack()">← Salir</button>
     <button class="btn-primary" onclick="etqGenerar()">imprimir etiqueta →</button>`;
   el("inner-content").innerHTML=`<div id="lim"><div id="etq">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div></div>`;
+  pbtActualizarEstado();
 }
 function etqGenerar(){
   etqLeer();
@@ -4900,6 +4906,25 @@ var MDM_BT_SERVICIOS = [0xff00, 0xff10, 0xffe0, 0x18f0, 0xfff0,
   "0000ff00-0000-1000-8000-00805f9b34fb", "49535343-fe7d-4ae5-8fa9-9fafd205e455",
   "e7810a71-73ae-499d-8c15-faa9aef0c3f2"];
 function pbtConectado(){ return !!(_mdmPrinter && _mdmPrinter.device.gatt.connected); }
+// Pinta el estado de la impresora en la barra (si está en pantalla).
+function pbtActualizarEstado(){
+  var e=document.getElementById("pbt-estado"); if(!e) return;
+  if(!navigator.bluetooth){ e.innerHTML='<span style="color:#b23b3b">● este navegador no tiene Bluetooth</span> — usa Chrome/Edge en el PC o la tablet'; return; }
+  if(pbtConectado()){ var nom=(_mdmPrinter&&_mdmPrinter.device&&_mdmPrinter.device.name)||"impresora"; e.innerHTML='<span style="color:#3c7a4a">● conectada</span> · '+esc(nom); }
+  else{ e.innerHTML='<span style="color:#b23b3b">● sin conectar</span> — pulsa “Conectar impresora”'; }
+}
+// (Re)emparejar a mano: dentro del gesto del botón, muestra el selector si hace falta.
+async function pbtConectarManual(){
+  if(!navigator.bluetooth){ alert("Este navegador no permite conectar la impresora por Bluetooth. Abre Control M en Chrome o Edge (en el PC o en una tablet) y vuelve a intentarlo."); return; }
+  try{ pbtToast("Buscando impresora…"); await pbtAsegurar(); pbtToast("Impresora conectada ✓",1600); }
+  catch(e){ pbtToast(""); if(!(e&&e.name==="NotFoundError")) alert("No se pudo conectar: "+((e&&e.message)||e)+"\n\nComprueba que la Phomemo está encendida (luz azul) y cerca."); }
+  pbtActualizarEstado();
+}
+// Etiqueta de PRUEBA para verificar que imprime bien.
+function pbtImprimirPrueba(){
+  var qs=new URLSearchParams(); qs.set("n","PRUEBA impresora"); qs.set("c","m de materia"); qs.set("v","0"); qs.set("p",new Date().toISOString());
+  pbtImprimir("/etiqueta/prep?"+qs.toString());
+}
 async function pbtCanal(server){
   var svcs = await server.getPrimaryServices();
   for(var i=0;i<svcs.length;i++){ var cs = await svcs[i].getCharacteristics();
@@ -4907,8 +4932,9 @@ async function pbtCanal(server){
   throw new Error("sin canal de escritura");
 }
 function pbtGuardar(device, canal){
-  device.addEventListener("gattserverdisconnected", function(){ _mdmPrinter = null; });
+  device.addEventListener("gattserverdisconnected", function(){ _mdmPrinter = null; try{ pbtActualizarEstado(); }catch(e){} });
   _mdmPrinter = { device: device, canal: canal };
+  try{ pbtActualizarEstado(); }catch(e){}
   return _mdmPrinter;
 }
 // Reconexión SILENCIOSA (sin selector) a una impresora ya emparejada. No exige

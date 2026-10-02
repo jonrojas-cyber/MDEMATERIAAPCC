@@ -2,9 +2,9 @@
 REM ============================================================================
 REM  Deja el conector corriendo SOLO, para siempre, en este PC (el del TPV).
 REM  Crea una TAREA DEL SISTEMA que:
-REM    · arranca el conector al ENCENDER el PC (aunque nadie inicie sesion),
-REM    · lo REINICIA solo si se cae (y cada 10 min comprueba que sigue vivo),
-REM    · corre oculto en segundo plano (no hay ventana que cerrar sin querer).
+REM    - arranca el conector al ENCENDER el PC (aunque nadie inicie sesion),
+REM    - lo REINICIA solo si se cae (y cada 10 min comprueba que sigue vivo),
+REM    - corre oculto en segundo plano (no hay ventana que cerrar sin querer).
 REM
 REM  USO: clic DERECHO en este archivo -> "Ejecutar como administrador".
 REM       (una sola vez). Para ver que funciona, mira en Control M

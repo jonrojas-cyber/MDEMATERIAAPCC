@@ -121,7 +121,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, a
   @page { size: 90mm 40mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 90mm; height: 40mm; overflow: hidden; }
-  body { font-family: 'Courier Prime', 'Courier New', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; font-weight: 700; }
+  body { font-family: 'Courier New', 'Courier Prime', monospace; color: #000; background: #fff; -webkit-font-smoothing: none; font-weight: 700; }
   /* Toda la letra en NEGRITA: la fina se rompe en térmica. */
   .label, .label * { font-weight: 700 !important; }
   .label { width: 90mm; height: 40mm; border: 0.4mm solid #000; display: flex; align-items: stretch; page-break-inside: avoid; }
@@ -152,13 +152,13 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, a
   .cant { width: 7.5mm; flex: 0 0 7.5mm; border-left: 0.3mm solid #000; display: flex; align-items: center; justify-content: center; }
   .cant span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: lowercase; white-space: nowrap; }
   @media screen { body { background: #ddd; padding: 16px; max-width: 560px; margin: 0 auto; } .label { box-shadow: 0 0 0 1px #999; background:#fff; }
-    .toolbar{font-family:sans-serif;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
+    .toolbar{font-family:'Courier New','Courier Prime',monospace;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
     .toolbar .primary{flex-basis:100%;font-size:18px;font-weight:700;padding:18px 16px;border-radius:14px;border:0;background:#2a332b;color:#fff;cursor:pointer;}
     .toolbar button.ghost{font-family:inherit;font-size:13px;font-weight:600;padding:9px 14px;border-radius:10px;border:1px solid #999;background:#fff;color:#333;cursor:pointer;}
     .toolbar .opt{font-size:12px;color:#444;display:flex;align-items:center;gap:5px;}
     .toolbar .opt input{width:66px;font-size:13px;padding:5px 6px;border:1px solid #999;border-radius:7px;}
     .toolbar .hint{font-size:11.5px;color:#666;flex-basis:100%;line-height:1.4;}
-    .btlog{flex-basis:100%;font-family:ui-monospace,monospace;font-size:11px;background:#111;color:#7bd88f;padding:8px 10px;border-radius:8px;max-height:140px;overflow:auto;white-space:pre-wrap;margin:0;display:none;}
+    .btlog{flex-basis:100%;font-family:'Courier New','Courier Prime',monospace;font-size:11px;background:#111;color:#7bd88f;padding:8px 10px;border-radius:8px;max-height:140px;overflow:auto;white-space:pre-wrap;margin:0;display:none;}
     .btlog.on{display:block;} }
   @media print { html, body { width: 90mm; height: 40mm; margin: 0; padding: 0; overflow: hidden; } .toolbar { display: none; } .label { box-shadow: none; margin: 0; } }
 </style></head>
@@ -409,7 +409,7 @@ function renderFichaLoteHTML({ lote, receta, materias, responsable, venceLabel }
 <style>
   :root{ --crema:#F0EBE0; --tinta:#1a1813; --olive:#5C6145; --suave:#8a8470; }
   *{box-sizing:border-box;}
-  body{font-family:'Courier Prime','Courier New',monospace;background:var(--crema);color:var(--tinta);margin:0;padding:22px 18px;-webkit-font-smoothing:antialiased;}
+  body{font-family:'Courier New','Courier Prime',monospace;background:var(--crema);color:var(--tinta);margin:0;padding:22px 18px;-webkit-font-smoothing:antialiased;}
   .doc{max-width:520px;margin:0 auto;}
   .marca{font-size:10px;color:var(--olive);letter-spacing:.28em;text-transform:uppercase;text-align:center;margin-bottom:22px;}
   h1{font-size:23px;font-weight:700;margin:0 0 4px;text-align:center;line-height:1.15;}
@@ -547,7 +547,7 @@ async function renderEtiquetasLoteHTML(req, especs, { autoprintWin } = {}) {
 <style>
   @page { size: 90mm 40mm; margin: 0; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Courier Prime','Courier New',monospace; color:#000; background:#fff; font-weight:700; }
+  body { font-family:'Courier New','Courier Prime',monospace; color:#000; background:#fff; font-weight:700; }
   .label,.label *{ font-weight:700 !important; }
   .label{ width:90mm; height:40mm; border:0.4mm solid #000; display:flex; align-items:stretch; page-break-inside:avoid; page-break-after:always; }
   .label:last-child{ page-break-after:auto; }

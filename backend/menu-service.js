@@ -103,7 +103,7 @@ function renderCartaPublicaHTML() {
 :root{
   --bg:#2A332B; --ink:#F5F4EF; --sage:#A7B96E; --muted:#C7CABF;
   --line:rgba(236,234,227,.20); --hair:rgba(236,234,227,.12);
-  --font:'Courier Prime','Courier New',monospace;
+  --font:'Courier New','Courier Prime',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;}
@@ -156,7 +156,7 @@ function renderQRCarterHTML(urlCarta, qrSrc) {
 <style>
 @font-face{font-family:'Courier Prime';font-weight:400;src:url('/fonts/CourierPrime-Regular.woff2') format('woff2');}
 @font-face{font-family:'Courier Prime';font-weight:700;src:url('/fonts/CourierPrime-Bold.woff2') format('woff2');}
-:root{--bg:#2A332B;--ink:#F5F4EF;--sage:#A7B96E;--muted:#C7CABF;--font:'Courier Prime','Courier New',monospace;}
+:root{--bg:#2A332B;--ink:#F5F4EF;--sage:#A7B96E;--muted:#C7CABF;--font:'Courier New','Courier Prime',monospace;}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--ink);font-family:var(--font);}
 .card{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:40px 24px;text-align:center;}

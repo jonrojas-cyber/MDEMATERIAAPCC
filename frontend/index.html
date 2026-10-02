@@ -541,7 +541,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .navchip { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--paper);
   border: 1px solid var(--line); border-radius: 3px; padding: 15px 16px; cursor: pointer; }
 .navchip:hover { border-color: var(--ink); }
-.navchip-num { font-family: 'Courier Prime', monospace; font-size: 16px; font-weight: 700; color: var(--muted); }
+.navchip-num { font-family: var(--font); font-size: 16px; font-weight: 700; color: var(--muted); }
 .navchip-name { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
 .navchip-pend { font-size: 11px; font-weight: 700; color: #D62A1C; background: #f3ddd2; border-radius: 20px; padding: 2px 9px; margin-left: auto; }
 .navchip-go { color: var(--muted); font-size: 15px; margin-left: auto; }
@@ -880,7 +880,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .cats .cat:nth-child(2n) { border-right: none; }
 .cat-top { display: flex; justify-content: space-between; align-items: baseline;
   border-bottom: 1px solid var(--line); padding-bottom: 9px; margin-bottom: 16px; }
-.cat-idx { font-family: var(--mono, 'Courier Prime', monospace); font-size: 11px;
+.cat-idx { font-family: var(--font); font-size: 11px;
   letter-spacing: .1em; color: var(--ink); }
 .cat-code { font-size: 9px; letter-spacing: .16em; text-transform: lowercase; color: var(--muted); }
 .cat-code.alerta { color: var(--ink); font-weight: 700; }
@@ -902,7 +902,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .modrow { background: transparent; border: none; border-bottom: 1px solid var(--line);
   margin: 0; padding: 16px 4px; gap: 16px; }
 .modrow:hover { transform: none; background: var(--paper); border-color: var(--line); }
-.modrow .mnum { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .1em; color: var(--ink); }
+.modrow .mnum { font-family: var(--font); font-size: 11px; letter-spacing: .1em; color: var(--ink); }
 .modrow .mname { font-family: var(--sans); font-weight: 700; text-transform: lowercase;
   letter-spacing: .04em; font-size: 13px; }
 .modrow .mbadge { font-size: 10px; letter-spacing: .04em; text-transform: lowercase; color: var(--muted); }
@@ -944,7 +944,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .kpi-box:last-child { border-right: none; }
 .kpi-box::before { display: none; }
 .kpi-label { font-size: 8.5px; letter-spacing: .14em; }
-.kpi-val { font-family: 'Courier Prime', monospace; }
+.kpi-val { font-family: var(--font); }
 
 /* Imagotipo ||| más fino y en tinta. */
 .mark i { background: currentColor; }
@@ -974,16 +974,16 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   text-transform: lowercase; letter-spacing: .04em; line-height: 1; }
 .ficha-sub { font-size: 11px; color: var(--muted); margin-top: 7px; letter-spacing: .04em; }
 .ficha-code { position: absolute; top: 18px; right: 20px; text-align: right;
-  font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: .08em; color: var(--muted); line-height: 1.5; }
+  font-family: var(--font); font-size: 10px; letter-spacing: .08em; color: var(--muted); line-height: 1.5; }
 .ficha-rows { padding: 6px 20px 14px; }
 .frow { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
-  padding: 10px 0; border-bottom: 1px solid var(--line); font-family: 'Courier Prime', monospace; font-size: 12px; }
+  padding: 10px 0; border-bottom: 1px solid var(--line); font-family: var(--font); font-size: 12px; }
 .frow:last-child { border-bottom: none; }
 .frow .k { color: var(--muted); letter-spacing: .12em; text-transform: lowercase; font-size: 10px; }
 .frow .v { color: var(--ink); text-align: right; }
 .frow .v.alert { font-weight: 700; }
 .ficha-note { padding: 14px 20px; border-top: 1px solid var(--ink);
-  font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: .04em;
+  font-family: var(--font); font-size: 9.5px; letter-spacing: .04em;
   text-transform: lowercase; color: var(--muted); line-height: 1.7; }
 .ficha-actions { width: 100%; max-width: 680px; display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 @media (max-width: 680px) {
@@ -1007,7 +1007,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
 .topbar-center { flex: 0 0 auto; }
 .topbar-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
-.topbar .brandword { font-family: 'Courier Prime', monospace; font-size: 15px;
+.topbar .brandword { font-family: var(--font); font-size: 15px;
   font-weight:700; letter-spacing: .2em; text-transform: lowercase; color: var(--oliveink);
   cursor: pointer; transition: opacity .15s ease; }
 .topbar .brandword:hover { opacity: .7; }
@@ -1036,7 +1036,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
     inset -1.6px -1.6px 2.4px rgba(231,228,215,.16),
     0 1.5px 0 rgba(231,228,215,.18); /* labio de luz al pie (efecto tallado hondo) */
 }
-.topbar-section { font-family: 'Courier Prime', monospace; font-size: 12px;
+.topbar-section { font-family: var(--font); font-size: 12px;
   letter-spacing: .18em; text-transform: lowercase; color: var(--oliveink); flex: 0; }
 .topbar-back { background: none; border: none; color: var(--oliveink); font-size: 17px;
   width: auto; padding: 0 4px 0 0; display: none; }
@@ -1050,7 +1050,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   height: 62px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 42px; padding-bottom: env(safe-area-inset-bottom, 0px);
   height: calc(62px + env(safe-area-inset-bottom, 0px));
-  font-family: 'Courier Prime', monospace; font-size: 10px;
+  font-family: var(--font); font-size: 10px;
   letter-spacing: .16em; text-transform: lowercase; opacity: .95;
   box-shadow: 0 -2px 10px rgba(23,21,15,.14); z-index: 5; position: relative; }
 
@@ -1087,11 +1087,11 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* Cabecera del inicio (sin wordmark grande: ya está en la barra). */
 .home-brand { display: none; }
 .home-head { padding: 6px 2px 22px; }
-.home-sys { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .14em;
+.home-sys { font-family: var(--font); font-size: 11px; letter-spacing: .14em;
   text-transform: lowercase; color: var(--muted); }
-.home-efimera { font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: .04em;
+.home-efimera { font-family: var(--font); font-size: 10px; letter-spacing: .04em;
   color: #fff; background: var(--olivebar); display: inline-block; padding: 4px 10px; margin-top: 10px; }
-.home-alert { font-family: 'Courier Prime', monospace; font-size: 12px; font-weight: 700;
+.home-alert { font-family: var(--font); font-size: 12px; font-weight: 700;
   letter-spacing: .1em; text-transform: lowercase; color: var(--ink); margin-top: 8px; }
 .home-status { display: none; }
 
@@ -1104,19 +1104,19 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .cats .cat:nth-child(2n) { border-right: 1px solid var(--line); }
 .cat-numcol { flex: 0 0 168px; padding: 26px 24px; border-right: 1px solid var(--line);
   display: flex; flex-direction: column; justify-content: center; }
-.cat-big { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 50px;
+.cat-big { font-family: var(--font); font-weight: 700; font-size: 50px;
   line-height: 1; color: var(--ink); letter-spacing: .02em; }
-.cat-state { font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: .12em;
+.cat-state { font-family: var(--font); font-size: 9.5px; letter-spacing: .12em;
   text-transform: lowercase; color: var(--muted); margin-top: 12px; }
-.cat-dots { font-family: 'Courier Prime', monospace; font-size: 14px; color: var(--ink);
+.cat-dots { font-family: var(--font); font-size: 14px; color: var(--ink);
   margin-top: 8px; letter-spacing: .18em; min-height: 14px; }
 .cat-main { flex: 1; padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; }
 .cat-name { font-family: var(--sans); font-weight: 700; font-size: 22px; text-transform: lowercase;
   letter-spacing: .1em; line-height: 1; }
-.cat-l1 { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .08em;
+.cat-l1 { font-family: var(--font); font-size: 11px; letter-spacing: .08em;
   text-transform: lowercase; color: var(--ink); margin-top: 16px; padding-bottom: 12px;
   border-bottom: 1px solid var(--line); }
-.cat-l2 { font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: .08em;
+.cat-l2 { font-family: var(--font); font-size: 11px; letter-spacing: .08em;
   text-transform: lowercase; color: var(--muted); margin-top: 12px; }
 .cat-go { flex: 0 0 76px; display: flex; align-items: center; justify-content: center;
   font-size: 22px; color: var(--ink); }
@@ -1583,7 +1583,7 @@ button.cc-card:hover { border-color: var(--ink); }
 /* Teclado numérico del PIN (login): teclas oscuras en relieve, tipo TPV. */
 .pin-pad { display: grid; grid-template-columns: repeat(3, 70px); gap: 12px; justify-content: center; }
 .pin-key {
-  font-family: 'Courier Prime', monospace; font-size: 24px; color: #E7E4D7;
+  font-family: var(--font); font-size: 24px; color: #E7E4D7;
   width: 70px; height: 62px; border-radius: 7px; border: 1px solid #2A2820; cursor: pointer;
   background: linear-gradient(180deg, #24221A 0%, #1A1812 100%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.07), inset 0 -1px 0 rgba(0,0,0,.4), 0 3px 7px rgba(0,0,0,.45);
@@ -1873,7 +1873,7 @@ button.cc-card:hover { border-color: var(--ink); }
   display:none; flex-direction:column; align-items:flex-end; gap:5px; pointer-events:none; max-width:min(72vw,240px); }
 .crono-item { pointer-events:auto; display:inline-flex; align-items:center; gap:7px;
   background:var(--olivebar); color:var(--oliveink); border:1px solid var(--olive); border-radius:999px;
-  padding:3px 4px 3px 10px; box-shadow:0 4px 14px -6px rgba(0,0,0,.6); font-family:'Courier Prime',monospace; max-width:100%; }
+  padding:3px 4px 3px 10px; box-shadow:0 4px 14px -6px rgba(0,0,0,.6); font-family:var(--font); max-width:100%; }
 .crono-item .crono-lbl { font-size:10px; font-weight:700; text-transform:lowercase; min-width:0; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.85; }
 .crono-item .crono-time { font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--olive); letter-spacing:.02em; }
 .crono-item button { background:none; border:none; color:var(--oliveink); border-radius:50%; width:18px; height:18px; line-height:1; padding:0; cursor:pointer; font-weight:700; font-size:11px; opacity:.7; }
@@ -1975,7 +1975,7 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 }
 #mdm-mac *{box-sizing:border-box}
 #mdm-mac .wrap{max-width:940px;margin:0 auto}
-#mdm-mac h1{font-family:Fraunces,Georgia,serif;font-style:italic;font-weight:400;font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
+#mdm-mac h1{font-family:var(--font);font-style:italic;font-weight:400;font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
 #mdm-mac .sub{text-transform:uppercase;letter-spacing:.18em;font-size:10px;color:var(--mac-olive);margin-bottom:26px}
 #mdm-mac fieldset{border:none;border-top:1px solid var(--mac-line);margin:0 0 22px;padding:18px 0 0}
 #mdm-mac legend{display:none}
@@ -1988,7 +1988,7 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 #mdm-mac .out{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--mac-line);border:1px solid var(--mac-line);margin-top:4px}
 #mdm-mac .cell{background:var(--mac-sand);padding:13px 12px}
 #mdm-mac .cell .k{text-transform:uppercase;letter-spacing:.1em;font-size:9px;opacity:.6}
-#mdm-mac .cell .v{font-family:Fraunces,Georgia,serif;font-style:italic;font-size:21px;margin-top:3px}
+#mdm-mac .cell .v{font-family:var(--font);font-style:italic;font-size:21px;margin-top:3px}
 #mdm-mac .cell .u{font-size:11px;opacity:.6;font-style:normal;font-family:"Courier Prime",'Courier New',monospace}
 #mdm-mac .warn{color:#8a3b1e}
 #mdm-mac button{font-family:inherit;font-size:10px;text-transform:uppercase;letter-spacing:.18em;padding:11px 20px;border:1px solid var(--mac-olive);background:var(--mac-olive);color:var(--mac-sand);cursor:pointer}
@@ -4739,7 +4739,7 @@ function estacionImprimir(){
   const w = window.open("", "_blank"); if(!w) return;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Estación de trabajo · m de materia</title>
     <style>
-      *{box-sizing:border-box} body{font-family:ui-monospace,'Courier Prime',monospace;background:#ece2d0;color:#2a332b;margin:0;padding:28px;}
+      *{box-sizing:border-box} body{font-family:'Courier New','Courier Prime',monospace;background:#ece2d0;color:#2a332b;margin:0;padding:28px;}
       h1{font-size:20px;letter-spacing:.02em;margin:2px 0 0} .eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#6a7052}
       .mesa{border:1.5px solid #b7ac93;border-radius:14px;padding:14px;margin-top:16px}
       .mlbl{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#8a8770;margin-bottom:10px}
@@ -4825,7 +4825,7 @@ function planImprimir(){
   const w = window.open("", "_blank"); if(!w) return;
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Plan de producción · m de materia</title>
     <style>
-      *{box-sizing:border-box} body{font-family:ui-monospace,'Courier Prime',monospace;background:#ece2d0;color:#2a332b;margin:0;padding:28px;}
+      *{box-sizing:border-box} body{font-family:'Courier New','Courier Prime',monospace;background:#ece2d0;color:#2a332b;margin:0;padding:28px;}
       h1{font-size:20px;margin:2px 0 0} .eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#6a7052}
       .cols{display:flex;gap:26px;margin-top:18px;flex-wrap:wrap} .col{flex:1;min-width:250px}
       h2{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#6a7052;border-bottom:1px solid #c9bfa8;padding-bottom:6px;margin:0 0 6px}
@@ -10543,7 +10543,7 @@ function toggleAlb(id){
 // Abre el albarán como documento digital (foto + datos) en una ventana nueva.
 async function verAlbaran(id){
   const w=window.open("","_blank");
-  if(w) w.document.write("<p style='font-family:sans-serif;padding:20px;'>Cargando albarán…</p>");
+  if(w) w.document.write(`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;">Cargando albarán…</p>`);
   try{
     const r=await api(`/recepciones/${id}`);
     const f=new Date(r.fecha).toLocaleString("es-ES");
@@ -10556,7 +10556,7 @@ async function verAlbaran(id){
       <meta name="viewport" content="width=device-width,initial-scale=1">
       <title>Albarán ${r.id}</title>
       <style>
-        body{font-family:'Courier Prime',monospace;background:#F0EBE0;color:#111009;margin:0;padding:20px;}
+        body{font-family:'Courier New','Courier Prime',monospace;background:#F0EBE0;color:#111009;margin:0;padding:20px;}
         .doc{max-width:680px;margin:0 auto;background:#fff;border:1px solid #d8d0bf;border-radius:8px;padding:22px;}
         h1{font-size:18px;margin:0 0 2px;} .sub{font-size:11px;color:#5C6145;letter-spacing:.12em;text-transform:lowercase;margin-bottom:16px;}
         .meta{font-size:12px;margin:4px 0;} .meta b{color:#5C6145;}
@@ -10578,7 +10578,7 @@ async function verAlbaran(id){
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style='font-family:sans-serif;padding:20px;color:#9C5A2E;'>No se pudo abrir el albarán: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir el albarán: ${e.message}</p>`;
     else alert(e.message);
   }
 }
@@ -10605,7 +10605,7 @@ async function reenviarEmailJust(id){
 // Justificante de pago: documento detallado (prueba ante reclamación del proveedor).
 async function verJustificante(id){
   const w=window.open("","_blank");
-  if(w) w.document.write("<p style='font-family:sans-serif;padding:20px;'>Generando justificante…</p>");
+  if(w) w.document.write(`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;">Generando justificante…</p>`);
   try{
     const j=await api(`/pagos/justificantes/${id}`);
     const fp=new Date(j.fecha_pago).toLocaleString("es-ES");
@@ -10624,7 +10624,7 @@ async function verJustificante(id){
       <meta name="viewport" content="width=device-width,initial-scale=1">
       <title>Justificante ${j.codigo}</title>
       <style>
-        body{font-family:'Courier Prime',monospace;background:#F0EBE0;color:#111009;margin:0;padding:20px;}
+        body{font-family:'Courier New','Courier Prime',monospace;background:#F0EBE0;color:#111009;margin:0;padding:20px;}
         .doc{max-width:680px;margin:0 auto;background:#fff;border:1px solid #d8d0bf;border-radius:8px;padding:24px;}
         .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #5C6145;padding-bottom:12px;margin-bottom:16px;}
         h1{font-size:18px;margin:0;} .marca{font-size:11px;color:#5C6145;letter-spacing:.14em;text-transform:lowercase;}
@@ -10654,7 +10654,7 @@ async function verJustificante(id){
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style='font-family:sans-serif;padding:20px;color:#9C5A2E;'>No se pudo generar el justificante: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo generar el justificante: ${e.message}</p>`;
     else alert(e.message);
   }
 }
@@ -11448,7 +11448,7 @@ function kpPulsar(k){
 async function arrancar() {
   document.body.style.overflow = "auto";
   document.body.innerHTML = `
-    <div id="splash" style="min-height:100vh;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Courier Prime',monospace;padding:24px;text-align:center;">
+    <div id="splash" style="min-height:100vh;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--font);padding:24px;text-align:center;">
       <span class="mark" style="color:var(--ink);height:38px;"><i></i><i></i><i></i></span>
       <div style="font-family:var(--sans);font-size:34px;font-weight:700;color:var(--ink);line-height:1;margin-top:20px;letter-spacing:.01em;">m de materia</div>
       <div style="font-size:9px;letter-spacing:0.24em;text-transform:lowercase;color:var(--muted);margin-top:8px;margin-bottom:56px;">Control de producción</div>

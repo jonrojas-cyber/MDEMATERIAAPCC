@@ -165,7 +165,7 @@ app.get("/lote/:id", async (req, res) => {
       .set("Content-Type", "text/html; charset=utf-8")
       .send(
         `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-          `<body style="font-family:sans-serif;background:#F0EBE0;color:#9C5A2E;padding:30px;text-align:center;">` +
+          `<body style="font-family:'Courier New','Courier Prime',monospace;background:#F0EBE0;color:#9C5A2E;padding:30px;text-align:center;">` +
           `<h2>Lote no encontrado</h2><p>Este código no corresponde a ningún lote registrado. ` +
           `Puede que se haya borrado o que la pegatina sea de otro sistema.</p></body>`
       );

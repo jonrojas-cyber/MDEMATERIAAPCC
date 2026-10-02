@@ -1,6 +1,7 @@
 const express = require("express");
 const store = require("../data-store");
 const labelService = require("../label-service");
+const appcc = require("../appcc-lotes");
 
 const router = express.Router();
 
@@ -238,6 +239,22 @@ router.post("/ficha/:ref", express.json(), async (req, res) => {
   if (b.necesita_caducidad_original != null) campos.necesita_caducidad_original = !!b.necesita_caducidad_original;
   if (b.etiquetas_default != null) { const n = parseInt(b.etiquetas_default, 10); if (Number.isFinite(n) && n > 0) campos.etiquetas_default = Math.min(99, n); }
   if (Array.isArray(b.alias)) campos.alias = b.alias.map((a) => String(a).slice(0, 60)).slice(0, 10);
+  // Operaciones habilitadas para este producto (claves de appcc.OPERACIONES). Vacío = todas.
+  if (Array.isArray(b.operaciones)) {
+    const validas = new Set(appcc.OPERACIONES.map((o) => o.k));
+    campos.operaciones = b.operaciones.map((k) => String(k)).filter((k) => validas.has(k)).slice(0, 20);
+  }
+  // Vida útil específica por operación (p. ej. distinta tras apertura que tras descongelación).
+  if (b.vidas_por_operacion && typeof b.vidas_por_operacion === "object") {
+    const validas = new Set(appcc.OPERACIONES.map((o) => o.k));
+    const vo = {};
+    Object.keys(b.vidas_por_operacion).forEach((k) => {
+      if (!validas.has(k)) return;
+      const v = Number(b.vidas_por_operacion[k]);
+      if (Number.isFinite(v) && v > 0) vo[k] = v;
+    });
+    campos.vidas_por_operacion = vo;
+  }
   campos.nombre_visto = String(b.nombre || prev.nombre_visto || "").slice(0, 120); // último nombre conocido (informativo)
   campos.actualizado_en = new Date().toISOString();
   campos.actualizado_por = (req.user && req.user.nombre) || "";
@@ -296,6 +313,134 @@ router.get("/historial", (req, res) => {
 router.get("/lote/:loteId", (req, res) => {
   const etiquetas = store.readAll("etiquetas").filter((e) => e.lote_id === req.params.loteId);
   res.json(etiquetas.slice().reverse());
+});
+
+// ── OPERACIONES APPCC y LOTES INTERNOS (trazabilidad de cocina) ──────────────
+// Catálogo de tipos de operación (plantillas + campos necesarios de cada una).
+router.get("/operaciones", (req, res) => {
+  res.json(appcc.OPERACIONES);
+});
+
+// Resuelve el producto (nombre + agora_id) a partir de su ref estable.
+function datosProducto(ref) {
+  const p = store.findById("productos", ref);
+  if (p) return { nombre: p.nombre, agora_id: p.agora_id || null };
+  if (ref && ref.startsWith("rec:")) { const r = store.findById("recetas", ref.slice(4)); if (r) return { nombre: r.nombre, agora_id: null }; }
+  const c = store.findById("etiquetas_catalogo", ref);
+  if (c) return { nombre: c.nombre, agora_id: null };
+  return { nombre: "", agora_id: null };
+}
+
+// Listado de lotes internos (trazabilidad). Filtros: ref, estado, q, limit.
+router.get("/lotes", (req, res) => {
+  let lotes = (store.readAll("lotes_internos") || []).slice();
+  if (req.query.ref) { const ref = String(req.query.ref); lotes = lotes.filter((l) => l.ref === ref); }
+  if (req.query.estado) { const e = String(req.query.estado); lotes = lotes.filter((l) => l.estado === e); }
+  if (req.query.q) {
+    const q = norm(req.query.q);
+    lotes = lotes.filter((l) => norm([l.producto, l.id, l.lote_original, l.proveedor, l.operacion_nombre].filter(Boolean).join(" ")).includes(q));
+  }
+  lotes.sort((a, b) => String(b.fecha_manipulacion || "").localeCompare(String(a.fecha_manipulacion || "")));
+  const lim = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  res.json(lotes.slice(0, lim));
+});
+
+// Un lote interno concreto (con todo su historial de impresiones/estados).
+router.get("/lotes/:id", (req, res) => {
+  const l = store.findById("lotes_internos", decodeURIComponent(req.params.id));
+  if (!l) return res.status(404).json({ error: "Lote interno no encontrado." });
+  res.json(l);
+});
+
+// Crea un lote interno a partir de una operación (apertura, reenvasado,
+// elaboración, descongelación, producción, preparación o división). Valida los
+// campos obligatorios con mensajes concretos antes de guardar nada.
+router.post("/lotes", express.json(), async (req, res) => {
+  const b = req.body || {};
+  const opDef = appcc.operacion(String(b.operacion || ""));
+  if (!opDef) return res.status(400).json({ error: "Operación no reconocida.", errores: [{ campo: "operacion", mensaje: "Elige un tipo de operación." }] });
+  if (!opDef.crea_lote) return res.status(400).json({ error: "La reimpresión no crea lote: usa /lotes/:id/reimprimir." });
+
+  const datos = b.datos || {};
+  // Validación de campos obligatorios (mensajes concretos; no se guarda si falta algo).
+  const val = appcc.validar(opDef, datos);
+  if (!val.ok) return res.status(400).json({ error: "Faltan campos obligatorios.", errores: val.errores });
+
+  // División: parte de un lote interno existente (trazabilidad hacia atrás).
+  let loteOrigen = null;
+  if (opDef.usa_lote_existente) {
+    loteOrigen = store.findById("lotes_internos", String(datos.lote_existente || ""));
+    if (!loteOrigen) return res.status(400).json({ error: "El lote interno a dividir no existe.", errores: [{ campo: "lote_existente", mensaje: "No se encontró el lote interno indicado." }] });
+  }
+
+  const ref = b.ref || (loteOrigen && loteOrigen.ref) || null;
+  const dp = ref ? datosProducto(ref) : { nombre: "", agora_id: null };
+  const ficha = ref ? (store.findById("appcc_fichas", ref) || {}) : {};
+  const now = new Date().toISOString();
+  const usuario = (req.user && req.user.nombre) || "";
+  const nombre = b.nombre || dp.nombre || (loteOrigen && loteOrigen.producto) || "";
+
+  const lote = appcc.construirLote(opDef, datos, {
+    producto: nombre, ref, agora_id: dp.agora_id, ficha, now, usuario, loteOrigen,
+  });
+  store.insert("lotes_internos", lote);
+
+  // Marca uso del producto (ranking + "última vez etiquetado").
+  if (ref) {
+    const prev = store.findById("appcc_fichas", ref) || { id: ref };
+    const campos = { id: ref, veces: (Number(prev.veces) || 0) + lote.num_etiquetas, ultima_etiqueta: now };
+    if (store.findById("appcc_fichas", ref)) store.update("appcc_fichas", ref, campos);
+    else store.insert("appcc_fichas", { ...prev, ...campos });
+  }
+  try {
+    require("../auditoria").registrar(req, {
+      accion: "lote_interno_creado", entidad: "lotes_internos", entidad_id: lote.id,
+      resumen: `${opDef.nombre}: ${nombre} · ${lote.num_etiquetas} etiqueta(s) · lote ${lote.id}`,
+      meta: { operacion: opDef.k, ref, fecha_limite: lote.fecha_limite_interna },
+    });
+  } catch (e) {}
+  await store.flush();
+  res.json({ ok: true, lote, especs: appcc.especsImpresion(lote, lote.num_etiquetas) });
+});
+
+// Reimpresión de la etiqueta de un lote interno existente (NO crea lote nuevo):
+// solo añade al historial de impresiones.
+router.post("/lotes/:id/reimprimir", express.json(), async (req, res) => {
+  const lote = store.findById("lotes_internos", decodeURIComponent(req.params.id));
+  if (!lote) return res.status(404).json({ error: "Lote interno no encontrado." });
+  const copies = Math.max(1, parseInt((req.body && req.body.copies), 10) || 1);
+  const now = new Date().toISOString();
+  const historial = Array.isArray(lote.historial) ? lote.historial.slice() : [];
+  historial.push({ tipo: "reimpresion", fecha: now, usuario: (req.user && req.user.nombre) || "", copies });
+  store.update("lotes_internos", lote.id, { historial });
+  await store.flush();
+  res.json({ ok: true, lote: store.findById("lotes_internos", lote.id), especs: appcc.especsImpresion(lote, copies) });
+});
+
+// Cambia el estado del lote (activo/consumido/agotado/retirado/caducado/descartado)
+// y registra el cambio en el historial. También permite anotar incidencias.
+router.post("/lotes/:id/estado", express.json(), async (req, res) => {
+  const lote = store.findById("lotes_internos", decodeURIComponent(req.params.id));
+  if (!lote) return res.status(404).json({ error: "Lote interno no encontrado." });
+  const b = req.body || {};
+  const estado = String(b.estado || "");
+  if (!appcc.estadoValido(estado)) return res.status(400).json({ error: "Estado no válido. Usa: " + appcc.ESTADOS.join(", ") + "." });
+  const now = new Date().toISOString();
+  const usuario = (req.user && req.user.nombre) || "";
+  const historial = Array.isArray(lote.historial) ? lote.historial.slice() : [];
+  historial.push({ tipo: "estado", fecha: now, usuario, estado });
+  const campos = { estado, historial };
+  if (b.incidencias != null) campos.incidencias = String(b.incidencias).slice(0, 400);
+  if (b.observaciones != null) campos.observaciones = String(b.observaciones).slice(0, 400);
+  store.update("lotes_internos", lote.id, campos);
+  try {
+    require("../auditoria").registrar(req, {
+      accion: "lote_interno_estado", entidad: "lotes_internos", entidad_id: lote.id,
+      resumen: `Lote ${lote.id} → ${estado}`, meta: { estado },
+    });
+  } catch (e) {}
+  await store.flush();
+  res.json({ ok: true, lote: store.findById("lotes_internos", lote.id) });
 });
 
 router.post("/:id/reimprimir", (req, res) => {

@@ -86,6 +86,10 @@ const ENTITIES = [
   "appcc_fichas",      // {id: ref, vida_util_dias, conservacion, notas, alergenos, actualizado_en/por}
   // ── Informes de sincronización de productos desde Ágora ──
   "appcc_sync",        // {id, fecha, usuario, nuevos/actualizados/desactivados/..., resumen}
+  // ── Lotes internos (trazabilidad APPCC): cada manipulación de un producto ──
+  //    genera un lote con id único e inmutable, operación, fechas, responsable,
+  //    fecha límite interna, historial de impresiones, estado y lotes de origen.
+  "lotes_internos",    // {id, ref, producto, agora_id, operacion, proveedor, lote_original, caducidad_original, fecha_manipulacion, usuario, num_etiquetas, fecha_limite_interna, conservacion, alergenos, lotes_origen, estado, historial, ...}
 ];
 
 const cache = {};

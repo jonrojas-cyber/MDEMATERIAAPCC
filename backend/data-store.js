@@ -84,6 +84,8 @@ const ENTITIES = [
   // ── Fichas APPCC por producto: datos de manipulación/vida útil que PERSISTEN
   //    aunque Ágora cambie nombre/precio/familia (keyed por ref estable) ──
   "appcc_fichas",      // {id: ref, vida_util_dias, conservacion, notas, alergenos, actualizado_en/por}
+  // ── Informes de sincronización de productos desde Ágora ──
+  "appcc_sync",        // {id, fecha, usuario, nuevos/actualizados/desactivados/..., resumen}
 ];
 
 const cache = {};

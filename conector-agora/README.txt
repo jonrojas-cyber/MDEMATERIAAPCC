@@ -51,21 +51,23 @@ INSTALACIÓN (una sola vez)
    Si ves un error, el propio mensaje te dice qué falta (token, URL, etc.).
 
 
-DEJARLO CORRIENDO SOLO (Windows)
---------------------------------
-Para que arranque al encender el PC y no haya que tocar nada:
+DEJARLO CORRIENDO SOLO, PARA SIEMPRE (Windows) · 1 CLIC
+-------------------------------------------------------
+Con config.json relleno y Node.js instalado:
 
-  Opción sencilla (Programador de tareas):
-   1) Abre "Programador de tareas" (Task Scheduler).
-   2) Crear tarea básica → Nombre: "Conector Agora Control M".
-   3) Desencadenador: "Al iniciar el equipo".
-   4) Acción: "Iniciar un programa".
-        Programa/script:  node
-        Argumentos:       conector.js
-        Iniciar en:       C:\control-m\conector-agora
-   5) En las propiedades de la tarea marca "Ejecutar tanto si el usuario
-      inició sesión como si no" y "Reiniciar la tarea si falla".
-   Listo: se sincroniza cada 15 minutos (se cambia en config.json).
+  >> Clic DERECHO en  "instalar-autoarranque.bat"
+     -> "Ejecutar como administrador"   (una sola vez)
+
+Eso crea una TAREA DEL SISTEMA que deja el conector:
+   · arrancando al ENCENDER el PC (aunque nadie inicie sesión),
+   · reiniciándose solo si se cae (y cada 10 min comprueba que vive),
+   · corriendo oculto en segundo plano (no hay ventana que cerrar).
+
+Es exactamente lo que evita que se vuelva a desconectar al apagar/encender
+el TPV. No hay que volver a tocar nada.
+
+  Para PARARLO algún día: abre "Programador de tareas" de Windows, busca
+  "Conector Agora Control M" y deshabilítala.
 
 
 CÓMO SÉ QUE FUNCIONA
@@ -95,20 +97,32 @@ DUDAS FRECUENTES
 · "¿Descuenta dos veces si se reinicia?"  No. Cada ticket lleva un
   identificador único; Control M ignora los que ya procesó.
 
-ARRANQUE FÁCIL (1 clic) · recomendado para el local
----------------------------------------------------
-Ya no hace falta abrir consolas. En esta carpeta hay dos archivos:
+LOS ARCHIVOS DE ESTA CARPETA
+----------------------------
+  · instalar-autoarranque.bat → clic DERECHO -> "Ejecutar como admin" UNA
+                              vez. Deja el conector corriendo solo para
+                              siempre (arranca al encender, se reinicia si
+                              se cae, en segundo plano). ES EL RECOMENDADO.
+  · instalar-servicio.ps1   → lo usa el .bat de arriba. No se toca a mano.
+  · arrancar.bat            → doble clic para arrancarlo A MANO ahora y ver
+                              la ventana (útil para probar). Si se cae, se
+                              reintenta solo cada 15 s. Deja log en
+                              conector.log.
+  · conector.js             → el programa. No se edita.
+  · config.json             → tus tokens y URL (lo creas tú del ejemplo).
+  · conector.log            → registro automático (para diagnosticar).
 
-  · arrancar.bat            → doble clic para arrancar el conector ahora.
-                              Deja la ventana abierta (puedes minimizarla).
-                              Si se cae, se vuelve a arrancar solo cada 30 s.
-                              Si falta Node.js, te lo dice.
+SI SE TE HABÍA DESCONECTADO / ACTUALIZAR A ESTA VERSIÓN
+-------------------------------------------------------
+1) Copia esta carpeta "conector-agora" ENCIMA de la del PC, reemplazando
+   los archivos  (CONSERVA tu config.json: no lo sobrescribas).
+2) Clic derecho en "instalar-autoarranque.bat" -> "Ejecutar como admin".
+Con eso queda la versión blindada + el arranque como servicio. Ya no se
+vuelve a parar al apagar/encender el TPV.
 
-  · instalar-autoarranque.bat → doble clic UNA vez. Deja el conector
-                              arrancando solo (minimizado) cada vez que se
-                              enciende el PC. Así no se vuelve a parar al
-                              reiniciar (que fue lo que pasó el 4 de julio).
-
-Requisito: config.json relleno (agora_token, controlm_base, conector_token)
-y Node.js instalado. Ver "INSTALACIÓN" arriba.
+CÓMO COMPROBAR QUE ESTÁ VIVO
+----------------------------
+- En Control M -> Informes -> "Ventas . Agora": última sincronización.
+- O abre  conector.log  en la carpeta: verás una línea "Sync: ..." por
+  cada vuelta.
 ========================================================================

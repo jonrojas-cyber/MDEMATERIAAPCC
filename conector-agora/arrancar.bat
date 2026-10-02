@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM  Conector Agora -> Control M  ·  m de materia
+REM  Conector Agora -> Control M  -  m de materia
 REM  Lanzador ROBUSTO: arranca el conector y, si se cae por lo que sea, lo
 REM  vuelve a arrancar solo cada 15 s. Deja un registro en conector.log.
 REM  NO HACE FALTA cerrar nunca esta ventana (puede minimizarse o correr oculta

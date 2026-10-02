@@ -87,6 +87,7 @@ app.get("/etiqueta/prep", async (req, res) => {
       receta: null,
       responsable: req.query.r || "—",
       autoprint: req.query.print === "1",
+      autoprintWin: req.query.print === "win",   // imprime por el driver de Windows (cable/USB)
       qrUrl: labelService.urlFichaPrep(req, req.query),
       venceLabel: req.query.et ? String(req.query.et).slice(0, 24) : null,
       cantidad: d.cantidad,

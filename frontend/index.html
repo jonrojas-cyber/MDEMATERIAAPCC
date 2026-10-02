@@ -4860,8 +4860,9 @@ function etqRender(){
   const estados=ETQ_ESTADOS.map(e=>`<button class="${s.estado===e.k?"on":""}" onclick="etqEstado('${e.k}')">${esc(e.t)}</button>`).join("");
   const body=`<div class="card" id="pbt-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
       <span id="pbt-estado" style="font-size:13px;font-weight:700;">● comprobando impresora…</span>
-      <button class="btn-ghost" style="margin-left:auto" onclick="pbtConectarManual()">Conectar impresora</button>
-      <button class="btn-ghost" onclick="pbtImprimirPrueba()">Imprimir prueba</button>
+      <button class="btn-ghost" style="margin-left:auto" onclick="pbtConectarManual()">Conectar impresora (Bluetooth)</button>
+      <button class="btn-ghost" onclick="pbtImprimirPrueba()">Prueba Bluetooth</button>
+      <button class="btn-ghost" onclick="etqImprimirCable()">🖥️ Imprimir por cable (Windows)</button>
     </div>
     <div class="lim-lead">Datea cualquier cosa que preparas —también pruebas que no están en carta—: escribes el nombre a mano, la cantidad y la vida útil, y sale con la fecha, un QR y (si quieres) su estado de prueba.</div>
     <div class="lim-eyebrow" style="margin-bottom:6px">producto (o escríbelo a mano)</div>
@@ -4894,6 +4895,24 @@ function etqGenerar(){
   if(est) qs.set("est", est);
   qs.set("p", new Date().toISOString()); // sella el momento de la impresión
   pbtImprimir("/etiqueta/prep?"+qs.toString());
+}
+// Imprimir por CABLE (USB → driver de Windows): abre la etiqueta y lanza el
+// diálogo de impresión de Windows. No usa Bluetooth. Ideal si la Phomemo está
+// instalada como impresora de Windows por cable.
+function etqImprimirCable(){
+  etqLeer();
+  const s=window._etq;
+  if(!s.nombre){ alert("Ponle un nombre al producto"); const n=el("etq-nombre"); if(n) n.focus(); return; }
+  const qs=new URLSearchParams();
+  qs.set("n", s.nombre);
+  if(s.cantidad) qs.set("c", s.cantidad);
+  if(s.vidaH>0) qs.set("v", s.vidaH);
+  if(s.resp) qs.set("r", s.resp);
+  const est=[s.estado, s.nota].filter(Boolean).join(" · ");
+  if(est) qs.set("est", est);
+  qs.set("p", new Date().toISOString());
+  qs.set("print", "win");  // la página se auto-imprime por el driver de Windows
+  window.open("/etiqueta/prep?"+qs.toString(), "_blank");
 }
 
 // ── IMPRESORA BLUETOOTH · conexión persistente en la app (impresión instantánea)

@@ -48,22 +48,86 @@ function construirCatalogo() {
     const prev = porNombre.get(k);
     if (!prev || (prio[it.fuente] ?? 9) < (prio[prev.fuente] ?? 9)) porNombre.set(k, it);
   });
+  // Mapa ref(producto) → producto, para estado e inactividad.
+  const prodById = {};
+  (store.readAll("productos") || []).forEach((p) => { prodById[p.id] = p; });
+  const sync = require("../agora-sync");
   // Resuelve vida útil: ficha APPCC (explícita) > vida de receta > null. NUNCA inventada.
   return [...porNombre.values()].map((it) => {
     const ficha = fichas[it.ref];
     const vida = ficha && ficha.vida_util_dias != null ? Number(ficha.vida_util_dias)
       : (it.vida_receta != null ? it.vida_receta : null);
-    return { ref: it.ref, nombre: it.nombre, categoria: it.categoria, fuente: it.fuente,
-      vida_dias: vida, tiene_ficha: !!ficha };
+    const p = prodById[it.ref];
+    const inactivo = !!(p && (p.activo === false || p.activo_agora === false));
+    let estado;
+    if (p) estado = sync.estadoProducto(p, ficha);
+    else estado = (vida != null) ? "listo" : "appcc_incompleta"; // recetas / preparaciones internas
+    return {
+      ref: it.ref, nombre: it.nombre, categoria: it.categoria, fuente: it.fuente,
+      vida_dias: vida, tiene_ficha: !!ficha, estado, inactivo,
+      agora_id: p ? (p.agora_id || null) : null,
+      familia: p ? (p.familia || p.categoria || null) : it.categoria,
+    };
   });
 }
 
 router.get("/catalogo", (req, res) => {
   const q = norm(req.query.q);
+  const verInactivos = req.query.inactivos === "1" || req.query.inactivos === "true";
   let out = construirCatalogo();
+  if (!verInactivos) out = out.filter((it) => !it.inactivo);
   if (q) out = out.filter((it) => norm(it.nombre).includes(q));
   out.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   res.json(out);
+});
+
+// ── Sincronización de productos desde Ágora (CSV del export de productos) ──
+// Solo admin: modifica el catálogo de productos. Preserva ingredientes, PVP propio
+// y la ficha APPCC (entidad aparte). Nunca borra: marca inactivo lo que ya no está.
+function soloAdminEtq(req, res) {
+  if (!req.user || req.user.rol !== "admin") { res.status(403).json({ error: "Solo un administrador puede sincronizar productos desde Ágora." }); return false; }
+  return true;
+}
+router.post("/sync-agora", express.text({ type: ["text/*", "application/csv", "application/octet-stream"], limit: "12mb" }), async (req, res) => {
+  if (!soloAdminEtq(req, res)) return;
+  try {
+    const sync = require("../agora-sync");
+    const filas = sync.parseCSV(req.body || "");
+    if (!filas.length) return res.status(400).json({ error: "El CSV no tiene filas. Exporta el listado de productos de Ágora a CSV." });
+    const productos = store.readAll("productos") || [];
+    const now = new Date().toISOString();
+    const { upserts, informe } = sync.sincronizar(productos, filas, { now, usuario: (req.user && req.user.nombre) || "" });
+    // Aplica upserts (insert/update) sin tocar nada no incluido.
+    upserts.forEach((p) => {
+      if (store.findById("productos", p.id)) store.update("productos", p.id, p);
+      else store.insert("productos", p);
+    });
+    // Guarda el informe.
+    const resumen = {
+      nuevos: informe.nuevos.length, actualizados: informe.actualizados.length,
+      sin_cambios: informe.sin_cambios.length, posibles_duplicados: informe.posibles_duplicados.length,
+      desactivados: informe.desactivados.length, errores: informe.errores.length, total_csv: informe.total_csv,
+    };
+    const rec = { id: "sync-" + now, fecha: now, usuario: informe.usuario, resumen, detalle: informe };
+    store.insert("appcc_sync", rec);
+    try {
+      require("../auditoria").registrar(req, {
+        accion: "sync_agora_productos", entidad: "productos", entidad_id: rec.id,
+        resumen: `Sync Ágora: ${resumen.nuevos} nuevos · ${resumen.actualizados} act. · ${resumen.desactivados} baja · ${resumen.posibles_duplicados} dudosos`,
+        meta: resumen,
+      });
+    } catch (e) {}
+    await store.flush();
+    res.json({ ok: true, resumen, informe });
+  } catch (e) {
+    res.status(400).json({ error: e.message || "No se pudo sincronizar." });
+  }
+});
+
+router.get("/sync-agora/ultimo", (req, res) => {
+  if (!soloAdminEtq(req, res)) return;
+  const all = (store.readAll("appcc_sync") || []).slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+  res.json(all[0] || null);
 });
 
 // ── Ficha APPCC de un producto (vida útil + manipulación), por ref ESTABLE ──

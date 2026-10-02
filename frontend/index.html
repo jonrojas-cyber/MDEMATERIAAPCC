@@ -5037,6 +5037,13 @@ function etqAtajo(k){ window._etqFiltro=k; window._etqQ=""; var b=el("etq-buscar
 function etqRenderAtajos(){ var r=document.querySelectorAll("#etq .lim-presets")[0]; /* refresca el 'on' */ etqCargarResultados(window._etqQ||""); }
 async function etqCargarResultados(q){
   var cont=el("etq-resultados"); if(!cont) return;
+  // Sin búsqueda ni atajo activo: NO se vuelca el listado completo. Solo se ve
+  // con el buscador (o eligiendo un atajo como favoritos/recientes).
+  if(!(q&&q.trim()) && !window._etqFiltro){
+    window._etqResultados=[];
+    cont.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:10px 2px;text-align:center">Escribe arriba para buscar un producto que etiquetar.</div>';
+    return;
+  }
   try{
     var p="/etiquetas/catalogo?q="+encodeURIComponent(q||"");
     if(window._etqInactivos) p+="&inactivos=1";

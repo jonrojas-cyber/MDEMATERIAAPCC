@@ -506,11 +506,81 @@ function renderFichaLoteHTML({ lote, receta, materias, responsable, venceLabel }
 </body></html>`;
 }
 
+// ── ETIQUETAS POR LOTES ─────────────────────────────────────────────────────
+// Varias etiquetas en una sola impresión: una página 90×40 por etiqueta (salto
+// de página entre ellas). Reutiliza el mismo diseño que la etiqueta única. Cada
+// `espec` = { n (nombre), c (cantidad texto), v (vida en HORAS), r (resp),
+// p (ISO de producción/impresión) }. Se auto-imprime por Windows si autoprintWin.
+async function renderEtiquetasLoteHTML(req, especs, { autoprintWin } = {}) {
+  const lista = Array.isArray(especs) ? especs.slice(0, 200) : [];
+  const bloques = [];
+  for (let i = 0; i < lista.length; i++) {
+    const e = lista[i] || {};
+    const prod = e.p || new Date().toISOString();
+    const vidaH = Number(e.v) || 0;
+    const caduca = vidaH > 0 ? new Date(new Date(prod).getTime() + vidaH * 3600000).toISOString() : null;
+    const qr = await generateQRCode(urlFichaPrep(req, { n: e.n, c: e.c, v: e.v, r: e.r, p: prod }));
+    const partes = String(e.n || "").split(" · ");
+    const titulo = escapeHTML(partes[0] || "");
+    const subt = escapeHTML(partes.slice(1).join(" · "));
+    const codigo = "L" + String(i + 1).padStart(3, "0");
+    const resp = escapeHTML(String(e.r || "").trim()).toLowerCase();
+    const cant = escapeHTML(e.c || "");
+    const est = escapeHTML(e.est || "");
+    bloques.push(`<div class="label">
+      <div class="qr"><img src="${qr}" alt="QR"><div class="code">${codigo}</div></div>
+      <div class="main"><div class="top">
+        <div class="titulo-row"><div class="titulo">${titulo}</div><span class="mark"><i></i><i></i><i></i></span></div>
+        ${subt ? `<div class="subtitulo">${subt}</div>` : ""}
+        <div class="rule"></div>
+        <div class="fecha">elaborado · <b>${fechaSello(prod)}</b></div>
+        ${caduca ? `<div class="fecha vence">consumir antes · <b>${fechaSello(caduca)}</b></div>` : `<div class="fecha">sin caducidad definida</div>`}
+        ${resp ? `<div class="fecha">resp · ${resp}</div>` : ""}
+        ${est ? `<div class="prueba">${est}</div>` : ""}
+      </div><div class="foot"><div class="legal">Elaborado con ingredientes de origen natural. Sin colorantes. Sin conservantes.</div></div></div>
+      ${cant ? `<div class="cant"><span>${cant}</span></div>` : ""}
+    </div>`);
+  }
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas (${lista.length})</title>
+<style>
+  @page { size: 90mm 40mm; margin: 0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Courier Prime','Courier New',monospace; color:#000; background:#fff; font-weight:700; }
+  .label,.label *{ font-weight:700 !important; }
+  .label{ width:90mm; height:40mm; border:0.4mm solid #000; display:flex; align-items:stretch; page-break-inside:avoid; page-break-after:always; }
+  .label:last-child{ page-break-after:auto; }
+  .qr{ width:22mm; flex:0 0 22mm; border-right:0.3mm solid #000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1.6mm 1mm; }
+  .qr img{ width:17mm; height:17mm; display:block; image-rendering:pixelated; background:#fff; }
+  .qr .code{ font-size:7.5px; margin-top:1.3mm; text-align:center; line-height:1.05; word-break:break-all; }
+  .main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .top{ flex:1; padding:2.2mm 2.6mm 1.2mm; display:flex; flex-direction:column; min-width:0; }
+  .titulo-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:2mm; }
+  .titulo{ font-size:14px; letter-spacing:1.4px; text-transform:uppercase; line-height:1.05; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .mark{ display:flex; align-items:flex-end; gap:0.6mm; margin-top:0.6mm; }
+  .mark i{ display:block; width:0.5mm; height:3.2mm; background:#000; }
+  .mark i:nth-child(2){ height:4mm; }
+  .subtitulo{ font-size:10px; text-transform:lowercase; letter-spacing:0.3px; margin-top:0.9mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rule{ border-top:0.2mm solid #000; margin:1.5mm 0 1.3mm; }
+  .fecha{ font-size:9px; text-transform:lowercase; line-height:1.55; white-space:nowrap; }
+  .fecha.vence b{ font-size:11.5px; }
+  .prueba{ font-size:8px; letter-spacing:0.6px; text-transform:uppercase; border:0.25mm solid #000; padding:0.4mm 1.6mm; display:inline-block; margin-top:1mm; align-self:flex-start; }
+  .foot{ border-top:0.3mm solid #000; padding:1.3mm 2.6mm; }
+  .legal{ font-size:6.5px; letter-spacing:0.2px; text-transform:uppercase; line-height:1.35; }
+  .cant{ width:7.5mm; flex:0 0 7.5mm; border-left:0.3mm solid #000; display:flex; align-items:center; justify-content:center; }
+  .cant span{ writing-mode:vertical-rl; transform:rotate(180deg); font-size:11px; letter-spacing:1px; text-transform:lowercase; white-space:nowrap; }
+  @media screen{ body{ background:#ddd; padding:16px; } .label{ margin:0 auto 10px; box-shadow:0 0 0 1px #999; } }
+</style></head><body>
+${bloques.join("\n")}
+${autoprintWin ? "<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},450);});</script>" : ""}
+</body></html>`;
+}
+
 module.exports = {
   createLabel,
   registrarImpresion,
   guardarHistorial,
   renderEtiquetaHTML,
+  renderEtiquetasLoteHTML,
   renderFichaLoteHTML,
   generateQRCode,
   urlFichaLote,

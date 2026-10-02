@@ -98,6 +98,24 @@ app.get("/etiqueta/prep", async (req, res) => {
   }
 });
 
+// Etiquetas por LOTES: varias etiquetas en una sola impresión. El cliente manda
+// `d` = base64url(JSON([{n,c,v,est,r,p}...])) ya expandido por copias.
+app.get("/etiqueta/lote", async (req, res) => {
+  const labelService = require("./label-service");
+  try {
+    let especs = [];
+    if (req.query.d) {
+      const json = Buffer.from(String(req.query.d), "base64").toString("utf-8");
+      especs = JSON.parse(json);
+    }
+    if (!Array.isArray(especs) || !especs.length) return res.status(400).send("Lote vacío.");
+    const html = await labelService.renderEtiquetasLoteHTML(req, especs, { autoprintWin: req.query.print === "win" });
+    res.set("Content-Type", "text/html; charset=utf-8").send(html);
+  } catch (e) {
+    res.status(400).send("No se pudo generar el lote: " + e.message);
+  }
+});
+
 app.get("/p", (req, res) => {
   const labelService = require("./label-service");
   try {
@@ -353,6 +371,7 @@ store
     require("./seed-turnos").seedTurnos().catch(() => {}); // rotación de turnos (7 sep–15 nov 2026)
     require("./seed-fit").seedFit().catch(() => {}); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
     require("./seed-analisis-mes").seedAnalisisMes().catch(() => {}); // snapshot de análisis del mes (sept 2026)
+    require("./seed-etiquetas").seedEtiquetas().catch(() => {}); // catálogo de etiquetas de producción (buscador)
     // Siembra idempotente de proveedores reales (Frutería y siguientes).
     require("./seed-proveedores").seedProveedores().catch(() => {});
     // Siembra idempotente de los productos de venta de Ágora que Control M no

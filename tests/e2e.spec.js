@@ -168,12 +168,12 @@ test("APPCC: hub de seguridad alimentaria (sin compras: recepción vive en Mater
   await login(page);
   await page.evaluate(() => irA_appcc());
   await expect(page.locator(".screen-head")).toContainText(/appcc/i);
-  await expect(page.locator(".appcc-tile", { hasText: /Lotes/ })).toBeVisible();
-  await expect(page.locator(".appcc-tile", { hasText: /Temperaturas/ })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /lotes/i })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /temperaturas/i })).toBeVisible();
   // Recepción es COMPRAS: no debe aparecer en APPCC.
-  await expect(page.locator(".appcc-tile", { hasText: /Recepcion/i })).toHaveCount(0);
+  await expect(page.locator(".lr-name", { hasText: /recepcion/i })).toHaveCount(0);
   // Registro para Sanidad: exportación APPCC imprimible.
-  await expect(page.locator(".appcc-tile", { hasText: /Registro para Sanidad/ })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /registro para sanidad/i })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -195,7 +195,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Entra en el área Producción y comprueba que lista sus módulos.
   await page.evaluate(() => irA_categoria("produccion"));
-  await expect(page.locator(".subtile").first()).toBeVisible();
+  await expect(page.locator(".lab-row").first()).toBeVisible();
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
@@ -227,13 +227,13 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 
   // Inicio → submenú Almacén → sección Materias (su padre es Almacén).
   await page.evaluate(() => irA_categoria("materia"));
-  await expect(page.locator(".subtile").first()).toBeVisible();
+  await expect(page.locator(".lab-row").first()).toBeVisible();
   await page.evaluate(() => irA_materias());
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
 
   // "Volver" debe llevar al submenú de Materia (su padre), no al inicio.
   await page.click("#topbar-back");
-  await expect(page.locator(".subtile").first()).toBeVisible();
+  await expect(page.locator(".lab-row").first()).toBeVisible();
   await expect(page.locator("#topbar-section")).toHaveText(/materia/i);
   await expect(page.locator("#topbar-back")).toBeVisible();
 
@@ -1668,9 +1668,9 @@ test("equipo: el hub se abre desde la pestaña y navega a los módulos", async (
   await login(page);
   await page.locator("#tabbar .tab", { hasText: /Equipo/i }).click();
   await expect(page.locator(".screen-head")).toContainText(/equipo/i);
-  await expect(page.locator(".subtile", { hasText: /Ausencias/i })).toBeVisible();
-  await expect(page.locator(".subtile", { hasText: /Tabl/i })).toBeVisible();
-  await page.locator(".subtile", { hasText: /Incidencias/i }).click();
+  await expect(page.locator(".lab-row", { hasText: /Ausencias/i })).toBeVisible();
+  await expect(page.locator(".lab-row", { hasText: /Tabl/i })).toBeVisible();
+  await page.locator(".lab-row", { hasText: /Incidencias/i }).click();
   await expect(page.locator(".screen-head")).toContainText(/incidencias/i);
   await expect(page.locator("#inc-titulo")).toBeVisible();
   expect(errors, "sin errores de JS").toEqual([]);
@@ -1694,9 +1694,9 @@ test("navegación: la pestaña Equipo abre el hub con accesos a los módulos", a
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.locator("#tabbar .tab", { hasText: /Equipo/i }).click();
-  await expect(page.locator(".subtile", { hasText: /Turnos/i })).toBeVisible();
-  await expect(page.locator(".subtile", { hasText: /Fichar/i })).toBeVisible();
-  await page.locator(".subtile", { hasText: /Fichar/i }).click();
+  await expect(page.locator(".lab-row", { hasText: /Turnos/i })).toBeVisible();
+  await expect(page.locator(".lab-row", { hasText: /Fichar/i })).toBeVisible();
+  await page.locator(".lab-row", { hasText: /Fichar/i }).click();
   await expect(page.locator(".screen-head")).toContainText(/fichaje/i);
   expect(errors, "sin errores de JS").toEqual([]);
 });

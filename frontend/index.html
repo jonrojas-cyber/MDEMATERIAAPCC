@@ -2741,26 +2741,23 @@ async function irA_appcc(){
     const activos=lotes.filter(l=>l.estado!=="Fuera de servicio");
     const caducados=activos.filter(l=>l.caducado).length;
     const proximos=activos.filter(l=>!l.caducado&&l.horas_restantes!=null&&l.horas_restantes<=12).length;
-    const recepPend=(dec&&dec.acciones||[]).filter(a=>a.tipo==="recepcion").length;
-    const tile=(nombre, sub, onclick, badge)=>`
-      <button class="appcc-tile" onclick="${onclick}">
-        <span class="appcc-tile-name">${nombre}</span>
-        <span class="appcc-tile-sub">${sub}</span>
-        ${badge?`<span class="appcc-badge">${badge}</span>`:""}
-      </button>`;
-    const proximamente='<span style="font-size:10px;color:var(--muted);">Próximamente</span>';
+    const lotesSub = caducados ? `${caducados} caducados · trazabilidad y vida útil`
+      : (proximos ? `${proximos} por caducar · trazabilidad y vida útil` : "trazabilidad y vida útil");
     setInner(`
-      <div class="section-label">Control de seguridad alimentaria</div>
-      <div class="appcc-grid">
-        ${tile("Lotes y caducidades","Trazabilidad y vida útil","irA_lotes()", caducados?`${caducados} caducados`:(proximos?`${proximos} por caducar`:""))}
-        ${tile("Calendario anual","Histórico · producción y APPCC","irA_calendario()", "")}
-        ${tile("Etiquetas","Imprimir · Reimprimir · Historial","irA_etiquetas()", "")}
-        ${tile("Temperaturas","Neveras y congeladores","irA_temperaturas()", "")}
-        ${tile("Registro para Sanidad","Exportar APPCC para inspección","irA_appccRegistro()", "")}
-        ${tile("Incidencias","Producto no apto y bloqueos",`almaccPronto()`, "")}
-        ${tile("Auditoría","Quién hizo qué y cuándo","irA_auditoria()", "")}
+      <div class="lab-eyebrow" style="margin:0 0 4px">appcc · seguridad alimentaria</div>
+      <div class="lab-rows">
+        ${labRow("lotes y caducidades", lotesSub, "irA_lotes()")}
+        ${labRow("calendario anual", "histórico · producción y appcc", "irA_calendario()")}
+        ${labRow("etiquetas", "imprimir · reimprimir · historial", "irA_etiquetas()")}
+        ${labRow("temperaturas", "neveras y congeladores", "irA_temperaturas()")}
+        ${labRow("registro para sanidad", "exportar appcc para inspección", "irA_appccRegistro()")}
+        ${labRow("incidencias", "producto no apto y bloqueos", "almaccPronto()")}
+        ${labRow("auditoría", "quién hizo qué y cuándo", "irA_auditoria()")}
       </div>
-      <div class="appcc-nota">La limpieza e incidencias llegan en la siguiente fase. Hoy ya tienes lotes, caducidades, trazabilidad por QR, temperaturas de neveras, recepciones, calendario anual y auditoría.</div>`);
+      <div class="lab-foot">
+        <span class="lab-foot-lb">nota</span>
+        <span style="font-size:11px;color:var(--muted);line-height:1.5">lotes, caducidades, trazabilidad por qr, temperaturas, recepciones, calendario y auditoría. limpieza e incidencias en la siguiente fase.</span>
+      </div>`);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 function almaccPronto(){ alert("Disponible en la siguiente fase de APPCC."); }
@@ -6155,20 +6152,17 @@ async function irA_categoria(cat) {
   if (!c) return;
   navReset(); // entrar a un submenú es una raíz nueva: se olvida la pila anterior
   openSection("cat-"+cat, c.name);
-  el("screen-inner").classList.add("submenu"); // rejilla cuadrada que llena, sin scroll
+  el("screen-inner").classList.remove("submenu"); // índice de filas (lenguaje de laboratorio)
   try {
     const d = await api("/inicio");
     const meta = modulosMeta(d);
-    const tiles = c.ids.map(id => {
+    const rows = c.ids.map(id => {
       const m = meta[id];
       if (!m) return "";
-      return `<button class="subtile" onclick="irA_${id}()">
-        ${m.urgent?`<span class="subtile-badge on">!</span>`:""}
-        <span class="subtile-name">${esc(m.name)}</span>
-        <span class="subtile-sub">${esc(m.badge)}</span>
-      </button>`;
+      const sub = esc(m.badge || (m.urgent ? "requiere atención" : ""));
+      return labRow(esc(m.name), sub, `irA_${id}()`);
     }).join("");
-    setInner(`<div class="submenu-grid">${tiles}</div>`);
+    setInner(`<div class="lab-eyebrow" style="margin:0 0 4px">${esc((c.name||"").toLowerCase())}</div><div class="lab-rows">${rows}</div>`);
   } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
 }
 
@@ -8959,10 +8953,12 @@ async function irA_equipoHub(){
 function equipoHubRender(d){
   const admin=!!d.puede_editar;
   const accesos=[
-    ["🕐","Fichar","irA_fichaje()"],["📅","Turnos","irA_turnos()"],
-    ["🌴","Ausencias","irA_ausencias()"],["📣","Tablón","irA_tablon()"],
-    ["🛠️","Incidencias","irA_incidencias()"],
-  ].map(([i,t,go])=>`<button class="subtile" onclick="${go}"><span class="subtile-name">${i} ${esc(t)}</span></button>`).join("");
+    ["Fichar","entrada · pausa · salida","irA_fichaje()"],
+    ["Turnos","cuadrante semanal","irA_turnos()"],
+    ["Ausencias","vacaciones · bajas · permisos","irA_ausencias()"],
+    ["Tablón","avisos del equipo","irA_tablon()"],
+    ["Incidencias","partes · averías · stock","irA_incidencias()"],
+  ].map(([t,s,go])=>labRow(esc(t), s, go)).join("");
   // Ahora mismo.
   const ahora=(d.ahora||[]).map(p=>{const e=EQ_ESTADO[p.estado]||EQ_ESTADO.fuera;return `<div class="cc-line"><span><b style="color:${e.c};">●</b> ${esc(p.nombre)} · ${e.t}${p.entrada_hm?` desde ${esc(p.entrada_hm)}`:""}</span><b>${p.horas} h</b></div>`;}).join("")||`<div class="cc-mini">Nadie fichado ahora mismo.</div>`;
   // Turnos hoy.
@@ -8977,7 +8973,7 @@ function equipoHubRender(d){
   const incs=(d.incidencias_abiertas||[]).map(i=>`<div class="cc-line"><span>${esc(i.titulo)} <span class="cc-mini">(${esc(i.categoria)})</span></span><b style="color:${i.prioridad==='alta'?'var(--alert,#b23b3b)':'inherit'};">${esc(i.prioridad)}</b></div>`).join("")||`<div class="cc-mini">Sin incidencias abiertas.</div>`;
   setInner(`
     <div class="ad-dia" style="text-transform:capitalize;">${esc(eqFechaLarga(d.fecha))}</div>
-    <div class="submenu-grid" style="margin-bottom:6px;">${accesos}</div>
+    <div class="lab-rows" style="margin-bottom:10px;">${accesos}</div>
     <div class="section-label" style="margin-top:14px;">Ahora mismo</div>
     <div class="card">${ahora}</div>
     <div class="section-label" style="margin-top:16px;">Turnos de hoy</div>

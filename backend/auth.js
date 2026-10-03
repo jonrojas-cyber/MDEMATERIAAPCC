@@ -57,6 +57,7 @@ const EQUIPO_ALLOWED = new Set([
   "recetas",
   "carta",
   "etiquetas",
+  "mermas", // mermas: el equipo registra la merma (sin ver coste); resumen económico gated a admin
   "cierre-caja", // cierre de caja: responsable/empleado cuentan y cierran (acciones sensibles gated dentro)
   "turnos", // cuadrante de turnos: el equipo ve su horario y función (sin dinero); editar es admin
   "fichaje", // reloj de fichaje: la tablet del local ficha entrada/salida/pausa (resumen real-vs-plan gated a admin)

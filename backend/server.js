@@ -287,6 +287,7 @@ app.use("/api/recepciones", require("./routes/recepciones"));
 app.use("/api/pedidos", require("./routes/pedidos"));
 app.use("/api/pagos", require("./routes/pagos"));
 app.use("/api/etiquetas", require("./routes/etiquetas"));
+app.use("/api/mermas", require("./routes/mermas")); // mermas: registro rápido por producto (escribe en `ajustes`, única fuente)
 app.use("/api/carta", require("./routes/carta"));
 app.use("/api/reportes", require("./routes/reportes"));
 app.use("/api/ventas", require("./routes/ventas"));

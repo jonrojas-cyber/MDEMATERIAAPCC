@@ -1401,6 +1401,49 @@ test("etiquetas APPCC: reenvasado (jamón) valida campos obligatorios y crea lot
   expect(errors).toEqual([]);
 });
 
+test("mermas APPCC: buscar producto, validar motivo y registrar el movimiento", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // El hub de APPCC tiene el acceso a mermas.
+  await page.evaluate(() => irA_appcc());
+  await expect(page.locator(".lr-name", { hasText: /^mermas$/ })).toBeVisible();
+  const res = await page.evaluate(async () => {
+    irA_mermas();
+    await new Promise((r) => setTimeout(r, 350));          // carga motivos + render
+    const hayBuscador = !!document.getElementById("mrm-buscar");
+    // Buscar un producto (mismo catálogo que etiquetas).
+    document.getElementById("mrm-buscar").value = "croissant";
+    await mrmCargarResultados("croissant");
+    const nres = (window._mrmResultados || []).length;
+    mrmElegir(0);
+    const prod = window._mrm.nombre;
+    // Intentar registrar sin motivo → error concreto, no registra.
+    document.getElementById("mrm-cant").value = "2";
+    mrmLeer();
+    await mrmRegistrar();
+    const errSinMotivo = (window._mrm.errores || []).some((e) => e.campo === "motivo");
+    const sinRegistro = !window._mrm.ultimo;
+    // Elegir motivo y registrar.
+    mrmSetMotivo("caido");
+    document.getElementById("mrm-cant").value = "2";
+    mrmLeer();
+    await mrmRegistrar();
+    const ultimo = window._mrm.ultimo;
+    const lista = await api("/mermas?hoy=1");
+    return { hayBuscador, nres, prod, errSinMotivo, sinRegistro, ultimo, nLista: lista.length };
+  });
+  expect(res.hayBuscador).toBe(true);
+  expect(res.nres).toBeGreaterThan(0);
+  expect(res.errSinMotivo).toBe(true);     // valida el motivo con mensaje
+  expect(res.sinRegistro).toBe(true);      // no registra si falta el motivo
+  expect(res.ultimo).toBeTruthy();
+  expect(res.ultimo.motivo).toBe("Caído al suelo");
+  expect(res.ultimo.cantidad).toBe(2);
+  expect(res.nLista).toBeGreaterThanOrEqual(1);
+  expect(errors).toEqual([]);
+});
+
 test("EBITDA: cuenta de resultados en vivo (admin)", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

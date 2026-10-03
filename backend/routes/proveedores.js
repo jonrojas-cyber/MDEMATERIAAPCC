@@ -39,7 +39,13 @@ function slim(p) {
 
 router.get("/", (req, res) => {
   const materias = store.readAll("materias");
-  const proveedores = store.readAll("proveedores").map((p) => filtrarSensibles(slim(decorate(p, materias)), req));
+  let proveedores = store.readAll("proveedores").map((p) => filtrarSensibles(slim(decorate(p, materias)), req));
+  // El admin recibe además los agregados por proveedor (artículos, gasto del año
+  // y pendiente total) para que la lista sea informativa de un vistazo (Gstock).
+  if (esAdmin(req)) {
+    const { porProveedor } = require("../proveedor-ficha").resumenProveedores(store, req.query.anio);
+    proveedores = proveedores.map((p) => ({ ...p, resumen: porProveedor[p.id] || { n_articulos: 0, n_articulos_pendientes: 0, n_documentos_anio: 0, gasto_anio: 0, pendiente_total: 0 } }));
+  }
   res.json(proveedores);
 });
 

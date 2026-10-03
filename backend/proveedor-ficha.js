@@ -69,6 +69,19 @@ function ficha(store, id, mes, hoyISO) {
     otras_monedas: delMes.filter((f) => f.moneda !== "EUR").length,
   };
 
+  // Resumen del AÑO del mes seleccionado + pendiente de pago TOTAL (todo el
+  // histórico): es el saldo que de verdad se le debe al proveedor.
+  const anio = mesSel.slice(0, 4);
+  const delAnio = todas.filter((r) => mesDe(r.fecha).slice(0, 4) === anio && (r.moneda || "EUR") === "EUR");
+  const resumen_anio = {
+    anio,
+    n_documentos: todas.filter((r) => mesDe(r.fecha).slice(0, 4) === anio).length,
+    total_anio: r2(delAnio.reduce((s, r) => s + (Number(r.importe_total) || 0), 0)),
+  };
+  const pendiente_total = r2(todas
+    .filter((r) => (r.moneda || "EUR") === "EUR")
+    .reduce((s, r) => { const p = Number(r.pendiente_pago != null ? r.pendiente_pago : r.importe_total) || 0; return s + (p > 0 ? p : 0); }, 0));
+
   return {
     proveedor: { id: proveedor.id, nombre: proveedor.nombre, estado: proveedor.estado || "Activo", categoria: proveedor.categoria || "", contacto: proveedor.contacto || "", telefono: proveedor.telefono || proveedor.whatsapp || "", cif: proveedor.cif || "" },
     meses, mes: mesSel,
@@ -77,7 +90,28 @@ function ficha(store, id, mes, hoyISO) {
     articulos,
     facturas: delMes,
     resumen,
+    resumen_anio,
+    pendiente_total,
   };
 }
 
-module.exports = { ficha, articuloSlim, facturaSlim };
+// Agregados por proveedor para la LISTA (admin): nº de artículos, documentos y
+// gasto del año, y pendiente de pago total. Lee las entidades una vez y agrupa.
+function resumenProveedores(store, anio) {
+  const an = /^\d{4}$/.test(String(anio || "")) ? String(anio) : new Date().toISOString().slice(0, 4);
+  const arts = store.readAll("compras_productos") || [];
+  const recs = store.readAll("recepciones") || [];
+  const out = {};
+  const get = (id) => (out[id] || (out[id] = { n_articulos: 0, n_articulos_pendientes: 0, n_documentos_anio: 0, gasto_anio: 0, pendiente_total: 0 }));
+  arts.forEach((a) => { if (!a.proveedor_id) return; const o = get(a.proveedor_id); o.n_articulos++; if (evaluarEstado(a).pendiente) o.n_articulos_pendientes++; });
+  recs.forEach((r) => {
+    if (!r.proveedor_id) return; const o = get(r.proveedor_id);
+    const eur = (r.moneda || "EUR") === "EUR";
+    if (mesDe(r.fecha).slice(0, 4) === an) { o.n_documentos_anio++; if (eur) o.gasto_anio += Number(r.importe_total) || 0; }
+    if (eur) { const p = Number(r.pendiente_pago != null ? r.pendiente_pago : r.importe_total) || 0; if (p > 0) o.pendiente_total += p; }
+  });
+  Object.values(out).forEach((o) => { o.gasto_anio = r2(o.gasto_anio); o.pendiente_total = r2(o.pendiente_total); });
+  return { anio: an, porProveedor: out };
+}
+
+module.exports = { ficha, resumenProveedores, articuloSlim, facturaSlim };

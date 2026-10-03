@@ -8141,18 +8141,24 @@ async function irA_proveedores(){
     const buscador=`<input id="prov-buscar" type="search" placeholder="Buscar proveedor…" oninput="filtrarProveedores(this.value)" style="width:100%;margin-bottom:14px;font-size:14px;padding:9px 12px;">`;
     // Orden: activos primero, luego por nombre.
     provs.sort((a,b)=> (a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1) || a.nombre.localeCompare(b.nombre));
-    const html=cab+buscador+`<div id="prov-lista">`+provs.map(p=>{
+    const anioAhora=new Date().getFullYear();
+    const html=cab+buscador+`<div id="prov-vacio" class="empty" style="display:none;">Ningún proveedor coincide con la búsqueda.</div><div id="prov-lista">`+provs.map(p=>{
       const tel=(p.telefono||p.telefono_pedidos||p.whatsapp||"").replace(/[^0-9+]/g,"");
       const estado=p.estado||"Activo";
-      const nPend=pendPorProv[p.id]||0;
+      const nPend=(p.resumen&&p.resumen.n_articulos_pendientes)||pendPorProv[p.id]||0;
       const pendChip=nPend?` <span style="font-size:10px;font-weight:700;color:var(--alert);">· ${nPend} sin tarifa</span>`:"";
-      const meta2=[p.categoria||"Otros", p.contacto||"", (p.productos_nombres||[]).slice(0,3).join(", ")].filter(Boolean).join(" · ");
+      const meta2=[p.categoria||"Otros", p.contacto||""].filter(Boolean).map(esc).join(" · ");
+      // Línea de datos de un vistazo (admin): artículos · gasto del año · pendiente.
+      const rs=p.resumen;
+      const stat=rs?`<div class="card-meta" style="color:var(--olive);font-weight:700;">${rs.n_articulos} artículo${rs.n_articulos===1?"":"s"} · ${rs.n_documentos_anio} doc. ${anioAhora} · gasto ${adEur(rs.gasto_anio)}${rs.pendiente_total>0?` · <span style="color:var(--alert);">pendiente ${adEur(rs.pendiente_total)}</span>`:""}</div>`:"";
       const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Abrir ficha</button>`+
         `<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
         (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"");
-      return `<div class="card prov-card" data-nombre="${esc((p.nombre||"").toLowerCase())}">
-        <div class="card-name">${p.nombre} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${pendChip}</div>
-        <div class="card-meta">${meta2}</div>
+      const buscar=[(p.nombre||""),(p.cif||p.nif_cif||""),(p.categoria||""),(p.contacto||"")].join(" ").toLowerCase();
+      return `<div class="card prov-card" data-buscar="${esc(buscar)}">
+        <div class="card-name">${esc(p.nombre)} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${pendChip}</div>
+        ${meta2?`<div class="card-meta">${meta2}</div>`:""}
+        ${stat}
         <div class="card-actions">${acc}</div>
       </div>`;
     }).join("")+`</div>`;
@@ -8160,12 +8166,26 @@ async function irA_proveedores(){
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
 }
 
-// Filtra en vivo las tarjetas de proveedor por nombre (buscador de Proveedores).
+// Filtra en vivo las tarjetas de proveedor por nombre, CIF, categoría o contacto.
 function filtrarProveedores(q){
   const t=(q||"").trim().toLowerCase();
+  let visibles=0;
   document.querySelectorAll("#prov-lista .prov-card").forEach(c=>{
-    c.style.display = (!t || (c.getAttribute("data-nombre")||"").includes(t)) ? "" : "none";
+    const ok = !t || (c.getAttribute("data-buscar")||"").includes(t);
+    c.style.display = ok ? "" : "none"; if(ok) visibles++;
   });
+  const vac=document.getElementById("prov-vacio"); if(vac) vac.style.display = visibles? "none":"";
+}
+
+// Filtra en vivo los artículos dentro de la ficha de proveedor.
+function filtrarArticulosFicha(q){
+  const t=(q||"").trim().toLowerCase();
+  let visibles=0;
+  document.querySelectorAll("#fp-arts .fp-art").forEach(c=>{
+    const ok = !t || (c.getAttribute("data-art")||"").includes(t);
+    c.style.display = ok ? "" : "none"; if(ok) visibles++;
+  });
+  const vac=document.getElementById("fp-art-vacio"); if(vac) vac.style.display = visibles? "none":"";
 }
 
 // Formulario crear/editar proveedor. Si se pasa id, carga el proveedor para editar.
@@ -8319,43 +8339,67 @@ async function irA_productosProveedor(provId,mes){
       </div>`;
 
     // ── ARTÍCULOS ───────────────────────────────────────────────
-    html+=`<div class="lab-eyebrow" style="margin-top:4px;">artículos${f.n_articulos?` · ${f.n_articulos}`:""}${f.n_articulos_pendientes?` · ${f.n_articulos_pendientes} sin tarifa`:""}</div>`;
+    html+=`<div class="lab-eyebrow" style="margin-top:4px;">artículos${f.n_articulos?` · ${f.n_articulos}`:""}${f.n_articulos_pendientes?` · <span style="color:var(--alert)">${f.n_articulos_pendientes} sin tarifa</span>`:""}</div>`;
     if(!f.articulos.length){ html+=`<div class="empty">Aún no hay artículos. Pulsa “Agregar artículo”.</div>`; }
-    else html+=f.articulos.map(a=>`<div class="card">
+    else {
+      // Buscador de artículos cuando hay muchos (precisión al localizar uno).
+      if(f.articulos.length>8) html+=`<input id="fp-art-buscar" type="search" placeholder="Buscar artículo…" oninput="filtrarArticulosFicha(this.value)" style="width:100%;margin:6px 0 10px;font-size:13px;padding:8px 11px;">`;
+      html+=`<div id="fp-art-vacio" class="empty" style="display:none;">Ningún artículo coincide.</div><div id="fp-arts">`+f.articulos.map(a=>`<div class="card fp-art" data-art="${esc(((a.nombre||"")+" "+(a.categoria||"")).toLowerCase())}">
       <div class="card-name">${esc(a.nombre)} ${a.pendiente?`<span style="font-size:10px;font-weight:700;color:var(--alert);letter-spacing:.05em;">· sin tarifa</span>`:""}</div>
       ${a.pendiente
         ? `<div class="card-meta" style="color:var(--alert)">Falta completar la tarifa${a.faltan&&a.faltan.length?": "+a.faltan.map(esc).join(", "):""}.</div>`
-        : `<div class="card-meta">${esc(a.categoria||"")} · ${a.cantidad_formato||1} ${esc(a.formato||"")}${verEuros?` · pactado ${eur4(a.precio_con_iva)} € (IVA ${a.iva||0}%) · unitario ${eur4(a.precio_unitario_real)} €/${esc(a.formato||"ud")}`:""}</div>`}
+        : `<div class="card-meta">${esc(a.categoria||"")} · ${a.cantidad_formato||1} ${esc(a.formato||"")}${verEuros?` · pactado <b>${eur4(a.precio_con_iva)} €</b> (IVA ${a.iva||0}%) · unitario <b>${eur4(a.precio_unitario_real)} €</b>/${esc(a.formato||"ud")}`:""}</div>`}
       ${(a.alergenos&&a.alergenos.length)?`<div class="card-meta" style="color:var(--alert)">Alérgenos: ${a.alergenos.map(esc).join(", ")}</div>`:""}
       <div class="card-actions">
         ${verEuros?`<button class="btn-ghost" onclick="irA_precioProducto('${a.id}','${provId}')">Precio / histórico</button>`:""}
         <button class="btn-ghost" onclick="formProductoCompra('${provId}','${a.id}')">Editar</button>
         <button class="btn-ghost" onclick="borrarProductoCompra('${a.id}','${provId}')">Eliminar</button>
       </div>
-    </div>`).join("");
+    </div>`).join("")+`</div>`;
+    }
+
+    // ── RESUMEN DEL AÑO + PENDIENTE TOTAL (admin) ───────────────
+    if(verEuros&&f.resumen_anio){
+      const ra=f.resumen_anio;
+      html+=`<div class="lab-eyebrow" style="margin-top:20px;">resumen ${esc(ra.anio)}</div>
+        <div class="lim-param" style="margin:8px 0 4px;">
+          <div><b>${ra.n_documentos||0}</b><span>documentos ${esc(ra.anio)}</span></div>
+          <div><b>${adEur(ra.total_anio||0)}</b><span>gasto del año</span></div>
+          <div><b style="color:${(f.pendiente_total||0)>0?"var(--alert)":"inherit"}">${adEur(f.pendiente_total||0)}</b><span>pendiente de pago</span></div>
+        </div>`;
+    }
 
     // ── FACTURAS Y ALBARANES DEL MES ────────────────────────────
     const r=f.resumen||{};
-    const nav=`<div class="card-actions" style="gap:8px;align-items:center;margin:8px 0;">
-        <button class="btn-ghost" onclick="irA_productosProveedor('${provId}','${provMesShift(f.mes,-1)}')">‹</button>
-        <b style="min-width:150px;text-align:center;text-transform:capitalize;">${esc(provMesLargo(f.mes))}</b>
-        <button class="btn-ghost" onclick="irA_productosProveedor('${provId}','${provMesShift(f.mes,1)}')">›</button>
+    // Selector de mes: flechas + desplegable con los meses que tienen documentos.
+    const opcs=(f.meses||[]).map(m=>`<option value="${m}" ${m===f.mes?"selected":""}>${esc(provMesLargo(m))}</option>`).join("");
+    const nav=`<div class="card-actions" style="gap:8px;align-items:center;margin:8px 0;flex-wrap:nowrap;">
+        <button class="btn-ghost" onclick="irA_productosProveedor('${provId}','${provMesShift(f.mes,-1)}')" aria-label="Mes anterior">‹</button>
+        ${opcs?`<select onchange="irA_productosProveedor('${provId}',this.value)" style="font-size:13px;padding:6px 8px;text-transform:capitalize;">${opcs}</select>`
+               :`<b style="min-width:150px;text-align:center;text-transform:capitalize;">${esc(provMesLargo(f.mes))}</b>`}
+        <button class="btn-ghost" onclick="irA_productosProveedor('${provId}','${provMesShift(f.mes,1)}')" aria-label="Mes siguiente">›</button>
       </div>`;
-    html+=`<div class="lab-eyebrow" style="margin-top:18px;">facturas y albaranes del mes</div>${nav}`;
+    html+=`<div class="lab-eyebrow" style="margin-top:18px;">facturas y albaranes · <span style="text-transform:capitalize;">${esc(provMesLargo(f.mes))}</span></div>${nav}`;
     if(verEuros){
-      html+=`<div class="lim-param" style="margin:8px 0 10px;"><div><b>${r.n_documentos||0}</b><span>documentos</span></div><div><b>${adEur(r.total_mes||0)}</b><span>total mes</span></div><div><b>${adEur(r.pendiente_mes||0)}</b><span>pendiente</span></div></div>`;
+      html+=`<div class="lim-param" style="margin:8px 0 10px;"><div><b>${r.n_documentos||0}</b><span>documentos</span></div><div><b>${adEur(r.total_mes||0)}</b><span>total mes</span></div><div><b>${adEur(r.pendiente_mes||0)}</b><span>pendiente mes</span></div></div>`;
+      if(r.otras_monedas) html+=`<div class="card-meta" style="color:var(--alert);margin:-4px 0 8px;">${r.otras_monedas} documento(s) en otra moneda (no sumados al total en €).</div>`;
     }
     if(!f.facturas.length){ html+=`<div class="empty">Sin facturas ni albaranes en ${esc(provMesLargo(f.mes))}.</div>`; }
     else html+=f.facturas.map(d=>{
       const fac=d.tipo_documento==="factura";
       const tag=`<span style="display:inline-block;background:${fac?"#9C5A2E":"var(--olive)"};color:#fff;font-weight:700;font-size:10px;padding:1px 7px;border-radius:20px;vertical-align:1px;">${fac?"FACTURA":"ALBARÁN"}</span>`;
       const delCorreo=(d.origen==="email"||d.origen==="gmail_paquete"||d.origen==="gmail_control")?" · del correo":"";
-      const imp=(verEuros&&d.importe_total!=null)?` — ${Number(d.importe_total).toFixed(2)} €${d.moneda&&d.moneda!=="EUR"?" "+esc(d.moneda):""}`:"";
-      const pend=(verEuros&&d.pendiente_pago>0)?` · pendiente ${Number(d.pendiente_pago).toFixed(2)} €`:"";
+      const imp=(verEuros&&d.importe_total!=null)?` — <b>${Number(d.importe_total).toFixed(2)} €</b>${d.moneda&&d.moneda!=="EUR"?" "+esc(d.moneda):""}`:"";
+      // Chip de pago claro (solo admin): pendiente / pagada (pendiente 0 y aceptada).
+      let pago="";
+      if(verEuros){
+        if(d.pendiente_pago>0) pago=`<span style="font-size:10px;font-weight:700;color:var(--alert);"> · pendiente ${Number(d.pendiente_pago).toFixed(2)} €</span>`;
+        else if(d.importe_total>0) pago=`<span style="font-size:10px;font-weight:700;color:var(--olive);"> · pagada</span>`;
+      }
       const btns=[d.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${d.id}')">Ver factura (PDF)</button>`:"", d.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${d.id}')">Ver</button>`:""].filter(Boolean).join("");
       return `<div class="card">
         <div class="card-name">${tag} ${d.numero_documento?("nº "+esc(d.numero_documento)):"(sin nº)"}${imp}${d.rectificativa?` <span style="font-size:10px;color:var(--alert);font-weight:700;">rectificativa</span>`:""}</div>
-        <div class="card-meta">${new Date(d.fecha).toLocaleDateString("es-ES")} · ${esc(d.estado||"")}${pend}${delCorreo}</div>
+        <div class="card-meta">${new Date(d.fecha).toLocaleDateString("es-ES")} · ${esc(d.estado||"")}${pago}${delCorreo}</div>
         ${btns?`<div class="card-actions">${btns}</div>`:""}
       </div>`;
     }).join("");

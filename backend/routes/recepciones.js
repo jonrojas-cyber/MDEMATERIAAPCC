@@ -56,6 +56,7 @@ function mejorMateriaPorPalabras(descripcion, materias) {
 }
 
 router.get("/", (req, res) => {
+  try { require("../factura-procesar").programar(store); } catch (e) {} // lee facturas pendientes en segundo plano (automático)
   res.json(store.readAll("recepciones").map(slim));
 });
 
@@ -171,6 +172,8 @@ router.post("/importar-paquete",
         } catch (e) {}
       }
       delete rep._mutado;
+      // Arranca la lectura automática de los PDFs recién cargados (segundo plano).
+      if (!dryRun) { try { require("../factura-procesar").programar(store); } catch (e) {} }
       // En la respuesta no mandamos el detalle completo si es enorme; va tal cual.
       res.json({ ok: true, dry_run: dryRun, resumen: rep });
     } catch (e) {

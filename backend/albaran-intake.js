@@ -123,7 +123,34 @@ function crearMateriaDesdeLinea(linea, provId) {
   return nueva;
 }
 
+// Emparejado línea↔materia por solapamiento de palabras significativas (ignora
+// unidades/relleno). Reutilizable por el escaneo y por el procesado de facturas.
+const STOP_MATCH = new Set([
+  "de", "la", "el", "los", "las", "con", "sin", "para", "por", "kg", "kgs", "gr", "grs", "g",
+  "l", "lt", "lts", "ml", "ud", "uds", "unidad", "unidades", "caja", "cajas", "bote", "botes",
+  "lata", "latas", "bolsa", "bolsas", "pack", "palet", "bandeja", "bandejas", "x", "und", "u",
+]);
+function palabrasClave(s) {
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9ñ ]/g, " ").split(/\s+/)
+    .filter((w) => w.length >= 3 && !STOP_MATCH.has(w) && !/^\d+$/.test(w));
+}
+function mejorPorPalabras(descripcion, lista, campo) {
+  const toks = new Set(palabrasClave(descripcion));
+  if (!toks.size) return null;
+  let mejor = null, mejorScore = 0;
+  for (const it of lista) {
+    const mt = palabrasClave(it[campo || "nombre"]);
+    if (!mt.length) continue;
+    let score = 0; for (const w of mt) if (toks.has(w)) score += 1;
+    const puntos = score + (score / mt.length);
+    if (score >= 1 && puntos > mejorScore) { mejorScore = puntos; mejor = it; }
+  }
+  return mejor;
+}
+
 module.exports = {
   unidadConsumoDe, esLineaProducto, normNombre, buscarProveedor,
   construirProveedorDesdeOCR, crearProveedorDesdeOCR, crearMateriaDesdeLinea, clasificarTipoDocumento,
+  palabrasClave, mejorPorPalabras,
 };

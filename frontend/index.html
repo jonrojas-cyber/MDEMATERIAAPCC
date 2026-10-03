@@ -6276,11 +6276,59 @@ async function irA_appccRegistro(dias){
 }
 
 // ── INVENTARIO FÍSICO vs TEÓRICO ──────────────────────────────────────────
+// Resumen de almacén "al milímetro" (admin): valor teórico, compra vs consumo,
+// desviación del último conteo, productos sin escandallo y escandallos disparados.
+function concHTML(c){
+  if(!c) return "";
+  const R=c.resumen||{}, CC=c.compra_consumo||{}, D=c.desviacion, SE=c.sin_escandallo||{}, EA=c.escandallos_afectados||{};
+  const eur=(n)=>adEur(n||0);
+  let h=`<div class="lab-eyebrow" style="margin-top:4px;">resumen de almacén</div>
+    <div class="lim-param" style="margin:8px 0 10px;">
+      <div><b>${eur(R.valor_total)}</b><span>valor teórico</span></div>
+      <div><b>${R.n_materias||0}</b><span>materias</span></div>
+      <div><b style="color:${(R.n_bajo_minimo||0)>0?"var(--alert)":"inherit"}">${R.n_bajo_minimo||0}</b><span>bajo mínimo</span></div>
+    </div>`;
+  if(D){
+    h+=`<div class="card" style="border-color:${(D.descuadre_eur||0)<0?"var(--alert)":"var(--line)"};">
+      <div class="card-name">Último recuento · ${new Date(D.fecha).toLocaleDateString("es-ES")}</div>
+      <div class="card-meta">${D.lineas_con_descuadre}/${D.total_lineas} con descuadre · <b style="color:${(D.descuadre_eur||0)<0?"var(--alert)":"inherit"}">${(D.descuadre_eur>=0?"+":"")}${(D.descuadre_eur||0).toFixed(2)} €</b> · merma oculta ${Math.abs(D.merma_oculta_eur||0).toFixed(2)} €</div>
+      ${(D.peores||[]).slice(0,5).map(l=>`<div class="card-meta">· ${esc(l.nombre||l.materia_id)}: ${l.diferencia>0?"+":""}${l.diferencia} (${(l.valor_diferencia>=0?"+":"")}${Number(l.valor_diferencia||0).toFixed(2)} €)</div>`).join("")}
+    </div>`;
+  } else {
+    h+=`<div class="card-meta" style="margin-bottom:8px;">Aún no hay ningún recuento físico para comparar. Haz el primero abajo.</div>`;
+  }
+  if(SE.n){
+    h+=`<div class="card" style="border-color:var(--alert);">
+      <div class="card-name">${SE.n} producto(s) se venden pero NO descuentan stock</div>
+      <div class="card-meta">Les falta el escandallo (receta); por eso el almacén no cuadra. Rellénalo en cada producto:</div>
+      ${SE.lista.slice(0,10).map(p=>`<div class="card-meta">· ${esc(p.nombre)} — ${p.unidades} uds vendidas</div>`).join("")}
+      ${SE.n>10?`<div class="card-meta">… y ${SE.n-10} más.</div>`:""}
+    </div>`;
+  }
+  if(EA.n){
+    h+=`<div class="card" style="border-color:var(--alert);">
+      <div class="card-name">${EA.n} escandallo(s) afectados por subidas de precio</div>
+      ${EA.lista.slice(0,10).map(e=>`<div class="card-meta">· <b>${esc(e.nombre)}</b>${e.coste_escandallo>0?` (coste ${Number(e.coste_escandallo).toFixed(4)} €)`:""} — ${e.culpables.map(c2=>`${esc(c2.ingrediente)} +${c2.pct}%`).join(", ")}</div>`).join("")}
+    </div>`;
+  }
+  // Compra vs consumo (top movimientos del periodo).
+  if(CC.lineas&&CC.lineas.length){
+    h+=`<div class="lab-eyebrow" style="margin-top:12px;">compra vs consumo · últimos 90 días</div>`;
+    h+=CC.lineas.slice(0,8).map(l=>`<div class="card"><div class="card-name">${esc(l.nombre)}</div>
+      <div class="card-meta">comprado <b>${l.comprado}</b> ${esc(l.unidad)} · consumido <b>${l.consumido}</b> · neto <b>${l.neto}</b>${l.coste_medio>0?` · ${eur(l.valor_neto)}`:""}</div></div>`).join("");
+  }
+  return `<div style="margin-bottom:16px;">${h}</div>`;
+}
+
 async function irA_inventario(){
   openSection("inventario","Inventario físico");
   try{
-    const d=await api("/inventario");
+    const [d,conc]=await Promise.all([
+      api("/inventario"),
+      mbdsEsAdmin()?api("/inventario/conciliacion").catch(()=>null):Promise.resolve(null),
+    ]);
     window._invMats=d.materias;
+    window._invConc=concHTML(conc);
     const u=getUser();
     const filas=d.materias.map((m,i)=>`
       <div class="inv-row" data-mid="${m.materia_id}" data-teo="${m.teorico}" data-coste="${m.coste_medio}">
@@ -6299,6 +6347,8 @@ async function irA_inventario(){
         ""
       )).join("")}`:"";
     setInner(`
+      ${window._invConc||""}
+      <div class="section-label" style="margin-top:4px;">Recuento físico</div>
       <div class="card-meta" style="margin-bottom:10px;">Cuenta lo que hay de verdad. Deja en blanco lo que no cuentes: no se toca. Al guardar, el stock teórico se ajusta al real y el descuadre queda registrado.</div>
       <div id="inv-lista">${filas}</div>
       <div class="inv-resumen" id="inv-resumen">Sin cambios todavía.</div>

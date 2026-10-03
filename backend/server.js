@@ -257,6 +257,7 @@ app.post("/facturas/ingesta", express.json({ limit: "25mb" }), async (req, res) 
       ? await resendInbound.aPayload(req.body)
       : req.body;
     const r = await require("./facturas-email").ingestar(payload, { ocrFn: ocr.extraerDesdeAdjunto });
+    try { require("./factura-procesar").programar(store); } catch (e) {} // lee las facturas recién entradas (automático)
     res.json(r);
   } catch (e) {
     res.status(500).json({ error: "No se pudo ingerir el correo de facturas: " + e.message });

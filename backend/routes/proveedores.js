@@ -63,6 +63,7 @@ router.get("/:id", (req, res) => {
 // albaranes del mes. El equipo (rol no admin) NO ve coste/precio: se le ocultan
 // los euros (regla de negocio).
 router.get("/:id/ficha", (req, res) => {
+  try { require("../factura-procesar").programar(store); } catch (e) {} // lee facturas pendientes (automático, segundo plano)
   const ficha = require("../proveedor-ficha").ficha(store, req.params.id, req.query.mes, new Date().toISOString());
   if (!ficha) return res.status(404).json({ error: "Proveedor no encontrado" });
   if (!esAdmin(req)) {

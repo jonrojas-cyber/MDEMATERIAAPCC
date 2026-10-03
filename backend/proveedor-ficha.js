@@ -18,7 +18,8 @@ function articuloSlim(p) {
   return { ...resto, tiene_foto: !!foto_url };
 }
 
-// Vista ligera de la factura/albarán (sin fotos ni PDF pesados).
+// Vista ligera de la factura/albarán (sin fotos ni PDF pesados). Incluye el
+// resultado de la lectura automática del PDF: nº de líneas y avisos de precio.
 function facturaSlim(r) {
   return {
     id: r.id,
@@ -33,6 +34,10 @@ function facturaSlim(r) {
     rectificativa: !!r.rectificativa,
     tiene_documento_pdf: !!r.documento_pdf_url,
     tiene_foto: !!r.foto_albaran_url,
+    procesada: !!r.procesada,
+    proceso_error: r.proceso_error || "",
+    n_lineas: Array.isArray(r.lineas) ? r.lineas.length : 0,
+    avisos_precio: Array.isArray(r.avisos_precio) ? r.avisos_precio : [],
   };
 }
 
@@ -67,6 +72,8 @@ function ficha(store, id, mes, hoyISO) {
     total_mes: r2(eur.reduce((s, f) => s + f.importe_total, 0)),
     pendiente_mes: r2(eur.reduce((s, f) => s + (f.pendiente_pago > 0 ? f.pendiente_pago : 0), 0)),
     otras_monedas: delMes.filter((f) => f.moneda !== "EUR").length,
+    avisos_precio: delMes.reduce((s, f) => s + (f.avisos_precio ? f.avisos_precio.length : 0), 0),
+    sin_leer: delMes.filter((f) => f.tipo_documento === "factura" && f.tiene_documento_pdf && !f.procesada).length,
   };
 
   // Resumen del AÑO del mes seleccionado + pendiente de pago TOTAL (todo el

@@ -8383,6 +8383,8 @@ async function irA_productosProveedor(provId,mes){
     if(verEuros){
       html+=`<div class="lim-param" style="margin:8px 0 10px;"><div><b>${r.n_documentos||0}</b><span>documentos</span></div><div><b>${adEur(r.total_mes||0)}</b><span>total mes</span></div><div><b>${adEur(r.pendiente_mes||0)}</b><span>pendiente mes</span></div></div>`;
       if(r.otras_monedas) html+=`<div class="card-meta" style="color:var(--alert);margin:-4px 0 8px;">${r.otras_monedas} documento(s) en otra moneda (no sumados al total en €).</div>`;
+      if(r.sin_leer) html+=`<div class="card-meta" style="color:var(--muted);margin:-4px 0 8px;">${r.sin_leer} factura(s) leyéndose automáticamente… abre de nuevo en un momento para ver las líneas.</div>`;
+      if(r.avisos_precio) html+=`<div class="card-meta" style="color:var(--alert);margin:-4px 0 8px;"><b>${r.avisos_precio} aviso(s) de precio</b> este mes (revisa las facturas marcadas).</div>`;
     }
     if(!f.facturas.length){ html+=`<div class="empty">Sin facturas ni albaranes en ${esc(provMesLargo(f.mes))}.</div>`; }
     else html+=f.facturas.map(d=>{
@@ -8397,9 +8399,20 @@ async function irA_productosProveedor(provId,mes){
         else if(d.importe_total>0) pago=`<span style="font-size:10px;font-weight:700;color:var(--olive);"> · pagada</span>`;
       }
       const btns=[d.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${d.id}')">Ver factura (PDF)</button>`:"", d.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${d.id}')">Ver</button>`:""].filter(Boolean).join("");
+      // Estado de la lectura automática del PDF + avisos de precio.
+      let lectura="";
+      if(d.tipo_documento==="factura" && d.tiene_documento_pdf){
+        if(d.proceso_error) lectura=` · <span style="color:var(--alert)">no se pudo leer</span>`;
+        else if(!d.procesada) lectura=` · <span style="color:var(--muted)">leyendo el PDF…</span>`;
+        else lectura=` · ${d.n_lineas} línea${d.n_lineas===1?"":"s"} leídas`;
+      }
+      const avisos=(d.avisos_precio&&d.avisos_precio.length)
+        ? `<div class="card-meta" style="color:var(--alert);margin-top:2px;"><b>${d.avisos_precio.length} cambio(s) de precio:</b> ${d.avisos_precio.map(a=>esc(a.mensaje||"")).join(" · ")}</div>`
+        : "";
       return `<div class="card">
         <div class="card-name">${tag} ${d.numero_documento?("nº "+esc(d.numero_documento)):"(sin nº)"}${imp}${d.rectificativa?` <span style="font-size:10px;color:var(--alert);font-weight:700;">rectificativa</span>`:""}</div>
-        <div class="card-meta">${new Date(d.fecha).toLocaleDateString("es-ES")} · ${esc(d.estado||"")}${pago}${delCorreo}</div>
+        <div class="card-meta">${new Date(d.fecha).toLocaleDateString("es-ES")} · ${esc(d.estado||"")}${pago}${delCorreo}${lectura}</div>
+        ${avisos}
         ${btns?`<div class="card-actions">${btns}</div>`:""}
       </div>`;
     }).join("");

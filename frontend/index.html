@@ -5499,9 +5499,12 @@ async function pbtDiagnostico(){
     }
     var canal = await pbtCanal(server); pbtGuardar(dev, canal);
     log.push("Canal elegido: "+canal.uuid.slice(4,8));
-    // Comando mínimo: ESC @ (reset) + avanzar 6 líneas. No usa imagen.
-    var test=new Uint8Array([0x1B,0x40, 0x1B,0x64,0x06]);
-    try{ await pbtEnviar(canal, test); log.push("Envío OK → la impresora DEBERÍA avanzar papel ahora."); }
+    // Prueba en TSPL (lenguaje de impresoras de etiquetas tipo TSC/Phomemo D520):
+    // imprime un texto sencillo. Si la impresora es TSPL, saldrá "M DE MATERIA".
+    var tspl="SIZE 90 mm,40 mm\r\nGAP 3 mm,0 mm\r\nDENSITY 10\r\nSPEED 4\r\nDIRECTION 1\r\nCLS\r\n"+
+      "TEXT 40,40,\"4\",0,1,1,\"M DE MATERIA\"\r\nTEXT 40,120,\"3\",0,1,1,\"prueba bluetooth D520\"\r\nPRINT 1,1\r\n";
+    var test=new TextEncoder().encode(tspl);
+    try{ await pbtEnviar(canal, test); log.push("Envío OK (TSPL) → si la impresora es TSPL, imprimirá 'M DE MATERIA'."); }
     catch(e){ log.push("Envío FALLÓ: "+(e.message||e)); }
   }catch(e){ if(e&&e.name==="NotFoundError"){ _pbtOcupado=false; pbtToast(""); return; } log.push("Error: "+(e&&e.message||e)); }
   _pbtOcupado = false;

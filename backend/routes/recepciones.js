@@ -147,6 +147,37 @@ router.post("/importar-control",
     }
   });
 
+// Importa el PAQUETE de facturas (ZIP con PDFs + facturas.json). ?dry=1 simula
+// sin escribir. Crea/actualiza recepciones tipo factura "Pendiente de confirmar"
+// con el PDF adjunto, idempotente por sha256 y proveedor+nº. Solo admin.
+router.post("/importar-paquete",
+  express.raw({ type: ["application/zip", "application/octet-stream", "application/x-zip-compressed"], limit: "60mb" }),
+  async (req, res) => {
+    if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede importar el paquete de facturas." });
+    try {
+      const buf = Buffer.isBuffer(req.body) && req.body.length ? req.body : null;
+      if (!buf) return res.status(400).json({ error: "Envía el paquete .zip de facturas." });
+      if (!(buf[0] === 0x50 && buf[1] === 0x4b)) return res.status(400).json({ error: "El fichero no es un .zip válido." });
+      const dryRun = req.query.dry === "1" || req.query.dry === "true";
+      const { rep } = require("../facturas-paquete").importar(buf, { store, dryRun });
+      if (!dryRun && rep._mutado) {
+        await store.flush();
+        try {
+          require("../auditoria").registrar(req, {
+            accion: "facturas_paquete_import", entidad: "recepciones", entidad_id: "",
+            resumen: `Paquete de facturas: ${rep.importadas} nuevas, ${rep.actualizadas} con PDF adjuntado`,
+            meta: { importadas: rep.importadas, actualizadas: rep.actualizadas, duplicadas: rep.duplicadas, por_moneda: rep.por_moneda },
+          });
+        } catch (e) {}
+      }
+      delete rep._mutado;
+      // En la respuesta no mandamos el detalle completo si es enorme; va tal cual.
+      res.json({ ok: true, dry_run: dryRun, resumen: rep });
+    } catch (e) {
+      res.status(400).json({ error: e.message || "No se pudo importar el paquete." });
+    }
+  });
+
 // Escanea un albarán: recibe la imagen y devuelve los datos extraídos (sin guardar).
 // El usuario los confirma y luego llama a POST / para registrar la recepción.
 router.post("/escanear", jsonGrande, async (req, res) => {

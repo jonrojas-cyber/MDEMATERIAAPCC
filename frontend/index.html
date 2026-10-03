@@ -5506,16 +5506,28 @@ async function pbtDiagnostico(){
     }
     var canal = await pbtCanal(server); pbtGuardar(dev, canal);
     log.push("Canal elegido: "+canal.uuid.slice(4,8));
-    // Prueba en CPCL (lenguaje habitual en impresoras de etiquetas Bluetooth con
-    // perfil ff00/ff02). Si la impresora es CPCL, saldrá "M DE MATERIA".
-    var cpcl="! 0 200 200 320 1\r\nTEXT 4 0 40 60 M DE MATERIA\r\nTEXT 4 0 40 150 prueba BT D520\r\nFORM\r\nPRINT\r\n";
-    var test=new TextEncoder().encode(cpcl);
-    try{ await pbtEnviar(canal, test); log.push("Envío OK (CPCL) → si la impresora es CPCL, imprimirá 'M DE MATERIA'."); }
-    catch(e){ log.push("Envío FALLÓ: "+(e.message||e)); }
+    // Manda los TRES lenguajes de etiquetas más comunes, uno tras otro. La etiqueta
+    // que SALGA llevará escrito su lenguaje (TSPL / ZPL / CPCL): así sabemos cuál usa
+    // la D520 en un solo intento.
+    var enc=new TextEncoder();
+    var sleep=function(ms){ return new Promise(function(r){ setTimeout(r,ms); }); };
+    var pruebas=[
+      ["TSPL", 'SIZE 90 mm,40 mm\r\nGAP 2 mm,0 mm\r\nDENSITY 10\r\nSPEED 4\r\nDIRECTION 1\r\nCLS\r\nTEXT 40,70,"4",0,1,1,"TSPL OK"\r\nPRINT 1,1\r\n'],
+      ["ZPL",  '^XA^CI28^FO60,70^A0N,80,80^FDZPL OK^FS^XZ\r\n'],
+      ["CPCL", '! 0 200 200 240 1\r\nTEXT 4 0 40 70 CPCL OK\r\nFORM\r\nPRINT\r\n'],
+    ];
+    var enviados=[];
+    for(var t=0;t<pruebas.length;t++){
+      pbtToast("Probando "+pruebas[t][0]+"…");
+      try{ await pbtEnviar(canal, enc.encode(pruebas[t][1])); enviados.push(pruebas[t][0]); }
+      catch(e){ log.push(pruebas[t][0]+" FALLÓ: "+(e.message||e)); }
+      await sleep(2000);
+    }
+    log.push("Enviados: "+(enviados.join(", ")||"ninguno"));
   }catch(e){ if(e&&e.name==="NotFoundError"){ _pbtOcupado=false; pbtToast(""); return; } log.push("Error: "+(e&&e.message||e)); }
   _pbtOcupado = false;
   pbtToast("");
-  alert("Diagnóstico Bluetooth\n\n"+log.join("\n")+"\n\n¿Avanzó el papel? Dímelo (y copia este texto) para ajustar la impresora.");
+  alert("Diagnóstico Bluetooth\n\n"+log.join("\n")+"\n\n¿Salió ALGUNA etiqueta? ¿Qué pone — TSPL, ZPL o CPCL? Dímelo y dejo la impresora imprimiendo.");
 }
 async function pbtCanal(server){
   var svcs = await pbtOp(function(){ return server.getPrimaryServices(); });

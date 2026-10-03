@@ -6547,7 +6547,31 @@ async function irA_centroControl(preset, custom){
     const d=await api(q);
     window._ccData=d;
     setInner(ccRender(d));
+    ccCargarMermas();
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+}
+// Análisis de mermas DENTRO del financiero (no es un apartado aparte): coste del
+// periodo, % evitable, serie diaria, productos más mermados y "cosas extrañas".
+async function ccCargarMermas(){
+  var cont=el("cc-mermas"); if(!cont) return;
+  var p=(window._ccData&&window._ccData.periodo)||{};
+  var q="/mermas/analisis";
+  if(p.desde&&p.hasta) q+="?rango=personalizado&desde="+encodeURIComponent(p.desde)+"&hasta="+encodeURIComponent(p.hasta);
+  else { var r=(window._ccPreset==="hoy"||window._ccPreset==="semana"||window._ccPreset==="mes")?window._ccPreset:"mes"; q+="?rango="+r; }
+  try{ var a=await api(q); cont.innerHTML=ccMermasHTML(a, p.label||"periodo"); }
+  catch(e){ cont.innerHTML='<div class="cc-label">Mermas</div><div class="cc-mini">No se pudo cargar el análisis de mermas.</div>'; }
+}
+function ccMermasHTML(a, label){
+  var top=(a.top_productos||[]).slice(0,5).map(function(x){ return '<div class="cc-line"><span>'+esc(x.producto)+(x.veces>1?' · '+x.veces+'×':'')+(x.cantidad_txt?' <span class="cc-mini" style="display:inline">('+esc(x.cantidad_txt)+')</span>':'')+'</span><b>'+ccEur(x.eur)+'</b></div>'; }).join("")||'<div class="cc-mini">Sin mermas en el periodo.</div>';
+  var anom=(a.anomalias||[]).map(function(x){ return '<button class="cc-insight '+(x.severidad||'info')+'" onclick="irA_mermas()">'+esc(x.texto)+'</button>'; }).join("");
+  var vals=(a.serie_diaria||[]).map(function(d){return d.total;}); var maxd=Math.max.apply(null, vals.concat([0.01]));
+  var bars=(a.serie_diaria||[]).map(function(d){ var h=Math.max(3,Math.round((d.total/maxd)*34)); return '<span title="'+d.fecha+': '+ccEur(d.total)+'" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:3px"><i style="width:62%;height:'+h+'px;background:var(--sev-warn);border-radius:2px 2px 0 0"></i></span>'; }).join("");
+  return '<div class="cc-label">Mermas · '+esc(label)+' <a onclick="irA_mermas()" style="float:right;font-size:11px;color:var(--muted);cursor:pointer">registrar / ver →</a></div>'+
+    '<div class="cc-kpi">'+ccEur(a.total)+'</div>'+
+    '<div class="cc-mini">'+(a.n||0)+' movimiento'+(a.n===1?'':'s')+' · evitable '+(a.evitable_pct||0)+'% ('+ccEur(a.evitable_eur)+')'+(a.dias_con_merma?' · '+a.dias_con_merma+' día(s) con merma':'')+'</div>'+
+    (bars?'<div style="display:flex;align-items:flex-end;gap:2px;height:40px;margin:10px 0 2px">'+bars+'</div>':"")+
+    '<div class="section-label" style="margin:12px 0 4px">Productos más mermados</div>'+top+
+    (anom?'<div class="section-label" style="margin:12px 0 4px">Cosas extrañas</div>'+anom:'');
 }
 
 function ccFiltroHTML(){
@@ -6556,7 +6580,7 @@ function ccFiltroHTML(){
     ? `<div class="cc-custom"><input type="date" id="cc-desde"><span>→</span><input type="date" id="cc-hasta"><button class="btn-primary" onclick="ccAplicarCustom()">Aplicar</button></div>`:"";
   return `<div class="cc-filtro">${chips}</div>${custom}`;
 }
-function ccElegirPreset(k){ if(k==="personalizado"){ window._ccPreset="personalizado"; setInner(ccRender(window._ccData||{})); } else irA_centroControl(k); }
+function ccElegirPreset(k){ if(k==="personalizado"){ window._ccPreset="personalizado"; setInner(ccRender(window._ccData||{})); ccCargarMermas(); } else irA_centroControl(k); }
 function ccAplicarCustom(){
   const desde=el("cc-desde")&&el("cc-desde").value, hasta=el("cc-hasta")&&el("cc-hasta").value;
   if(!desde||!hasta){ alert("Elige las dos fechas."); return; }
@@ -6654,6 +6678,7 @@ function ccRender(d){
     </div>
     ${objCard}
     ${copCard}
+    <div class="cc-card cc-wide" id="cc-mermas"><div class="cc-label">Mermas</div><div class="cc-mini">analizando mermas del periodo…</div></div>
     <div class="section-label" style="margin-top:16px;">Más detalle</div>
     <div class="cc-links">
       <button class="cc-link cc-link-wide" onclick="irA_timeline()">Línea temporal · pasado, presente y futuro</button>
@@ -8817,7 +8842,16 @@ function amRender(r){
   }
   setInner(`<div class="section-label">Análisis del mes · ${esc(r.mes)}</div>${mesSel}
     <div class="ad-dia" style="margin-top:6px;">${s.dias_venta} días de venta · origen: ${s.origen==="agora_export"?"export de Ágora":(s.origen==="conector"?"conector de Ágora":esc(s.origen))}</div>
-    ${kpis}${mix}${semana}${serie}${plBox}${importador}`);
+    ${kpis}${mix}${semana}${serie}${plBox}
+    <div id="am-mermas" style="margin-top:16px;"></div>
+    ${importador}`);
+  amCargarMermas(r.mes);
+}
+// Mermas del mes DENTRO del resumen mensual (reutiliza el render del financiero).
+async function amCargarMermas(mes){
+  var cont=el("am-mermas"); if(!cont||!mes) return;
+  try{ var a=await api("/mermas/analisis?rango=mes-"+encodeURIComponent(mes)); cont.innerHTML='<div class="cc-card cc-wide">'+ccMermasHTML(a, mes)+'</div>'; }
+  catch(e){ cont.innerHTML=""; }
 }
 async function amImportar(btn){
   const inp=el("am-file"); const f=inp&&inp.files&&inp.files[0];

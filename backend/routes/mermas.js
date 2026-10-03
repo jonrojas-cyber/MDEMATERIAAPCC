@@ -2,6 +2,7 @@ const express = require("express");
 const store = require("../data-store");
 const costing = require("../costing");
 const M = require("../mermas-motivos");
+const analytics = require("../mermas-analytics");
 
 const router = express.Router();
 
@@ -104,6 +105,33 @@ router.get("/resumen", (req, res) => {
     const g = a.grupo || "otros"; por_grupo[g] = Math.round(((por_grupo[g] || 0) + c) * 100) / 100;
   });
   res.json({ rango, n: lista.length, total: Math.round(total * 100) / 100, por_motivo, por_grupo });
+});
+
+// Análisis de mermas (SOLO admin): KPIs + serie diaria + top productos + anomalías.
+// rango = hoy | semana | mes | personalizado (&desde=YYYY-MM-DD&hasta=YYYY-MM-DD) | mes-YYYY-MM
+function ventana(rango, desdeQ, hastaQ) {
+  const now = new Date();
+  let desde = new Date(now); desde.setHours(0, 0, 0, 0);
+  let hasta = new Date(now); hasta.setHours(23, 59, 59, 999);
+  if (rango === "semana") { desde.setDate(desde.getDate() - 6); }
+  else if (rango === "mes") { desde.setDate(desde.getDate() - 29); }
+  else if (/^mes-\d{4}-\d{2}$/.test(rango)) { const m = rango.slice(4); desde = new Date(m + "-01T00:00:00"); hasta = new Date(new Date(m + "-01T00:00:00").getFullYear(), new Date(m + "-01T00:00:00").getMonth() + 1, 0, 23, 59, 59, 999); }
+  else if (rango === "personalizado" && desdeQ && hastaQ) {
+    // Acepta YYYY-MM-DD o epoch en milisegundos (como lo da executive-dashboard).
+    const pd = /^\d{10,}$/.test(String(desdeQ)) ? new Date(Number(desdeQ)) : new Date(desdeQ + "T00:00:00");
+    const ph = /^\d{10,}$/.test(String(hastaQ)) ? new Date(Number(hastaQ)) : new Date(hastaQ + "T23:59:59");
+    if (!isNaN(pd.getTime())) desde = pd;
+    if (!isNaN(ph.getTime())) hasta = ph;
+  }
+  return { desde, hasta };
+}
+router.get("/analisis", (req, res) => {
+  if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede ver el análisis de mermas." });
+  const rango = String(req.query.rango || "mes");
+  const { desde, hasta } = ventana(rango, req.query.desde, req.query.hasta);
+  const lista = (store.readAll("ajustes") || []).filter((a) => { if (!a.fecha) return false; const t = new Date(a.fecha).getTime(); return t >= desde.getTime() && t <= hasta.getTime(); });
+  const an = analytics.analizar(lista, { desde: desde.getTime(), hasta: hasta.getTime() });
+  res.json(Object.assign({ rango, desde: desde.toISOString().slice(0, 10), hasta: hasta.toISOString().slice(0, 10) }, an));
 });
 
 module.exports = router;

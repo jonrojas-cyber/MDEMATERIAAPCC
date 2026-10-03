@@ -12,12 +12,13 @@ const jsonGrande = express.json({ limit: "12mb" });
 
 // Versión ligera (sin las fotos en base64) para listados.
 function slim(r) {
-  const { foto_albaran_url, foto_producto_url, ...resto } = r;
+  const { foto_albaran_url, foto_producto_url, documento_pdf_url, ...resto } = r;
   return {
     ...resto,
     tipo_documento: r.tipo_documento || "albaran",
     tiene_foto: !!foto_albaran_url,
     tiene_foto_producto: !!foto_producto_url,
+    tiene_documento_pdf: !!documento_pdf_url,
   };
 }
 

@@ -2748,7 +2748,7 @@ async function irA_appcc(){
       <div class="lab-rows">
         ${labRow("lotes y caducidades", lotesSub, "irA_lotes()")}
         ${labRow("calendario anual", "histórico · producción y appcc", "irA_calendario()")}
-        ${labRow("etiquetas", "imprimir · reimprimir · historial", "irA_etiquetas()")}
+        ${labRow("etiquetas", "buscar producto · operaciones appcc · lotes y trazabilidad", "irA_etiquetaProd()")}
         ${labRow("temperaturas", "neveras y congeladores", "irA_temperaturas()")}
         ${labRow("registro para sanidad", "exportar appcc para inspección", "irA_appccRegistro()")}
         ${labRow("incidencias", "producto no apto y bloqueos", "almaccPronto()")}
@@ -3079,7 +3079,6 @@ async function irA_lab(){
       <button onclick="irA_preparaciones()">producir${pendTxt}</button>
       <button onclick="irA_planProduccion()">plan de producción</button>
       <button onclick="irA_estacion()">estación</button>
-      <button onclick="irA_etiquetaProd()">etiquetas</button>
     </div>`);
 }
 // Sub-hub BEBIDAS: las cuatro líneas; laboratorio de bebidas y base de matcha al pie.

@@ -8753,7 +8753,7 @@ function crMesActual(){ const d=new Date(); return d.getFullYear()+"-"+String(d.
 // ════════════════════════════════════════════════════════════════════════════
 // ANÁLISIS DEL MES · panel de ventas (mix, día de semana, ticket medio, serie).
 // Los datos vienen de la app: los mete el CONECTOR de Ágora (automático) o se
-// importa el export "Análisis de Ventas" (CSV) para meses sin conector. Solo
+// importa el export "Análisis de Ventas" (Excel .xlsx o CSV) para meses sin conector. Solo
 // dirección (dinero). El break-even y el P&L los trae la Cuenta de Resultados.
 // ════════════════════════════════════════════════════════════════════════════
 async function irA_analisisMes(){
@@ -8781,16 +8781,16 @@ function amRender(r){
   </select></div>`;
   const importador=`<div class="card" style="margin-top:12px;">
       <div class="lim-eyebrow" style="margin-bottom:4px;">de dónde salen estos datos</div>
-      <div class="card-meta">Los mete solo el <b>conector de Ágora</b> cuando está conectado. Si un mes no entró, exporta de Ágora el <b>«Análisis de Ventas» en CSV</b> y súbelo aquí:</div>
+      <div class="card-meta">Los mete solo el <b>conector de Ágora</b> cuando está conectado. Si un mes no entró, exporta de Ágora el <b>«Análisis de Ventas»</b> (Excel .xlsx o CSV) y súbelo aquí:</div>
       <div class="card-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <input id="am-file" type="file" accept=".csv,text/csv,text/plain" style="font-size:12px;">
-        <button class="btn-primary" onclick="amImportar(this)">Importar CSV</button>
+        <input id="am-file" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" style="font-size:12px;">
+        <button class="btn-primary" onclick="amImportar(this)">Importar archivo</button>
         <button class="btn-ghost" onclick="amDesdeVentas(this)">Recalcular desde conector</button>
       </div>
     </div>`;
   if(!s){
     setInner(`<div class="section-label">Análisis del mes</div>${mesSel}
-      <div class="ad-note" style="margin-top:10px;">Aún no hay datos de ventas para <b>${esc(r.mes)}</b>. Cuando el conector de Ágora esté al día se llena solo; o importa el «Análisis de Ventas» (CSV) de Ágora aquí abajo.</div>
+      <div class="ad-note" style="margin-top:10px;">Aún no hay datos de ventas para <b>${esc(r.mes)}</b>. Cuando el conector de Ágora esté al día se llena solo; o importa el «Análisis de Ventas» (Excel .xlsx o CSV) de Ágora aquí abajo.</div>
       ${importador}`);
     return;
   }
@@ -8855,15 +8855,16 @@ async function amCargarMermas(mes){
 }
 async function amImportar(btn){
   const inp=el("am-file"); const f=inp&&inp.files&&inp.files[0];
-  if(!f){ alert("Elige primero el fichero CSV del «Análisis de Ventas» de Ágora."); return; }
+  if(!f){ alert("Elige primero el fichero del «Análisis de Ventas» de Ágora (CSV o Excel .xlsx)."); return; }
   if(btn){ btn.disabled=true; btn.textContent="Importando…"; }
   try{
-    const texto=await f.text();
-    const r=await api("/analisis-mes/importar",{method:"POST",headers:{"Content-Type":"text/csv"},body:texto});
+    // Se envían los BYTES del fichero: el servidor detecta xlsx (Excel) o CSV.
+    const bytes=await f.arrayBuffer();
+    const r=await api("/analisis-mes/importar",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:bytes});
     window._am.mes=r.snapshot.mes;
     alert(`Importado ${r.snapshot.mes}: ${adEur(r.snapshot.neto)} netos · ${r.snapshot.tickets} tickets.`);
     await amCargar();
-  }catch(e){ alert("No se pudo importar: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Importar CSV"; } }
+  }catch(e){ alert("No se pudo importar: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Importar archivo"; } }
 }
 async function amDesdeVentas(btn){
   if(btn){ btn.disabled=true; btn.textContent="Recalculando…"; }

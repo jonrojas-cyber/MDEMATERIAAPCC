@@ -23,10 +23,11 @@ router.get("/", (req, res) => {
 
 // POST /api/analisis-mes/importar  (texto CSV del export "Análisis de Ventas")
 // Body: CSV plano (text/plain o text/csv). Opcional ?mes=YYYY-MM para forzarlo.
-router.post("/importar", express.text({ type: ["text/*", "application/csv", "application/octet-stream"], limit: "12mb" }), async (req, res) => {
+router.post("/importar", express.raw({ type: ["text/*", "application/csv", "application/octet-stream", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip"], limit: "25mb" }), async (req, res) => {
   if (!soloAdmin(req, res)) return;
   try {
-    const snap = am.parseExportAgora(req.body || "", req.query.mes);
+    // req.body es un Buffer: parseExportBuffer detecta xlsx (ZIP) o CSV.
+    const snap = am.parseExportBuffer(req.body || Buffer.alloc(0), req.query.mes);
     am.guardar(snap);
     // Además fija el cierre de ventas netas del mes para la Cuenta de Resultados.
     const id = `ventas_mes_${snap.mes}`;

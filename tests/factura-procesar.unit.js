@@ -94,6 +94,27 @@ test("un cambio pequeño (<5%) no genera aviso ni variante", async () => {
   assert.strictEqual(store.findById("recepciones", "r2").avisos_precio.length, 0);
 });
 
+test("enlaza el food cost: rellena coste_medio de una materia emparejada sin coste (sin pisar los que ya tienen)", async () => {
+  const store = fakeStore({
+    proveedores: [{ id: "p1", nombre: "X" }], recepciones: [], compras_productos: [], precios_historico: [],
+    materias: [
+      { id: "m_tomate", nombre: "Tomate rama", unidad: "g", coste_medio: 0, pendiente_coste: true },
+      { id: "m_aceite", nombre: "Aceite oliva", unidad: "ml", coste_medio: 0.01 }, // ya tiene coste → no se pisa
+    ],
+  });
+  const rec = { id: "r1", proveedor_id: "p1", tipo_documento: "factura", numero_documento: "F1", fecha: "2026-09-01T12:00:00Z", documento_pdf_url: "data:application/pdf;base64,AA" };
+  store.insert("recepciones", rec);
+  await fpp.procesarRecepcion(store, rec, { ocrFn: ocrFab({ lineas: [
+    { descripcion: "Tomate rama", cantidad: 2, unidad: "kg", precio_unitario: 1.5, importe: 3 },  // 3 € / 2000 g = 0.0015 €/g
+    { descripcion: "Aceite oliva", cantidad: 1, unidad: "L", precio_unitario: 9, importe: 9 },
+  ] }) });
+  const tomate = store.findById("materias", "m_tomate");
+  assert.strictEqual(tomate.coste_medio, 0.0015); // 3 / 2000 g
+  assert.strictEqual(tomate.pendiente_coste, false);
+  const aceite = store.findById("materias", "m_aceite");
+  assert.strictEqual(aceite.coste_medio, 0.01); // intacto
+});
+
 test("facturasPendientes solo cuenta facturas con PDF sin procesar", () => {
   const store = fakeStore({ recepciones: [
     { id: "a", tipo_documento: "factura", documento_pdf_url: "data:...", procesada: false, lineas: [] },

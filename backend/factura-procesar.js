@@ -13,6 +13,7 @@
 const storeDefault = require("./data-store");
 const intake = require("./albaran-intake");
 const { calcular } = require("./compras-productos-calc");
+const { convertir } = require("./unidades");
 
 function r4(n) { return Math.round((Number(n) || 0) * 10000) / 10000; }
 
@@ -62,6 +63,17 @@ async function procesarRecepcion(store, rec, opts = {}) {
     const materia = intake.mejorPorPalabras(desc, materias); // empareja, no crea (stock es Fase 2)
     let art = intake.mejorPorPalabras(desc, articulos);
     let creado = false;
+
+    // Enlaza el FOOD COST desde la factura: si la materia emparejada aún no tiene
+    // coste (pendiente), lo fija con esta compra (€ por unidad de consumo), solo
+    // si la unidad se puede convertir con seguridad. Nunca pisa un coste ya puesto.
+    if (materia && !(Number(materia.coste_medio) > 0) && imp > 0) {
+      const conv = convertir(cant, l.unidad, materia);
+      if (conv && conv.ok && conv.cantidad > 0) {
+        const costeUnit = r4(imp / conv.cantidad);
+        if (costeUnit > 0) { store.update("materias", materia.id, { coste_medio: costeUnit, pendiente_coste: false }); materia.coste_medio = costeUnit; }
+      }
+    }
 
     if (observed > 0 && intake.esLineaProducto(desc)) {
       if (art) {

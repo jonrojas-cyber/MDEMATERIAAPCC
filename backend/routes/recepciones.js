@@ -451,6 +451,15 @@ function aplicarStock(recepcion) {
             }
             m.precio_compra = nuevo;
           }
+          // Enlaza el FOOD COST: si la materia aún no tiene coste (pendiente), lo
+          // fija con el precio de ESTA compra (€ por unidad de consumo = importe
+          // de la línea ÷ cantidad ya convertida). Nunca pisa un coste existente:
+          // la fuente del dinero no se corrompe con una sola lectura.
+          const impLinea = Number(l.importe);
+          if (!(Number(m.coste_medio) > 0) && Number.isFinite(impLinea) && impLinea > 0) {
+            m.coste_medio = Math.round((impLinea / cant) * 10000) / 10000;
+            m.pendiente_coste = false;
+          }
           // Vincula el artículo al catálogo del proveedor.
           if (proveedor) {
             if (!m.proveedor_id) m.proveedor_id = proveedor.id;

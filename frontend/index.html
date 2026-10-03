@@ -9749,7 +9749,24 @@ async function irA_recepcion(pre){
         </div>
       </div>`;
     }
-    html+=section("Recepciones",recs.slice().reverse(),r=>{
+    // Las facturas que entran del correo se LEEN y analizan solas: no son una
+    // lista que revisar aquí. Se resumen en una línea y el detalle vive por
+    // proveedor. En "Recepciones" quedan solo las acciones reales (albaranes, etc.).
+    const ORIG_CORREO=new Set(["email","gmail_paquete","gmail_control"]);
+    const correo=recs.filter(r=>ORIG_CORREO.has(r.origen));
+    const otras=recs.filter(r=>!ORIG_CORREO.has(r.origen));
+    if(correo.length){
+      const total=correo.reduce((s,r)=>s+(Number(r.importe_total)||0),0);
+      const avisos=correo.reduce((s,r)=>s+((r.avisos_precio&&r.avisos_precio.length)||0),0);
+      const leyendo=correo.filter(r=>r.tiene_documento_pdf&&!r.procesada).length;
+      html+=`<div class="card" style="border-color:var(--olive);margin-bottom:12px;">
+        <div class="lab-eyebrow" style="margin-bottom:2px;">facturas del correo</div>
+        <div class="card-name">${correo.length} facturas leídas — ${adEur(total)}</div>
+        <div class="card-meta">Se leen y analizan solas; no hace falta revisarlas aquí.${leyendo?` ${leyendo} leyéndose…`:""}${avisos?` · <span style="color:var(--alert)">${avisos} aviso(s) de precio</span>`:""} El detalle está en cada proveedor.</div>
+        <div class="card-actions"><button class="btn-ghost" onclick="irA_proveedores()">Ver por proveedor</button></div>
+      </div>`;
+    }
+    html+=section("Recepciones",otras.slice().reverse(),r=>{
       const prov=provs.find(p=>p.id===r.proveedor_id);
       const pendiente=(r.estado==="Pendiente de confirmar");
       const colEst=r.estado==="Rechazado"?"var(--alert)":(r.estado==="Aceptado con incidencia"?"var(--ink)":(r.estado==="Aceptado"||r.estado==="Confirmada")?"var(--olive)":"var(--muted)");
@@ -9768,7 +9785,7 @@ async function irA_recepcion(pre){
         `<span style="color:${colEst};font-weight:700">${r.estado}</span> · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}${extra?` · ${extra}`:""}`,
         acciones
       );
-    },"Sin recepciones.");
+    },"No hay albaranes ni recepciones manuales pendientes.");
     setInner(html);
     // Si venimos de "Recibir este pedido": preseleccionamos proveedor, guardamos
     // el pedido (para cotejar cantidades) y lo indicamos claramente.

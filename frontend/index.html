@@ -4922,7 +4922,8 @@ function irA_etiquetaProd(pre){
   window._etqQ = ""; window._etqFiltro = "";
   navReset(); openSection("etiquetaprod", "Etiquetas");
   etqRender();
-  pbtReconectarSilencioso();   // reconecta la impresora ya emparejada → imprimir será instantáneo
+  // La conexión Bluetooth se hace a mano con "Conectar BT" (evita solapar la
+  // reconexión automática con una impresión/diagnóstico → "GATT already in progress").
   // Si viene prellenado desde otro módulo, abre su ficha directamente.
   if (pre.nombre) etqAbrirProducto({ ref: pre.ref || null, nombre: pre.nombre, fuente: pre.fuente || null, favorito: false });
 }
@@ -5519,8 +5520,8 @@ async function pbtCanal(server){
   var PREF=["0000ff02-0000-1000-8000-00805f9b34fb","0000ffe1-0000-1000-8000-00805f9b34fb",
     "49535343-8841-43f4-a8d4-ecbe34729bb3","0000ff03-0000-1000-8000-00805f9b34fb"];
   for(var k=0;k<PREF.length;k++){ var m=cands.find(function(c){ return (c.uuid||"").toLowerCase()===PREF[k]; }); if(m) return m; }
-  // Si no, preferimos una característica CON confirmación (write) para no cantar "impreso" en falso.
-  return cands.find(function(c){ return c.properties.write; }) || cands[0];
+  // Si no, preferimos una característica SIN confirmación (lo normal en térmicas).
+  return cands.find(function(c){ return c.properties.writeWithoutResponse; }) || cands[0];
 }
 function pbtGuardar(device, canal){
   device.addEventListener("gattserverdisconnected", function(){ _mdmPrinter = null; try{ pbtActualizarEstado(); }catch(e){} });
@@ -5556,13 +5557,13 @@ function pbtEscpos(mono){
   return out;
 }
 async function pbtEnviar(canal, data){
-  // Preferimos ESCRITURA CON CONFIRMACIÓN: así "Impreso ✓" solo sale si la impresora
-  // confirma la recepción; si el canal es el equivocado, writeValue lanza error y el
-  // flujo cae a cable (en vez de decir "impreso" sin que salga nada). Cada trozo se
-  // reintenta si coincide con otra operación GATT en curso.
-  var CH=128, conResp = !!canal.properties.write;
+  // Las impresoras térmicas (Phomemo) usan ESCRITURA SIN CONFIRMACIÓN: writeValue
+  // (con respuesta) en su canal ff02 se queda colgada esperando un ACK que la
+  // impresora no envía → "GATT operation already in progress". Por eso enviamos sin
+  // confirmación cuando el canal lo permite, con reintento si coincide con otra op.
+  var CH=128, wnr = !!canal.properties.writeWithoutResponse;
   for(var i=0;i<data.length;i+=CH){ var s=data.slice(i,i+CH);
-    await pbtOp(function(){ return conResp ? canal.writeValue(s) : canal.writeValueWithoutResponse(s); });
+    await pbtOp(function(){ return wnr ? canal.writeValueWithoutResponse(s) : canal.writeValue(s); });
     await new Promise(function(r){ setTimeout(r,8); }); }
 }
 // Rasteriza a 1-bit una etiqueta ya montada (en un iframe) al ancho del cabezal.

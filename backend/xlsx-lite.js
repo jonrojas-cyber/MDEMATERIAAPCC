@@ -52,11 +52,14 @@ function decodeXml(s) {
     .replace(/&amp;/g, "&");
 }
 
+// Nota: algunos generadores (ClosedXML/EPPlus/.NET) prefijan TODAS las etiquetas
+// con un espacio de nombres, p. ej. <x:si>, <x:t>, <x:row>, <x:c>, <x:v>. Por eso
+// todas las expresiones aceptan un prefijo opcional (?:\w+:)?.
 function parseSharedStrings(xml) {
   const out = [];
-  const re = /<si>([\s\S]*?)<\/si>/g; let m;
+  const re = /<(?:\w+:)?si>([\s\S]*?)<\/(?:\w+:)?si>/g; let m;
   while ((m = re.exec(xml))) {
-    const t = [...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((x) => x[1]).join("");
+    const t = [...m[1].matchAll(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map((x) => x[1]).join("");
     out.push(decodeXml(t));
   }
   return out;
@@ -71,21 +74,22 @@ function colIndex(ref) {
 
 function sheetToRows(xml, strings) {
   const rows = [];
-  const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g; let rm;
+  const rowRe = /<(?:\w+:)?row\b[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g; let rm;
   while ((rm = rowRe.exec(xml))) {
     const arr = [];
-    const cellRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g; let cm;
+    let auto = 0;
+    const cellRe = /<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g; let cm;
     while ((cm = cellRe.exec(rm[1]))) {
       const attrs = cm[1] || "", inner = cm[2];
       const ref = (attrs.match(/r="([A-Z]+\d+)"/) || [])[1];
-      if (!ref) continue;
-      const col = colIndex(ref);
+      const col = ref ? colIndex(ref) : auto; // sin r= → posición secuencial
+      auto = col + 1;
       const t = (attrs.match(/t="([^"]+)"/) || [])[1];
       let val = "";
       if (inner != null) {
-        if (t === "s") { const v = (inner.match(/<v>([\s\S]*?)<\/v>/) || [])[1]; val = strings[+v] != null ? strings[+v] : ""; }
-        else if (t === "inlineStr") { val = decodeXml([...inner.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((x) => x[1]).join("")); }
-        else { const v = (inner.match(/<v>([\s\S]*?)<\/v>/) || [])[1]; val = v != null ? decodeXml(v) : ""; }
+        if (t === "s") { const v = (inner.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/) || [])[1]; val = strings[+v] != null ? strings[+v] : ""; }
+        else if (t === "inlineStr" || t === "str") { val = decodeXml([...inner.matchAll(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map((x) => x[1]).join("")) || decodeXml((inner.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/) || [])[1] || ""); }
+        else { const v = (inner.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/) || [])[1]; val = v != null ? decodeXml(v) : ""; }
       }
       arr[col] = val;
     }
@@ -94,14 +98,28 @@ function sheetToRows(xml, strings) {
   return rows;
 }
 
+// Ordena sheet1, sheet2… numéricamente (no "sheet10" antes que "sheet2").
+function ordenHojas(a, b) {
+  const na = +(a.match(/(\d+)\.xml$/) || [])[1] || 0;
+  const nb = +(b.match(/(\d+)\.xml$/) || [])[1] || 0;
+  return na - nb;
+}
+
 // Devuelve la PRIMERA hoja como matriz de celdas [fila][columna] = texto.
 function readXlsxSheet(buffer) {
+  const hojas = readXlsxSheets(buffer);
+  if (!hojas.length) throw new Error("El .xlsx no tiene hojas de cálculo.");
+  return hojas[0].rows;
+}
+
+// Devuelve TODAS las hojas: [{ name, rows }]. Útil cuando los datos no están en
+// la primera hoja (p. ej. un libro con una portada/resumen y el detalle detrás).
+function readXlsxSheets(buffer) {
   const files = unzip(Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
   const ss = files["xl/sharedStrings.xml"] ? files["xl/sharedStrings.xml"].toString("utf8") : "";
   const strings = parseSharedStrings(ss);
-  const sheetName = Object.keys(files).filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0];
-  if (!sheetName) throw new Error("El .xlsx no tiene hojas de cálculo.");
-  return sheetToRows(files[sheetName].toString("utf8"), strings);
+  const nombres = Object.keys(files).filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort(ordenHojas);
+  return nombres.map((n) => ({ name: n, rows: sheetToRows(files[n].toString("utf8"), strings) }));
 }
 
-module.exports = { readXlsxSheet, unzip, parseSharedStrings, sheetToRows };
+module.exports = { readXlsxSheet, readXlsxSheets, unzip, parseSharedStrings, sheetToRows };

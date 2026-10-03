@@ -119,6 +119,34 @@ router.get("/:id", (req, res) => {
   res.json({ ...r, proveedor_nombre: proveedor ? proveedor.nombre : r.proveedor_id });
 });
 
+// Importa en bloque el "control de facturas" (Excel del Gmail): crea una
+// recepción tipo factura "Pendiente de confirmar" por cada fila (origen
+// gmail_control), sin duplicar las que ya existan. Solo admin (es dinero).
+router.post("/importar-control",
+  express.raw({ type: ["application/octet-stream", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip", "text/*"], limit: "25mb" }),
+  async (req, res) => {
+    if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede importar el control de facturas." });
+    try {
+      const buf = Buffer.isBuffer(req.body) && req.body.length ? req.body : null;
+      if (!buf) return res.status(400).json({ error: "Envía el fichero Excel del control de facturas." });
+      if (!(buf[0] === 0x50 && buf[1] === 0x4b)) return res.status(400).json({ error: "El fichero no es un Excel .xlsx válido." });
+      const hojas = require("../xlsx-lite").readXlsxSheets(buf);
+      const { res: resumen } = require("../facturas-control").importar(hojas, { store });
+      if (resumen._mutado) await store.flush();
+      try {
+        require("../auditoria").registrar(req, {
+          accion: "facturas_control_import", entidad: "recepciones", entidad_id: "",
+          resumen: `Importadas ${resumen.creadas} facturas del control (${resumen.total_eur} € EUR)`,
+          meta: { creadas: resumen.creadas, duplicadas: resumen.duplicadas, no_eur: resumen.no_eur, total_eur: resumen.total_eur },
+        });
+      } catch (e) {}
+      delete resumen._mutado;
+      res.json({ ok: true, resumen });
+    } catch (e) {
+      res.status(400).json({ error: e.message || "No se pudo importar el control de facturas." });
+    }
+  });
+
 // Escanea un albarán: recibe la imagen y devuelve los datos extraídos (sin guardar).
 // El usuario los confirma y luego llama a POST / para registrar la recepción.
 router.post("/escanear", jsonGrande, async (req, res) => {

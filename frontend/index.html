@@ -4958,6 +4958,7 @@ function etqRender(){
     <div class="card" id="pbt-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;">
       <span id="pbt-estado" style="font-size:12.5px;font-weight:700;">● impresora</span>
       <button class="btn-ghost" style="margin-left:auto;font-size:12px" onclick="pbtConectarManual()">Conectar BT</button>
+      <button class="btn-ghost" style="font-size:12px" onclick="pbtDiagnostico()">diagnóstico</button>
       <button class="btn-ghost" style="font-size:12px" onclick="pbtImprimirPrueba()">prueba</button>
     </div>`;
   const foot=`<button class="btn-ghost" onclick="goBack()">← Salir</button>`;
@@ -5458,11 +5459,51 @@ function pbtImprimirPrueba(){
   var qs=new URLSearchParams(); qs.set("n","PRUEBA impresora"); qs.set("c","m de materia"); qs.set("v","0"); qs.set("p",new Date().toISOString());
   pbtImprimir("/etiqueta/prep?"+qs.toString());
 }
+// DIAGNÓSTICO Bluetooth: conecta, lista los canales de escritura que expone la
+// impresora, elige uno y manda un comando mínimo (init + avance de papel). Si el
+// papel AVANZA, el canal es correcto (quedaría ajustar el formato de imagen). Si
+// no reacciona, el canal/formato no es el de este modelo. Muestra un informe para
+// poder afinar el protocolo exacto de la impresora.
+async function pbtDiagnostico(){
+  if(!navigator.bluetooth){ alert("Este navegador no permite Bluetooth. Abre Control M en Chrome o Edge (PC o tablet Android); en iPhone/Safari no hay Bluetooth web."); return; }
+  var log=[];
+  try{
+    pbtToast("Conectando para diagnóstico…");
+    var dev = (pbtConectado() && _mdmPrinter) ? _mdmPrinter.device
+      : await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices: MDM_BT_SERVICIOS });
+    var server = (dev.gatt && dev.gatt.connected) ? dev.gatt : await dev.gatt.connect();
+    log.push("Impresora: "+(dev.name||dev.id||"?"));
+    var svcs = await server.getPrimaryServices();
+    for(var i=0;i<svcs.length;i++){
+      var cs; try{ cs=await svcs[i].getCharacteristics(); }catch(e){ continue; }
+      var chs = cs.filter(function(c){return c.properties.write||c.properties.writeWithoutResponse;})
+        .map(function(c){ return c.uuid.slice(4,8)+(c.properties.write?"·w":"")+(c.properties.writeWithoutResponse?"·wnr":""); });
+      if(chs.length) log.push("servicio "+svcs[i].uuid.slice(4,8)+" → "+chs.join(", "));
+    }
+    var canal = await pbtCanal(server); pbtGuardar(dev, canal);
+    log.push("Canal elegido: "+canal.uuid.slice(4,8));
+    // Comando mínimo: ESC @ (reset) + avanzar 6 líneas. No usa imagen.
+    var test=new Uint8Array([0x1B,0x40, 0x1B,0x64,0x06]);
+    try{ await pbtEnviar(canal, test); log.push("Envío OK → la impresora DEBERÍA avanzar papel ahora."); }
+    catch(e){ log.push("Envío FALLÓ: "+(e.message||e)); }
+  }catch(e){ if(e&&e.name==="NotFoundError"){ pbtToast(""); return; } log.push("Error: "+(e&&e.message||e)); }
+  pbtToast("");
+  alert("Diagnóstico Bluetooth\n\n"+log.join("\n")+"\n\n¿Avanzó el papel? Dímelo (y copia este texto) para ajustar la impresora.");
+}
 async function pbtCanal(server){
   var svcs = await server.getPrimaryServices();
-  for(var i=0;i<svcs.length;i++){ var cs = await svcs[i].getCharacteristics();
-    for(var j=0;j<cs.length;j++){ var p = cs[j].properties; if(p.write || p.writeWithoutResponse) return cs[j]; } }
-  throw new Error("sin canal de escritura");
+  var cands = [];
+  for(var i=0;i<svcs.length;i++){
+    var cs; try{ cs = await svcs[i].getCharacteristics(); }catch(e){ continue; }
+    for(var j=0;j<cs.length;j++){ var p = cs[j].properties; if(p.write || p.writeWithoutResponse) cands.push(cs[j]); }
+  }
+  if(!cands.length) throw new Error("sin canal de escritura");
+  // UUIDs de escritura habituales en impresoras térmicas Bluetooth (Phomemo y clones).
+  var PREF=["0000ff02-0000-1000-8000-00805f9b34fb","0000ffe1-0000-1000-8000-00805f9b34fb",
+    "49535343-8841-43f4-a8d4-ecbe34729bb3","0000ff03-0000-1000-8000-00805f9b34fb"];
+  for(var k=0;k<PREF.length;k++){ var m=cands.find(function(c){ return (c.uuid||"").toLowerCase()===PREF[k]; }); if(m) return m; }
+  // Si no, preferimos una característica CON confirmación (write) para no cantar "impreso" en falso.
+  return cands.find(function(c){ return c.properties.write; }) || cands[0];
 }
 function pbtGuardar(device, canal){
   device.addEventListener("gattserverdisconnected", function(){ _mdmPrinter = null; try{ pbtActualizarEstado(); }catch(e){} });
@@ -5496,11 +5537,14 @@ function pbtEscpos(mono){
   return out;
 }
 async function pbtEnviar(canal, data){
-  var CH=160, wnr=canal.properties.writeWithoutResponse;
+  // Preferimos ESCRITURA CON CONFIRMACIÓN: así "Impreso ✓" solo sale si la impresora
+  // confirma la recepción; si el canal es el equivocado, writeValue lanza error y el
+  // flujo cae a cable (en vez de decir "impreso" sin que salga nada).
+  var CH=128, conResp = !!canal.properties.write;
   for(var i=0;i<data.length;i+=CH){ var s=data.slice(i,i+CH);
-    try{ wnr ? await canal.writeValueWithoutResponse(s) : await canal.writeValue(s); }
-    catch(e){ await canal.writeValue(s); }
-    await new Promise(function(r){ setTimeout(r,12); }); }
+    if(conResp){ await canal.writeValue(s); }
+    else { try{ await canal.writeValueWithoutResponse(s); }catch(e){ await canal.writeValue(s); } }
+    await new Promise(function(r){ setTimeout(r,10); }); }
 }
 // Rasteriza a 1-bit una etiqueta ya montada (en un iframe) al ancho del cabezal.
 function pbtRaster(labelEl, css, dotsWide){

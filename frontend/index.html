@@ -9584,11 +9584,11 @@ async function irA_recepcion(pre){
       html+=`
       <div class="card">
         <div class="lim-eyebrow" style="margin-bottom:4px;">carga en bloque</div>
-        <div class="card-name">Importar control de facturas (Excel)</div>
-        <div class="card-meta">Sube la hoja de control de facturas del Gmail (.xlsx). Cada factura entra como «pendiente de confirmar» para que la valides. No duplica las que ya estén.</div>
+        <div class="card-name">Importar facturas del Gmail</div>
+        <div class="card-meta">Sube el <b>Excel</b> de control (.xlsx) o el <b>paquete</b> completo (.zip con los PDF). Cada factura entra como «pendiente de confirmar» para que la valides; el paquete además adjunta el PDF original. No duplica las que ya estén.</div>
         <div class="card-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <input id="rcp-control-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="font-size:12px;">
-          <button class="btn-primary" onclick="rcpImportarControl(this)">Importar facturas</button>
+          <input id="rcp-control-file" type="file" accept=".xlsx,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip" style="font-size:12px;">
+          <button class="btn-primary" onclick="rcpImportarFacturas(this)">Importar facturas</button>
         </div>
       </div>`;
     }
@@ -9601,7 +9601,8 @@ async function irA_recepcion(pre){
           `<button class="btn-ghost" onclick="resolverRcp('${r.id}','Aceptado con incidencia')">Con incidencia</button>`+
           `<button class="btn-ghost" onclick="resolverRcp('${r.id}','Rechazado')">Rechazar</button>`
         :"")
-        +(r.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`:"");
+        +(r.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`:"")
+        +(r.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${r.id}')">Ver factura (PDF)</button>`:"");
       const esFac=r.tipo_documento==="factura";
       const tipoTag=`<span style="display:inline-block;background:${esFac?"#9C5A2E":"var(--olive)"};color:#fff;font-weight:700;font-size:10px;padding:1px 7px;border-radius:20px;vertical-align:1px;">${esFac?"FACTURA":"ALBARÁN"}</span>`;
       const extra=[r.origen==="email"?"del correo":"", r.numero_documento?`nº ${esc(r.numero_documento)}`:"", r.lote_proveedor?`lote ${esc(r.lote_proveedor)}`:"", r.caducidad?`cad. ${esc(r.caducidad)}`:""].filter(Boolean).join(" · ");
@@ -9712,20 +9713,41 @@ async function nuevaRcp(){
   finally{ liberaDoble("recepcion"); }
 }
 
-// Importa en bloque el control de facturas (.xlsx) → recepciones "pendiente de
-// confirmar" (origen gmail_control). Envía los bytes; el servidor lee el Excel.
-async function rcpImportarControl(btn){
+// Importa facturas del Gmail en bloque. Según el fichero:
+//  · .xlsx → control de facturas (sin PDF).
+//  · .zip  → paquete completo (con PDF): primero simula (dry-run), confirma y aplica.
+async function rcpImportarFacturas(btn){
   const inp=el("rcp-control-file"); const f=inp&&inp.files&&inp.files[0];
-  if(!f){ alert("Elige primero el Excel del control de facturas."); return; }
-  if(btn){ btn.disabled=true; btn.textContent="Importando…"; }
+  if(!f){ alert("Elige primero el Excel (.xlsx) o el paquete (.zip)."); return; }
+  const esZip=/\.zip$/i.test(f.name);
+  if(btn){ btn.disabled=true; btn.textContent=esZip?"Analizando…":"Importando…"; }
   try{
     const bytes=await f.arrayBuffer();
-    const r=await api("/recepciones/importar-control",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:bytes});
-    const s=r.resumen||{};
-    alert(`Importadas ${s.creadas} facturas (${(s.total_eur||0).toFixed(2)} € en EUR).`+
-      (s.duplicadas?`\n${s.duplicadas} ya estaban (no duplicadas).`:"")+
-      (s.no_eur?`\n${s.no_eur} en otra moneda (revísalas).`:"")+
-      (s.sin_total?`\n${s.sin_total} sin importe (saltadas).`:""));
+    if(esZip){
+      // 1) Simulación: no escribe nada, solo cuenta.
+      const dry=await api("/recepciones/importar-paquete?dry=1",{method:"POST",headers:{"Content-Type":"application/zip"},body:bytes});
+      const s=dry.resumen||{};
+      const eur=(s.por_moneda&&s.por_moneda.EUR)||0, usd=(s.por_moneda&&s.por_moneda.USD)||0;
+      const ok=confirm(`Simulación del paquete:\n\n`+
+        `• ${s.importadas} facturas nuevas\n`+
+        `• ${s.actualizadas} a las que se les adjunta el PDF\n`+
+        `• ${s.duplicadas} ya estaban (se omiten)\n`+
+        (s.errores?`• ${s.errores} con error\n`:"")+
+        `\nTotal dataset: ${eur.toFixed(2)} € EUR`+(usd?` · ${usd.toFixed(2)} USD`:"")+
+        `\n\n¿Aplicar la importación?`);
+      if(!ok){ if(btn){ btn.disabled=false; btn.textContent="Importar facturas"; } return; }
+      if(btn) btn.textContent="Importando…";
+      const r=await api("/recepciones/importar-paquete",{method:"POST",headers:{"Content-Type":"application/zip"},body:bytes});
+      const t=r.resumen||{};
+      alert(`Hecho: ${t.importadas} nuevas · ${t.actualizadas} con PDF adjuntado · ${t.duplicadas} ya estaban.`);
+    } else {
+      const r=await api("/recepciones/importar-control",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:bytes});
+      const s=r.resumen||{};
+      alert(`Importadas ${s.creadas} facturas (${(s.total_eur||0).toFixed(2)} € en EUR).`+
+        (s.duplicadas?`\n${s.duplicadas} ya estaban (no duplicadas).`:"")+
+        (s.no_eur?`\n${s.no_eur} en otra moneda (revísalas).`:"")+
+        (s.sin_total?`\n${s.sin_total} sin importe (saltadas).`:""));
+    }
     await irA_recepcion();
   }catch(e){ alert("No se pudo importar: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Importar facturas"; } }
 }
@@ -10850,6 +10872,26 @@ async function verAlbaran(id){
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
     if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir el albarán: ${e.message}</p>`;
+    else alert(e.message);
+  }
+}
+
+// Abre el PDF original de una factura (origen correo/paquete) en una pestaña.
+async function verFacturaPDF(id){
+  const w=window.open("","_blank");
+  if(w) w.document.write(`<p style="font-family:'Courier New',monospace;padding:20px;">Abriendo factura…</p>`);
+  try{
+    const r=await api(`/recepciones/${id}`);
+    const uri=r.documento_pdf_url||"";
+    if(!uri){ throw new Error("Esta factura no tiene PDF adjunto."); }
+    // base64 → Blob → URL de objeto (más fiable que abrir el data: directo).
+    const b64=uri.split(",")[1]||"";
+    const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+    if(w){ w.location.href=url; } else { window.open(url,"_blank"); }
+  }catch(e){
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir la factura: ${e.message}</p>`;
     else alert(e.message);
   }
 }

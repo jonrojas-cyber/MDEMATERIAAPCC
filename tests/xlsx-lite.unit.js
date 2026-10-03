@@ -157,5 +157,29 @@ test("un ZIP sin hojas de cálculo lanza error claro", () => {
   assert.throws(() => xlsx.readXlsxSheet(vacio), /hoja/i);
 });
 
+// Regresión: libros con etiquetas prefijadas por espacio de nombres (x:) e
+// inline strings (ClosedXML/EPPlus/.NET), y lectura de TODAS las hojas.
+test("lee xlsx con prefijo de namespace (x:), inline strings y varias hojas", () => {
+  const sstVacio = `<?xml version="1.0"?><x:sst xmlns:x="ns" />`;
+  const inl = (ref, txt) => `<x:c r="${ref}" t="inlineStr"><x:is><x:t>${txt}</x:t></x:is></x:c>`;
+  const n = (ref, v) => `<x:c r="${ref}"><x:v>${v}</x:v></x:c>`;
+  const hoja1 = `<?xml version="1.0"?><x:worksheet xmlns:x="ns"><x:sheetData>` +
+    `<x:row r="1">${inl("A1", "Resumen")}</x:row></x:sheetData></x:worksheet>`;
+  const hoja2 = `<?xml version="1.0"?><x:worksheet xmlns:x="ns"><x:sheetData>` +
+    `<x:row r="1">${inl("A1", "Proveedor")}${inl("B1", "Total")}</x:row>` +
+    `<x:row r="2">${inl("A2", "Panamar")}${n("B2", "65.97")}</x:row>` +
+    `</x:sheetData></x:worksheet>`;
+  const buf = zip([
+    { name: "xl/sharedStrings.xml", data: sstVacio },
+    { name: "xl/worksheets/sheet1.xml", data: hoja1 },
+    { name: "xl/worksheets/sheet2.xml", data: hoja2 },
+  ]);
+  const hojas = xlsx.readXlsxSheets(buf);
+  assert.strictEqual(hojas.length, 2);
+  assert.strictEqual(hojas[0].rows[0][0], "Resumen");
+  assert.strictEqual(hojas[1].rows[1][0], "Panamar");
+  assert.strictEqual(hojas[1].rows[1][1], "65.97");
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en xlsx-lite`); process.exit(1); }
 console.log("  xlsx-lite OK");

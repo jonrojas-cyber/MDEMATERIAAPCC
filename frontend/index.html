@@ -9580,6 +9580,18 @@ async function irA_recepcion(pre){
         <div id="alb-avisos"></div>
         <div id="alb-lineas"></div>
       </div>`;
+    if(mbdsEsAdmin()){
+      html+=`
+      <div class="card">
+        <div class="lim-eyebrow" style="margin-bottom:4px;">carga en bloque</div>
+        <div class="card-name">Importar control de facturas (Excel)</div>
+        <div class="card-meta">Sube la hoja de control de facturas del Gmail (.xlsx). Cada factura entra como «pendiente de confirmar» para que la valides. No duplica las que ya estén.</div>
+        <div class="card-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input id="rcp-control-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="font-size:12px;">
+          <button class="btn-primary" onclick="rcpImportarControl(this)">Importar facturas</button>
+        </div>
+      </div>`;
+    }
     html+=section("Recepciones",recs.slice().reverse(),r=>{
       const prov=provs.find(p=>p.id===r.proveedor_id);
       const pendiente=(r.estado==="Pendiente de confirmar");
@@ -9698,6 +9710,24 @@ async function nuevaRcp(){
     irA_recepcion();
   }catch(e){alert(e.message);}
   finally{ liberaDoble("recepcion"); }
+}
+
+// Importa en bloque el control de facturas (.xlsx) → recepciones "pendiente de
+// confirmar" (origen gmail_control). Envía los bytes; el servidor lee el Excel.
+async function rcpImportarControl(btn){
+  const inp=el("rcp-control-file"); const f=inp&&inp.files&&inp.files[0];
+  if(!f){ alert("Elige primero el Excel del control de facturas."); return; }
+  if(btn){ btn.disabled=true; btn.textContent="Importando…"; }
+  try{
+    const bytes=await f.arrayBuffer();
+    const r=await api("/recepciones/importar-control",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:bytes});
+    const s=r.resumen||{};
+    alert(`Importadas ${s.creadas} facturas (${(s.total_eur||0).toFixed(2)} € en EUR).`+
+      (s.duplicadas?`\n${s.duplicadas} ya estaban (no duplicadas).`:"")+
+      (s.no_eur?`\n${s.no_eur} en otra moneda (revísalas).`:"")+
+      (s.sin_total?`\n${s.sin_total} sin importe (saltadas).`:""));
+    await irA_recepcion();
+  }catch(e){ alert("No se pudo importar: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Importar facturas"; } }
 }
 
 // Resuelve una recepción con uno de los tres estados.

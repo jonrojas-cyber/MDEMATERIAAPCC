@@ -204,4 +204,61 @@ async function extraerAlbaranMulti(imagenes, mediaType) {
   return datos;
 }
 
-module.exports = { disponible, extraerAlbaran, extraerAlbaranMulti };
+// Lee un ADJUNTO de correo (factura/albarán) que puede ser PDF o imagen. Usa el
+// MISMO esquema que el escaneo de albaranes, así la factura que entra por email
+// se estructura igual que la que se escanea con la cámara (fuente única del dato).
+// · PDF  → bloque "document" (Claude lee el PDF nativo, sin convertir a imagen).
+// · imagen → bloque "image".
+async function extraerDesdeAdjunto({ base64, mediaType, filename }) {
+  if (!disponible()) {
+    const err = new Error("OCR no configurado (define ANTHROPIC_API_KEY)");
+    err.code = "OCR_NO_CONFIG";
+    throw err;
+  }
+  const mt = String(mediaType || "").toLowerCase();
+  const esPdf = mt.includes("pdf") || /\.pdf$/i.test(filename || "");
+  const bloque = esPdf
+    ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
+    : { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: base64 } };
+
+  const client = new Anthropic({ timeout: 90000, maxRetries: 1 });
+  let response;
+  try {
+    response = await client.messages.create({
+      model: MODELO,
+      max_tokens: 3000,
+      output_config: { format: { type: "json_schema", schema: ESQUEMA } },
+      messages: [{
+        role: "user",
+        content: [
+          bloque,
+          {
+            type: "text",
+            text:
+              "Esto es un documento de un proveedor de hostelería recibido por correo: puede ser una FACTURA " +
+              "(documento fiscal) o un ALBARÁN (nota de entrega). Decide 'tipo_documento': 'factura' si aparece la " +
+              "palabra FACTURA, un número de factura, desglose de IVA/base imponible, 'total a pagar', vencimiento o " +
+              "forma de pago; 'albaran' si acompaña mercancía con productos y cantidades sin desglose de impuestos; si " +
+              "no está claro, 'desconocido'. Extrae 'numero_documento' (nº de factura o albarán), los datos del " +
+              "PROVEEDOR/emisor de la cabecera (nombre, CIF/NIF, teléfono, email, dirección; los que aparezcan, si no, " +
+              "cadena vacía), la fecha (YYYY-MM-DD), el importe total y las líneas de producto (descripción, cantidad, " +
+              "UNIDAD de medida tal cual aparece, precio unitario e importe). Importes en euros con punto decimal. " +
+              "Si un dato no es legible, deja cadena vacía o 0. Responde ÚNICAMENTE con el objeto JSON, sin texto ni markdown.",
+          },
+        ],
+      }],
+    });
+  } catch (e) {
+    const msg = e && e.message ? e.message : "";
+    if (/timeout|ETIMEDOUT|ECONNRESET|aborted/i.test(msg)) {
+      throw new Error("El lector tardó demasiado con el adjunto del correo.");
+    }
+    throw new Error("El lector no respondió: " + (msg || "error de conexión"));
+  }
+  const texto = (response.content || []).find((b) => b.type === "text");
+  const datos = texto ? parseJsonTolerante(texto.text) : null;
+  if (!datos) throw new Error("No se pudo leer el documento del correo");
+  return datos;
+}
+
+module.exports = { disponible, extraerAlbaran, extraerAlbaranMulti, extraerDesdeAdjunto };

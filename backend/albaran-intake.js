@@ -62,11 +62,13 @@ function buscarProveedor(datos, proveedores) {
   return proveedores.find((p) => { const pn = normNombre(p.nombre); return pn && (n.includes(pn) || pn.includes(n)); }) || null;
 }
 
-// Alta de un proveedor con los datos leídos de la cabecera del albarán.
-function crearProveedorDesdeOCR(datos) {
+// Construye (sin guardar) el registro de proveedor con los datos de la cabecera.
+// Separado de la alta para poder reutilizarlo con cualquier almacén (p. ej. la
+// ingesta de facturas por correo), manteniendo una única forma del proveedor.
+function construirProveedorDesdeOCR(datos, id) {
   const tel = String(datos.proveedor_telefono || "").trim();
-  const nuevo = {
-    id: store.nextId("prov", "proveedores"),
+  return {
+    id,
     nombre: String(datos.proveedor || "").trim(),
     contacto: "",
     telefono: tel,
@@ -75,7 +77,7 @@ function crearProveedorDesdeOCR(datos) {
     cif: String(datos.proveedor_cif || "").trim(),
     categoria: "Otros",
     estado: "Activo",
-    notas: "Alta automática al escanear un albarán.",
+    notas: "Alta automática al leer un albarán/factura.",
     foto_url: null,
     whatsapp: tel,
     dias_reparto: [],
@@ -83,6 +85,11 @@ function crearProveedorDesdeOCR(datos) {
     origen: "albaran_auto",
     creado_en: new Date().toISOString(),
   };
+}
+
+// Alta de un proveedor con los datos leídos de la cabecera del albarán.
+function crearProveedorDesdeOCR(datos) {
+  const nuevo = construirProveedorDesdeOCR(datos, store.nextId("prov", "proveedores"));
   store.insert("proveedores", nuevo);
   return nuevo;
 }
@@ -118,5 +125,5 @@ function crearMateriaDesdeLinea(linea, provId) {
 
 module.exports = {
   unidadConsumoDe, esLineaProducto, normNombre, buscarProveedor,
-  crearProveedorDesdeOCR, crearMateriaDesdeLinea, clasificarTipoDocumento,
+  construirProveedorDesdeOCR, crearProveedorDesdeOCR, crearMateriaDesdeLinea, clasificarTipoDocumento,
 };

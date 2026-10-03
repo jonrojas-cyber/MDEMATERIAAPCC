@@ -236,6 +236,27 @@ app.post("/agora/ingest", express.json({ limit: "12mb" }), async (req, res) => {
   }
 });
 
+// Ingesta de FACTURAS por correo (público con token compartido). La fundadora
+// reenvía las facturas de sus proveedores a un buzón; un servicio de correo
+// entrante (Resend Inbound, Zapier/Make…) las reenvía aquí por HTTPS. Autentica
+// con un token en cabecera, no con sesión de usuario. Cada adjunto PDF/imagen se
+// lee con el mismo OCR del albarán y se crea una recepción "Pendiente de
+// confirmar" (origen "email") para que se valide en Compras. Nada se paga solo.
+app.post("/facturas/ingesta", express.json({ limit: "25mb" }), async (req, res) => {
+  const token = process.env.FACTURAS_INGESTA_TOKEN;
+  if (!token) return res.status(503).json({ error: "FACTURAS_INGESTA_TOKEN no configurado en el servidor" });
+  const got = req.headers["x-ingesta-token"] || (req.query && req.query.token);
+  if (got !== token) return res.status(401).json({ error: "Token de ingesta inválido" });
+  try {
+    const ocr = require("./ocr");
+    if (!ocr.disponible()) return res.status(503).json({ error: "OCR no configurado (define ANTHROPIC_API_KEY)" });
+    const r = await require("./facturas-email").ingestar(req.body, { ocrFn: ocr.extraerDesdeAdjunto });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: "No se pudo ingerir el correo de facturas: " + e.message });
+  }
+});
+
 // ── CARTA DIGITAL PÚBLICA (la que abre el cliente por QR en la mesa) ──────────
 // Pública, sin sesión, con la identidad de marca. Solo muestra nombre,
 // descripción y precio de venta (nunca coste ni margen). /carta = la carta;

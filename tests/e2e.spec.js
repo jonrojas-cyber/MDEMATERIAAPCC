@@ -374,6 +374,32 @@ test("productos por proveedor: formulario con cálculo de IVA y unitario", async
   expect(errors).toEqual([]);
 });
 
+test("ficha de proveedor (Gstock): muestra artículos y las facturas del mes con totales", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page); // admin
+  // Alta por API: proveedor + artículo + una factura de este mes.
+  const ids = await page.evaluate(async () => {
+    const prov = await api("/proveedores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre: "Ficha Test SL", categoria: "Otros" }) });
+    await api("/compras-productos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proveedor_id: prov.id, nombre: "Artículo ficha", formato: "kg", cantidad_formato: 1, precio_sin_iva: 10, iva: 10 }) });
+    await api("/recepciones", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proveedor_id: prov.id, importe_total: 50, tipo_documento: "factura", numero_documento: "FT-1", lineas: [] }) });
+    return { provId: prov.id };
+  });
+  await page.evaluate((id) => irA_productosProveedor(id), ids.provId);
+  // Artículo con su tarifa.
+  await expect(page.locator(".card-name", { hasText: /Artículo ficha/ })).toBeVisible();
+  // Sección de facturas del mes con la factura y el total.
+  await expect(page.locator(".card-name", { hasText: /FACTURA/ })).toBeVisible();
+  await expect(page.locator(".card-name", { hasText: /FT-1/ })).toBeVisible();
+  await expect(page.locator(".lim-param", { hasText: /total mes/ })).toBeVisible();
+  // Limpieza: borra la factura y el proveedor de prueba.
+  await page.evaluate(async (id) => {
+    const recs = await api("/recepciones");
+    for (const r of recs.filter((x) => x.proveedor_id === id)) { try { await api("/recepciones/" + r.id, { method: "DELETE" }); } catch (e) {} }
+  }, ids.provId);
+  expect(errors).toEqual([]);
+});
+
 test("precio pactado: cambiar precio registra histórico con motivo", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

@@ -67,6 +67,26 @@ test("factura del mes expone tiene_documento_pdf para 'Ver factura'", () => {
   assert.strictEqual(r1.tiene_documento_pdf, true);
 });
 
+test("resumen anual y pendiente de pago total (todo el histórico)", () => {
+  const f = pf.ficha(STORE, "p1", "2026-09");
+  // Año 2026: r1(100)+r2(50)+r3(30) = 180 €, 3 documentos.
+  assert.strictEqual(f.resumen_anio.anio, "2026");
+  assert.strictEqual(f.resumen_anio.n_documentos, 3);
+  assert.strictEqual(f.resumen_anio.total_anio, 180);
+  // Pendiente total (r1 100 + r3 30; r2 está a 0): 130 €.
+  assert.strictEqual(f.pendiente_total, 130);
+});
+
+test("resumenProveedores agrega artículos, gasto del año y pendiente por proveedor", () => {
+  const { anio, porProveedor } = pf.resumenProveedores(STORE, "2026");
+  assert.strictEqual(anio, "2026");
+  assert.strictEqual(porProveedor.p1.n_articulos, 2);
+  assert.strictEqual(porProveedor.p1.n_articulos_pendientes, 1);
+  assert.strictEqual(porProveedor.p1.gasto_anio, 180);
+  assert.strictEqual(porProveedor.p1.pendiente_total, 130);
+  assert.strictEqual(porProveedor.p2.gasto_anio, 999);
+});
+
 test("proveedor inexistente devuelve null", () => {
   assert.strictEqual(pf.ficha(STORE, "nope", "2026-09"), null);
 });

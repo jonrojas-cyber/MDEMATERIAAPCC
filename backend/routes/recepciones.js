@@ -394,6 +394,25 @@ router.post("/", jsonGrande, async (req, res) => {
   res.status(201).json(recepcion);
 });
 
+// Elimina una recepción (p. ej. una factura importada por error). Solo admin.
+// No revierte stock ya aplicado (si se aceptó un albarán); para eso, ajusta el
+// inventario. Pensado sobre todo para facturas pendientes mal cargadas.
+router.delete("/:id", async (req, res) => {
+  if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede eliminar una recepción." });
+  const recepcion = store.findById("recepciones", req.params.id);
+  if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
+  store.remove("recepciones", req.params.id);
+  try {
+    require("../auditoria").registrar(req, {
+      accion: "recepcion_eliminada", entidad: "recepciones", entidad_id: req.params.id,
+      resumen: `Recepción eliminada (${recepcion.tipo_documento || "albaran"} ${recepcion.numero_documento || ""} · ${recepcion.importe_total || 0} €)`,
+      meta: { importe_total: recepcion.importe_total, tipo_documento: recepcion.tipo_documento },
+    });
+  } catch (e) {}
+  await store.flush();
+  res.json({ ok: true });
+});
+
 // Carga al almacén las líneas con materia asignada (una sola vez). Además, vincula
 // cada artículo recibido al catálogo del proveedor (productos_asociados) y guarda
 // su precio de compra, para que en Pedidos aparezcan "los artículos de ese

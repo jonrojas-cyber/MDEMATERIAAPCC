@@ -4958,9 +4958,9 @@ function etqRender(){
     <div id="etq-resultados" style="margin-top:10px"></div>
     <div class="card" id="pbt-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;">
       <span id="pbt-estado" style="font-size:12.5px;font-weight:700;">● impresora</span>
-      <button class="btn-ghost" style="margin-left:auto;font-size:12px" onclick="pbtConectarManual()">Conectar BT</button>
+      <button class="btn-primary" style="margin-left:auto;font-size:12px;padding:8px 14px" onclick="etqImprimirPruebaWin()">🖨️ Imprimir prueba</button>
+      <button class="btn-ghost" style="font-size:12px" onclick="pbtConectarManual()">Conectar BT</button>
       <button class="btn-ghost" style="font-size:12px" onclick="pbtDiagnostico()">diagnóstico</button>
-      <button class="btn-ghost" style="font-size:12px" onclick="pbtImprimirPrueba()">prueba</button>
     </div>`;
   const foot=`<button class="btn-ghost" onclick="goBack()">← Salir</button>`;
   el("inner-content").innerHTML=`<div id="lim"><div id="etq">${head}<div class="lim-body">${body}</div><div class="lim-foot">${foot}</div></div></div>`;
@@ -5264,6 +5264,13 @@ function etqImprimirEspecs(especs){
   if(!especs||!especs.length) return;
   var b64=btoa(unescape(encodeURIComponent(JSON.stringify(especs))));
   window.open("/etiqueta/lote?d="+encodeURIComponent(b64)+"&print=win","_blank");
+}
+// Imprime una etiqueta de PRUEBA por la vía de Windows (diálogo de impresión): sirve
+// tanto para la impresora por cable como para una D520 emparejada como impresora
+// Bluetooth del sistema. En el diálogo se elige la impresora y papel 90×40.
+function etqImprimirPruebaWin(){
+  var especs=[{ n:"PRUEBA · m de materia", c:"etiqueta de prueba", v:0, est:"", r:"", p:new Date().toISOString() }];
+  etqImprimirEspecs(especs);
 }
 // Reimpresión de un lote existente (no crea lote nuevo; registra en el historial).
 async function etqReimprimirLoteId(id,copies){

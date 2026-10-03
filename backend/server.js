@@ -250,7 +250,13 @@ app.post("/facturas/ingesta", express.json({ limit: "25mb" }), async (req, res) 
   try {
     const ocr = require("./ocr");
     if (!ocr.disponible()) return res.status(503).json({ error: "OCR no configurado (define ANTHROPIC_API_KEY)" });
-    const r = await require("./facturas-email").ingestar(req.body, { ocrFn: ocr.extraerDesdeAdjunto });
+    // Resend Inbound manda solo metadatos: hay que descargar los adjuntos aparte.
+    // Otros reenviadores (Zapier/Make) mandan el contenido en el propio cuerpo.
+    const resendInbound = require("./resend-inbound");
+    const payload = resendInbound.esEventoInbound(req.body)
+      ? await resendInbound.aPayload(req.body)
+      : req.body;
+    const r = await require("./facturas-email").ingestar(payload, { ocrFn: ocr.extraerDesdeAdjunto });
     res.json(r);
   } catch (e) {
     res.status(500).json({ error: "No se pudo ingerir el correo de facturas: " + e.message });

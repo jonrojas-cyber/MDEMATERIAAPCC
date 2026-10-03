@@ -2747,6 +2747,7 @@ async function irA_appcc(){
       <div class="lab-eyebrow" style="margin:0 0 4px">appcc · seguridad alimentaria</div>
       <div class="lab-rows">
         ${labRow("lotes y caducidades", lotesSub, "irA_lotes()")}
+        ${labRow("mermas", "registrar qué se ha tirado y por qué", "irA_mermas()")}
         ${labRow("calendario anual", "histórico · producción y appcc", "irA_calendario()")}
         ${labRow("etiquetas", "buscar producto · operaciones appcc · lotes y trazabilidad", "irA_etiquetaProd()")}
         ${labRow("temperaturas", "neveras y congeladores", "irA_temperaturas()")}
@@ -5437,6 +5438,129 @@ async function etqSyncAgora(btn){
     etqCargarResultados((el("etq-buscar")||{}).value||"");
   }catch(e){ alert("No se pudo sincronizar: "+((e&&e.message)||e)); }
   if(btn){ btn.disabled=false; btn.textContent="⟳ Actualizar desde Ágora"; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MERMAS · registro rápido por producto (mismo buscador que Etiquetas).
+// Cada merma es UN movimiento: producto + cantidad + motivo (por qué) + quién/cuándo
+// (automático). Se guarda en `ajustes` (única fuente del dinero); el equipo NO ve €.
+// ══════════════════════════════════════════════════════════════════════════════
+function irA_mermas(){
+  var u=getUser();
+  window._mrm={ vista:"buscar", item:null, ref:null, nombre:"", cantidad:"", unidad:"ud", motivo:null, obs:"", resp:(u&&u.nombre)||"", ultimo:null, errores:[] };
+  window._mrmQ="";
+  navInto(function(){ irA_appcc(); });
+  openSection("mermas","Mermas");
+  mrmCargarMotivos().then(mrmRender);
+}
+async function mrmCargarMotivos(){ if(window._mrmCfg) return window._mrmCfg; try{ window._mrmCfg=await api("/mermas/motivos"); }catch(e){ window._mrmCfg={motivos:[],secciones:[],unidades:["ud","g","kg","ml","L","ración"]}; } return window._mrmCfg; }
+function mrmMotivo(k){ return ((window._mrmCfg&&window._mrmCfg.motivos)||[]).find(function(m){return m.k===k;})||null; }
+function mrmRender(){
+  var s=window._mrm;
+  var head='<div class="lim-head"><div><div class="lim-eyebrow">Control M · APPCC</div><div class="lim-h">Mermas</div></div></div>';
+  if(s.vista==="form"){ el("inner-content").innerHTML='<div id="lim"><div id="mrm">'+head+mrmFormHTML()+'</div></div>'; return; }
+  var body=''+
+    '<input id="mrm-buscar" class="etq-in" type="search" inputmode="search" autocomplete="off" placeholder="Buscar producto que ha mermado" '+
+      'value="'+esc(window._mrmQ||"")+'" oninput="mrmBuscar(this.value)" style="font-size:16px;padding:14px 14px;font-weight:600">'+
+    '<div id="mrm-resultados" style="margin-top:10px"></div>'+
+    '<div class="lim-eyebrow" style="margin:18px 0 6px">mermas de hoy</div>'+
+    '<div id="mrm-hoy"><div class="loading">cargando…</div></div>';
+  el("inner-content").innerHTML='<div id="lim"><div id="mrm">'+head+'<div class="lim-body">'+body+'</div><div class="lim-foot"><button class="btn-ghost" onclick="goBack()">← Salir</button></div></div></div>';
+  mrmCargarResultados(window._mrmQ||"");
+  mrmCargarHoy();
+}
+var _mrmBuscarT=null;
+function mrmBuscar(q){ window._mrmQ=q; if(_mrmBuscarT) clearTimeout(_mrmBuscarT); _mrmBuscarT=setTimeout(function(){ mrmCargarResultados(q); },150); }
+async function mrmCargarResultados(q){
+  var cont=el("mrm-resultados"); if(!cont) return;
+  if(!(q&&q.trim())){ cont.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:10px 2px;text-align:center">Escribe arriba el producto que se ha mermado.</div>'; return; }
+  try{
+    var list=await api("/etiquetas/catalogo?q="+encodeURIComponent(q));
+    window._mrmResultados=list;
+    if(!list.length){ cont.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:6px 2px">Sin resultados'+(q?' para «'+esc(q.trim())+'»':'')+'. <button class="btn-ghost" style="margin-left:6px" onclick="mrmManual()">✎ merma libre «'+esc(q.trim())+'»</button></div>'; return; }
+    cont.innerHTML='<div class="lab-rows">'+list.map(function(it,i){
+      var meta=[it.familia,it.origen].filter(Boolean).filter(function(v,i,a){return a.indexOf(v)===i;}).join(" · ");
+      return '<button class="lab-row" onclick="mrmElegir('+i+')"><span class="lr-mark" aria-hidden="true"></span>'+
+        '<span style="min-width:0"><span class="lr-name">'+esc(it.nombre)+'</span>'+(meta?'<span class="lr-sub">'+esc(meta)+'</span>':'')+'</span>'+
+        '<span class="lr-arrow" aria-hidden="true">›</span></button>';
+    }).join("")+'</div>';
+  }catch(e){ cont.innerHTML='<span style="font-size:12px;color:var(--alert,#b23b3b)">No se pudo cargar el catálogo.</span>'; }
+}
+function mrmElegir(i){ var it=(window._mrmResultados||[])[i]; if(!it) return; var s=window._mrm; s.item=it; s.ref=it.ref||null; s.nombre=it.nombre||""; s.cantidad=""; s.unidad="ud"; s.motivo=null; s.obs=""; s.ultimo=null; s.errores=[]; s.vista="form"; mrmRender(); }
+function mrmManual(){ var q=(el("mrm-buscar")&&el("mrm-buscar").value.trim())||""; var s=window._mrm; s.item=null; s.ref=null; s.nombre=q; s.cantidad=""; s.unidad="ud"; s.motivo=null; s.obs=""; s.ultimo=null; s.errores=[]; s.vista="form"; mrmRender(); }
+function mrmVolverBuscar(){ var s=window._mrm; s.vista="buscar"; s.ultimo=null; mrmRender(); }
+function mrmLeer(){ var s=window._mrm, c=el("mrm-cant"), o=el("mrm-obs"); if(c) s.cantidad=c.value; if(o) s.obs=o.value; }
+function mrmSetUnidad(u){ mrmLeer(); window._mrm.unidad=u; mrmRender(); }
+function mrmSetMotivo(k){ mrmLeer(); window._mrm.motivo=k; mrmRender(); }
+function mrmFormHTML(){
+  var s=window._mrm, it=s.item||{}, cfg=window._mrmCfg||{secciones:[],unidades:["ud","g","kg","ml","L","ración"]};
+  var meta=[it.familia,it.origen].filter(Boolean).filter(function(v,i,a){return a.indexOf(v)===i;}).join(" · ");
+  var err=function(campo){ var e=(s.errores||[]).find(function(x){return x.campo===campo;}); return e?'<div style="font-size:11.5px;color:#b23b3b;font-weight:600;margin:2px 0">'+esc(e.mensaje)+'</div>':""; };
+  if(s.ultimo){
+    return '<div class="lim-body">'+
+      '<div class="card" style="border-left:3px solid var(--olive,#6b7a3a)"><div style="font-weight:800;color:var(--olive,#6b7a3a)">✅ Merma registrada</div>'+
+      '<div style="font-size:12.5px;margin-top:4px">'+esc(s.ultimo.producto)+' · '+esc(String(s.ultimo.cantidad))+' '+esc(s.ultimo.unidad||"")+' · '+esc(s.ultimo.motivo)+'</div>'+
+      (s.ultimo.coste_estimado!=null?'<div style="font-size:12px;color:var(--muted)">coste estimado · '+limNum(s.ultimo.coste_estimado,2)+' €</div>':"")+
+      '<div class="card-actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="btn-primary" onclick="mrmOtra()">+ otra merma del mismo</button>'+
+        '<button class="btn-ghost" onclick="mrmVolverBuscar()">← buscar otro</button>'+
+      '</div></div></div>';
+  }
+  var unidades=(cfg.unidades||["ud","g","kg","ml","L","ración"]).map(function(u){ return '<button class="'+(s.unidad===u?"on":"")+'" onclick="mrmSetUnidad(\''+u+'\')">'+esc(u)+'</button>'; }).join("");
+  var motivos=(cfg.secciones||[]).map(function(sec){
+    return '<div class="lim-eyebrow" style="margin:12px 0 5px">'+esc(sec.seccion.toLowerCase())+'</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px">'+sec.motivos.map(function(m){
+        var on=s.motivo===m.k;
+        return '<button class="card" style="display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;cursor:pointer;width:100%;'+(on?"border-color:var(--olive,#A7B96E);background:#37413A":"")+'" onclick="mrmSetMotivo(\''+m.k+'\')">'+
+          '<span style="width:9px;height:17px;flex:0 0 auto;background:'+(on?"var(--olive,#A7B96E)":"var(--line)")+';-webkit-mask:var(--ig-mask) center/contain no-repeat;mask:var(--ig-mask) center/contain no-repeat"></span>'+
+          '<span style="flex:1;min-width:0"><b style="font-size:14px">'+esc(m.t)+'</b><div style="font-size:11px;color:var(--muted);margin-top:1px">'+esc(m.desc||"")+'</div></span>'+
+          (on?'<span style="color:var(--olive,#A7B96E);font-weight:800">✓</span>':"")+'</button>';
+      }).join("")+'</div>';
+  }).join("");
+  return '<div class="lim-body">'+
+    '<button class="btn-ghost" style="margin-bottom:10px" onclick="mrmVolverBuscar()">← buscar</button>'+
+    '<div class="card"><div style="font-size:19px;font-weight:800;line-height:1.1">'+esc(s.nombre)+'</div>'+(meta?'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+esc(meta)+'</div>':"")+'</div>'+
+    '<div class="lim-eyebrow" style="margin:16px 0 6px">¿cuánto se ha mermado?</div>'+err("cantidad")+
+    '<div style="display:flex;gap:8px;align-items:center">'+
+      '<input id="mrm-cant" class="etq-in" type="number" min="0" step="0.01" inputmode="decimal" placeholder="cantidad" value="'+esc(s.cantidad)+'" oninput="mrmLeer()" style="max-width:130px;font-size:17px;font-weight:700">'+
+      '<div class="lim-presets" style="margin:0;flex:1">'+unidades+'</div>'+
+    '</div>'+
+    '<div class="lim-eyebrow" style="margin:16px 0 2px">¿por qué?</div>'+err("motivo")+motivos+
+    '<div class="lim-eyebrow" style="margin:16px 0 6px">observaciones (opcional)</div>'+
+    '<input id="mrm-obs" class="etq-in" type="text" placeholder="detalle, si hace falta" value="'+esc(s.obs)+'" oninput="mrmLeer()">'+
+    '<div class="card-actions" style="margin-top:18px"><button class="btn-primary" style="width:100%" onclick="mrmRegistrar()">Registrar merma</button></div>'+
+  '</div>';
+}
+function mrmOtra(){ var s=window._mrm; s.cantidad=""; s.motivo=null; s.obs=""; s.ultimo=null; s.errores=[]; mrmRender(); }
+async function mrmRegistrar(){
+  mrmLeer(); var s=window._mrm;
+  var errores=[];
+  if(!String(s.ref||s.nombre||"").trim()) errores.push({campo:"producto",mensaje:"Elige el producto que ha mermado."});
+  var c=parseFloat(String(s.cantidad).replace(",",".")); if(!(c>0)) errores.push({campo:"cantidad",mensaje:"Indica una cantidad mayor que 0."});
+  if(!s.motivo) errores.push({campo:"motivo",mensaje:"Elige el motivo de la merma."});
+  s.errores=errores; if(errores.length){ mrmRender(); return; }
+  try{
+    var r=await api("/mermas",{method:"POST",body:JSON.stringify({ ref:s.ref, nombre:s.nombre, cantidad:s.cantidad, unidad:s.unidad, motivo:s.motivo, observacion:s.obs })});
+    s.ultimo=r.merma; s.errores=[]; mrmRender();
+    pbtToast&&pbtToast("Merma registrada ✓",1200);
+  }catch(e){ var det=(e&&e.data&&e.data.errores); if(det){ s.errores=det; mrmRender(); } else alert("No se pudo registrar la merma: "+((e&&e.message)||e)); }
+}
+function mrmHora(iso){ try{ return new Date(iso).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}); }catch(e){ return ""; } }
+async function mrmCargarHoy(){
+  var cont=el("mrm-hoy"); if(!cont) return;
+  try{
+    var list=await api("/mermas?hoy=1&limit=40");
+    if(!list.length){ cont.innerHTML='<div style="font-size:12px;color:var(--muted);padding:4px 2px">Aún no hay mermas registradas hoy.</div>'; return; }
+    var admin=mbdsEsAdmin();
+    var total=admin?list.reduce(function(a,x){return a+(Number(x.coste_estimado)||0);},0):null;
+    cont.innerHTML='<div class="lab-rows">'+list.map(function(x){
+      var sub=[x.cantidad!=null?(x.cantidad+" "+(x.unidad||"")).trim():"", x.responsable, mrmHora(x.fecha)].filter(Boolean).join(" · ");
+      return '<div class="lab-row" style="cursor:default"><span class="lr-mark" style="background:var(--sev-warn)" aria-hidden="true"></span>'+
+        '<span style="min-width:0"><span class="lr-name" style="text-transform:none;font-size:14px">'+esc(x.producto)+' · '+esc(x.motivo)+'</span><span class="lr-sub">'+esc(sub)+'</span></span>'+
+        (admin&&x.coste_estimado!=null?'<span style="font-size:12px;font-weight:700;color:var(--muted)">'+limNum(x.coste_estimado,2)+' €</span>':"")+'</div>';
+    }).join("")+'</div>'+
+    (admin&&total!=null?'<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)"><span style="color:var(--muted)">coste estimado de hoy</span><span>'+limNum(total,2)+' €</span></div>':"");
+  }catch(e){ cont.innerHTML='<span style="font-size:12px;color:var(--alert,#b23b3b)">No se pudieron cargar las mermas.</span>'; }
 }
 // ── IMPRESORA BLUETOOTH · conexión persistente en la app (impresión instantánea)
 // Conecta una vez por Bluetooth LE con la Phomemo D520BT y mantiene el canal

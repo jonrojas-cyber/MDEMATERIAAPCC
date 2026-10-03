@@ -362,7 +362,7 @@ test("productos por proveedor: formulario con cálculo de IVA y unitario", async
   // Entra en los productos del primer proveedor.
   const provId = await page.evaluate(async () => (await api("/proveedores"))[0].id);
   await page.evaluate((id) => irA_productosProveedor(id), provId);
-  await expect(page.locator("button", { hasText: /Agregar producto/ })).toBeVisible();
+  await expect(page.locator("button", { hasText: /Agregar artículo/ })).toBeVisible();
   await page.evaluate((id) => formProductoCompra(id), provId);
   await page.fill("#cp-cant", "6");
   await page.fill("#cp-siniva", "12");

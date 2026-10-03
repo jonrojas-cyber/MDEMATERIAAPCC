@@ -8135,27 +8135,37 @@ async function irA_proveedores(){
     // Cuenta artículos «Pendiente de completar» por proveedor (para avisar en la tarjeta).
     const pendPorProv={};
     (arts||[]).forEach(a=>{ if(a.pendiente) pendPorProv[a.proveedor_id]=(pendPorProv[a.proveedor_id]||0)+1; });
-    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="formProveedor()">Agregar proveedor</button></div>`;
+    const cab=`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formProveedor()">Agregar proveedor</button></div>`;
     if(!provs.length){ setInner(cab+`<div class="empty">Aún no hay proveedores. Pulsa “Agregar proveedor” para crear el primero.</div>`); return; }
+    // Buscador por proveedor (filtra las tarjetas en vivo).
+    const buscador=`<input id="prov-buscar" type="search" placeholder="Buscar proveedor…" oninput="filtrarProveedores(this.value)" style="width:100%;margin-bottom:14px;font-size:14px;padding:9px 12px;">`;
     // Orden: activos primero, luego por nombre.
     provs.sort((a,b)=> (a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1) || a.nombre.localeCompare(b.nombre));
-    const html=cab+provs.map(p=>{
+    const html=cab+buscador+`<div id="prov-lista">`+provs.map(p=>{
       const tel=(p.telefono||p.telefono_pedidos||p.whatsapp||"").replace(/[^0-9+]/g,"");
       const estado=p.estado||"Activo";
       const nPend=pendPorProv[p.id]||0;
       const pendChip=nPend?` <span style="font-size:10px;font-weight:700;color:var(--alert);">· ${nPend} sin tarifa</span>`:"";
       const meta2=[p.categoria||"Otros", p.contacto||"", (p.productos_nombres||[]).slice(0,3).join(", ")].filter(Boolean).join(" · ");
-      const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Productos</button>`+
+      const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Abrir ficha</button>`+
         `<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
         (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"");
-      return `<div class="card">
+      return `<div class="card prov-card" data-nombre="${esc((p.nombre||"").toLowerCase())}">
         <div class="card-name">${p.nombre} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${pendChip}</div>
         <div class="card-meta">${meta2}</div>
         <div class="card-actions">${acc}</div>
       </div>`;
-    }).join("");
+    }).join("")+`</div>`;
     setInner(html);
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// Filtra en vivo las tarjetas de proveedor por nombre (buscador de Proveedores).
+function filtrarProveedores(q){
+  const t=(q||"").trim().toLowerCase();
+  document.querySelectorAll("#prov-lista .prov-card").forEach(c=>{
+    c.style.display = (!t || (c.getAttribute("data-nombre")||"").includes(t)) ? "" : "none";
+  });
 }
 
 // Formulario crear/editar proveedor. Si se pasa id, carga el proveedor para editar.
@@ -8279,37 +8289,77 @@ async function guardarProveedor(btn){
 
 // ── PRODUCTOS POR PROVEEDOR ───────────────────────────
 const eur4=(n)=>Number(n||0).toFixed(2);
-async function irA_productosProveedor(provId){
-  navInto(()=>irA_proveedores()); // "atrás" vuelve a la lista de proveedores
-  openSection("prov-productos","Productos del proveedor");
+// Desplaza un mes "YYYY-MM" y lo etiqueta en español (para el navegador de meses).
+function provMesShift(ym,delta){ const a=String(ym).split("-").map(Number); const d=new Date(Date.UTC(a[0],(a[1]-1)+delta,1)); return d.toISOString().slice(0,7); }
+function provMesLargo(ym){ const a=String(ym).split("-").map(Number); const MN=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"]; return (MN[a[1]-1]||"")+" "+a[0]; }
+
+// Ficha del proveedor estilo Gstock: sus artículos (con tarifa) + las facturas y
+// albaranes del mes. "atrás" vuelve a la lista. El equipo no ve euros (el backend
+// los oculta; aquí solo se muestran si vienen).
+async function irA_productosProveedor(provId,mes){
+  navInto(()=>irA_proveedores());
+  openSection("prov-productos","Proveedor");
   try{
-    const [prov,prods,meta]=await Promise.all([
-      api("/proveedores/"+provId),
-      api("/compras-productos?proveedor_id="+provId),
-      api("/compras-productos/meta"),
+    const [f,meta]=await Promise.all([
+      api("/proveedores/"+provId+"/ficha"+(mes?("?mes="+encodeURIComponent(mes)):"")),
+      api("/compras-productos/meta").catch(()=>({})),
     ]);
-    window._cprMeta=meta; window._cprProv=prov;
-    const cab=`<div class="section-label">${esc(prov.nombre)}</div>
-      <div class="card-actions" style="margin-bottom:14px;">
-        <button class="btn-primary" onclick="formProductoCompra('${provId}')">Agregar producto</button>
+    window._cprMeta=meta; window._cprProv=f.proveedor; window._fichaMes=f.mes;
+    const p=f.proveedor; const estado=p.estado||"Activo";
+    const verEuros=!f.sin_economico; // admin
+    const meta2=[p.categoria,p.contacto,p.telefono,p.cif].filter(Boolean).map(esc).join(" · ");
+    let html=`
+      <div class="lab-eyebrow">proveedor</div>
+      <div class="section-label">${esc(p.nombre)} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span></div>
+      ${meta2?`<div class="card-meta" style="margin-top:2px;">${meta2}</div>`:""}
+      <div class="card-actions" style="margin:10px 0 16px;">
+        <button class="btn-primary" onclick="formProductoCompra('${provId}')">Agregar artículo</button>
+        <button class="btn-ghost" onclick="formProveedor('${provId}')">Editar proveedor</button>
         <button class="btn-ghost" onclick="irA_proveedores()">← Proveedores</button>
       </div>`;
-    if(!prods.length){ setInner(cab+`<div class="empty">Aún no hay productos de este proveedor. Pulsa “Agregar producto”.</div>`); return; }
-    prods.sort((a,b)=>(a.pendiente?0:1)-(b.pendiente?0:1) || (a.nombre||"").localeCompare(b.nombre||""));
-    const nPend=prods.filter(p=>p.pendiente).length;
-    const aviso=nPend?`<div class="card-meta" style="color:var(--alert);margin:-6px 0 10px;">⚠️ ${nPend} artículo(s) sin tarifa completa.</div>`:"";
-    const html=cab+aviso+prods.map(p=>`<div class="card">
-      <div class="card-name">${esc(p.nombre)} ${p.pendiente?`<span style="font-size:10px;font-weight:700;color:var(--alert);letter-spacing:.05em;">· pendiente</span>`:""}</div>
-      ${p.pendiente
-        ? `<div class="card-meta" style="color:var(--alert)">Falta completar la tarifa${p.faltan&&p.faltan.length?": "+p.faltan.map(esc).join(", "):""}. Pulsa “Editar” para añadirla.</div>`
-        : `<div class="card-meta">${esc(p.categoria||"")} · ${p.cantidad_formato||1} ${esc(p.formato||"")} · pactado ${eur4(p.precio_con_iva)} € (IVA ${p.iva||0}%) · unitario ${eur4(p.precio_unitario_real)} €/${esc(p.formato||"ud")}</div>`}
-      ${(p.alergenos&&p.alergenos.length)?`<div class="card-meta" style="color:var(--alert)">Alérgenos: ${p.alergenos.map(esc).join(", ")}</div>`:""}
+
+    // ── ARTÍCULOS ───────────────────────────────────────────────
+    html+=`<div class="lab-eyebrow" style="margin-top:4px;">artículos${f.n_articulos?` · ${f.n_articulos}`:""}${f.n_articulos_pendientes?` · ${f.n_articulos_pendientes} sin tarifa`:""}</div>`;
+    if(!f.articulos.length){ html+=`<div class="empty">Aún no hay artículos. Pulsa “Agregar artículo”.</div>`; }
+    else html+=f.articulos.map(a=>`<div class="card">
+      <div class="card-name">${esc(a.nombre)} ${a.pendiente?`<span style="font-size:10px;font-weight:700;color:var(--alert);letter-spacing:.05em;">· sin tarifa</span>`:""}</div>
+      ${a.pendiente
+        ? `<div class="card-meta" style="color:var(--alert)">Falta completar la tarifa${a.faltan&&a.faltan.length?": "+a.faltan.map(esc).join(", "):""}.</div>`
+        : `<div class="card-meta">${esc(a.categoria||"")} · ${a.cantidad_formato||1} ${esc(a.formato||"")}${verEuros?` · pactado ${eur4(a.precio_con_iva)} € (IVA ${a.iva||0}%) · unitario ${eur4(a.precio_unitario_real)} €/${esc(a.formato||"ud")}`:""}</div>`}
+      ${(a.alergenos&&a.alergenos.length)?`<div class="card-meta" style="color:var(--alert)">Alérgenos: ${a.alergenos.map(esc).join(", ")}</div>`:""}
       <div class="card-actions">
-        <button class="btn-ghost" onclick="irA_precioProducto('${p.id}','${provId}')">Precio / histórico</button>
-        <button class="btn-ghost" onclick="formProductoCompra('${provId}','${p.id}')">Editar</button>
-        <button class="btn-ghost" onclick="borrarProductoCompra('${p.id}','${provId}')">Eliminar</button>
+        ${verEuros?`<button class="btn-ghost" onclick="irA_precioProducto('${a.id}','${provId}')">Precio / histórico</button>`:""}
+        <button class="btn-ghost" onclick="formProductoCompra('${provId}','${a.id}')">Editar</button>
+        <button class="btn-ghost" onclick="borrarProductoCompra('${a.id}','${provId}')">Eliminar</button>
       </div>
     </div>`).join("");
+
+    // ── FACTURAS Y ALBARANES DEL MES ────────────────────────────
+    const r=f.resumen||{};
+    const nav=`<div class="card-actions" style="gap:8px;align-items:center;margin:8px 0;">
+        <button class="btn-ghost" onclick="irA_productosProveedor('${provId}','${provMesShift(f.mes,-1)}')">‹</button>
+        <b style="min-width:150px;text-align:center;text-transform:capitalize;">${esc(provMesLargo(f.mes))}</b>
+        <button class="btn-ghost" onclick="irA_productosProveedor('${provId}','${provMesShift(f.mes,1)}')">›</button>
+      </div>`;
+    html+=`<div class="lab-eyebrow" style="margin-top:18px;">facturas y albaranes del mes</div>${nav}`;
+    if(verEuros){
+      html+=`<div class="lim-param" style="margin:8px 0 10px;"><div><b>${r.n_documentos||0}</b><span>documentos</span></div><div><b>${adEur(r.total_mes||0)}</b><span>total mes</span></div><div><b>${adEur(r.pendiente_mes||0)}</b><span>pendiente</span></div></div>`;
+    }
+    if(!f.facturas.length){ html+=`<div class="empty">Sin facturas ni albaranes en ${esc(provMesLargo(f.mes))}.</div>`; }
+    else html+=f.facturas.map(d=>{
+      const fac=d.tipo_documento==="factura";
+      const tag=`<span style="display:inline-block;background:${fac?"#9C5A2E":"var(--olive)"};color:#fff;font-weight:700;font-size:10px;padding:1px 7px;border-radius:20px;vertical-align:1px;">${fac?"FACTURA":"ALBARÁN"}</span>`;
+      const delCorreo=(d.origen==="email"||d.origen==="gmail_paquete"||d.origen==="gmail_control")?" · del correo":"";
+      const imp=(verEuros&&d.importe_total!=null)?` — ${Number(d.importe_total).toFixed(2)} €${d.moneda&&d.moneda!=="EUR"?" "+esc(d.moneda):""}`:"";
+      const pend=(verEuros&&d.pendiente_pago>0)?` · pendiente ${Number(d.pendiente_pago).toFixed(2)} €`:"";
+      const btns=[d.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${d.id}')">Ver factura (PDF)</button>`:"", d.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${d.id}')">Ver</button>`:""].filter(Boolean).join("");
+      return `<div class="card">
+        <div class="card-name">${tag} ${d.numero_documento?("nº "+esc(d.numero_documento)):"(sin nº)"}${imp}${d.rectificativa?` <span style="font-size:10px;color:var(--alert);font-weight:700;">rectificativa</span>`:""}</div>
+        <div class="card-meta">${new Date(d.fecha).toLocaleDateString("es-ES")} · ${esc(d.estado||"")}${pend}${delCorreo}</div>
+        ${btns?`<div class="card-actions">${btns}</div>`:""}
+      </div>`;
+    }).join("");
+
     setInner(html);
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }

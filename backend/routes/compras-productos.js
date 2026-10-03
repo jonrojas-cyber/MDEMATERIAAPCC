@@ -18,35 +18,7 @@ const ALERGENOS = [
   "Frutos de cáscara", "Apio", "Mostaza", "Sésamo", "Sulfitos", "Altramuces", "Moluscos",
 ];
 
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
-const round = (n, d = 4) => Math.round(n * Math.pow(10, d)) / Math.pow(10, d);
-
-// Calcula precio con IVA y precio unitario real a partir de los datos base.
-function calcular(p) {
-  const sinIva = num(p.precio_sin_iva);
-  const iva = num(p.iva);
-  const cant = num(p.cantidad_formato);
-  const conIva = round(sinIva * (1 + iva / 100), 4);
-  const unitario = cant > 0 ? round(conIva / cant, 4) : conIva;
-  // Coste por unidad base (si el formato está enlazado a una materia): precio del
-  // formato ÷ contenido en unidad base. Es la conversión formato→producto base.
-  const cb = num(p.contenido_base);
-  const costeBase = cb > 0 ? round(conIva / cb, 6) : null;
-  return { ...p, precio_con_iva: conIva, precio_unitario_real: unitario, coste_base: costeBase };
-}
-
-// Evalúa si a un artículo le falta tarifa para poder usarse (escandallos/pedidos).
-// No inventa nada: si falta precio, formato o contenido, queda «Pendiente de
-// completar» y se listan los campos que faltan para avisar en la app.
-function evaluarEstado(p) {
-  const faltan = [];
-  if (num(p.precio_sin_iva) <= 0) faltan.push("precio");
-  if (p.iva == null) faltan.push("IVA");
-  if (!p.formato) faltan.push("formato");
-  if (num(p.cantidad_formato) <= 0) faltan.push("contenido");
-  const pendiente = faltan.length > 0;   // se deriva de los datos, no de un flag fijo
-  return { ...p, faltan, pendiente, estado: pendiente ? "Pendiente de completar" : "Completo" };
-}
+const { num, round, calcular, evaluarEstado } = require("../compras-productos-calc");
 
 function slim(p) {
   const { foto_url, ...resto } = evaluarEstado(p);

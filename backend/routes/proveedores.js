@@ -53,6 +53,27 @@ router.get("/:id", (req, res) => {
   res.json(filtrarSensibles(decorate(proveedor, store.readAll("materias")), req));
 });
 
+// Ficha de proveedor estilo Gstock: sus artículos (con tarifa) + las facturas/
+// albaranes del mes. El equipo (rol no admin) NO ve coste/precio: se le ocultan
+// los euros (regla de negocio).
+router.get("/:id/ficha", (req, res) => {
+  const ficha = require("../proveedor-ficha").ficha(store, req.params.id, req.query.mes, new Date().toISOString());
+  if (!ficha) return res.status(404).json({ error: "Proveedor no encontrado" });
+  if (!esAdmin(req)) {
+    ficha.articulos = ficha.articulos.map((a) => {
+      const { precio_sin_iva, iva, precio_con_iva, precio_unitario_real, coste_base, ...resto } = a;
+      return resto;
+    });
+    ficha.facturas = ficha.facturas.map((f) => {
+      const { importe_total, pendiente_pago, ...resto } = f;
+      return resto;
+    });
+    ficha.resumen = { mes: ficha.resumen.mes, n_documentos: ficha.resumen.n_documentos, n_facturas: ficha.resumen.n_facturas, n_albaranes: ficha.resumen.n_albaranes, otras_monedas: ficha.resumen.otras_monedas };
+    ficha.sin_economico = true;
+  }
+  res.json(ficha);
+});
+
 // Campos que el usuario puede fijar al crear/editar.
 function camposDe(body, req) {
   const c = {};

@@ -5439,6 +5439,19 @@ var _mdmPrinter = null;
 var MDM_BT_SERVICIOS = [0xff00, 0xff10, 0xffe0, 0x18f0, 0xfff0,
   "0000ff00-0000-1000-8000-00805f9b34fb", "49535343-fe7d-4ae5-8fa9-9fafd205e455",
   "e7810a71-73ae-499d-8c15-faa9aef0c3f2"];
+// Web Bluetooth solo permite UNA operación GATT a la vez: si se solapan (p. ej. la
+// reconexión automática con un envío) da "GATT operation already in progress".
+// _pbtOcupado evita que la reconexión silenciosa pise una acción del usuario, y
+// pbtOp reintenta una operación que coincida con otra en curso.
+var _pbtOcupado = false;
+async function pbtOp(fn){
+  for(var i=0;i<6;i++){
+    try{ return await fn(); }
+    catch(e){ var m=((e&&e.message)||"")+"";
+      if(/in progress|already|busy|GATT operation/i.test(m) && i<5){ await new Promise(function(r){ setTimeout(r, 80*(i+1)); }); continue; }
+      throw e; }
+  }
+}
 function pbtConectado(){ return !!(_mdmPrinter && _mdmPrinter.device.gatt.connected); }
 // Pinta el estado de la impresora en la barra (si está en pantalla).
 function pbtActualizarEstado(){
@@ -5450,8 +5463,10 @@ function pbtActualizarEstado(){
 // (Re)emparejar a mano: dentro del gesto del botón, muestra el selector si hace falta.
 async function pbtConectarManual(){
   if(!navigator.bluetooth){ alert("Este navegador no permite conectar la impresora por Bluetooth. Abre Control M en Chrome o Edge (en el PC o en una tablet) y vuelve a intentarlo."); return; }
+  _pbtOcupado = true;
   try{ pbtToast("Buscando impresora…"); await pbtAsegurar(); pbtToast("Impresora conectada ✓",1600); }
   catch(e){ pbtToast(""); if(!(e&&e.name==="NotFoundError")) alert("No se pudo conectar: "+((e&&e.message)||e)+"\n\nComprueba que la Phomemo está encendida (luz azul) y cerca."); }
+  finally{ _pbtOcupado = false; }
   pbtActualizarEstado();
 }
 // Etiqueta de PRUEBA para verificar que imprime bien.
@@ -5467,6 +5482,7 @@ function pbtImprimirPrueba(){
 async function pbtDiagnostico(){
   if(!navigator.bluetooth){ alert("Este navegador no permite Bluetooth. Abre Control M en Chrome o Edge (PC o tablet Android); en iPhone/Safari no hay Bluetooth web."); return; }
   var log=[];
+  _pbtOcupado = true;
   try{
     pbtToast("Conectando para diagnóstico…");
     var dev = (pbtConectado() && _mdmPrinter) ? _mdmPrinter.device
@@ -5486,15 +5502,16 @@ async function pbtDiagnostico(){
     var test=new Uint8Array([0x1B,0x40, 0x1B,0x64,0x06]);
     try{ await pbtEnviar(canal, test); log.push("Envío OK → la impresora DEBERÍA avanzar papel ahora."); }
     catch(e){ log.push("Envío FALLÓ: "+(e.message||e)); }
-  }catch(e){ if(e&&e.name==="NotFoundError"){ pbtToast(""); return; } log.push("Error: "+(e&&e.message||e)); }
+  }catch(e){ if(e&&e.name==="NotFoundError"){ _pbtOcupado=false; pbtToast(""); return; } log.push("Error: "+(e&&e.message||e)); }
+  _pbtOcupado = false;
   pbtToast("");
   alert("Diagnóstico Bluetooth\n\n"+log.join("\n")+"\n\n¿Avanzó el papel? Dímelo (y copia este texto) para ajustar la impresora.");
 }
 async function pbtCanal(server){
-  var svcs = await server.getPrimaryServices();
+  var svcs = await pbtOp(function(){ return server.getPrimaryServices(); });
   var cands = [];
   for(var i=0;i<svcs.length;i++){
-    var cs; try{ cs = await svcs[i].getCharacteristics(); }catch(e){ continue; }
+    var cs; try{ cs = await pbtOp((function(s){ return function(){ return s.getCharacteristics(); }; })(svcs[i])); }catch(e){ continue; }
     for(var j=0;j<cs.length;j++){ var p = cs[j].properties; if(p.write || p.writeWithoutResponse) cands.push(cs[j]); }
   }
   if(!cands.length) throw new Error("sin canal de escritura");
@@ -5514,19 +5531,21 @@ function pbtGuardar(device, canal){
 // Reconexión SILENCIOSA (sin selector) a una impresora ya emparejada. No exige
 // gesto: se puede llamar al abrir la pantalla para que imprimir sea instantáneo.
 async function pbtReconectarSilencioso(){
+  if(_pbtOcupado || pbtConectado() || !navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+  _pbtOcupado = true;
   try{
-    if(pbtConectado() || !navigator.bluetooth || !navigator.bluetooth.getDevices) return;
     var ds = await navigator.bluetooth.getDevices();
     if(!ds || !ds.length) return;
-    var dev = ds[0], server = await dev.gatt.connect(), canal = await pbtCanal(server);
+    var dev = ds[0], server = await pbtOp(function(){ return dev.gatt.connect(); }), canal = await pbtCanal(server);
     pbtGuardar(dev, canal);
   }catch(e){}
+  finally{ _pbtOcupado = false; }
 }
 // Asegura conexión DENTRO de un gesto (muestra el selector solo si hace falta).
 async function pbtAsegurar(){
   if(pbtConectado()) return _mdmPrinter;
   var dev = await navigator.bluetooth.requestDevice({ acceptAllDevices:true, optionalServices: MDM_BT_SERVICIOS });
-  var server = await dev.gatt.connect(), canal = await pbtCanal(server);
+  var server = await pbtOp(function(){ return dev.gatt.connect(); }), canal = await pbtCanal(server);
   return pbtGuardar(dev, canal);
 }
 function pbtEscpos(mono){
@@ -5539,12 +5558,12 @@ function pbtEscpos(mono){
 async function pbtEnviar(canal, data){
   // Preferimos ESCRITURA CON CONFIRMACIÓN: así "Impreso ✓" solo sale si la impresora
   // confirma la recepción; si el canal es el equivocado, writeValue lanza error y el
-  // flujo cae a cable (en vez de decir "impreso" sin que salga nada).
+  // flujo cae a cable (en vez de decir "impreso" sin que salga nada). Cada trozo se
+  // reintenta si coincide con otra operación GATT en curso.
   var CH=128, conResp = !!canal.properties.write;
   for(var i=0;i<data.length;i+=CH){ var s=data.slice(i,i+CH);
-    if(conResp){ await canal.writeValue(s); }
-    else { try{ await canal.writeValueWithoutResponse(s); }catch(e){ await canal.writeValue(s); } }
-    await new Promise(function(r){ setTimeout(r,10); }); }
+    await pbtOp(function(){ return conResp ? canal.writeValue(s) : canal.writeValueWithoutResponse(s); });
+    await new Promise(function(r){ setTimeout(r,8); }); }
 }
 // Rasteriza a 1-bit una etiqueta ya montada (en un iframe) al ancho del cabezal.
 function pbtRaster(labelEl, css, dotsWide){
@@ -5582,9 +5601,10 @@ function pbtToast(msg, ms){
 }
 async function pbtImprimir(path){
   if(!navigator.bluetooth){ window.open(path, "_blank"); return; }   // sin Bluetooth web → abre la etiqueta
+  _pbtOcupado = true;
   var p;
   try{ pbtToast("Conectando impresora…"); p = await pbtAsegurar(); }
-  catch(e){ pbtToast(""); if(e && e.name==="NotFoundError") return; /* canceló el selector */ window.open(path, "_blank"); return; }
+  catch(e){ _pbtOcupado=false; pbtToast(""); if(e && e.name==="NotFoundError") return; /* canceló el selector */ window.open(path, "_blank"); return; }
   try{
     pbtToast("Imprimiendo…");
     var r = await pbtCargar(path);
@@ -5592,6 +5612,7 @@ async function pbtImprimir(path){
     finally{ r.frame.remove(); }
   }catch(e){ pbtToast("");
     if(confirm("No se pudo imprimir directo ("+(e.message||e)+"). ¿Abrir la etiqueta para imprimirla a mano?")) window.open(path, "_blank"); }
+  finally{ _pbtOcupado = false; }
 }
 
 // ── Base de matcha · gel fluido (matcha + agua + gellan) ──────────────────────

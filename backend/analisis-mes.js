@@ -72,19 +72,18 @@ function componer(mes, dias, tickets, famMap, origen) {
 //   · fila TICKET:  "... -> T/xxxx" en col A (subtotal de ticket) → se cuentan
 //   · fila PRODUCTO: Familia en col B, Formato en col C + su venta
 // Columnas: A(nombre) B(Familia) C(Formato) D(Cantidad) E(Base) F(Total) [G(Coste) H(Margen)]
-function parseExportAgora(csvText, mesForzado) {
-  const lineas = String(csvText).split(/\r?\n/).filter((l) => l.trim() !== "");
-  if (!lineas.length) throw new Error("El fichero está vacío.");
-  const delim = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ";" : ",";
-  const parseCols = (l) => l.split(delim).map((c) => c.replace(/^"|"$/g, "").trim());
+// Núcleo del parser: recibe las FILAS ya separadas en celdas (matriz), venga de
+// CSV o de xlsx. Columnas: A(nombre) B(Familia) C(Formato) D(Cantidad) E(Base) F(Total).
+function parseFilas(filas, mesForzado) {
+  if (!filas.length) throw new Error("El fichero está vacío.");
   // Detecta si la primera fila es cabecera (contiene "Familia"/"Base"…).
   let start = 0;
-  const c0 = parseCols(lineas[0]).map((x) => x.toLowerCase());
+  const c0 = (filas[0] || []).map((x) => String(x == null ? "" : x).toLowerCase());
   if (c0.some((x) => /familia|base|cantidad|formato/.test(x))) start = 1;
   const dias = {}; const famMap = {}; let tickets = 0; let mesDetectado = null;
-  for (let i = start; i < lineas.length; i++) {
-    const c = parseCols(lineas[i]);
-    const A = (c[0] || "").trim();
+  for (let i = start; i < filas.length; i++) {
+    const c = filas[i] || [];
+    const A = String(c[0] == null ? "" : c[0]).trim();
     const mDia = A.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (mDia) {
       const fecha = ymd(+mDia[3], +mDia[2], +mDia[1]);
@@ -94,7 +93,7 @@ function parseExportAgora(csvText, mesForzado) {
       continue;
     }
     if (A.includes("->")) { tickets++; continue; }
-    const familia = (c[1] || "").trim();
+    const familia = String(c[1] == null ? "" : c[1]).trim();
     if (!familia) continue; // salta agregados sin familia (evita duplicar)
     const f = (famMap[familia] = famMap[familia] || { familia, uds: 0, neto: 0 });
     f.uds += num(c[3]); f.neto += num(c[4]);
@@ -104,6 +103,25 @@ function parseExportAgora(csvText, mesForzado) {
   const snap = componer(mes, Object.values(dias), tickets, famMap, "agora_export");
   if (!(snap.neto > 0)) throw new Error("El fichero no tiene ventas reconocibles.");
   return snap;
+}
+
+function parseExportAgora(csvText, mesForzado) {
+  const lineas = String(csvText).split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (!lineas.length) throw new Error("El fichero está vacío.");
+  const delim = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ";" : ",";
+  const filas = lineas.map((l) => l.split(delim).map((c) => c.replace(/^"|"$/g, "").trim()));
+  return parseFilas(filas, mesForzado);
+}
+
+// Importa desde un fichero cualquiera (Buffer): detecta xlsx (ZIP, cabecera "PK")
+// y lo lee sin dependencias; si no, lo trata como CSV.
+function parseExportBuffer(buf, mesForzado) {
+  const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf || "");
+  if (b.length >= 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04) {
+    const filas = require("./xlsx-lite").readXlsxSheet(b);
+    return parseFilas(filas, mesForzado);
+  }
+  return parseExportAgora(b.toString("utf8"), mesForzado);
 }
 
 // Construye el snapshot desde la entidad "ventas" (lo que mete el conector).
@@ -139,4 +157,4 @@ function listarMeses() {
   return (store.readAll("analisis_mes") || []).map((s) => s.mes).sort().reverse();
 }
 
-module.exports = { parseExportAgora, agregarDesdeVentas, componer, guardar, obtener, listarMeses, num, r2 };
+module.exports = { parseExportAgora, parseExportBuffer, parseFilas, agregarDesdeVentas, componer, guardar, obtener, listarMeses, num, r2 };

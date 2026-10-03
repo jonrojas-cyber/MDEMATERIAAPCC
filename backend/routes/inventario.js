@@ -99,6 +99,20 @@ router.post("/conteo", async (req, res) => {
   res.status(201).json(inventario);
 });
 
+// GET /api/inventario/conciliacion — resumen de almacén al milímetro: stock
+// teórico y su valor, compra vs consumo del periodo, desviación del último
+// recuento, productos de Ágora sin escandallo (no descuentan) y escandallos
+// afectados por subidas de precio. Solo admin (dinero). ?dias= (def. 90).
+router.get("/conciliacion", (req, res) => {
+  if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede ver la conciliación de almacén." });
+  try {
+    const inf = require("../conciliacion").informe(store, { dias: Number(req.query.dias) || 90, desde: req.query.desde, hasta: req.query.hasta });
+    res.json(inf);
+  } catch (e) {
+    res.status(500).json({ error: e.message || "No se pudo calcular la conciliación." });
+  }
+});
+
 // GET /api/inventario/:id — detalle de un recuento.
 router.get("/:id", (req, res) => {
   const inv = store.findById("inventarios", req.params.id);

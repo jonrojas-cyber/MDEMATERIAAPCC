@@ -54,6 +54,12 @@ const COMIDA_SRC = {
   "tosta origen": "prod-tosta-origen",
   "tosta equilibrio": "prod-tosta-equilibrio",
   "tosta coleccion": "prod-tosta-coleccion",
+  // Dulces: productos comprados hechos; su receta real ya existe en la ficha
+  // (origen = croissant de mantequilla, equilibrio = croissant pistacho —su
+  // receta está metida—, colección = cookie). El coste sale de las facturas.
+  "dulce origen": "prod-rep-croissant",
+  "dulce equilibrio": "prod-croissant-pistacho",
+  "dulce coleccion": "prod-rep-cookie",
 };
 
 function norm(s) {

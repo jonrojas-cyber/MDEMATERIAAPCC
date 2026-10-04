@@ -94,6 +94,10 @@ function aplicar(st) {
   crearMat(TE, "Té en bolsa", "ud", "Bebidas", "Infusiones");
   crearMat(CAFE_DESCAF, "Café descafeinado (México)", "g", "Bebidas", "Café");
   crearMat(COOKIE, "Cookie", "ud", "Panadería", "Repostería");
+  // Precio de la cookie (Natalia): 369,60 € / 176 uds = 2,10 €/ud. Se fija si
+  // está pendiente; si luego entra en Compras, el enlace de compras lo actualiza.
+  const ck = st.findById("materias", COOKIE);
+  if (ck && !(Number(ck.coste_medio) > 0)) st.update("materias", COOKIE, { coste_medio: 2.10, precio_compra: 2.10, pendiente_coste: false });
 
   // Alias de Ágora: en caja se vende "Iced americano" pero el catálogo lo tiene
   // como "Ices americano" → se le pone agora_ref para que la venta lo encuentre.

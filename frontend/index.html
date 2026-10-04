@@ -9066,7 +9066,22 @@ async function amImportar(btn){
     const bytes=await f.arrayBuffer();
     const r=await api("/analisis-mes/importar",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:bytes});
     window._am.mes=r.snapshot.mes;
-    alert(`Importado ${r.snapshot.mes}: ${adEur(r.snapshot.neto)} netos · ${r.snapshot.tickets} tickets.`);
+    // Además del resumen, se muestra el CONSUMO (lo que alimenta el food cost):
+    // cuántos tickets cruzaron con sus recetas y cuáles quedaron BLOQUEADOS por
+    // tener algún producto sin vincular (un ticket se bloquea entero). Esa lista
+    // es lo que hay que enlazar para que el food cost cubra todo el mes.
+    let msg=`Importado ${r.snapshot.mes}: ${adEur(r.snapshot.neto)} netos · ${r.snapshot.tickets} tickets.`;
+    const co=r.consumo&&r.consumo.resultado;
+    if(co){
+      msg+=`\n\nFood cost (consumo):\n• ${co.procesados} tickets cruzados con sus recetas`;
+      if(co.omitidos_ya_procesados) msg+=`\n• ${co.omitidos_ya_procesados} ya estaban (no se duplican)`;
+      if(co.bloqueados){
+        const nv=co.productos_no_vinculados||[];
+        msg+=`\n• ⚠️ ${co.bloqueados} tickets BLOQUEADOS por productos sin vincular`;
+        if(nv.length) msg+=`\n\nProductos SIN VINCULAR (${nv.length}) — hay que enlazarlos:\n· ${nv.slice(0,25).join("\n· ")}`+(nv.length>25?`\n… y ${nv.length-25} más`:"");
+      } else { msg+=`\n• ✓ 0 bloqueados: todos los tickets cuentan`; }
+    } else if(r.consumo&&r.consumo.error){ msg+=`\n\n(No se pudo cruzar el consumo: ${r.consumo.error})`; }
+    alert(msg);
     await amCargar();
   }catch(e){ alert("No se pudo importar: "+(e.message||e)); if(btn){ btn.disabled=false; btn.textContent="Importar archivo"; } }
 }

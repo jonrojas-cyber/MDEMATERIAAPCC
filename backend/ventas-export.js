@@ -72,4 +72,22 @@ function importar(buf, opts = {}) {
   return { docs: docs.length, resultado: r };
 }
 
-module.exports = { importar, parseDocs, aFilas };
+// Importa REEMPLAZANDO el/los mes(es) del fichero: borra antes las ventas y los
+// docs de Ágora de esos meses (cualquier origen, también los heredados sin
+// doc_clave) y los reconstruye limpios, con neto y sin duplicar. Es lo que deben
+// usar TODAS las vías de subida de ventas. Devuelve 0 docs si el fichero no tiene
+// el formato jerárquico (día/ticket/producto), para poder caer a otro lector.
+function importarReemplazando(store, buf, opts = {}) {
+  const docs = parseDocs(aFilas(buf));
+  if (!docs.length) return { docs: 0, resultado: null, reemplazado: false, meses: [] };
+  const meses = new Set(docs.map((d) => String(d.Date || "").slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)));
+  if (meses.size && store) {
+    const enMes = (f) => meses.has(String(f || "").slice(0, 7));
+    store.writeAll("ventas", (store.readAll("ventas") || []).filter((v) => !enMes(v.fecha)));
+    store.writeAll("docs_agora", (store.readAll("docs_agora") || []).filter((d) => !enMes(d.fecha)));
+  }
+  const r = importar(buf, opts);
+  return { ...r, reemplazado: true, meses: [...meses] };
+}
+
+module.exports = { importar, importarReemplazando, parseDocs, aFilas };

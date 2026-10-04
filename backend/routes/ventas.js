@@ -8,13 +8,30 @@ const router = express.Router();
 const textParser = express.text({ type: ["text/*", "application/csv"], limit: "4mb" });
 
 // POST /api/ventas/importar  (cuerpo: CSV de Ágora, o { csv: "..." })
-router.post("/importar", textParser, (req, res) => {
+// Si el fichero es el export "Análisis de Ventas" (día/ticket/producto), se usa el
+// MISMO motor que Análisis del mes: REEMPLAZA el mes (sin duplicar), guarda el neto
+// y es idempotente. Si es otro formato (CSV plano del conector), cae al lector viejo.
+router.post("/importar", textParser, async (req, res) => {
   const csv = typeof req.body === "string" ? req.body : (req.body && req.body.csv) || "";
   if (!csv || !csv.trim()) {
     return res.status(400).json({ error: "Envía el CSV de ventas de Ágora (texto o { csv })" });
   }
   try {
+    const ve = require("../ventas-export");
+    const buf = Buffer.from(csv, "utf8");
+    const rep = ve.importarReemplazando(store, buf);
+    if (rep.docs > 0) {
+      await store.flush();
+      const co = rep.resultado || {};
+      return res.json({
+        ventas_importadas: co.procesados || 0, lineas: rep.docs,
+        bloqueados: co.bloqueados || 0, productos_no_reconocidos: co.productos_no_vinculados || [],
+        meses: rep.meses, reemplazado: true,
+      });
+    }
+    // Formato no jerárquico → lector antiguo (conector plano).
     const resumen = agora.importarVentas(csv, "manual");
+    await store.flush();
     res.json(resumen);
   } catch (e) {
     res.status(500).json({ error: "No se pudo importar: " + e.message });

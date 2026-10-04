@@ -98,6 +98,10 @@ function aplicar(st) {
   // está pendiente; si luego entra en Compras, el enlace de compras lo actualiza.
   const ck = st.findById("materias", COOKIE);
   if (ck && !(Number(ck.coste_medio) > 0)) st.update("materias", COOKIE, { coste_medio: 2.10, precio_compra: 2.10, pendiente_coste: false });
+  // Precio del café descafeinado (México): 28,5 €/kg = 0,0285 €/g (misma unidad
+  // que el resto de cafés). Se fija si está pendiente; las compras lo actualizan.
+  const dsc = st.findById("materias", CAFE_DESCAF);
+  if (dsc && !(Number(dsc.coste_medio) > 0)) st.update("materias", CAFE_DESCAF, { coste_medio: 0.0285, precio_compra: 0.0285, pendiente_coste: false });
 
   // Alias de Ágora: en caja se vende "Iced americano" pero el catálogo lo tiene
   // como "Ices americano" → se le pone agora_ref para que la venta lo encuentre.

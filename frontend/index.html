@@ -6280,9 +6280,41 @@ async function irA_appccRegistro(dias){
 // desviación del último conteo, productos sin escandallo y escandallos disparados.
 function concHTML(c){
   if(!c) return "";
-  const R=c.resumen||{}, CC=c.compra_consumo||{}, D=c.desviacion, SE=c.sin_escandallo||{}, EA=c.escandallos_afectados||{};
+  const R=c.resumen||{}, CC=c.compra_consumo||{}, D=c.desviacion, SE=c.sin_escandallo||{}, EA=c.escandallos_afectados||{}, PL=c.pyl||null;
   const eur=(n)=>adEur(n||0);
-  let h=`<div class="lab-eyebrow" style="margin-top:4px;">resumen de almacén</div>
+  let h="";
+  // ── CUENTA DE RESULTADOS (P&L) por ventas reales del periodo ──
+  if(PL){
+    const fc=PL.food_cost_pct||0;
+    const colFc=fc>35?"var(--alert)":(fc>0?"var(--olive)":"var(--muted)");
+    h+=`<div class="lab-eyebrow" style="margin-top:4px;">cuenta de resultados · ventas reales</div>
+      <div class="lim-param" style="margin:8px 0 6px;">
+        <div><b>${eur(PL.ingresos)}</b><span>ingresos (neto)</span></div>
+        <div><b>${eur(PL.coste_ventas)}</b><span>coste de materia</span></div>
+        <div><b style="color:${colFc}">${fc.toFixed(1)}%</b><span>food cost</span></div>
+      </div>
+      <div class="lim-param" style="margin:0 0 6px;">
+        <div><b>${eur(PL.mermas)}</b><span>mermas</span></div>
+        <div><b>${eur(PL.margen)}</b><span>margen bruto</span></div>
+        <div><b>${(PL.margen_pct||0).toFixed(1)}%</b><span>margen %</span></div>
+      </div>`;
+    if(PL.dias&&PL.dias.length){
+      const filas=PL.dias.slice().reverse().slice(0,31).map(d=>`<tr>
+        <td style="padding:3px 6px;">${new Date(d.fecha+"T12:00:00Z").toLocaleDateString("es-ES",{day:"2-digit",month:"short"})}</td>
+        <td style="padding:3px 6px;text-align:right;">${eur(d.ingresos)}</td>
+        <td style="padding:3px 6px;text-align:right;">${eur(d.coste)}</td>
+        <td style="padding:3px 6px;text-align:right;color:${d.food_cost_pct>35?"var(--alert)":"inherit"}">${(d.food_cost_pct||0).toFixed(1)}%</td>
+        <td style="padding:3px 6px;text-align:right;">${eur(d.margen)}</td></tr>`).join("");
+      h+=`<details style="margin:2px 0 14px;"><summary style="cursor:pointer;font-size:12px;color:var(--olive);">ver P&amp;L día a día (${PL.dias.length} días)</summary>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:6px;">
+          <thead><tr style="color:var(--muted);text-transform:lowercase;">
+            <th style="text-align:left;padding:3px 6px;">día</th><th style="text-align:right;padding:3px 6px;">ingresos</th><th style="text-align:right;padding:3px 6px;">coste</th><th style="text-align:right;padding:3px 6px;">food%</th><th style="text-align:right;padding:3px 6px;">margen</th>
+          </tr></thead><tbody>${filas}</tbody></table></details>`;
+    } else {
+      h+=`<div class="card-meta" style="margin-bottom:12px;">Sin ventas cargadas en el periodo. Importa el «Análisis de Ventas» de Ágora para ver el P&amp;L real.</div>`;
+    }
+  }
+  h+=`<div class="lab-eyebrow" style="margin-top:4px;">resumen de almacén</div>
     <div class="lim-param" style="margin:8px 0 10px;">
       <div><b>${eur(R.valor_total)}</b><span>valor teórico</span></div>
       <div><b>${R.n_materias||0}</b><span>materias</span></div>

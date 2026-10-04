@@ -44,13 +44,28 @@ function recetas() {
   };
 }
 
+// Comida: el escandallo real vive en los productos del LAB (prod-crunch-*,
+// prod-tosta-*), ya escandallados (gramos de jamón braseado, etc.). La receta del
+// TPV se SACA de ahí (fuente única): se copia del producto del LAB homónimo.
+const COMIDA_SRC = {
+  "crunch origen": "prod-crunch-origen",
+  "crunch equilibrio": "prod-crunch-equilibrio",
+  "crunch coleccion": "prod-crunch-coleccion",
+  "tosta origen": "prod-tosta-origen",
+  "tosta equilibrio": "prod-tosta-equilibrio",
+  "tosta coleccion": "prod-tosta-coleccion",
+};
+
 function norm(s) {
-  return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+  return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9ñ ]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function aplicar(st) {
   st = st || store;
-  // Asegura que el catálogo de Ágora existe (idempotente) antes de rellenar.
+  // Asegura que existen el catálogo de Ágora y la carta de cocina (escandallos
+  // reales de crunch/tostas) antes de rellenar. Idempotente.
+  try { require("./seed-cocina").aplicar(st); } catch (e) {}
   try { require("./seed-productos-agora").aplicar(st); } catch (e) {}
 
   // Crea la materia "Té en bolsa" si no existe (coste pendiente: lo fija la factura).
@@ -61,10 +76,27 @@ function aplicar(st) {
   const mats = {}; (st.readAll("materias") || []).forEach((m) => (mats[m.id] = true));
   const mapa = recetas();
   const porNombre = {}; Object.keys(mapa).forEach((n) => (porNombre[norm(n)] = mapa[n]));
+  const productos = st.readAll("productos") || [];
+  const byId = {}; productos.forEach((p) => (byId[p.id] = p));
+
+  // Resuelve los ingredientes para un producto: bebidas desde el mapa fijo;
+  // comida copiando el escandallo del producto del LAB (fuente única).
+  function ingredientesPara(p) {
+    const n = norm(p.nombre);
+    if (porNombre[n]) return porNombre[n];
+    const srcId = COMIDA_SRC[n] || COMIDA_SRC[norm(p.clave)];
+    if (srcId && srcId !== p.id) {
+      const src = byId[srcId];
+      if (src && Array.isArray(src.ingredientes) && src.ingredientes.length) {
+        return src.ingredientes.map((i) => ({ materia_id: i.materia_id, cantidad: i.cantidad }));
+      }
+    }
+    return null;
+  }
 
   let rellenados = 0;
-  (st.readAll("productos") || []).forEach((p) => {
-    const ing = porNombre[norm(p.nombre)];
+  productos.forEach((p) => {
+    const ing = ingredientesPara(p);
     if (!ing) return;
     const yaTiene = (Array.isArray(p.ingredientes) && p.ingredientes.length) || Number(p.coste_materia) > 0;
     if (yaTiene) return; // nunca pisa una receta ya puesta

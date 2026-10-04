@@ -30,6 +30,8 @@ const GRAMOS_CAFE = 17;
 const COMIDA_DIRECT = {
   "dulce origen": [{ materia_id: CROISSANT, cantidad: 1 }],
   "dulce coleccion": [{ materia_id: COOKIE, cantidad: 1 }],
+  // Jamón braseado y queso Edam (añadido): porción estimada, ajustable.
+  "jamon braseado y queso edam": [{ materia_id: "mat-coc-jamon-braseado", cantidad: 30 }, { materia_id: "mat-coc-edam", cantidad: 20 }],
 };
 
 // nombre exacto del TPV → ingredientes [{materia_id, cantidad}]

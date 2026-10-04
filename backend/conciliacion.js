@@ -220,6 +220,42 @@ function pyl(store, desde, hasta) {
   };
 }
 
+// P&L POR PRODUCTO del periodo: para CADA producto vendido, uds, ingresos, coste
+// de materia, margen y food cost %. Marca el que no tiene coste cargado para que
+// nada quede "al azar". Ordenado por ingresos.
+function pylPorProducto(store, desde, hasta) {
+  const productos = store.readAll("productos") || [];
+  const byId = {}; productos.forEach((p) => (byId[p.id] = p));
+  const idxMat = costing.indiceMaterias(store.readAll("materias"));
+  const idxRec = costing.indiceRecetasProduccion(store.readAll("recetas"));
+
+  const agg = {};
+  (store.readAll("ventas") || []).forEach((v) => {
+    if (!dentro(v.fecha, desde, hasta)) return;
+    const id = v.producto_id || ("n:" + (v.producto || ""));
+    const a = (agg[id] = agg[id] || { producto_id: v.producto_id || null, nombre: (byId[v.producto_id] && byId[v.producto_id].nombre) || v.producto || id, uds: 0, ingresos: 0 });
+    a.uds += Number(v.cantidad) || 0; a.ingresos += Number(v.importe) || 0;
+  });
+
+  const lista = Object.values(agg).map((a) => {
+    const p = a.producto_id ? byId[a.producto_id] : null;
+    const tieneEsc = !!(p && ((Array.isArray(p.ingredientes) && p.ingredientes.length) || Number(p.coste_materia) > 0));
+    const cu = p ? costeUnidadProducto(p, idxMat, idxRec) : 0;
+    const coste = r2(cu * a.uds);
+    const ing = r2(a.ingresos);
+    return {
+      nombre: a.nombre, uds: Math.round(a.uds), ingresos: ing,
+      coste, coste_unitario: Math.round(cu * 10000) / 10000,
+      margen: r2(ing - coste),
+      food_cost_pct: ing > 0 ? r2(coste / ing * 100) : 0,
+      modificador: !tieneEsc,                 // sin escandallo propio (leches, orígenes…)
+      sin_coste: tieneEsc && !(cu > 0),         // tiene escandallo pero su coste es 0 → revisar
+    };
+  }).sort((x, y) => y.ingresos - x.ingresos);
+
+  return { lista, n: lista.length, n_sin_coste: lista.filter((x) => x.sin_coste).length };
+}
+
 // Informe completo. `dias` define la ventana (por defecto 90). Admite desde/hasta.
 function informe(store, opts = {}) {
   let { desde, hasta, dias } = opts;
@@ -231,6 +267,7 @@ function informe(store, opts = {}) {
   return {
     periodo: { desde, hasta },
     pyl: pyl(store, desde, hasta),
+    por_producto: pylPorProducto(store, desde, hasta),
     resumen: resumenAlmacen(store),
     compra_consumo: compraVsConsumo(store, desde, hasta),
     desviacion: desviacionUltimoInventario(store),
@@ -239,4 +276,4 @@ function informe(store, opts = {}) {
   };
 }
 
-module.exports = { informe, pyl, resumenAlmacen, compraVsConsumo, desviacionUltimoInventario, productosSinEscandallo, escandallosAfectados };
+module.exports = { informe, pyl, pylPorProducto, resumenAlmacen, compraVsConsumo, desviacionUltimoInventario, productosSinEscandallo, escandallosAfectados };

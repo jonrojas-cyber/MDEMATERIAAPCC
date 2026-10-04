@@ -13,6 +13,7 @@
 
 const store = require("./data-store");
 const { convertir } = require("./unidades");
+const intake = require("./albaran-intake");
 
 function r(n, d) { const p = Math.pow(10, d || 6); return Math.round((Number(n) || 0) * p) / p; }
 function norm(s) {
@@ -42,21 +43,33 @@ function aplicar(st) {
   const materias = st.readAll("materias") || [];
   const byId = {}; const byName = {};
   materias.forEach((m) => { byId[m.id] = m; if (!byName[norm(m.nombre)]) byName[norm(m.nombre)] = m; });
+  // Las elaboraciones (materias que produce una receta) NO se tocan: su coste lo
+  // calcula el motor desde sus ingredientes.
+  const elaboracion = {};
+  (st.readAll("recetas") || []).forEach((r) => { if (r && r.produce_materia_id) elaboracion[r.produce_materia_id] = true; });
 
   let fijados = 0;
   const detalle = [];
   (st.readAll("compras_productos") || []).forEach((a) => {
     let m = a.materia_id ? byId[a.materia_id] : null;
     if (!m) m = byName[norm(a.nombre)];
-    if (!m) return;
-    if (Number(m.coste_medio) > 0) return; // solo pendientes; no pisa coste real
+    if (!m) m = intake.mejorPorPalabras(a.nombre, materias); // empareja por palabras
+    if (!m || elaboracion[m.id]) return;
     const c = costeUnidad(a, m);
-    if (c > 0) {
-      st.update("materias", m.id, { coste_medio: c, precio_compra: Number(m.precio_compra) > 0 ? m.precio_compra : c, pendiente_coste: false });
-      m.coste_medio = c; // refleja en el índice por si otro artículo apunta igual
-      fijados++;
-      detalle.push({ materia: m.nombre, coste: c, desde: a.nombre });
+    if (!(c > 0)) return;
+    const actual = Number(m.coste_medio) || 0;
+    // Food cost VIVO: el coste sigue al último precio de compra. Si ya había un
+    // coste y cambia, se registra la variante en el histórico (como Gstock).
+    if (actual > 0 && Math.abs(c - actual) / actual < 0.01) return; // sin cambio relevante
+    if (actual > 0) {
+      try {
+        st.insert("precios_historico", { id: st.nextId ? st.nextId("ph", "precios_historico") : "ph-" + Date.now() + "-" + m.id, producto_id: m.id, proveedor_id: a.proveedor_id || null, fecha: new Date().toISOString(), precio_anterior: actual, precio_nuevo: c, motivo: "Precio de compra", responsable: "Enlace compras", origen: "compra" });
+      } catch (e) {}
     }
+    st.update("materias", m.id, { coste_medio: c, precio_compra: c, pendiente_coste: false });
+    m.coste_medio = c;
+    fijados++;
+    detalle.push({ materia: m.nombre, coste: c, desde: a.nombre });
   });
   return { fijados, detalle };
 }

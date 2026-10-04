@@ -9,11 +9,13 @@ function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fall
 console.log("coste desde compras");
 
 function fakeStore(seed) {
-  const d = JSON.parse(JSON.stringify(seed || {}));
+  const d = JSON.parse(JSON.stringify(seed || {})); const s = {};
   return {
     readAll: (e) => d[e] || (d[e] = []),
+    insert: (e, r) => { (d[e] || (d[e] = [])).push(r); return r; },
     update: (e, id, patch) => { const r = (d[e] || []).find((x) => x.id === id); if (r) Object.assign(r, patch); return r; },
     findById: (e, id) => (d[e] || []).find((x) => x.id === id) || null,
+    nextId: (p, e) => { s[e] = (s[e] || 0) + 1; return `${p}_${s[e]}`; },
     flush: async () => {}, _d: d,
   };
 }
@@ -47,13 +49,28 @@ test("contenido_base manda sobre el formato (saco 25 kg con contenido_base en g)
   assert.strictEqual(st.findById("materias", "m").coste_medio, 0.001); // 25 / 25000
 });
 
-test("no pisa un coste ya establecido", () => {
+test("food cost vivo: el coste sigue al último precio de compra y registra variante", () => {
   const st = fakeStore({
     materias: [{ id: "m", nombre: "Café", unidad: "g", coste_medio: 0.02 }],
     compras_productos: [{ id: "a1", nombre: "Café", formato: "kg", cantidad_formato: 1, precio_con_iva: 50 }], // 0.05 €/g
+    precios_historico: [],
   });
   cc.aplicar(st);
-  assert.strictEqual(st.findById("materias", "m").coste_medio, 0.02); // intacto
+  assert.strictEqual(st.findById("materias", "m").coste_medio, 0.05); // actualizado al último precio
+  const h = st.readAll("precios_historico");
+  assert.strictEqual(h.length, 1);
+  assert.strictEqual(h[0].precio_anterior, 0.02);
+  assert.strictEqual(h[0].precio_nuevo, 0.05);
+});
+
+test("no toca las elaboraciones (materias que produce una receta)", () => {
+  const st = fakeStore({
+    materias: [{ id: "mat-salsa", nombre: "Salsa M", unidad: "g", coste_medio: 0 }],
+    recetas: [{ id: "r1", nombre: "Salsa M", produce_materia_id: "mat-salsa", ingredientes: [] }],
+    compras_productos: [{ id: "a1", nombre: "Salsa M", formato: "kg", cantidad_formato: 1, precio_con_iva: 10 }],
+  });
+  cc.aplicar(st);
+  assert.strictEqual(st.findById("materias", "mat-salsa").coste_medio, 0); // intacto (lo calcula el motor)
 });
 
 test("formato no convertible sin contenido_base: no inventa coste", () => {

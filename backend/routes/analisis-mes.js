@@ -41,11 +41,27 @@ router.post("/importar", express.raw({ type: ["text/*", "application/csv", "appl
       });
     } catch (e) {}
     // Además del snapshot (agregados), se vuelca el CONSUMO por producto: cada
-    // ticket del export descuenta stock según su escandallo (idempotente). Así el
-    // mismo archivo cruza ventas con compras y cuadra el almacén. No bloquea la
-    // respuesta si falla.
+    // ticket del export descuenta stock según su escandallo. Así el mismo archivo
+    // cruza ventas con compras y cuadra el almacén. No bloquea la respuesta si falla.
+    //
+    // REEMPLAZO POR MES: antes de volcar, se BORRAN las ventas y los docs de Ágora
+    // de los meses que trae el fichero. Así re-importar SUSTITUYE (no acumula): se
+    // eliminan duplicados de importaciones anteriores (por otro método) y las
+    // ventas se reconstruyen limpias y con el neto. Idempotente por reconstrucción.
     let consumo = null;
-    try { consumo = require("../ventas-export").importar(req.body || Buffer.alloc(0)); } catch (e) { consumo = { error: e.message }; }
+    try {
+      const ve = require("../ventas-export");
+      const docs = ve.parseDocs(ve.aFilas(req.body || Buffer.alloc(0)));
+      const meses = new Set(docs.map((d) => String(d.Date || "").slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)));
+      if (meses.size) {
+        const enMes = (f) => meses.has(String(f || "").slice(0, 7));
+        store.writeAll("ventas", (store.readAll("ventas") || []).filter((v) => !enMes(v.fecha)));
+        // Los docs_agora se guardan por ticket; se limpian los de esos meses para
+        // que importarDocs los reprocese (si no, la idempotencia los saltaría).
+        store.writeAll("docs_agora", (store.readAll("docs_agora") || []).filter((d) => !enMes(d.fecha)));
+      }
+      consumo = ve.importar(req.body || Buffer.alloc(0));
+    } catch (e) { consumo = { error: e.message }; }
     await store.flush();
     res.json({ ok: true, snapshot: snap, consumo });
   } catch (e) {

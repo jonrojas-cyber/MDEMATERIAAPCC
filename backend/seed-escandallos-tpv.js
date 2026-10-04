@@ -93,6 +93,7 @@ function aplicar(st) {
   };
   crearMat(TE, "Té en bolsa", "ud", "Bebidas", "Infusiones");
   crearMat(CAFE_DESCAF, "Café descafeinado (México)", "g", "Bebidas", "Café");
+  crearMat(CAFE_COLD, "Café (tueste cold brew)", "g", "Bebidas", "Café"); // si falta, el Coldbrew quedaba sin receta
   crearMat(COOKIE, "Cookie", "ud", "Panadería", "Repostería");
   // Precio de la cookie (Natalia): 369,60 € / 176 uds = 2,10 €/ud. Se fija si
   // está pendiente; si luego entra en Compras, el enlace de compras lo actualiza.

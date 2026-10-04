@@ -70,5 +70,21 @@ test("el consumo pasa al motor cada línea con su Base (neto) y Total (IVA)", ()
   assert.strictEqual(fw.TotalAmount, 2.2);
 });
 
+test("importarReemplazando BORRA las ventas y docs del mes del fichero antes de volcar", () => {
+  const d = {
+    ventas: [{ id: "vieja", fecha: "2026-09-05", importe: 99 }, { id: "otra", fecha: "2026-08-01", importe: 50 }],
+    docs_agora: [{ id: "d1", fecha: "2026-09-05", status: "processed" }, { id: "d2", fecha: "2026-08-01", status: "processed" }],
+  };
+  const st = { readAll: (e) => d[e] || (d[e] = []), writeAll: (e, v) => { d[e] = v; } };
+  let got = null;
+  const r = ve.importarReemplazando(st, Buffer.from(CSV, "utf8"), { agoraImportar: (docs) => { got = docs; return { procesados: docs.length }; } });
+  assert.ok(r.docs > 0 && got.length > 0);
+  assert.deepStrictEqual(r.meses, ["2026-09"]);
+  assert.strictEqual(d.ventas.filter((v) => v.id === "vieja").length, 0); // borró la de septiembre (dup heredada)
+  assert.strictEqual(d.ventas.filter((v) => v.id === "otra").length, 1);  // agosto intacto
+  assert.strictEqual(d.docs_agora.filter((x) => x.id === "d1").length, 0);
+  assert.strictEqual(d.docs_agora.filter((x) => x.id === "d2").length, 1);
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en consumo desde export`); process.exit(1); }
 console.log("  consumo desde export de ventas OK");

@@ -13,17 +13,18 @@ console.log("panel de dirección (CEO)");
 // Snapshot para restaurar (el store persiste en disco en modo JSON).
 const ventasPrev = (store.readAll("ventas") || []).slice();
 
-test("objetivo mensual = ventas del mes anterior × 1,10; objetivo diario repartido", () => {
+test("objetivo mensual = mes anterior × 1,10; diario = media por día ABIERTO × 1,10", () => {
   store.writeAll("ventas", []);
   const now = new Date();
-  // Una venta el día 15 del mes ANTERIOR, por 1.000 € (neto y bruto iguales).
-  const ma = new Date(now.getFullYear(), now.getMonth() - 1, 15);
-  const fecha = `${ma.getFullYear()}-${String(ma.getMonth() + 1).padStart(2, "0")}-15`;
-  store.insert("ventas", { id: "pd_test_1", producto_id: "x", producto: "X", cantidad: 1, importe: 1000, importe_neto: 1000, fecha });
+  const y = now.getFullYear(), m = now.getMonth() - 1;
+  const fe = (dd) => `${new Date(y, m, dd).getFullYear()}-${String(new Date(y, m, dd).getMonth() + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+  // Dos días ABIERTOS en el mes anterior, 1.000 € cada uno → total 2.000 €.
+  store.insert("ventas", { id: "pd_t1", producto_id: "x", producto: "X", cantidad: 1, importe: 1000, importe_neto: 1000, fecha: fe(10) });
+  store.insert("ventas", { id: "pd_t2", producto_id: "x", producto: "X", cantidad: 1, importe: 1000, importe_neto: 1000, fecha: fe(20) });
   const P = ex.construir("hoy").panel_direccion;
-  assert.strictEqual(P.mes.objetivo, 1100, "objetivo = 1000 × 1,10");
-  const diasEnMes = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  assert.strictEqual(P.hoy.objetivo_dia, Math.round((1100 / diasEnMes) * 100) / 100, "objetivo diario = objetivo mensual / días del mes");
+  assert.strictEqual(P.mes.objetivo, 2200, "objetivo mensual = 2000 × 1,10");
+  assert.strictEqual(P.mes.dias_abiertos_anterior, 2, "2 días abiertos el mes anterior");
+  assert.strictEqual(P.hoy.objetivo_dia, 1100, "objetivo diario = 2200 / 2 días abiertos");
   assert.strictEqual(P.objetivo_regla, "mes anterior × 1,10");
 });
 

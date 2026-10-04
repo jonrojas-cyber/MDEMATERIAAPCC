@@ -159,6 +159,67 @@ function escandallosAfectados(store, desde, hasta, umbralPct) {
   return { lista: afectados, n: afectados.length };
 }
 
+// Coste de materia por UNIDAD de un producto (directo o por escandallo, con
+// elaboraciones). Usa los costes de materia ACTUALES (que siguen a las compras).
+function costeUnidadProducto(p, idxMat, idxRec) {
+  const directo = Number(p && p.coste_materia);
+  if (Number.isFinite(directo) && directo > 0) return directo;
+  return costing.costeEscandallo((p && p.ingredientes) || [], idxMat, idxRec);
+}
+
+// PÉRDIDAS Y GANANCIAS (P&L) por VENTAS REALES del periodo, diario y total.
+//   Ingresos  = Σ importe neto de las ventas (del export de Ágora).
+//   Coste     = Σ cantidad × coste de materia del producto (escandallo × compras).
+//   Mermas    = Σ coste estimado de los ajustes/mermas del periodo.
+//   Margen    = Ingresos − Coste − Mermas · Food cost % = Coste / Ingresos.
+// El food cost % SÍ varía: depende del coste real (que sigue a las compras) y del
+// mix de ventas de cada día.
+function pyl(store, desde, hasta) {
+  const productos = store.readAll("productos") || [];
+  const byId = {}; productos.forEach((p) => (byId[p.id] = p));
+  const idxMat = costing.indiceMaterias(store.readAll("materias"));
+  const idxRec = costing.indiceRecetasProduccion(store.readAll("recetas"));
+
+  const dias = {};
+  let ingTot = 0, cosTot = 0;
+  (store.readAll("ventas") || []).forEach((v) => {
+    if (!dentro(v.fecha, desde, hasta)) return;
+    const dia = String(v.fecha).slice(0, 10);
+    const ing = Number(v.importe) || 0;
+    const cu = byId[v.producto_id] ? costeUnidadProducto(byId[v.producto_id], idxMat, idxRec) : 0;
+    const cos = cu * (Number(v.cantidad) || 0);
+    const d = (dias[dia] = dias[dia] || { fecha: dia, ingresos: 0, coste: 0, uds: 0 });
+    d.ingresos += ing; d.coste += cos; d.uds += Number(v.cantidad) || 0;
+    ingTot += ing; cosTot += cos;
+  });
+
+  // Mermas del periodo (coste estimado) desde la entidad `ajustes`.
+  let mermas = 0; const mermasDia = {};
+  (store.readAll("ajustes") || []).forEach((a) => {
+    const f = a.fecha || a.created_at; if (!dentro(f, desde, hasta)) return;
+    const c = Number(a.coste_estimado) || 0; mermas += c;
+    const dia = String(f).slice(0, 10); mermasDia[dia] = (mermasDia[dia] || 0) + c;
+  });
+
+  const serie = Object.values(dias).sort((a, b) => a.fecha.localeCompare(b.fecha)).map((d) => {
+    const mer = r2(mermasDia[d.fecha] || 0);
+    return {
+      fecha: d.fecha, uds: Math.round(d.uds),
+      ingresos: r2(d.ingresos), coste: r2(d.coste), mermas: mer,
+      margen: r2(d.ingresos - d.coste - mer),
+      food_cost_pct: d.ingresos > 0 ? r2(d.coste / d.ingresos * 100) : 0,
+    };
+  });
+
+  return {
+    ingresos: r2(ingTot), coste_ventas: r2(cosTot), mermas: r2(mermas),
+    margen: r2(ingTot - cosTot - mermas),
+    food_cost_pct: ingTot > 0 ? r2(cosTot / ingTot * 100) : 0,
+    margen_pct: ingTot > 0 ? r2((ingTot - cosTot - mermas) / ingTot * 100) : 0,
+    n_dias: serie.length, dias: serie,
+  };
+}
+
 // Informe completo. `dias` define la ventana (por defecto 90). Admite desde/hasta.
 function informe(store, opts = {}) {
   let { desde, hasta, dias } = opts;
@@ -169,6 +230,7 @@ function informe(store, opts = {}) {
   }
   return {
     periodo: { desde, hasta },
+    pyl: pyl(store, desde, hasta),
     resumen: resumenAlmacen(store),
     compra_consumo: compraVsConsumo(store, desde, hasta),
     desviacion: desviacionUltimoInventario(store),
@@ -177,4 +239,4 @@ function informe(store, opts = {}) {
   };
 }
 
-module.exports = { informe, resumenAlmacen, compraVsConsumo, desviacionUltimoInventario, productosSinEscandallo, escandallosAfectados };
+module.exports = { informe, pyl, resumenAlmacen, compraVsConsumo, desviacionUltimoInventario, productosSinEscandallo, escandallosAfectados };

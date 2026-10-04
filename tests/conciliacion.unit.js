@@ -109,10 +109,37 @@ test("escandallos afectados: la subida del tomate (+33%) marca Salsa M; la leche
   assert.strictEqual(r.lista[0].culpables[0].pct, 33);
 });
 
-test("informe completo trae todas las secciones", () => {
+test("informe completo trae todas las secciones (incluido P&L)", () => {
   const inf = con.informe(STORE, { desde: "2026-01-01", hasta: "2026-12-31" });
-  assert.ok(inf.resumen && inf.compra_consumo && inf.desviacion && inf.sin_escandallo && inf.escandallos_afectados);
+  assert.ok(inf.pyl && inf.resumen && inf.compra_consumo && inf.desviacion && inf.sin_escandallo && inf.escandallos_afectados);
   assert.strictEqual(inf.periodo.desde, "2026-01-01");
+});
+
+test("P&L por ventas reales: ingresos, coste (escandallo×coste), food cost % y diario", () => {
+  const st = fakeStore({
+    materias: [{ id: "m_leche", nombre: "Leche", unidad: "ml", coste_medio: 0.001 }],
+    productos: [{ id: "p_latte", nombre: "Latte", ingredientes: [{ materia_id: "m_leche", cantidad: 200 }] }], // coste 0,20 €/ud
+    recetas: [], ajustes: [],
+    ventas: [
+      { producto_id: "p_latte", cantidad: 10, importe: 20, fecha: "2026-09-10" }, // ingreso 20, coste 10×0,20=2
+      { producto_id: "p_latte", cantidad: 5, importe: 10, fecha: "2026-09-11" },  // ingreso 10, coste 1
+    ],
+  });
+  const r = con.pyl(st, "2026-09-01", "2026-09-30");
+  assert.strictEqual(r.ingresos, 30);
+  assert.strictEqual(r.coste_ventas, 3);          // 2 + 1
+  assert.strictEqual(r.margen, 27);
+  assert.strictEqual(r.food_cost_pct, 10);        // 3/30 = 10% (VARÍA con coste y mix)
+  assert.strictEqual(r.dias.length, 2);
+  assert.strictEqual(r.dias[0].food_cost_pct, 10); // 2/20
+});
+
+test("P&L: el food cost % SUBE si sube el coste de la materia (sigue a las compras)", () => {
+  const base = { productos: [{ id: "p", nombre: "X", ingredientes: [{ materia_id: "m", cantidad: 100 }] }], recetas: [], ajustes: [], ventas: [{ producto_id: "p", cantidad: 1, importe: 10, fecha: "2026-09-10" }] };
+  const barato = con.pyl(fakeStore({ ...base, materias: [{ id: "m", nombre: "M", unidad: "g", coste_medio: 0.01 }] }), "2026-09-01", "2026-09-30"); // coste 1 → 10%
+  const caro = con.pyl(fakeStore({ ...base, materias: [{ id: "m", nombre: "M", unidad: "g", coste_medio: 0.03 }] }), "2026-09-01", "2026-09-30");   // coste 3 → 30%
+  assert.strictEqual(barato.food_cost_pct, 10);
+  assert.strictEqual(caro.food_cost_pct, 30);
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en conciliación`); process.exit(1); }

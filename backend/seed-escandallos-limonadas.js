@@ -21,7 +21,7 @@ const RAW = [
   { key: "acido-citrico", nombre: "Ácido cítrico" },
   { key: "acido-malico", nombre: "Ácido málico" },
   { key: "sal", nombre: "Sal" },
-  { key: "glutamato", nombre: "Glutamato monosódico" },
+  { key: "glutamato", nombre: "Glutamato" },
   { key: "pectinasa", nombre: "Pectinasa" },
   { key: "piel-lima", nombre: "Piel de lima" },
   { key: "hoja-kaffir", nombre: "Hoja de lima kaffir" },
@@ -29,7 +29,7 @@ const RAW = [
   { key: "piel-pomelo", nombre: "Piel de pomelo rosa" },
   { key: "lapsang", nombre: "Té Lapsang Souchong" },
   { key: "romero", nombre: "Romero" },
-  { key: "puree-maracuya", nombre: "Puré de maracuyá (Boiron)" },
+  { key: "puree-maracuya", nombre: "Puré de maracuyá" },
   { key: "hierbabuena", nombre: "Hierbabuena" },
   { key: "zumo-naranja", nombre: "Zumo de naranja" },
   { key: "jengibre", nombre: "Jengibre" },
@@ -61,7 +61,11 @@ function aplicar(st) {
     const ex = byName[norm(r.nombre)];
     if (ex) { idOf[r.key] = ex; return; }
     const id = "mat-lim-" + r.key;
-    if (!st.findById("materias", id)) {
+    const existente = st.findById("materias", id);
+    if (existente) {
+      // Renombra si el nombre cambió (para que empareje mejor con las compras).
+      if (norm(existente.nombre) !== norm(r.nombre)) st.update("materias", id, { nombre: r.nombre });
+    } else {
       st.insert("materias", { id, nombre: r.nombre, unidad: "g", macro: "Bebidas", subcategoria: "Limonadas", disponibilidad_actual: 0, stock_minimo: 0, coste_medio: 0, precio_compra: 0, pendiente_coste: true, local_id: "principal", origen: "seed-limonadas", creado_en: new Date().toISOString() });
     }
     idOf[r.key] = id; byName[norm(r.nombre)] = id;

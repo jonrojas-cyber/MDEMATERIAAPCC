@@ -73,6 +73,15 @@ test("nunca pisa una receta ya puesta a mano", () => {
   assert.deepStrictEqual(st.findById("productos", "p6").ingredientes, [{ materia_id: "x", cantidad: 9 }]);
 });
 
+test("comida: copia el escandallo REAL del LAB (crunch con jamón braseado 65 g)", () => {
+  // Sin config → se siembra la carta de cocina (crea prod-crunch-origen + materias).
+  const st = fakeStore({ materias: [], productos: [{ id: "tpv-crunch", nombre: "Crunch origen", categoria: "comida", ingredientes: [] }], config: [] });
+  seed.aplicar(st);
+  const p = st.findById("productos", "tpv-crunch");
+  assert.ok(p.ingredientes && p.ingredientes.length >= 4, "ingredientes=" + JSON.stringify(p.ingredientes));
+  assert.ok(p.ingredientes.some((i) => i.materia_id === "mat-coc-jamon" && i.cantidad === 65), "falta jamón 65 g");
+});
+
 test("idempotente: una segunda pasada no rellena nada más", () => {
   const st = store();
   const r1 = seed.aplicar(st);

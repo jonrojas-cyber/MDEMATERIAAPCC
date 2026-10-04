@@ -167,5 +167,54 @@ test("P&L: el food cost % SUBE si sube el coste de la materia (sigue a las compr
   assert.strictEqual(caro.food_cost_pct, 30);
 });
 
+test("informe POR MES: por defecto coge el último mes con ventas (no mezcla meses)", () => {
+  const st = fakeStore({
+    materias: [{ id: "m", nombre: "Leche", unidad: "ml", coste_medio: 0.001 }],
+    productos: [{ id: "p", nombre: "Latte", ingredientes: [{ materia_id: "m", cantidad: 200 }] }],
+    recetas: [], ajustes: [],
+    ventas: [
+      { producto_id: "p", cantidad: 10, importe: 20, fecha: "2026-08-15" }, // agosto
+      { producto_id: "p", cantidad: 5, importe: 10, fecha: "2026-09-10" },  // septiembre
+    ],
+  });
+  const inf = con.informe(st);
+  assert.strictEqual(inf.periodo.mes, "2026-09");             // el último con ventas
+  assert.strictEqual(inf.periodo.desde, "2026-09-01");
+  assert.strictEqual(inf.periodo.hasta, "2026-09-30");
+  assert.strictEqual(inf.pyl.ingresos, 10);                   // SOLO septiembre (no suma agosto)
+  assert.deepStrictEqual(inf.meses_disponibles, ["2026-08", "2026-09"]);
+});
+
+test("informe POR MES: se puede pedir un mes concreto", () => {
+  const st = fakeStore({
+    materias: [{ id: "m", nombre: "Leche", unidad: "ml", coste_medio: 0.001 }],
+    productos: [{ id: "p", nombre: "Latte", ingredientes: [{ materia_id: "m", cantidad: 200 }] }],
+    recetas: [], ajustes: [],
+    ventas: [
+      { producto_id: "p", cantidad: 10, importe: 20, fecha: "2026-08-15" },
+      { producto_id: "p", cantidad: 5, importe: 10, fecha: "2026-09-10" },
+    ],
+  });
+  const inf = con.informe(st, { mes: "2026-08" });
+  assert.strictEqual(inf.periodo.mes, "2026-08");
+  assert.strictEqual(inf.pyl.ingresos, 20);                   // solo agosto
+});
+
+test("P&L usa el NETO (importe_neto) si la venta lo trae; si no, cae al importe", () => {
+  const st = fakeStore({
+    materias: [{ id: "m", nombre: "Leche", unidad: "ml", coste_medio: 0.001 }],
+    productos: [{ id: "p", nombre: "Latte", ingredientes: [{ materia_id: "m", cantidad: 200 }] }],
+    recetas: [], ajustes: [],
+    ventas: [
+      { producto_id: "p", cantidad: 1, importe: 11, importe_neto: 10, fecha: "2026-09-10" }, // neto 10 (no 11 con IVA)
+      { producto_id: "p", cantidad: 1, importe: 22, fecha: "2026-09-11" },                    // sin neto → usa 22
+    ],
+  });
+  const r = con.pyl(st, "2026-09-01", "2026-09-30");
+  assert.strictEqual(r.ingresos, 32);  // 10 (neto) + 22 (fallback)
+  const pp = con.pylPorProducto(st, "2026-09-01", "2026-09-30");
+  assert.strictEqual(pp.lista.find((x) => x.nombre === "Latte").ingresos, 32);
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en conciliación`); process.exit(1); }
 console.log("  conciliación de almacén OK");

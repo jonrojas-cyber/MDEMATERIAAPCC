@@ -50,11 +50,15 @@ function parseDocs(filas) {
       docs.push(cur);
       return;
     }
-    // Línea de producto: col C (índice 2) es el producto; col D (3) la cantidad.
+    // Línea de producto: col C (2)=producto, col D (3)=cantidad, col E (4)=Base
+    // (neto, sin IVA), col F (5)=Total (con IVA). Guardamos ambos: el P&L va
+    // sobre el NETO (Base); el total con IVA queda como referencia.
     const producto = String((c && c[2]) == null ? "" : c[2]).trim();
     const cantidad = num(c && c[3]);
     if (!cur || !producto) return;
-    cur.Lines.push({ ProductName: producto, Quantity: cantidad, TotalAmount: num(c && c[5]) });
+    const base = num(c && c[4]);
+    const total = num(c && c[5]);
+    cur.Lines.push({ ProductName: producto, Quantity: cantidad, TotalAmount: total, Base: base });
   });
   return docs.filter((d) => d.Lines.length);
 }

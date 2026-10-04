@@ -55,5 +55,20 @@ test("sin tickets válidos no llama al motor", () => {
   assert.strictEqual(llamado, false);
 });
 
+test("cada línea guarda NETO (Base, col E) y total con IVA (col F)", () => {
+  const docs = ve.parseDocs(ve.aFilas(Buffer.from(CSV, "utf8")));
+  const fw = docs[0].Lines[0]; // Flatwhite: Base 2, Total 2.2
+  assert.strictEqual(fw.Base, 2);
+  assert.strictEqual(fw.TotalAmount, 2.2);
+});
+
+test("el consumo pasa al motor cada línea con su Base (neto) y Total (IVA)", () => {
+  let captured = null;
+  ve.importar(Buffer.from(CSV, "utf8"), { agoraImportar: (docs) => { captured = docs; return {}; } });
+  const fw = captured[0].Lines[0]; // Flatwhite
+  assert.strictEqual(fw.Base, 2);
+  assert.strictEqual(fw.TotalAmount, 2.2);
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en consumo desde export`); process.exit(1); }
 console.log("  consumo desde export de ventas OK");

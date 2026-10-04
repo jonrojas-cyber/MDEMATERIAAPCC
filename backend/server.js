@@ -410,6 +410,9 @@ store
     require("./seed-usuarios").seedUsuarios().catch(() => {});
     // Siembra idempotente de la carta de cocina (Crunch, Tostas, Croissants + elaboraciones).
     require("./seed-cocina").seedCocina().catch(() => {});
+    // Rellena las recetas del TPV (café 17 g + leche/té/iced matcha) para que la
+    // venta descuente stock. Idempotente; nunca pisa una receta ya puesta.
+    require("./seed-escandallos-tpv").seedEscandallosTpv().catch(() => {});
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
     // materias, recetas, lotes y productos de ejemplo). Solo en producción
     // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,

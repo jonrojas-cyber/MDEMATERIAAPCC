@@ -73,6 +73,23 @@ test("no toca las elaboraciones (materias que produce una receta)", () => {
   assert.strictEqual(st.findById("materias", "mat-salsa").coste_medio, 0); // intacto (lo calcula el motor)
 });
 
+test("fruta entera → piel/zumo por rendimiento (la receta usa piel; se compra la fruta)", () => {
+  const st = fakeStore({
+    materias: [
+      { id: "mat-lim-piel-lima", nombre: "Piel de lima", unidad: "g", coste_medio: 0 },
+      { id: "mat-lim-zumo-naranja", nombre: "Zumo de naranja", unidad: "g", coste_medio: 0 },
+    ],
+    compras_productos: [
+      { id: "a1", nombre: "Limas Mercadona", formato: "kg", cantidad_formato: 1, precio_con_iva: 2.0 }, // 0,002 €/g lima
+      { id: "a2", nombre: "Naranja de zumo", formato: "kg", cantidad_formato: 1, precio_con_iva: 1.1 }, // 0,0011 €/g
+    ],
+    precios_historico: [],
+  });
+  cc.aplicar(st);
+  assert.strictEqual(st.findById("materias", "mat-lim-piel-lima").coste_medio, 0.016);   // 0,002 × 8
+  assert.ok(Math.abs(st.findById("materias", "mat-lim-zumo-naranja").coste_medio - 0.00242) < 1e-6); // 0,0011 × 2,2
+});
+
 test("formato no convertible sin contenido_base: no inventa coste", () => {
   const st = fakeStore({
     materias: [{ id: "m", nombre: "Cajas varias", unidad: "g", coste_medio: 0 }],

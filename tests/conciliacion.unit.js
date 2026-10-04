@@ -134,6 +134,31 @@ test("P&L por ventas reales: ingresos, coste (escandallo×coste), food cost % y 
   assert.strictEqual(r.dias[0].food_cost_pct, 10); // 2/20
 });
 
+test("P&L por producto: uds, ingresos, coste, margen y marca lo que no tiene coste", () => {
+  const st = fakeStore({
+    materias: [{ id: "m", nombre: "Leche", unidad: "ml", coste_medio: 0.001 }, { id: "m2", nombre: "Sirope", unidad: "ml", coste_medio: 0 }],
+    productos: [
+      { id: "p_latte", nombre: "Latte", ingredientes: [{ materia_id: "m", cantidad: 200 }] },     // coste 0,20
+      { id: "p_lim", nombre: "Limonada", ingredientes: [{ materia_id: "m2", cantidad: 50 }] },     // coste 0 → sin_coste
+      { id: "p_brasil", nombre: "Brasil", ingredientes: [] },                                       // modificador
+    ],
+    recetas: [], ajustes: [],
+    ventas: [
+      { producto_id: "p_latte", cantidad: 10, importe: 20, fecha: "2026-09-10" },
+      { producto_id: "p_lim", cantidad: 4, importe: 8, fecha: "2026-09-10" },
+      { producto_id: "p_brasil", cantidad: 5, importe: 0, fecha: "2026-09-10" },
+    ],
+  });
+  const r = con.pylPorProducto(st, "2026-09-01", "2026-09-30");
+  const latte = r.lista.find((x) => x.nombre === "Latte");
+  assert.strictEqual(latte.coste, 2); assert.strictEqual(latte.margen, 18); assert.strictEqual(latte.food_cost_pct, 10);
+  const lim = r.lista.find((x) => x.nombre === "Limonada");
+  assert.strictEqual(lim.sin_coste, true);
+  const brasil = r.lista.find((x) => x.nombre === "Brasil");
+  assert.strictEqual(brasil.modificador, true);
+  assert.strictEqual(r.n_sin_coste, 1);
+});
+
 test("P&L: el food cost % SUBE si sube el coste de la materia (sigue a las compras)", () => {
   const base = { productos: [{ id: "p", nombre: "X", ingredientes: [{ materia_id: "m", cantidad: 100 }] }], recetas: [], ajustes: [], ventas: [{ producto_id: "p", cantidad: 1, importe: 10, fecha: "2026-09-10" }] };
   const barato = con.pyl(fakeStore({ ...base, materias: [{ id: "m", nombre: "M", unidad: "g", coste_medio: 0.01 }] }), "2026-09-01", "2026-09-30"); // coste 1 → 10%

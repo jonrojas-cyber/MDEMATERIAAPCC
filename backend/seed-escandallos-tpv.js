@@ -16,11 +16,21 @@ const store = require("./data-store");
 // Materias base (ids existentes en el almacén).
 const CAFE = "mat-cafe-brasil";          // Café Brasil (espresso), g
 const CAFE_COLD = "mat-018";             // Café (tueste cold brew), g
+const CAFE_DESCAF = "mat-cafe-descafeinado"; // Café descafeinado (México), g (se crea si falta)
 const LECHE = "mat-leche-fresca";        // Leche fresca, ml
 const MATCHA = "mat-007";                // Matcha base, g
 const TE = "mat-te-bolsa";               // Té en bolsa, ud (se crea si falta)
+const CROISSANT = "mat-coc-croissant";   // Croissant, ud
+const COOKIE = "mat-coc-cookie";         // Cookie, ud (se crea si falta)
 
 const GRAMOS_CAFE = 17;
+
+// Dulces con enlace directo (producto comprado hecho): su coste lo fijan las
+// facturas. Equilibrio NO va aquí: usa su receta real (croissant pistacho) vía COMIDA_SRC.
+const COMIDA_DIRECT = {
+  "dulce origen": [{ materia_id: CROISSANT, cantidad: 1 }],
+  "dulce coleccion": [{ materia_id: COOKIE, cantidad: 1 }],
+};
 
 // nombre exacto del TPV → ingredientes [{materia_id, cantidad}]
 function recetas() {
@@ -33,6 +43,8 @@ function recetas() {
     "Capuccino": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }, { materia_id: LECHE, cantidad: 150 }],
     "Latte": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }, { materia_id: LECHE, cantidad: 200 }],
     "Iced Latte": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }, { materia_id: LECHE, cantidad: 200 }],
+    "Ices americano": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }],
+    "México descafeinado": [{ materia_id: CAFE_DESCAF, cantidad: GRAMOS_CAFE }],
     "Coldbrew": [{ materia_id: CAFE_COLD, cantidad: GRAMOS_CAFE }],
     "Iced matcha origen": [{ materia_id: MATCHA, cantidad: 2 }, { materia_id: LECHE, cantidad: 200 }],
     "Iced matcha equilibrio": [{ materia_id: MATCHA, cantidad: 2 }, { materia_id: LECHE, cantidad: 200 }],
@@ -54,12 +66,9 @@ const COMIDA_SRC = {
   "tosta origen": "prod-tosta-origen",
   "tosta equilibrio": "prod-tosta-equilibrio",
   "tosta coleccion": "prod-tosta-coleccion",
-  // Dulces: productos comprados hechos; su receta real ya existe en la ficha
-  // (origen = croissant de mantequilla, equilibrio = croissant pistacho —su
-  // receta está metida—, colección = cookie). El coste sale de las facturas.
-  "dulce origen": "prod-rep-croissant",
+  // Dulce equilibrio = croissant pistacho (su receta está metida). Origen y
+  // colección van por enlace directo (COMIDA_DIRECT): croissant / cookie.
   "dulce equilibrio": "prod-croissant-pistacho",
-  "dulce coleccion": "prod-rep-cookie",
 };
 
 function norm(s) {
@@ -74,10 +83,14 @@ function aplicar(st) {
   try { require("./seed-cocina").aplicar(st); } catch (e) {}
   try { require("./seed-productos-agora").aplicar(st); } catch (e) {}
 
-  // Crea la materia "Té en bolsa" si no existe (coste pendiente: lo fija la factura).
-  if (!st.findById("materias", TE)) {
-    st.insert("materias", { id: TE, nombre: "Té en bolsa", unidad: "ud", macro: "Bebidas", subcategoria: "Infusiones", disponibilidad_actual: 0, stock_minimo: 0, coste_medio: 0, precio_compra: 0, pendiente_coste: true, local_id: "principal", origen: "seed", creado_en: new Date().toISOString() });
-  }
+  // Materias auxiliares que crea esta siembra si faltan (coste pendiente: lo fijan
+  // las facturas): té en bolsa, café descafeinado (México) y cookie.
+  const crearMat = (id, nombre, unidad, macro, sub) => {
+    if (!st.findById("materias", id)) st.insert("materias", { id, nombre, unidad, macro, subcategoria: sub, disponibilidad_actual: 0, stock_minimo: 0, coste_medio: 0, precio_compra: 0, pendiente_coste: true, local_id: "principal", origen: "seed", creado_en: new Date().toISOString() });
+  };
+  crearMat(TE, "Té en bolsa", "ud", "Bebidas", "Infusiones");
+  crearMat(CAFE_DESCAF, "Café descafeinado (México)", "g", "Bebidas", "Café");
+  crearMat(COOKIE, "Cookie", "ud", "Panadería", "Repostería");
 
   const mats = {}; (st.readAll("materias") || []).forEach((m) => (mats[m.id] = true));
   const mapa = recetas();
@@ -90,6 +103,7 @@ function aplicar(st) {
   function ingredientesPara(p) {
     const n = norm(p.nombre);
     if (porNombre[n]) return porNombre[n];
+    if (COMIDA_DIRECT[n] || COMIDA_DIRECT[norm(p.clave)]) return COMIDA_DIRECT[n] || COMIDA_DIRECT[norm(p.clave)];
     const srcId = COMIDA_SRC[n] || COMIDA_SRC[norm(p.clave)];
     if (srcId && srcId !== p.id) {
       const src = byId[srcId];

@@ -54,6 +54,10 @@ function compraVsConsumo(store, desde, hasta) {
 
   (store.readAll("recepciones") || []).forEach((r) => {
     if (!dentro(r.fecha, desde, hasta)) return;
+    // Solo los ALBARANES mueven cantidad de stock. Las facturas son documento
+    // fiscal (dinero/precio), no entrada de mercancía: no cuentan como "comprado"
+    // (evita cantidades OCR poco fiables y descuadres fantasma).
+    if ((r.tipo_documento || "albaran") === "factura") return;
     (r.lineas || []).forEach((l) => {
       if (!l.materia_id) return;
       const c = Number(l.cantidad) || 0; if (c > 0) comprado[l.materia_id] = (comprado[l.materia_id] || 0) + c;

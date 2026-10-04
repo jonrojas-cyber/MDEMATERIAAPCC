@@ -135,6 +135,11 @@ function palabrasClave(s) {
     .replace(/[^a-z0-9ñ ]/g, " ").split(/\s+/)
     .filter((w) => w.length >= 3 && !STOP_MATCH.has(w) && !/^\d+$/.test(w));
 }
+// Empareja una descripción con el mejor elemento de `lista` por solapamiento de
+// palabras significativas. Es ESTRICTO para no cruzar materias parecidas (p. ej.
+// "ácido cítrico" ≠ "ácido málico"): exige que las palabras compartidas cubran
+// al menos el 60 % de las palabras del candidato (así una sola palabra genérica
+// —"ácido"— no basta para casar un nombre de dos palabras).
 function mejorPorPalabras(descripcion, lista, campo) {
   const toks = new Set(palabrasClave(descripcion));
   if (!toks.size) return null;
@@ -143,8 +148,11 @@ function mejorPorPalabras(descripcion, lista, campo) {
     const mt = palabrasClave(it[campo || "nombre"]);
     if (!mt.length) continue;
     let score = 0; for (const w of mt) if (toks.has(w)) score += 1;
-    const puntos = score + (score / mt.length);
-    if (score >= 1 && puntos > mejorScore) { mejorScore = puntos; mejor = it; }
+    if (score < 1) continue;
+    const ratio = score / mt.length;        // fracción del nombre del candidato cubierta
+    if (ratio < 0.6) continue;              // match débil → se descarta (evita cruces)
+    const puntos = score + ratio;
+    if (puntos > mejorScore) { mejorScore = puntos; mejor = it; }
   }
   return mejor;
 }

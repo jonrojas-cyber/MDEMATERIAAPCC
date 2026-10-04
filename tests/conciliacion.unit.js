@@ -72,6 +72,20 @@ test("compra vs consumo del periodo (ignora lo fuera de ventana y los no-venta)"
   assert.strictEqual(leche.consumido, 500);
 });
 
+test("una FACTURA no cuenta como 'comprado' (solo albaranes mueven stock)", () => {
+  const st = fakeStore({
+    materias: [{ id: "m_malico", nombre: "Ácido málico", unidad: "g", coste_medio: 0.01 }],
+    recepciones: [
+      { id: "fa", proveedor_id: "p", tipo_documento: "factura", fecha: "2026-09-10T12:00:00Z", lineas: [{ materia_id: "m_malico", cantidad: 9 }] },
+      { id: "al", proveedor_id: "p", tipo_documento: "albaran", fecha: "2026-09-11T12:00:00Z", lineas: [{ materia_id: "m_malico", cantidad: 500 }] },
+    ],
+    stock_movements: [], productos: [], ventas: [], recetas: [], precios_historico: [], inventarios: [],
+  });
+  const r = con.compraVsConsumo(st, "2026-01-01", "2026-12-31");
+  const l = r.lineas.find((x) => x.materia_id === "m_malico");
+  assert.strictEqual(l.comprado, 500); // la factura (9) NO suma; solo el albarán (500)
+});
+
 test("desviación: coge el ÚLTIMO recuento y sus peores líneas", () => {
   const d = con.desviacionUltimoInventario(STORE);
   assert.strictEqual(d.id, "inv2");

@@ -6287,7 +6287,9 @@ function concHTML(c){
   if(PL){
     const fc=PL.food_cost_pct||0;
     const colFc=fc>35?"var(--alert)":(fc>0?"var(--olive)":"var(--muted)");
-    h+=`<div class="lab-eyebrow" style="margin-top:4px;">cuenta de resultados · ventas reales</div>
+    const meses=c.meses_disponibles||[]; const mesSel=(c.periodo&&c.periodo.mes)||"";
+    const selector=meses.length?`<select id="conc-mes" onchange="concCambiarMes(this.value)" style="font-size:11px;padding:2px 6px;background:transparent;color:inherit;border:1px solid var(--line,#555);border-radius:5px;">${meses.slice().reverse().map(m=>`<option value="${m}"${m===mesSel?" selected":""}>${mesLargo(m)}</option>`).join("")}</select>`:"";
+    h+=`<div class="lab-eyebrow" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">cuenta de resultados · ${mesSel?`<span style="color:var(--muted)">${mesLargo(mesSel)}</span>`:"ventas reales"} ${selector}</div>
       <div class="lim-param" style="margin:8px 0 6px;">
         <div><b>${eur(PL.ingresos)}</b><span>ingresos (neto)</span></div>
         <div><b>${eur(PL.coste_ventas)}</b><span>coste de materia</span></div>
@@ -6360,11 +6362,25 @@ function concHTML(c){
   }
   // Compra vs consumo (top movimientos del periodo).
   if(CC.lineas&&CC.lineas.length){
-    h+=`<div class="lab-eyebrow" style="margin-top:12px;">compra vs consumo · últimos 90 días</div>`;
+    h+=`<div class="lab-eyebrow" style="margin-top:12px;">compra vs consumo · ${(c.periodo&&c.periodo.mes)?mesLargo(c.periodo.mes):"periodo"}</div>`;
     h+=CC.lineas.slice(0,8).map(l=>`<div class="card"><div class="card-name">${esc(l.nombre)}</div>
       <div class="card-meta">comprado <b>${l.comprado}</b> ${esc(l.unidad)} · consumido <b>${l.consumido}</b> · neto <b>${l.neto}</b>${l.coste_medio>0?` · ${eur(l.valor_neto)}`:""}</div></div>`).join("");
   }
-  return `<div style="margin-bottom:16px;">${h}</div>`;
+  return `<div id="conc-block" style="margin-bottom:16px;">${h}</div>`;
+}
+
+// "2026-09" → "septiembre 2026" (para el selector de mes del food cost).
+function mesLargo(m){ try{ const p=String(m).split("-"); return new Date(Date.UTC(+p[0],+p[1]-1,1)).toLocaleDateString("es-ES",{month:"long",year:"numeric"}); }catch(e){ return m; } }
+
+// Cambia el mes del food cost sin recargar la pantalla: re-pide la conciliación
+// de ese mes y sustituye solo el bloque.
+async function concCambiarMes(mes){
+  const cont=el("conc-block"); if(cont) cont.style.opacity="0.5";
+  try{
+    const c=await api("/inventario/conciliacion?mes="+encodeURIComponent(mes));
+    window._invConc=concHTML(c);
+    const cur=el("conc-block"); if(cur) cur.outerHTML=window._invConc;
+  }catch(e){ if(cont) cont.style.opacity="1"; alert("No se pudo cambiar de mes: "+(e.message||e)); }
 }
 
 async function irA_inventario(){

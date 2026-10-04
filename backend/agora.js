@@ -222,13 +222,17 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       const nombre = campoDoc(ln, ["ProductName", "product", "productName", "Name", "name", "Reference", "reference", "referencia", "descripcion", "descripción", "nombre"]);
       const cantidad = numJSON(campoDoc(ln, ["Quantity", "quantity", "Units", "units", "cantidad", "uds", "qty"]));
       const importe = numJSON(campoDoc(ln, ["TotalAmount", "Amount", "amount", "Total", "total", "importe", "GrossAmount", "UnitPrice", "ProductPrice", "price", "precio", "pvp"]));
+      // Neto (base sin IVA) si el documento lo trae; la cuenta de resultados va
+      // sobre neto. Si no viene, queda null y el P&L cae al importe.
+      const netoRaw = campoDoc(ln, ["Base", "base", "NetAmount", "net", "neto", "BaseAmount", "importe_neto"]);
+      const neto = (netoRaw != null && netoRaw !== "") ? numJSON(netoRaw) : null;
       if (!nombre) return;
       // Cantidad no válida (0, vacía o negativa/devolución): no vendemos ni
       // descontamos "1 por defecto" (evita ventas fantasma y descuentos erróneos).
       if (!(cantidad > 0)) return;
       const producto = idxProd[normProd(nombre)];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
-      resueltas.push({ producto, cantidad, importe, nombre });
+      resueltas.push({ producto, cantidad, importe, neto, nombre });
     });
 
     // 2) Si falta algún producto por vincular → BLOQUEAR (no descontar, no marcar).
@@ -240,7 +244,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     }
 
     // 3) Descontar stock + libro de movimientos + registrar venta.
-    resueltas.forEach(({ producto, cantidad, importe }) => {
+    resueltas.forEach(({ producto, cantidad, importe, neto }) => {
       (producto.ingredientes || []).forEach((ing) => {
         const m = idxMat[ing.materia_id];
         if (!m) return;
@@ -256,7 +260,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       ventas.push({
         id: store.nextId("ven", "ventas"),
         producto_id: producto.id, producto: producto.nombre,
-        cantidad, importe, fecha, fuente: "agora",
+        cantidad, importe, importe_neto: (neto != null ? neto : null), fecha, fuente: "agora",
         doc_clave: clave, doc_serie: serie, doc_number: number, importado_en: nowISO,
       });
       unidades += cantidad; importeTotal += importe;

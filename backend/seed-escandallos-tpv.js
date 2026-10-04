@@ -103,6 +103,22 @@ function aplicar(st) {
   const dsc = st.findById("materias", CAFE_DESCAF);
   if (dsc && !(Number(dsc.coste_medio) > 0)) st.update("materias", CAFE_DESCAF, { coste_medio: 0.0285, precio_compra: 0.0285, pendiente_coste: false });
 
+  // Café cold brew: la receta usa mat-018 pero en producción quedó a 0 €. Se
+  // alinea con el coste REAL del cold brew (mat-cafe-coldbrew, de factura); si no
+  // existiera esa referencia, 0,07088 €/g. Solo si está pendiente.
+  const cb = st.findById("materias", CAFE_COLD);
+  if (cb && !(Number(cb.coste_medio) > 0)) {
+    const ref = st.findById("materias", "mat-cafe-coldbrew");
+    const precio = ref && Number(ref.coste_medio) > 0 ? ref.coste_medio : 0.07088;
+    st.update("materias", CAFE_COLD, { coste_medio: precio, precio_compra: precio, pendiente_coste: false });
+  }
+
+  // Té en bolsa: aún sin proveedor. Para que no quede a 0 (y el food cost no
+  // mienta a la baja), se fija un coste ESTIMADO conservador de 0,20 €/bolsa,
+  // marcado como estimado para reemplazarlo cuando entre la factura real.
+  const te = st.findById("materias", TE);
+  if (te && !(Number(te.coste_medio) > 0)) st.update("materias", TE, { coste_medio: 0.20, precio_compra: 0.20, pendiente_coste: false, coste_estimado: true });
+
   // Alias de Ágora: en caja se vende "Iced americano" pero el catálogo lo tiene
   // como "Ices americano" → se le pone agora_ref para que la venta lo encuentre.
   const ALIAS = { "ices americano": "Iced americano" };

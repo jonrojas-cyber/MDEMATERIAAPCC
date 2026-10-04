@@ -109,7 +109,7 @@ router.get("/conciliacion", async (req, res) => {
     // Antes de calcular, vuelca a coste de materia los precios de Compras que
     // estén pendientes (así el food cost del resumen está al día). Automático.
     try { const r = require("../coste-desde-compras").aplicar(store); if (r.fijados) await store.flush(); } catch (e) {}
-    const inf = require("../conciliacion").informe(store, { dias: Number(req.query.dias) || 90, desde: req.query.desde, hasta: req.query.hasta });
+    const inf = require("../conciliacion").informe(store, { mes: req.query.mes, dias: req.query.dias ? Number(req.query.dias) : undefined, desde: req.query.desde, hasta: req.query.hasta });
     res.json(inf);
   } catch (e) {
     res.status(500).json({ error: e.message || "No se pudo calcular la conciliación." });

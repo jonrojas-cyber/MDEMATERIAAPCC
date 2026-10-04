@@ -99,5 +99,13 @@ test("empareja pese a TILDES / MAYÚSCULAS / ESPACIOS (no bloquea esas ventas)",
   assert.strictEqual(r.procesados, 1, "empareja y procesa la venta");
 });
 
+test("la venta guarda importe (con IVA) e importe_neto (Base) para el P&L", () => {
+  agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 950, GlobalId: "uuid-neto", Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 2.2, Base: 2 }] }] });
+  const v = (store.readAll("ventas") || []).find((x) => x.doc_clave === "gid:uuid-neto");
+  assert.ok(v, "registró la venta");
+  assert.strictEqual(v.importe, 2.2);      // con IVA (Amount)
+  assert.strictEqual(v.importe_neto, 2);   // base sin IVA → lo que usa la cuenta de resultados
+});
+
 console.log(fallos ? `\n${fallos} prueba(s) FALLIDA(s)` : "\nTodas las pruebas de Ágora OK");
 process.exit(fallos ? 1 : 0);

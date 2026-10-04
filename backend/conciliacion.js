@@ -21,6 +21,13 @@ function dentro(fechaISO, desde, hasta) {
   const t = String(fechaISO || "").slice(0, 10);
   return (!desde || t >= desde) && (!hasta || t <= hasta);
 }
+// Ingreso NETO de una venta (base sin IVA): la cuenta de resultados va sobre neto.
+// Usa `importe_neto` si la venta lo trae; si no (ventas antiguas), cae al importe.
+function importeNeto(v) {
+  const n = v && v.importe_neto;
+  if (n != null && n !== "" && Number.isFinite(Number(n))) return Number(n);
+  return Number(v && v.importe) || 0;
+}
 
 // 1) Stock teórico actual y su valor (lo que deberíamos tener).
 function resumenAlmacen(store) {
@@ -185,7 +192,7 @@ function pyl(store, desde, hasta) {
   (store.readAll("ventas") || []).forEach((v) => {
     if (!dentro(v.fecha, desde, hasta)) return;
     const dia = String(v.fecha).slice(0, 10);
-    const ing = Number(v.importe) || 0;
+    const ing = importeNeto(v);
     const cu = byId[v.producto_id] ? costeUnidadProducto(byId[v.producto_id], idxMat, idxRec) : 0;
     const cos = cu * (Number(v.cantidad) || 0);
     const d = (dias[dia] = dias[dia] || { fecha: dia, ingresos: 0, coste: 0, uds: 0 });
@@ -234,7 +241,7 @@ function pylPorProducto(store, desde, hasta) {
     if (!dentro(v.fecha, desde, hasta)) return;
     const id = v.producto_id || ("n:" + (v.producto || ""));
     const a = (agg[id] = agg[id] || { producto_id: v.producto_id || null, nombre: (byId[v.producto_id] && byId[v.producto_id].nombre) || v.producto || id, uds: 0, ingresos: 0 });
-    a.uds += Number(v.cantidad) || 0; a.ingresos += Number(v.importe) || 0;
+    a.uds += Number(v.cantidad) || 0; a.ingresos += importeNeto(v);
   });
 
   const lista = Object.values(agg).map((a) => {
@@ -256,16 +263,39 @@ function pylPorProducto(store, desde, hasta) {
   return { lista, n: lista.length, n_sin_coste: lista.filter((x) => x.sin_coste).length };
 }
 
-// Informe completo. `dias` define la ventana (por defecto 90). Admite desde/hasta.
+// Meses (YYYY-MM) que tienen ventas, de más antiguo a más reciente.
+function mesesConVentas(store) {
+  const set = new Set();
+  (store.readAll("ventas") || []).forEach((v) => { const m = String(v.fecha || "").slice(0, 7); if (/^\d{4}-\d{2}$/.test(m)) set.add(m); });
+  return [...set].sort();
+}
+// Último día del mes YYYY-MM (en ISO, p. ej. "2026-09-30").
+function finDeMes(m) {
+  const [y, mm] = String(m).split("-").map(Number);
+  return new Date(Date.UTC(y, mm, 0)).toISOString().slice(0, 10);
+}
+
+// Informe completo. Por defecto trabaja MES POR MES (el mes pedido en `mes`, o el
+// último con ventas) para que el food cost cuadre con el mes y no mezcle meses.
+// Admite `desde`/`hasta` explícitos, o `dias` para una ventana móvil (modo viejo).
 function informe(store, opts = {}) {
-  let { desde, hasta, dias } = opts;
-  if (!desde) {
-    const d = new Date(); const h = new Date();
-    d.setDate(d.getDate() - (Number(dias) > 0 ? Number(dias) : 90));
-    desde = d.toISOString().slice(0, 10); hasta = hasta || h.toISOString().slice(0, 10);
+  let { desde, hasta, dias, mes } = opts;
+  const meses = mesesConVentas(store);
+  let mesActivo = null;
+  if (!desde && !hasta) {
+    if (Number(dias) > 0) { // ventana móvil explícita (compatibilidad)
+      const d = new Date(); const h = new Date();
+      d.setDate(d.getDate() - Number(dias));
+      desde = d.toISOString().slice(0, 10); hasta = h.toISOString().slice(0, 10);
+    } else {               // por mes (lo normal): el pedido o el último con ventas
+      mesActivo = (mes && /^\d{4}-\d{2}$/.test(mes)) ? mes : (meses[meses.length - 1] || new Date().toISOString().slice(0, 7));
+      desde = mesActivo + "-01";
+      hasta = finDeMes(mesActivo);
+    }
   }
   return {
-    periodo: { desde, hasta },
+    periodo: { desde, hasta, mes: mesActivo },
+    meses_disponibles: meses,
     pyl: pyl(store, desde, hasta),
     por_producto: pylPorProducto(store, desde, hasta),
     resumen: resumenAlmacen(store),
@@ -276,4 +306,4 @@ function informe(store, opts = {}) {
   };
 }
 
-module.exports = { informe, pyl, pylPorProducto, resumenAlmacen, compraVsConsumo, desviacionUltimoInventario, productosSinEscandallo, escandallosAfectados };
+module.exports = { informe, pyl, pylPorProducto, resumenAlmacen, compraVsConsumo, desviacionUltimoInventario, productosSinEscandallo, escandallosAfectados, mesesConVentas, finDeMes };

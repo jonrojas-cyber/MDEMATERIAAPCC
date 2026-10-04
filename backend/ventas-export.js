@@ -1,0 +1,71 @@
+// CONSUMO DESDE EL EXPORT "ANÁLISIS DE VENTAS" DE ÁGORA (por producto)
+// ─────────────────────────────────────────────────────────────────────────────
+// El export trae, por día, cada ticket y sus líneas de producto:
+//   Fila DÍA:      "DD/MM/YYYY" en col A.
+//   Fila TICKET:   "DD/MM/YYYY -> T/xxxxx" en col A.
+//   Fila PRODUCTO: col B=familia, col C=producto, col D=cantidad, col F=total.
+// Se reconstruyen "docs" (un ticket = un doc con sus líneas) y se pasan al motor
+// de consumo de Ágora (agora.importarDocs), que es idempotente (por ticket),
+// descuenta stock según el escandallo de cada producto y registra las ventas.
+// Así cruzamos compra vs venta y el almacén cuadra, sin duplicar al reimportar.
+
+const { readXlsxSheet } = require("./xlsx-lite");
+
+function num(x) {
+  if (x == null || x === "") return 0;
+  let s = String(x).trim().replace(/[€\s]/g, "");
+  if (s.indexOf(",") > -1 && s.indexOf(".") > -1) s = s.replace(/\./g, "").replace(",", ".");
+  else if (s.indexOf(",") > -1) s = s.replace(",", ".");
+  const n = parseFloat(s); return isNaN(n) ? 0 : n;
+}
+function ymd(dd, mm, yyyy) { return `${yyyy}-${mm}-${dd}`; }
+
+// Convierte un buffer (xlsx o CSV) en matriz de filas.
+function aFilas(buf) {
+  const b = Buffer.isBuffer(buf) ? buf : Buffer.from(buf || "");
+  if (b.length >= 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04) return readXlsxSheet(b);
+  const txt = b.toString("utf8");
+  const lineas = txt.split(/\r?\n/).filter((l) => l.trim() !== "");
+  if (!lineas.length) return [];
+  const delim = (lineas[0].match(/;/g) || []).length >= (lineas[0].match(/,/g) || []).length ? ";" : ",";
+  return lineas.map((l) => l.split(delim).map((c) => c.replace(/^"|"$/g, "").trim()));
+}
+
+// Reconstruye los docs (tickets con sus líneas) a partir de las filas.
+function parseDocs(filas) {
+  const docs = [];
+  let fecha = null, cur = null;
+  (filas || []).forEach((c) => {
+    const A = String((c && c[0]) == null ? "" : c[0]).trim();
+    const mDia = A.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (mDia) { fecha = ymd(mDia[1], mDia[2], mDia[3]); cur = null; return; }
+    if (A.includes("->")) {
+      const md = A.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if (md) fecha = ymd(md[1], md[2], md[3]);
+      const ref = (A.split("->")[1] || "").trim();      // "T/001052"
+      const parts = ref.split("/");
+      const serie = parts.length > 1 ? parts[0] : "T";
+      const number = parts.length > 1 ? parts.slice(1).join("/") : ref;
+      cur = { type: "TicketExport", Serie: serie, Number: number, Date: fecha, Lines: [] };
+      docs.push(cur);
+      return;
+    }
+    // Línea de producto: col C (índice 2) es el producto; col D (3) la cantidad.
+    const producto = String((c && c[2]) == null ? "" : c[2]).trim();
+    const cantidad = num(c && c[3]);
+    if (!cur || !producto) return;
+    cur.Lines.push({ ProductName: producto, Quantity: cantidad, TotalAmount: num(c && c[5]) });
+  });
+  return docs.filter((d) => d.Lines.length);
+}
+
+// Importa el consumo desde el buffer del export. `agoraImportar` inyectable (test).
+function importar(buf, opts = {}) {
+  const agoraImportar = opts.agoraImportar || require("./agora").importarDocs;
+  const docs = parseDocs(aFilas(buf));
+  if (!docs.length) return { docs: 0, resultado: null };
+  const r = agoraImportar(docs, { usuario: { nombre: "Export Ágora" } });
+  return { docs: docs.length, resultado: r };
+}
+
+module.exports = { importar, parseDocs, aFilas };

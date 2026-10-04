@@ -40,8 +40,14 @@ router.post("/importar", express.raw({ type: ["text/*", "application/csv", "appl
         meta: { mes: snap.mes, neto: snap.neto, tickets: snap.tickets },
       });
     } catch (e) {}
+    // Además del snapshot (agregados), se vuelca el CONSUMO por producto: cada
+    // ticket del export descuenta stock según su escandallo (idempotente). Así el
+    // mismo archivo cruza ventas con compras y cuadra el almacén. No bloquea la
+    // respuesta si falla.
+    let consumo = null;
+    try { consumo = require("../ventas-export").importar(req.body || Buffer.alloc(0)); } catch (e) { consumo = { error: e.message }; }
     await store.flush();
-    res.json({ ok: true, snapshot: snap });
+    res.json({ ok: true, snapshot: snap, consumo });
   } catch (e) {
     res.status(400).json({ error: e.message || "No se pudo importar el fichero." });
   }

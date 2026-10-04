@@ -14,8 +14,29 @@ const auth = require("./auth");
 //   · Daniel -> alta como trabajador (equipo) si no existía.
 const FLAG = "usuarios_seed_v4_jon_moni_5234";
 
+// v5: BLINDA que Jon tenga acceso total (admin), pase lo que pase. El emparejado
+// de v4 exigía key/id EXACTO "Jon"; si en la BD quedó como "jon", "Jonatan" o con
+// otro nombre, no lo ascendía y Jon se quedaba sin ver costes/food cost/P&L. v5
+// lo busca de forma tolerante (mayúsculas/acentos/"Jonatan…"), lo pone admin y,
+// si no existiera, lo crea admin. Nunca le pisa un PIN que ya tenga.
+const FLAG_V5 = "usuarios_seed_v5_jon_acceso_total";
+
+function norm(s) {
+  return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+function esJon(u) {
+  return [norm(u && u.key), norm(u && u.id), norm(u && u.nombre)].some((x) => x === "jon" || x.startsWith("jonatan"));
+}
+
 // Aplica sobre el store dado (inyectable para tests). Idempotente por flag.
+// Corre v4 (cuentas base) y v5 (blindaje de Jon admin), cada una por su flag.
 function aplicar(st) {
+  const a = aplicarV4(st);
+  const b = aplicarJonAcceso(st);
+  return { ranAny: a.ranAny || b.ranAny, tocados: a.tocados + b.tocados };
+}
+
+function aplicarV4(st) {
   const cfg = st.readAll("config") || [];
   if (cfg.some((c) => c && c.id === FLAG)) return { ranAny: false, tocados: 0 };
 
@@ -46,6 +67,34 @@ function aplicar(st) {
   return { ranAny: true, tocados };
 }
 
+// Garantiza que Jon sea admin (acceso total). Tolerante al nombre; crea la cuenta
+// si no existe. No toca su PIN si ya lo tiene (solo le pone uno si le falta).
+function aplicarJonAcceso(st) {
+  const cfg = st.readAll("config") || [];
+  if (cfg.some((c) => c && c.id === FLAG_V5)) return { ranAny: false, tocados: 0 };
+
+  let tocados = 0;
+  const jons = (st.readAll("usuarios") || []).filter(esJon);
+  if (jons.length) {
+    jons.forEach((j) => {
+      const patch = { rol: "admin" };
+      if (!j.pin_hash) { patch.pin_hash = auth.hashPin("5234"); patch.pin_temporal = true; } // le faltaba PIN
+      st.update("usuarios", j.id, patch);
+      tocados++;
+    });
+  } else {
+    st.insert("usuarios", {
+      id: "Jon", key: "Jon", nombre: "Jon", rol: "admin",
+      local_id: "principal", pin_hash: auth.hashPin("5234"), pin_temporal: true,
+      creado_en: new Date().toISOString(),
+    });
+    tocados++;
+  }
+
+  st.insert("config", { id: FLAG_V5, hecho: true, fecha: new Date().toISOString() });
+  return { ranAny: true, tocados };
+}
+
 async function seedUsuarios() {
   try {
     // Solo en producción (Postgres, donde las cuentas ya existen). En dev/tests
@@ -59,4 +108,4 @@ async function seedUsuarios() {
   }
 }
 
-module.exports = { seedUsuarios, aplicar, FLAG };
+module.exports = { seedUsuarios, aplicar, aplicarV4, aplicarJonAcceso, esJon, FLAG, FLAG_V5 };

@@ -12,7 +12,7 @@
 
 const store = require("./data-store");
 
-const SERVICIO_ML = 300;
+const SERVICIO_ML = 200;
 
 // Materias de limonada (se reutiliza la existente si ya hay una con ese nombre).
 const RAW = [
@@ -72,11 +72,15 @@ function aplicar(st) {
   (st.readAll("productos") || []).forEach((p) => {
     const def = POR_LITRO[norm(p.nombre)] || POR_LITRO[norm(p.clave)];
     if (!def) return;
-    const yaTiene = (Array.isArray(p.ingredientes) && p.ingredientes.length) || Number(p.coste_materia) > 0;
-    if (yaTiene) return; // nunca pisa una receta ya puesta
+    const ingActual = Array.isArray(p.ingredientes) ? p.ingredientes : [];
+    const tieneReceta = ingActual.length || Number(p.coste_materia) > 0;
+    // "Mío" = lo sembró esta receta (marca) o referencia materias mat-lim-*.
+    const mio = p.escandallo_origen === "seed-limonadas" || ingActual.some((i) => /^mat-lim-/.test(String(i.materia_id)));
+    if (tieneReceta && !mio) return;                 // receta puesta a mano → nunca se toca
+    if (mio && p.escandallo_servicio_ml === SERVICIO_ML) return; // ya al día con este vaso
     const ing = def.map(([k, gL]) => ({ materia_id: idOf[k], cantidad: Math.round(gL * factor * 10000) / 10000 })).filter((x) => x.materia_id);
     if (!ing.length) return;
-    st.update("productos", p.id, { ingredientes: ing });
+    st.update("productos", p.id, { ingredientes: ing, escandallo_origen: "seed-limonadas", escandallo_servicio_ml: SERVICIO_ML });
     rellenados++;
   });
   return { rellenados };

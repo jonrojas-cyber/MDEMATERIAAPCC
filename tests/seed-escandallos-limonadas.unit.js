@@ -45,14 +45,14 @@ test("crea las materias de limonada y reutiliza la Sal existente", () => {
   assert.ok(!st.findById("materias", "mat-lim-sal"));
 });
 
-test("escandallo por vaso de 300 ml: azúcar origen = 61 g/L × 0,3 = 18,3 g", () => {
+test("escandallo por vaso de 200 ml: azúcar origen = 61 g/L × 0,2 = 12,2 g", () => {
   const st = store();
   seed.aplicar(st);
   const o = st.findById("productos", "tpv-lim-o");
   const azucar = o.ingredientes.find((i) => i.materia_id === "mat-lim-azucar");
-  assert.strictEqual(azucar.cantidad, 18.3); // 61 * 0.3
+  assert.strictEqual(azucar.cantidad, 12.2); // 61 * 0.2
   const sal = o.ingredientes.find((i) => i.materia_id === "mat-coc-sal");
-  assert.ok(sal && Math.abs(sal.cantidad - 0.183) < 1e-6); // 0.61 * 0.3, enlazada a la sal existente
+  assert.ok(sal && Math.abs(sal.cantidad - 0.122) < 1e-6); // 0.61 * 0.2, enlazada a la sal existente
 });
 
 test("equilibrio lleva puré de maracuyá; colección lleva lapsang; zumo lleva naranja", () => {
@@ -75,6 +75,19 @@ test("idempotente: segunda pasada no rellena nada más", () => {
   const r2 = seed.aplicar(st);
   assert.strictEqual(r1.rellenados, 4);
   assert.strictEqual(r2.rellenados, 0);
+});
+
+test("recalcula las que sembró el propio seed cuando cambia el vaso (300 → 200)", () => {
+  const st = fakeStore({
+    materias: [{ id: "mat-lim-azucar", nombre: "Azúcar", unidad: "g", coste_medio: 0 }],
+    productos: [{ id: "tpv-lim-o", nombre: "Limonada origen", ingredientes: [{ materia_id: "mat-lim-azucar", cantidad: 18.3 }], escandallo_origen: "seed-limonadas", escandallo_servicio_ml: 300 }],
+    config: [{ id: "seed-prod-agora-v1", hecho: true }],
+  });
+  const r = seed.aplicar(st);
+  assert.ok(r.rellenados >= 1);
+  const o = st.findById("productos", "tpv-lim-o");
+  assert.strictEqual(o.escandallo_servicio_ml, 200);
+  assert.strictEqual(o.ingredientes.find((i) => i.materia_id === "mat-lim-azucar").cantidad, 12.2);
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en escandallos limonadas`); process.exit(1); }

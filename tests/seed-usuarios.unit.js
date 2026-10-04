@@ -2,7 +2,7 @@
 // trabajador (equipo). Ejecutar: node tests/seed-usuarios.unit.js
 const assert = require("assert");
 const crypto = require("crypto");
-const { aplicar, FLAG } = require("../backend/seed-usuarios");
+const { aplicar, aplicarJonAcceso, FLAG, FLAG_V5 } = require("../backend/seed-usuarios");
 
 let fallos = 0;
 function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + e.message); } }
@@ -66,6 +66,39 @@ test("es idempotente por flag y no duplica a Daniel", () => {
   assert.strictEqual(r2.ranAny, false);
   assert.strictEqual(data.usuarios.filter((u) => u.id === "Daniel").length, 1);
   assert.ok(data.config.some((c) => c.id === FLAG));
+});
+
+test("v5 blinda a Jon aunque esté como 'equipo' con el nombre en otra variante", () => {
+  const data = { usuarios: [
+    { id: "u3", key: "jon", nombre: "Jonatan Rojas", rol: "equipo", pin_hash: "scrypt$cc$dd" }, // minúscula + apellido
+    { id: "Moni", key: "Moni", nombre: "Mónica", rol: "admin", pin_hash: "scrypt$aa$bb" },
+  ], config: [] };
+  const st = fakeStore(data);
+  aplicar(st);
+  const jon = data.usuarios.find((u) => u.id === "u3");
+  assert.strictEqual(jon.rol, "admin");                       // ya ve todo
+  assert.strictEqual(jon.pin_hash, "scrypt$cc$dd");           // no se le pisa el PIN que ya tenía
+});
+
+test("v5 crea a Jon admin si no existe ninguna cuenta suya", () => {
+  const data = { usuarios: [{ id: "Moni", key: "Moni", nombre: "Mónica", rol: "admin", pin_hash: "scrypt$aa$bb" }], config: [] };
+  const st = fakeStore(data);
+  aplicar(st);
+  const jon = data.usuarios.find((u) => /jon/i.test(u.nombre) || /jon/i.test(u.key));
+  assert.ok(jon, "Jon fue creado");
+  assert.strictEqual(jon.rol, "admin");
+  assert.ok(pinOk("5234", jon.pin_hash), "PIN inicial 5234 para que pueda entrar");
+  assert.strictEqual(jon.pin_temporal, true);
+});
+
+test("v5 es idempotente (segunda pasada no vuelve a tocar a Jon) y marca su flag", () => {
+  const data = { usuarios: baseUsuarios(), config: [] };
+  const st = fakeStore(data);
+  aplicar(st);
+  const r = aplicarJonAcceso(st);
+  assert.strictEqual(r.ranAny, false);
+  assert.ok(data.config.some((c) => c.id === FLAG_V5));
+  assert.strictEqual(data.usuarios.filter((u) => u.id === "Jon").length, 1); // no duplica
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en seed-usuarios`); process.exit(1); }

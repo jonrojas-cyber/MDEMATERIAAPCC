@@ -139,9 +139,19 @@ function construir(preset = "hoy", opts = {}) {
   const primerDiaMesAnt = new Date(d0.getFullYear(), d0.getMonth() - 1, 1).getTime();
   const benMesAnt = financials.beneficio({ desde: primerDiaMesAnt, hasta: primerDiaMes, preset: "mes_anterior" }, now);
   const diasEnMes = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
+  // Días ABIERTOS del mes anterior = días con venta (no el calendario). El objetivo
+  // diario se reparte entre los días que de verdad se abre, no entre 30/31.
+  const diaSet = new Set();
+  (store.readAll("ventas") || []).forEach((v) => {
+    const t = new Date(v.fecha).getTime();
+    if (Number.isFinite(t) && t >= primerDiaMesAnt && t < primerDiaMes) diaSet.add(String(v.fecha).slice(0, 10));
+  });
+  const diasAbiertosAnt = diaSet.size;
   const OBJ = 1.10; // regla: +10% sobre el mes anterior
   const objetivoMes = eur(benMesAnt.ventas * OBJ);
-  const objetivoDia = eur(objetivoMes / diasEnMes);
+  // Objetivo diario = media por día ABIERTO del mes anterior × 1,10. Si aún no hay
+  // histórico de días abiertos, cae al reparto por días del mes (aproximación).
+  const objetivoDia = diasAbiertosAnt > 0 ? eur((benMesAnt.ventas * OBJ) / diasAbiertosAnt) : eur(objetivoMes / diasEnMes);
   const ticketsHoy = financials.ticketsEnRango(rHoy);
   const ventasHoy = benHoy.ventas || 0;
   // Previsión de cierre del día: proyección por fracción de jornada (8–23 h).
@@ -173,6 +183,8 @@ function construir(preset = "hoy", opts = {}) {
       ebitda_eur: fin.ebitda_mes,
       food_cost_pct: benMes.food_cost_pct,
       coste_laboral_pct: benMes.coste_laboral_pct,
+      ventas_mes_anterior: benMesAnt.ventas,
+      dias_abiertos_anterior: diasAbiertosAnt,
     },
   };
 

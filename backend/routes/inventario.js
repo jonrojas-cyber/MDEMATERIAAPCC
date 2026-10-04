@@ -103,9 +103,12 @@ router.post("/conteo", async (req, res) => {
 // teórico y su valor, compra vs consumo del periodo, desviación del último
 // recuento, productos de Ágora sin escandallo (no descuentan) y escandallos
 // afectados por subidas de precio. Solo admin (dinero). ?dias= (def. 90).
-router.get("/conciliacion", (req, res) => {
+router.get("/conciliacion", async (req, res) => {
   if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede ver la conciliación de almacén." });
   try {
+    // Antes de calcular, vuelca a coste de materia los precios de Compras que
+    // estén pendientes (así el food cost del resumen está al día). Automático.
+    try { const r = require("../coste-desde-compras").aplicar(store); if (r.fijados) await store.flush(); } catch (e) {}
     const inf = require("../conciliacion").informe(store, { dias: Number(req.query.dias) || 90, desde: req.query.desde, hasta: req.query.hasta });
     res.json(inf);
   } catch (e) {

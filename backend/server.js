@@ -415,6 +415,8 @@ store
     require("./seed-escandallos-tpv").seedEscandallosTpv().catch(() => {});
     // Limonadas (Burbujas) + Zumo materia: escandallo por vaso (200 ml) enlazado.
     require("./seed-escandallos-limonadas").seedEscandallosLimonadas().catch(() => {});
+    // Vuelca el precio de Compras al coste de cada materia pendiente (food cost vivo).
+    require("./coste-desde-compras").seedCosteDesdeCompras().catch(() => {});
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
     // materias, recetas, lotes y productos de ejemplo). Solo en producción
     // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,

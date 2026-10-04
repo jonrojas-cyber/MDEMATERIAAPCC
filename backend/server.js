@@ -415,6 +415,9 @@ store
     require("./seed-escandallos-tpv").seedEscandallosTpv().catch(() => {});
     // Limonadas (Burbujas) + Zumo materia: escandallo por vaso (200 ml) enlazado.
     require("./seed-escandallos-limonadas").seedEscandallosLimonadas().catch(() => {});
+    // Limpia ventas duplicadas heredadas (import antiguo por CSV sin doc_clave) que
+    // inflaban los ingresos del mes en el P&L. Conservadora e idempotente.
+    require("./migracion-ventas-dup").migrarVentasDup(store).catch(() => {});
     // Vuelca el precio de Compras al coste de cada materia pendiente (food cost vivo).
     require("./coste-desde-compras").seedCosteDesdeCompras().catch(() => {});
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,

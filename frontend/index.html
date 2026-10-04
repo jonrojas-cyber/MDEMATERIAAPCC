@@ -8448,7 +8448,7 @@ async function irA_productosProveedor(provId,mes){
         if(d.pendiente_pago>0) pago=`<span style="font-size:10px;font-weight:700;color:var(--alert);"> · pendiente ${Number(d.pendiente_pago).toFixed(2)} €</span>`;
         else if(d.importe_total>0) pago=`<span style="font-size:10px;font-weight:700;color:var(--olive);"> · pagada</span>`;
       }
-      const btns=[d.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${d.id}')">Ver factura (PDF)</button>`:"", d.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${d.id}')">Ver</button>`:""].filter(Boolean).join("");
+      const btns=[d.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${d.id}')">Abrir PDF de la factura</button>`:"", d.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${d.id}')">Ver</button>`:""].filter(Boolean).join("");
       // Estado de la lectura automática del PDF + avisos de precio.
       let lectura="";
       if(d.tipo_documento==="factura" && d.tiene_documento_pdf){
@@ -9776,7 +9776,7 @@ async function irA_recepcion(pre){
           `<button class="btn-ghost" onclick="resolverRcp('${r.id}','Rechazado')">Rechazar</button>`
         :"")
         +(r.tiene_foto?`<button class="btn-ghost" onclick="verAlbaran('${r.id}')">Ver albarán</button>`:"")
-        +(r.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${r.id}')">Ver factura (PDF)</button>`:"");
+        +(r.tiene_documento_pdf?`<button class="btn-ghost" onclick="verFacturaPDF('${r.id}')">Abrir PDF de la factura</button>`:"");
       const esFac=r.tipo_documento==="factura";
       const tipoTag=`<span style="display:inline-block;background:${esFac?"#9C5A2E":"var(--olive)"};color:#fff;font-weight:700;font-size:10px;padding:1px 7px;border-radius:20px;vertical-align:1px;">${esFac?"FACTURA":"ALBARÁN"}</span>`;
       const extra=[r.origen==="email"?"del correo":"", r.numero_documento?`nº ${esc(r.numero_documento)}`:"", r.lote_proveedor?`lote ${esc(r.lote_proveedor)}`:"", r.caducidad?`cad. ${esc(r.caducidad)}`:""].filter(Boolean).join(" · ");

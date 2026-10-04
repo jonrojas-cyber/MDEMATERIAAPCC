@@ -127,24 +127,32 @@ async function procesarRecepcion(store, rec, opts = {}) {
 // Cola en segundo plano: procesa las facturas pendientes de una en una, con pausa,
 // hasta vaciarlas. Idempotente y no reentrante (un solo bucle a la vez).
 let _corriendo = false;
+const CONCURRENCIA = 4; // lee varias facturas a la vez (lectura casi instantánea)
 function programar(store, ocrFn) {
   store = store || storeDefault;
   let fn = ocrFn;
   if (!fn) { try { const ocr = require("./ocr"); if (!ocr.disponible()) return; fn = ocr.extraerDesdeAdjunto; } catch (e) { return; } }
   if (_corriendo) return;
   _corriendo = true;
-  const tick = async () => {
+  (async () => {
     try {
-      const pend = facturasPendientes(store);
-      if (!pend.length) { _corriendo = false; return; }
-      const rec = pend[0];
-      try { await procesarRecepcion(store, rec, { ocrFn: fn }); }
-      catch (e) { store.update("recepciones", rec.id, { procesada: true, proceso_error: e.message || String(e), procesada_en: new Date().toISOString() }); }
-      if (typeof store.flush === "function") { try { await store.flush(); } catch (e) {} }
-      setTimeout(tick, 400); // no saturar la API de lectura
-    } catch (e) { _corriendo = false; }
-  };
-  setImmediate(tick);
+      // Lee TODAS las facturas pendientes, en tandas paralelas, sin pausas.
+      /* eslint-disable no-constant-condition */
+      while (true) {
+        const pend = facturasPendientes(store);
+        if (!pend.length) break;
+        const tanda = pend.slice(0, CONCURRENCIA);
+        await Promise.all(tanda.map(async (rec) => {
+          try { await procesarRecepcion(store, rec, { ocrFn: fn }); }
+          catch (e) { store.update("recepciones", rec.id, { procesada: true, proceso_error: e.message || String(e), procesada_en: new Date().toISOString() }); }
+        }));
+        if (typeof store.flush === "function") { try { await store.flush(); } catch (e) {} }
+      }
+      // Al terminar de leer, vuelca los precios de compra al coste de las materias
+      // (food cost al día) automáticamente, sin abrir nada.
+      try { const r = require("./coste-desde-compras").aplicar(store); if (r.fijados && typeof store.flush === "function") await store.flush(); } catch (e) {}
+    } catch (e) { /* no-op */ } finally { _corriendo = false; }
+  })();
 }
 
 module.exports = { procesarRecepcion, facturasPendientes, programar };

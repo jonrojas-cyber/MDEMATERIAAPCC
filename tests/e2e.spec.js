@@ -125,9 +125,9 @@ test("inicio: portada de dirección (CEO) · visión general y atención", async
   // El dueño ve la portada ejecutiva "visión general" (cuadro de mando, no un menú).
   await expect(page.locator(".viz")).toBeVisible();
   await expect(page.locator(".viz-title")).toContainText(/visión general/i);
-  // Banda de 4 KPIs dominantes + módulo "requiere tu atención".
-  await expect(page.locator(".viz-kpi, .viz-kpi-btn")).toHaveCount(4);
-  await expect(page.locator(".viz-block-h", { hasText: /requiere tu atención/i })).toBeVisible();
+  // Banda de 4 indicadores + módulo de decisiones ("requieren tu atención").
+  await expect(page.locator(".viz-st")).toHaveCount(4);
+  await expect(page.locator(".viz-box-h", { hasText: /tu atención/i })).toBeVisible();
   // Navegación por dominios en la barra INFERIOR (4 fijos) sigue presente.
   await expect(page.locator("#tabbar .tab")).toHaveCount(4);
   // Tres acciones fijas arriba: inicio · buscar · ajustes (esta última, dueño).

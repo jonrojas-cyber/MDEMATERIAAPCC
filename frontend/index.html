@@ -52,9 +52,9 @@
   /* Líneas y sombra */
   --line:  rgba(27,23,20,0.16);   /* keyline a hilo sobre papel */
   --shadow: none;
-  /* Marco (barra superior e inferior + rail) = VERDE OSCURO de marca */
-  --olivebar: #2A332B;
-  --oliveink: #C7CABF;
+  /* Marco (barra superior e inferior + rail) = CARBÓN (como el mockup) */
+  --olivebar: #1A1A17;
+  --oliveink: #C9C7BE;
   /* Tipografía · fuente ÚNICA de marca (Courier). Todo hereda de aquí; ningún
      módulo debe declarar otra familia. --sans es el alias histórico de la marca. */
   --font: 'Courier New', 'Courier Prime', monospace;
@@ -1084,28 +1084,31 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
    (viewport de las pruebas e2e) NO aparece: manda la barra inferior, intacta. */
 .railnav { display: none; }
 @media (min-width: 1281px) {
-  /* Rail en VERDE OSCURO de marca (el único verde del inicio). */
+  /* Rail en CARBÓN (como el mockup). Activo = realce sutil + texto claro. */
   .railnav { display: flex; flex-direction: column; align-items: stretch;
-    position: fixed; left: 0; top: 0; bottom: 0; width: 138px; z-index: 30;
-    background: #2a332b; border-right: 1px solid rgba(0,0,0,.25);
-    padding: 20px 0 16px; font-family: var(--font); }
-  .rail-mark { background: none; border: 0; cursor: pointer; display: flex; gap: 5px; justify-content: center; padding: 4px 0 24px; }
-  .rail-mark i { width: 3px; height: 22px; background: #c7cabf; display: block; }
-  .rail-items { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-  .rail-item { display: flex; align-items: center; gap: 11px; background: none; border: 0; border-left: 2px solid transparent;
-    color: #9ba396; font-family: var(--font); font-size: 12.5px; text-align: left; padding: 12px 18px; cursor: pointer; letter-spacing: .03em; }
-  .rail-ic { font-size: 13px; width: 15px; text-align: center; color: #8a947f; }
-  .rail-item:hover { color: #eef0e8; }
-  .rail-item:hover .rail-ic { color: #c7cdb8; }
-  .rail-item.on { color: #f3f1e7; border-left-color: #aeb78c; }
-  .rail-item.on .rail-ic { color: #aeb78c; }
-  .rail-item:focus-visible { outline: 1.5px solid #aeb78c; outline-offset: -2px; }
-  .rail-sign { color: #7c846f; font-size: 15px; font-weight: 700; line-height: 1; padding: 14px 18px 2px; }
+    position: fixed; left: 0; top: 0; bottom: 0; width: 150px; z-index: 30;
+    background: #17160F; border-right: 1px solid rgba(0,0,0,.4);
+    padding: 22px 0 18px; font-family: var(--font); }
+  .rail-mark { background: none; border: 0; cursor: pointer; display: flex; gap: 5px; justify-content: flex-start; padding: 2px 0 30px 22px; }
+  .rail-mark i { width: 3px; height: 24px; background: #d7d6cc; display: block; }
+  .rail-items { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .rail-bottom { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+  .rail-item { position: relative; display: flex; align-items: center; gap: 12px; background: none; border: 0;
+    color: #8c8b80; font-family: var(--font); font-size: 12.5px; text-align: left; padding: 11px 20px; cursor: pointer; letter-spacing: .02em; }
+  .rail-ic { width: 17px; height: 17px; display: inline-flex; align-items: center; justify-content: center; color: #76756b; flex: 0 0 auto; }
+  .rail-ic svg { width: 17px; height: 17px; }
+  .rail-item:hover { color: #e9e8df; } .rail-item:hover .rail-ic { color: #c3c2b6; }
+  .rail-item.on { color: #f3f1e7; background: rgba(255,255,255,.055); }
+  .rail-item.on::before { content:""; position:absolute; left:0; top:6px; bottom:6px; width:2px; background:#d7d6cc; }
+  .rail-item.on .rail-ic { color: #e9e8df; }
+  .rail-item:focus-visible { outline: 1.5px solid #6f6e64; outline-offset: -2px; }
+  .rail-badge { position:absolute; left:28px; top:7px; min-width:15px; height:15px; border-radius:8px; background:#B5321F; color:#fff; font-size:9px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
+  .rail-sign { color: #6a695f; font-size: 15px; font-weight: 700; line-height: 1; padding: 6px 20px 0; }
   .rail-sign span { font-size: 9.5px; font-weight: 400; letter-spacing: .06em; }
-  body { padding-left: 138px; }
+  body { padding-left: 150px; }
   #tabbar { display: none; }
-  /* Barra superior más pequeña y discreta en escritorio. */
-  .topbar { height: 52px !important; padding: 0 28px !important; box-shadow: none; border-bottom: 1px solid rgba(255,255,255,.06); }
+  /* Barra superior fina en carbón. */
+  .topbar { height: 50px !important; padding: 0 26px !important; box-shadow: none; border-bottom: 1px solid rgba(255,255,255,.06); }
   .topbar-center { display: none; }
   .topbar-back { font-size: 15px; }
   .tb-act { font-size: 11px !important; }
@@ -2068,13 +2071,17 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
 <nav class="railnav" id="railnav" role="navigation" aria-label="Navegación principal">
   <button class="rail-mark" title="m de materia · inicio" aria-label="Inicio" onclick="goHome()"><i></i><i></i><i></i></button>
   <div class="rail-items">
-    <button class="rail-item on" data-tab="inicio" onclick="goHome()"><span class="rail-ic" aria-hidden="true">⌂</span><span class="rail-lb">Inicio</span></button>
-    <button class="rail-item" data-tab="materia" onclick="irDominio('materia', () => irA_categoria('materia'))"><span class="rail-ic" aria-hidden="true">▤</span><span class="rail-lb">Materia</span></button>
-    <button class="rail-item" data-tab="lab" onclick="irDominio('lab', () => irA_lab())"><span class="rail-ic" aria-hidden="true">◉</span><span class="rail-lb">Lab</span></button>
-    <button class="rail-item" data-tab="appcc" onclick="irDominio('appcc', () => irA_appcc())"><span class="rail-ic" aria-hidden="true">△</span><span class="rail-lb">APPCC</span></button>
-    <button class="rail-item" data-tab="equipo" onclick="irDominio('equipo', () => irA_equipoHub())"><span class="rail-ic" aria-hidden="true">◆</span><span class="rail-lb">Equipo</span></button>
+    <button class="rail-item on" data-tab="inicio" onclick="goHome()"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="rail-lb">Inicio</span></button>
+    <button class="rail-item" data-tab="materia" onclick="irDominio('materia', () => irA_categoria('materia'))"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7l8-4 8 4v10l-8 4-8-4z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></span><span class="rail-lb">Materia</span></button>
+    <button class="rail-item" data-tab="lab" onclick="irDominio('lab', () => irA_lab())"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg></span><span class="rail-lb">Lab</span></button>
+    <button class="rail-item" data-tab="appcc" onclick="irDominio('appcc', () => irA_appcc())"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><span class="rail-lb">APPCC</span></button>
+    <button class="rail-item" data-tab="equipo" onclick="irDominio('equipo', () => irA_equipoHub())"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="9" r="2.2"/><path d="M15 15c2.5 0 5 1.6 5 4.5"/></svg></span><span class="rail-lb">Equipo</span></button>
   </div>
-  <div class="rail-sign">m<br><span>de materia</span></div>
+  <div class="rail-bottom">
+    <button class="rail-item" onclick="(typeof irA_avisos==='function'?irA_avisos:goHome)()"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8a6 6 0 0 0-12 0c0 7-2.5 7-2.5 9h17c0-2-2.5-2-2.5-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span><span class="rail-lb">Notificaciones</span></button>
+    <button class="rail-item" onclick="irA_categoria('informes')"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span><span class="rail-lb">Ajustes</span></button>
+  </div>
+  <div class="rail-sign">M<br><span>de materia</span></div>
 </nav>
 <header class="topbar">
   <div class="topbar-left">
@@ -3070,255 +3077,266 @@ function vizKpi(valor, label, extra, sub, onclick){
   const inner=`<div class="viz-kpi-v">${valor}</div><div class="viz-kpi-l">${label}${extra?` <span class="viz-kpi-x">${extra}</span>`:""}</div>${sub?`<div class="viz-kpi-s">${sub}</div>`:""}`;
   return onclick?`<button class="viz-kpi viz-kpi-btn" onclick="${onclick}">${inner}</button>`:`<div class="viz-kpi">${inner}</div>`;
 }
+// Gráfico editorial grande (curva real + objetivo punteado, ejes, marcador "hoy",
+// leyenda). Trazo de ancho constante; cuadrícula a hilo. Reutilizado por Inicio.
+function vizChart(real, opts){
+  opts=opts||{};
+  const s=(real||[]).map(Number).filter(v=>!isNaN(v));
+  if(s.length<2) return `<div class="viz-noch">— ${opts.empty||"histórico insuficiente"}</div>`;
+  const obj = Array.isArray(opts.obj)? opts.obj.map(Number) : (opts.obj!=null? s.map(()=>Number(opts.obj)) : null);
+  const W=600, H=opts.h||200, PT=14, PB=2;
+  const all=s.concat(obj||[]);
+  let mn=opts.min!=null?opts.min:Math.min(0,...all), mx=opts.max!=null?opts.max:Math.max(...all);
+  if(mx===mn)mx=mn+1;
+  const X=i=> i*W/(s.length-1), Y=v=> PT+(mx-v)/(mx-mn)*(H-PT-PB);
+  const linePts=s.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  const areaPts=`0,${(H-PB).toFixed(1)} ${linePts} ${W},${(H-PB).toFixed(1)}`;
+  const objPts=obj? obj.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ") : null;
+  const yticks=opts.yticks||[mx,(mx+mn)/2,mn];
+  const fmtY=opts.fmtY||(t=>Math.round(t));
+  const grid=yticks.map(t=>`<line x1="0" x2="${W}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" class="viz-g-grid"/>`).join("");
+  const yl=yticks.map(t=>`<span class="viz-g-y" style="top:${(Y(t)/H*100).toFixed(1)}%">${fmtY(t)}</span>`).join("");
+  let marker="";
+  if(opts.marker!=null && opts.marker>=0 && opts.marker<s.length){
+    const mkx=X(opts.marker);
+    marker=`<line x1="${mkx.toFixed(1)}" x2="${mkx.toFixed(1)}" y1="0" y2="${H}" class="viz-g-mk"/><circle cx="${mkx.toFixed(1)}" cy="${Y(s[opts.marker]).toFixed(1)}" r="3.4" class="viz-g-dot"/>`;
+  }
+  const xl=(opts.xlabels||[]).map(l=>`<span>${esc(String(l))}</span>`).join("");
+  const legend=(opts.legend||[]).map(L=>`<span class="viz-g-lg"><i class="${L.dashed?'dash':''}"></i>${esc(L.t)}</span>`).join("");
+  return `<div class="viz-g">
+    ${legend?`<div class="viz-g-legend">${legend}</div>`:""}
+    <div class="viz-g-plot" style="height:${H}px">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        ${grid}<polygon points="${areaPts}" class="viz-g-area"/>
+        ${objPts?`<polyline points="${objPts}" class="viz-g-obj"/>`:""}
+        <polyline points="${linePts}" class="viz-g-line"/>${marker}
+      </svg>${yl}
+      ${opts.markerLabel&&opts.marker!=null?`<span class="viz-g-mklb" style="left:calc(44px + ${(X(opts.marker)/W).toFixed(3)} * (100% - 44px))">${esc(opts.markerLabel)}</span>`:""}
+    </div>
+    ${xl?`<div class="viz-g-x">${xl}</div>`:""}
+  </div>`;
+}
+
 function vizHomeHTML(d, ini, dec, conc){
   const P=(d&&d.panel_direccion)||{}, H=P.hoy||{}, M=P.mes||{};
   const T=(d&&d.tesoreria)||{}, OP=(d&&d.operaciones)||{}, EQ=(d&&d.equipo)||{};
-  const al=(ini&&ini.alertas)||{}, ag=(ini&&ini.agora)||{};
+  const ag=(ini&&ini.agora)||{};
   const PY=(conc&&conc.pyl)||{}; const dias=(PY.dias||[]);
-  const serieFood=dias.map(x=>x.food_cost_pct), serieVentas=dias.map(x=>x.ingresos);
-  // Etiquetas X ralas (≈4) + "hoy" al final, a partir de las fechas del periodo.
-  const mesCorto=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-  const diaLbl=(f)=>{const p=String(f||"").split("-"); return p.length>=3?`${+p[2]} ${mesCorto[(+p[1]-1)]||""}`:"";};
-  const xlabels=(()=>{ const n=dias.length; if(n<2) return []; const out=[]; const k=Math.max(1,Math.floor((n-1)/4));
-    for(let i=0;i<n-1;i+=k) out.push(diaLbl(dias[i].fecha)); out.push("hoy"); return out; })();
+  const serieVentas=dias.map(x=>Number(x.ingresos)||0);
   const u=getUser()||{}; const now=new Date();
-  const fecha=now.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
-  const hora=now.toTimeString().slice(0,5);
+  const fechaUP=now.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
   const syncMin=ag&&ag.hace_minutos!=null?ag.hace_minutos:null;
   const abierto=now.getHours()>=8&&now.getHours()<23;
+  const mesCorto=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  const mesNombre=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const diaLbl=(f)=>{const p=String(f||"").split("-"); return p.length>=3?`${+p[2]} ${mesCorto[(+p[1]-1)]||""}`:"";};
+  // Curva acumulada del mes (real) vs objetivo acumulado (objetivo_dia × día).
+  const objDia=Number(H.objetivo_dia)||0;
+  let acc=0; const serieAcc=serieVentas.map(v=>(acc+=v));
+  const serieObjAcc=serieVentas.map((_,i)=>objDia*(i+1));
+  const xlabels=(()=>{ const n=dias.length; if(n<2) return []; const out=[]; const k=Math.max(1,Math.floor((n-1)/4));
+    for(let i=0;i<n-1;i+=k) out.push(diaLbl(dias[i].fecha)); out.push("hoy"); return out; })();
+  const mesTit=(dias.length? (()=>{const p=String(dias[dias.length-1].fecha).split("-"); return `${mesNombre[(+p[1]-1)]||""} ${p[0]||""}`;})() : `${mesNombre[now.getMonth()]} ${now.getFullYear()}`);
 
-  // ── Fila superior: 4 KPIs ──
-  const kpis=`<div class="viz-kpis">
-    ${vizKpi(vizEur(H.ventas), "ventas hoy", "", vizDelta(H.vs_anterior_pct,"pct",true)+(H.vs_anterior_pct!=null?' <span class="viz-kpi-cmp">vs. periodo anterior</span>':""), "irA_centroControl('hoy')")}
-    ${vizKpi(vizEur(H.objetivo_dia), "objetivo diario", H.objetivo_dia_pct!=null?`${H.objetivo_dia_pct} %`:"", `<span class="viz-kpi-cmp">mes anterior +10 %</span>`, "irA_centroControl('mes')")}
-    ${vizKpi(H.ticket_medio!=null?vizEur(H.ticket_medio,2):"—", "ticket medio", "", `<span class="viz-kpi-cmp">${H.tickets!=null?H.tickets+" tickets hoy":""}</span>`, "irA_analisis()")}
-    ${vizKpi(vizPct(H.margen_pct), "margen operativo", "", `<span class="viz-kpi-cmp">hoy</span>`, "irA_cuentaResultados()")}
+  // ── HERO ──
+  const hero=`<div class="viz-hd">
+    <div class="viz-hd-t">
+      <div class="viz-eyebrow">${esc(fechaUP)}</div>
+      <h1 class="viz-title">visión general</h1>
+      <div class="viz-lede">El negocio hoy y hacia dónde vamos.</div>
+    </div>
+    <button class="viz-fichar" onclick="irA_fichaje()"><span>🕐</span> Fichar</button>
   </div>`;
 
-  // ── Barra de progreso del objetivo + previsión de cierre ──
-  const prog=Math.max(0,Math.min(100,H.objetivo_dia_pct||0));
-  const progreso=`<div class="viz-prog">
-    <div class="viz-prog-main">
-      <div class="viz-lbl">progreso del objetivo diario</div>
-      <div class="viz-prog-bar"><i style="width:${prog}%"></i></div>
+  // ── Cifras titulares ──
+  const heroNums=`<div class="viz-heronum">
+    <div class="viz-hn">
+      <div class="viz-lbl">ventas hoy</div>
+      <div class="viz-hn-v">${vizEur(H.ventas)}</div>
+      <div class="viz-hn-s">${vizDelta(H.vs_anterior_pct,"pct",true)} <span class="viz-mut">vs. mismo día semana anterior</span></div>
     </div>
-    <div class="viz-prog-pct">${H.objetivo_dia_pct!=null?H.objetivo_dia_pct+" %":"—"}</div>
-    <div class="viz-prog-fc">
-      <div class="viz-lbl">previsión cierre</div>
-      <div class="viz-prog-fcv">${vizEur(H.prevision_cierre)} ${vizDelta(H.prevision_vs_objetivo_pct,"pct",true)}</div>
-      <div class="viz-kpi-cmp">vs. objetivo</div>
+    <div class="viz-hn">
+      <div class="viz-lbl">cierre previsto</div>
+      <div class="viz-hn-v sm">${vizEur(H.prevision_cierre)}</div>
+      <div class="viz-hn-s"><span class="viz-mut">/ objetivo ${vizEur(H.objetivo_dia)}</span></div>
+    </div>
+    <div class="viz-hn mini">
+      <div class="viz-hn-pct"><span class="viz-ok-dot"></span>${H.objetivo_dia_pct!=null?H.objetivo_dia_pct+"%":"—"}</div>
+      <div class="viz-mut">del objetivo</div>
     </div>
   </div>`;
 
-  // ── Tres tarjetas: coste producto · coste personal · caja ──
+  // ── Gráfico principal: mes acumulado real vs objetivo ──
+  const ymax=Math.max(...serieAcc,...serieObjAcc,1);
+  const mainChart=`<div class="viz-mainchart">${
+    serieAcc.length>=2
+    ? vizChart(serieAcc,{obj:serieObjAcc,h:172,marker:serieAcc.length-1,
+        yticks:[ymax,ymax/2,0],fmtY:t=>t>=1000?Math.round(t/1000)+"k":Math.round(t),
+        xlabels,legend:[{t:"ventas reales"},{t:"objetivo",dashed:true}]})
+    : `<div class="viz-noch">— Importa las ventas del mes para ver la curva real vs objetivo</div>`
+  }</div>`;
+
+  // ── 4 indicadores ──
   const objFood=27, objPers=30;
-  const cardFood=`<div class="viz-card">
-    <div class="viz-card-h"><span class="viz-lbl">coste de producto</span>${vizDelta(M.food_cost_pct!=null?(objFood-M.food_cost_pct>=0?-(objFood-M.food_cost_pct):(M.food_cost_pct-objFood)):null,"pt",false)}</div>
-    <div class="viz-card-v">${vizPct(M.food_cost_pct)}</div>
-    <div class="viz-kpi-cmp">objetivo ≤ ${objFood} %</div>
-    ${vizLine(serieFood,{target:objFood,fmt:t=>Math.round(t)+" %",xlabels})}</div>`;
-  const cardPers=`<div class="viz-card">
-    <div class="viz-card-h"><span class="viz-lbl">coste de personal</span></div>
-    <div class="viz-card-v">${vizPct(M.coste_laboral_pct)}</div>
-    <div class="viz-kpi-cmp">objetivo ≤ ${objPers} %</div>
-    ${EQ.total_empleados!=null?`<div class="viz-mini">${EQ.total_empleados} personas${EQ.coste_periodo!=null?` · coste ${vizEur(EQ.coste_periodo)}`:""}</div>`:`<div class="viz-chart-empty">añade el coste del equipo</div>`}</div>`;
-  const cardCaja=`<div class="viz-card">
-    <div class="viz-card-h"><span class="viz-lbl">caja y pagos</span></div>
-    <div class="viz-row"><span>caja (efectivo)</span><b>${vizEur(T.caja)}</b></div>
-    <div class="viz-row"><span>banco</span><b>${vizEur(T.banco)}</b></div>
-    <div class="viz-row"><span>liquidez</span><b>${vizEur(T.liquidez_inmediata)}</b></div>
-    ${T.dias_supervivencia!=null?`<div class="viz-kpi-cmp">${T.dias_supervivencia} días de supervivencia sin ingresos</div>`:""}</div>`;
-  const cards=`<div class="viz-cards">${cardFood}${cardPers}${cardCaja}</div>`;
+  const stat=(v,l,sub)=>`<div class="viz-st"><div class="viz-lbl">${l}</div><div class="viz-st-v">${v}</div><div class="viz-st-s">${sub}</div></div>`;
+  const stats=`<div class="viz-stats">
+    ${stat(H.ticket_medio!=null?vizEur(H.ticket_medio,2):"—","ticket medio",`<span class="viz-mut">${H.tickets!=null?H.tickets+" tickets hoy":""}</span>`)}
+    ${stat(vizPct(H.margen_pct),"margen operativo",`<span class="viz-mut">hoy</span>`)}
+    ${stat(vizPct(M.food_cost_pct),"coste de producto",`${M.food_cost_pct!=null?vizDelta(M.food_cost_pct-objFood,"pt",false):""} <span class="viz-mut">obj. ${objFood}%</span>`)}
+    ${stat(vizPct(M.coste_laboral_pct),"coste de personal",`${M.coste_laboral_pct!=null?vizDelta(M.coste_laboral_pct-objPers,"pt",false):""} <span class="viz-mut">obj. ${objPers}%</span>`)}
+  </div>`;
 
-  // ── Requiere tu atención (decisiones críticas/importantes) ──
+  // ── Decisiones + Pulso ──
   const b=(typeof decBuckets==="function")?decBuckets(dec||{}):{critico:[],importante:[]};
-  const items=[...(b.critico||[]).map(x=>({x,k:"crit"})),...(b.importante||[]).map(x=>({x,k:"warn"}))].slice(0,4);
-  const atencion=`<div class="viz-block viz-atencion"><div class="viz-block-h">requiere tu atención</div>
-    ${items.length?`<div class="viz-att">${items.map(({x,k})=>`<button class="viz-att-row" onclick="${x.accion?`decAccion('${x.id}')`:"irA_tareas()"}">
-      <span class="viz-att-dot ${k}"></span>
-      <span class="viz-att-t">${esc(x.titulo||"")}</span>
-      <span class="viz-att-m">${esc(x.motivo||x.detalle||"")}</span>
-      <span class="viz-att-go">→</span></button>`).join("")}</div>`
+  const its=[...(b.critico||[]).map(x=>({x,k:"alto"})),...(b.importante||[]).map(x=>({x,k:"medio"}))].slice(0,3);
+  const decis=`<div class="viz-box"><div class="viz-box-h"><span>decisiones</span><span class="viz-mut">${its.length} ${its.length===1?"asunto requiere":"asuntos requieren"} tu atención</span></div>
+    ${its.length?its.map(({x,k},i)=>`<button class="viz-dec" onclick="${x.accion?`decAccion('${x.id}')`:"irA_tareas()"}">
+      <span class="viz-dec-n">0${i+1}</span>
+      <span class="viz-dec-b"><span class="viz-dec-t">${esc(x.titulo||"")}</span>${x.motivo?`<span class="viz-dec-m">${esc(x.motivo)}</span>`:""}</span>
+      <span class="viz-dec-i"><span class="viz-mut">Impacto</span><span class="viz-imp ${k}">${k==="alto"?"Alto":"Medio"}</span></span>
+      <span class="viz-dec-go">→</span></button>`).join("")
     :`<div class="viz-clear">✓ Nada urgente ahora mismo.</div>`}</div>`;
 
-  // ── Pulso operativo ──
-  const prepHoy=OP.produccion_hoy!=null?OP.produccion_hoy:((ini&&ini.preparar||[]).length);
-  const pulso=`<div class="viz-block viz-pulsob"><div class="viz-block-h">pulso operativo</div>
-    <div class="viz-pulse">
-      <div class="viz-pulse-c"><div class="viz-lbl">producción</div><div class="viz-pulse-v">${prepHoy||0}${OP.produccion_en_curso?` <span class="viz-kpi-cmp">· ${OP.produccion_en_curso} en curso</span>`:""}</div><div class="viz-kpi-cmp">finalizadas hoy</div></div>
-      <div class="viz-pulse-c"><div class="viz-lbl">stock</div><div class="viz-pulse-v">${OP.stock_critico||0}</div><div class="viz-kpi-cmp">a vigilar · caducan 48 h ${OP.caducan_48h||0}</div></div>
-      <div class="viz-pulse-c"><div class="viz-lbl">equipo</div><div class="viz-pulse-v">${EQ.total_empleados!=null?EQ.total_empleados:"—"}</div><div class="viz-kpi-cmp">personas activas</div></div>
-      <div class="viz-pulse-c"><div class="viz-lbl">mermas hoy</div><div class="viz-pulse-v">${vizEur(OP.merma_hoy)}</div><div class="viz-kpi-cmp">coste estimado</div></div>
-    </div></div>`;
+  const ic={
+    prod:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+    stock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>`,
+    eq:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="9" r="2.2"/></svg>`,
+    merma:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3L2 20h20z"/><path d="M12 10v5M12 17.5v.5"/></svg>`,
+  };
+  const prow=(icon,l,v,s,go)=>`<button class="viz-pr" onclick="${go||"irA_tareas()"}"><span class="viz-pr-ic">${icon}</span><span class="viz-pr-b"><span class="viz-pr-l">${l}</span><span class="viz-pr-s">${s}</span></span><span class="viz-pr-v">${v}</span><span class="viz-dec-go">→</span></button>`;
+  const prepHoy=OP.produccion_hoy!=null?OP.produccion_hoy:0;
+  const pulso=`<div class="viz-box"><div class="viz-box-h"><span>pulso</span><span class="viz-mut"><span class="viz-ok-dot"></span>${abierto?"operativa estable":"fuera de servicio"}</span></div>
+    ${prow(ic.prod,"producción",prepHoy+(OP.produccion_en_curso?` <small>· ${OP.produccion_en_curso} en curso</small>`:""),"finalizadas hoy","irA_lab()")}
+    ${prow(ic.stock,"stock",(OP.stock_critico||0),`a vigilar · caducan 48 h ${OP.caducan_48h||0}`,"irA_materias()")}
+    ${prow(ic.eq,"equipo",(EQ.total_empleados!=null?EQ.total_empleados:"—"),"personas activas","irA_equipoHub()")}
+    ${prow(ic.merma,"mermas hoy",vizEur(OP.merma_hoy),"coste estimado","irA_mermas?irA_mermas():irA_tareas()")}
+  </div>`;
 
-  // ── Columna derecha: HOY + mes actual ──
-  const hoyLista=[
-    {t:"apertura", v: abierto?"local abierto":"local cerrado"},
-    {t:"ventas hoy", v: vizEur(H.ventas)+(H.tickets!=null?` · ${H.tickets} tickets`:"")},
-    {t:"sincronización Ágora", v: syncMin!=null?(syncMin<60?`hace ${syncMin} min`:`hace ${Math.round(syncMin/60)} h`):"sin sincronizar"},
-    {t:"cierre previsto", v:"23:00"},
-  ];
-  const sideHoy=`<div class="viz-side-block viz-hoy"><div class="viz-side-h">hoy</div>
-    <div class="viz-time">${hoyLista.map((r,i)=>`<div class="viz-time-row"><span class="viz-time-dot ${i===hoyLista.length-1?"last":""}"></span><span class="viz-time-t">${r.t}</span><span class="viz-time-v">${r.v}</span></div>`).join("")}</div></div>`;
+  // ── Columna derecha: MES + CAJA ──
   const objMesPct=Math.max(0,Math.min(100,M.objetivo_pct||0));
-  const sideMes=`<div class="viz-side-block viz-mes"><div class="viz-side-h">mes actual</div>
-    <div class="viz-side-kpi">ventas</div>
-    <div class="viz-side-v">${vizEur(M.ventas)} ${M.objetivo_pct!=null?`<span class="viz-side-pct">${M.objetivo_pct} %</span>`:""}</div>
-    ${M.objetivo!=null?`<div class="viz-side-sub">de ${vizEur(M.objetivo)} (objetivo)</div><div class="viz-prog-bar sm"><i style="width:${objMesPct}%"></i></div>`:""}
-    <div class="viz-side-kpi" style="margin-top:14px;">EBITDA estimado</div>
-    <div class="viz-side-v">${vizPct(M.ebitda_pct)} ${M.vs_anterior_pct!=null?vizDelta(M.vs_anterior_pct,"pct",true):""}</div>
-    <div class="viz-side-sub">${M.ebitda_eur!=null?vizEur(M.ebitda_eur)+" / mes":""}</div>
-    ${vizLine(serieVentas,{noY:true})}</div>`;
+  const sideMes=`<div class="viz-aside-block viz-mes"><div class="viz-aside-h"><span>mes</span><span class="viz-mut">${esc(mesTit)}</span></div>
+    <div class="viz-mes-row"><div class="viz-aside-v">${vizEur(M.ventas)}</div><div class="viz-mes-pct"><b>${M.objetivo_pct!=null?M.objetivo_pct+"%":"—"}</b><span class="viz-mut">${M.objetivo!=null?"de "+vizEur(M.objetivo):""}</span></div></div>
+    <div class="viz-pbar"><i style="width:${objMesPct}%"></i></div>
+    ${vizChart(serieAcc,{obj:serieObjAcc,h:118,marker:serieAcc.length-1,yticks:[ymax,ymax/2,0],fmtY:t=>t>=1000?Math.round(t/1000)+"k":Math.round(t),xlabels:[]})}
+  </div>`;
+  const sideCaja=`<div class="viz-aside-block viz-caja"><div class="viz-aside-h"><span>caja</span><span class="viz-mut">${now.toLocaleDateString("es-ES",{day:"numeric",month:"long"})}</span></div>
+    <div class="viz-crow"><span>caja (efectivo)</span><b>${vizEur(T.caja)}</b></div>
+    <div class="viz-crow"><span>banco</span><b>${vizEur(T.banco)}</b></div>
+    <div class="viz-crow"><span>liquidez</span><b>${vizEur(T.liquidez_inmediata)}</b></div>
+    ${T.dias_supervivencia!=null?`<div class="viz-mut" style="margin-top:8px;font-size:11px;">${T.dias_supervivencia} días de supervivencia sin ingresos</div>`:""}
+  </div>`;
+  const sideFoot=`<div class="viz-aside-foot"><span>Dirigir también es saber dónde mirar.</span><span class="viz-mut">— M de materia</span></div>`;
 
-  const style=`<style>
-  /* ── Portada de dirección · M de Materia. Courier New (token de marca --font),
-     papel cálido, tinta, olivo. Esquinas rectas, sin sombras ni degradados. ── */
-  /* Portada NEUTRA: grafito sobre papel (sin verde; el verde vive solo en el rail). */
-  #screen-home.home-ceo{padding:0;overflow:hidden;}
-  .home-ceo #home-content{min-height:0;}
-  .viz{--viz-bg:#F1EEE6;--viz-panel:#E7E2D7;--viz-ink:#1b1b16;--viz-ink2:#86847a;--viz-ink3:#b0aea2;
-    --viz-line:rgba(27,27,22,.15);--viz-rule:rgba(27,27,22,.85);
-    --viz-accent:#45443d;--viz-up:#45443d;--viz-down:#8E4F3D;--viz-warn:#A56D48;
-    background:var(--viz-bg);color:var(--viz-ink);
-    font-family:var(--font);font-variant-numeric:tabular-nums lining-nums;line-height:1.35;
-    flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:18px 30px 12px;}
-  @media(max-width:719px){.viz{overflow:visible;flex:none;min-height:100vh;padding:20px 16px 36px;}}
-  .viz *{box-sizing:border-box;font-variant-numeric:tabular-nums lining-nums;}
-  .viz-hero{flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--viz-rule);padding-bottom:12px;}
-  .viz-title{font-size:38px;font-weight:400;letter-spacing:-.01em;line-height:.9;text-transform:lowercase;}
-  @media(max-width:719px){.viz-title{font-size:32px;}}
-  .viz-sub{font-size:11.5px;color:var(--viz-ink2);margin-top:9px;letter-spacing:.02em;}
-  .viz-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--viz-up);margin-right:7px;vertical-align:middle;}
-  .viz-meta{font-size:10.5px;color:var(--viz-ink2);text-align:right;letter-spacing:.1em;text-transform:uppercase;}
-  .viz-layout{flex:1;min-height:0;display:flex;flex-direction:column;}
-  @media(min-width:980px){.viz-layout{display:grid;grid-template-columns:1fr 296px;grid-template-rows:1fr;gap:0;}
-    .viz-main{min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-    .viz-aside{padding-left:28px;margin-left:28px;border-left:1px solid var(--viz-line);min-height:0;overflow:hidden;}}
-  .viz-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.18em;color:var(--viz-ink2);}
-  /* KPI band */
-  .viz-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-bottom:1px solid var(--viz-line);}
-  @media(min-width:720px){.viz-kpis{grid-template-columns:repeat(4,1fr);}}
-  .viz-kpis{flex:0 0 auto;}
-  .viz-kpi,.viz-kpi-btn{padding:15px 20px 16px;border-right:1px solid var(--viz-line);}
-  @media(max-width:719px){.viz-kpi,.viz-kpi-btn{padding:15px 16px 16px;}.viz-kpi:nth-child(2n),.viz-kpi-btn:nth-child(2n){border-right:0;}}
-  .viz-kpis>*:last-child{border-right:0;}
-  .viz-kpi-btn{background:none;border-top:0;border-bottom:0;border-left:0;text-align:left;font-family:inherit;color:inherit;cursor:pointer;width:100%;display:block;transition:background .12s;}
-  .viz-kpi-btn:hover{background:rgba(27,27,22,.05);}
-  .viz-kpi-btn:focus-visible{outline:1.5px solid var(--viz-ink);outline-offset:-2px;}
-  .viz-kpi-v{font-size:29px;font-weight:400;letter-spacing:-.02em;line-height:1;}
-  @media(max-width:719px){.viz-kpi-v{font-size:27px;}}
-  .viz-kpi-l{font-size:10.5px;color:var(--viz-ink2);margin-top:9px;letter-spacing:.02em;display:flex;justify-content:space-between;align-items:baseline;}
-  .viz-kpi-x{color:var(--viz-ink);font-weight:400;}
-  .viz-kpi-s{margin-top:5px;font-size:10.5px;line-height:1.4;}
-  .viz-kpi-cmp{color:var(--viz-ink2);font-size:10px;letter-spacing:.02em;}
-  .viz-d{font-size:10.5px;font-weight:400;white-space:nowrap;}.viz-d.up{color:var(--viz-up);}.viz-d.down{color:var(--viz-down);}
-  /* Progreso objetivo + previsión */
-  .viz-prog{flex:0 0 auto;display:grid;grid-template-columns:1fr auto;gap:8px 22px;align-items:center;padding:12px 0;border-bottom:1px solid var(--viz-line);}
-  @media(min-width:720px){.viz-prog{grid-template-columns:1fr auto 250px;}}
-  .viz-prog-bar{height:8px;background:var(--viz-panel);margin-top:8px;overflow:hidden;}
-  .viz-prog-bar.sm{height:6px;margin-top:7px;}
-  .viz-prog-bar>i{display:block;height:100%;background:var(--viz-accent);}
-  .viz-prog-pct{font-size:23px;font-weight:400;}
-  .viz-prog-fc{text-align:right;}
-  @media(min-width:720px){.viz-prog-fc{border-left:1px solid var(--viz-line);padding-left:22px;}}
-  .viz-prog-fcv{font-size:20px;font-weight:400;margin-top:3px;white-space:nowrap;}
-  .viz-prog-fcv .viz-d{font-size:11px;}
-  /* Control económico */
-  .viz-cards{flex:0 0 auto;display:grid;grid-template-columns:1fr;gap:0;border-bottom:1px solid var(--viz-line);}
-  @media(min-width:720px){.viz-cards{grid-template-columns:repeat(3,1fr);}}
-  .viz-card{padding:13px 22px 12px;border-right:1px solid var(--viz-line);}
-  .viz-cards>.viz-card:last-child{border-right:0;}
-  @media(max-width:719px){.viz-card{border-right:0;border-bottom:1px solid var(--viz-line);}.viz-cards>.viz-card:last-child{border-bottom:0;}}
-  .viz-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;}
-  .viz-card-v{font-size:28px;font-weight:400;line-height:1;letter-spacing:-.02em;}
-  .viz-card .viz-kpi-cmp{margin-top:4px;display:block;}
-  .viz-row{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--viz-line);}
-  .viz-card .viz-row:first-of-type{border-top:1px solid var(--viz-line);margin-top:6px;}
-  .viz-row:last-child{border-bottom:0;}
-  .viz-mini{font-size:11px;color:var(--viz-ink2);margin-top:8px;}
-  /* Charts (línea + barras) */
-  .viz-lc{margin-top:9px;}
-  .viz-lc-plot{position:relative;height:48px;padding-right:32px;}
-  .viz-lc-plot svg{position:absolute;inset:0 32px 0 0;width:calc(100% - 32px);height:100%;overflow:visible;}
-  .viz-lc.noY .viz-lc-plot{padding-right:0;height:42px;}.viz-lc.noY .viz-lc-plot svg{inset:0;width:100%;}
-  .viz-lc-area{fill:var(--viz-accent);opacity:.08;}
-  .viz-lc-line{fill:none;stroke:var(--viz-accent);stroke-width:1.2;vector-effect:non-scaling-stroke;stroke-linejoin:round;}
-  .viz-lc-tgt{stroke:var(--viz-ink2);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke;opacity:.7;}
-  .viz-lc-y{position:absolute;right:0;transform:translateY(-50%);font-size:9px;color:var(--viz-ink2);letter-spacing:.03em;}
-  .viz-lc-x{display:flex;justify-content:space-between;font-size:9px;color:var(--viz-ink2);margin-top:5px;letter-spacing:.04em;}
-  .viz-bars-plot{display:flex;align-items:flex-end;gap:3px;}
-  .viz-bar{flex:1;background:var(--viz-accent);min-height:2px;}
-  .viz-noch{font-size:10.5px;color:var(--viz-ink3);margin-top:12px;}
-  /* Bloques */
-  .viz-block{border-bottom:1px solid var(--viz-line);padding:11px 0 4px;}
-  .viz-atencion{flex:1 1 auto;min-height:0;overflow:hidden;}
-  .viz-pulsob{flex:0 0 auto;}
-  .viz-block-h{font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:var(--viz-ink);margin-bottom:2px;font-weight:400;}
-  .viz-att-row{display:grid;grid-template-columns:14px 1fr auto;gap:3px 12px;align-items:baseline;width:100%;background:none;border:0;border-top:1px solid var(--viz-line);padding:9px 2px;text-align:left;cursor:pointer;color:var(--viz-ink);font-family:inherit;transition:background .12s;}
-  .viz-att-row:hover{background:rgba(27,27,22,.05);}
-  .viz-att-dot{grid-row:span 2;align-self:center;width:7px;height:7px;border-radius:50%;}
-  .viz-att-dot.crit{background:var(--viz-down);}.viz-att-dot.warn{background:var(--viz-warn);}
-  .viz-att-t{font-size:13px;font-weight:400;}
-  .viz-att-m{grid-column:2;font-size:12px;color:var(--viz-ink2);}
-  .viz-att-go{grid-row:span 2;align-self:center;color:var(--viz-ink2);}
-  @media(min-width:860px){
-    .viz-att-row{grid-template-columns:14px minmax(280px,1fr) 1.5fr 20px;align-items:center;gap:16px;padding:10px 2px;}
-    .viz-att-dot{grid-row:auto;}.viz-att-t{grid-column:2;}.viz-att-m{grid-column:3;}.viz-att-go{grid-row:auto;grid-column:4;}
-  }
-  .viz-clear{font-size:12.5px;color:var(--viz-ink2);padding:10px 2px;}
-  .viz-pulse{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 18px;margin-top:4px;}
-  @media(min-width:720px){.viz-pulse{grid-template-columns:repeat(4,1fr);}}
-  .viz-pulse-v{font-size:20px;font-weight:400;margin-top:4px;line-height:1;}
-  .viz-pulse-v small{font-size:12px;color:var(--viz-ink2);}
-  /* Columna ejecutiva derecha */
-  .viz-side-block{margin-bottom:18px;}
-  .viz-side-h{font-size:10px;text-transform:uppercase;letter-spacing:.2em;font-weight:400;border-bottom:1px solid var(--viz-rule);padding-bottom:7px;margin-bottom:11px;}
-  .viz-time{position:relative;}
-  .viz-time-row{display:grid;grid-template-columns:16px 1fr;gap:10px;align-items:start;padding:0 0 11px;position:relative;}
-  .viz-time-row:last-child{padding-bottom:0;}
-  .viz-time-row:not(:last-child)::before{content:"";position:absolute;left:3px;top:11px;bottom:0;width:1px;background:var(--viz-line);}
-  .viz-time-t{font-size:12.5px;font-weight:400;}
-  .viz-time-v{grid-column:2;font-size:11px;color:var(--viz-ink2);margin-top:1px;}
-  .viz-time-dot{width:7px;height:7px;border-radius:50%;background:var(--viz-accent);margin-top:4px;position:relative;z-index:1;}
-  .viz-time-dot.last{background:var(--viz-bg);border:1px solid var(--viz-ink2);}
-  .viz-side-kpi{font-size:10.5px;color:var(--viz-ink2);letter-spacing:.04em;}
-  .viz-side-v{font-size:25px;font-weight:400;line-height:1.1;margin-top:4px;}
-  .viz-side-pct{font-size:12.5px;color:var(--viz-ink2);}
-  .viz-side-sub{font-size:11px;color:var(--viz-ink2);margin-top:4px;}
-  .viz-foot{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--viz-rule);font-size:11px;color:var(--viz-ink2);}
-  .viz-fichar{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:none;color:var(--viz-ink);border:1px solid var(--viz-rule);padding:8px 16px;font-family:inherit;font-size:10.5px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;transition:background .12s;align-self:flex-start;}
-  .viz-fichar:hover{background:var(--viz-ink);color:var(--viz-bg);}
-  .viz-fichar:focus-visible,.viz-att-row:focus-visible{outline:1.5px solid var(--viz-ink);outline-offset:2px;}
-  @media(prefers-color-scheme:dark){.viz{--viz-bg:#F1EEE6;--viz-ink:#1b1b16;}}
-  /* Móvil: ordenar por DECISIÓN (spec §7). */
-  @media(max-width:719px){
-    .viz-main{display:flex;flex-direction:column;}
-    .viz-main>.viz-kpis{order:2;} .viz-main>.viz-prog{order:3;} .viz-main>.viz-cards{order:4;}
-    .viz-main>.viz-atencion{order:1;} .viz-main>.viz-pulsob{order:5;} .viz-main>.viz-fichar{order:9;}
-    .viz-aside{display:flex;flex-direction:column;} .viz-aside>.viz-mes{order:6;} .viz-aside>.viz-hoy{order:7;}
-  }
-  .viz-skel{background:var(--viz-bg);margin:-16px;padding:40px;min-height:100vh;font-family:var(--font);}
-  .viz-skel h0{font-size:46px;}
-  .viz-skel-bar{height:12px;background:#E7E2D7;margin:12px 0;animation:vizpulse 1.3s ease-in-out infinite;}
-  @keyframes vizpulse{0%,100%{opacity:.5}50%{opacity:1}}
-  </style>`;
-
+  const style=vizHomeCSS();
   return `${style}<div class="viz">
-    <div class="viz-hero">
-      <div><div class="viz-title">visión general</div>
-        <div class="viz-sub"><span class="viz-dot"></span>${abierto?"negocio abierto":"negocio cerrado"} · datos actualizados ${syncMin!=null?(syncMin<60?`hace ${syncMin} min`:`hace ${Math.round(syncMin/60)} h`):"ahora"}</div></div>
-      <div class="viz-meta">${esc(fecha)} · ${hora}${u.nombre?` · ${esc(u.nombre)}`:""}</div>
-    </div>
+    ${hero}
     <div class="viz-layout">
       <div class="viz-main">
-        ${kpis}${progreso}${cards}${atencion}${pulso}
-        <button class="viz-fichar" onclick="irA_fichaje()">🕐 Fichar · entrada, pausa y salida</button>
+        ${heroNums}${mainChart}${stats}
+        <div class="viz-dp">${decis}${pulso}</div>
       </div>
-      <aside class="viz-aside">${sideHoy}${sideMes}</aside>
+      <aside class="viz-aside">${sideMes}${sideCaja}${sideFoot}</aside>
     </div>
-    <div class="viz-foot"><span>Dirigir también es saber dónde mirar.</span><span>M · de materia</span></div>
   </div>`;
 }
+
+function vizHomeCSS(){ return `<style>
+  #screen-home.home-ceo{padding:0;overflow:hidden;}
+  .home-ceo #home-content{min-height:0;}
+  .viz{--viz-bg:#F1EEE6;--viz-panel:#E7E2D7;--viz-ink:#1b1b16;--viz-ink2:#86847a;--viz-ink3:#b2b0a4;
+    --viz-line:rgba(27,23,20,.15);--viz-rule:rgba(27,23,20,.85);--viz-accent:#4b4a42;--viz-up:#4b4a42;--viz-down:#8E4F3D;--viz-warn:#A56D48;
+    background:var(--viz-bg);color:var(--viz-ink);font-family:var(--font);font-variant-numeric:tabular-nums lining-nums;line-height:1.35;
+    flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:16px 34px 14px;}
+  @media(max-width:719px){.viz{overflow:visible;flex:none;min-height:100vh;padding:18px 16px 36px;}}
+  .viz *{box-sizing:border-box;font-variant-numeric:tabular-nums lining-nums;}
+  .viz-mut{color:var(--viz-ink2);}
+  .viz-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.17em;color:var(--viz-ink2);}
+  .viz-d{font-size:11px;white-space:nowrap;}.viz-d.up{color:var(--viz-up);}.viz-d.down{color:var(--viz-down);}
+  .viz-ok-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--viz-up);margin-right:6px;vertical-align:middle;}
+  .viz-hd{flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .viz-fichar{flex:0 0 auto;margin-top:2px;background:none;border:1px solid var(--viz-line);color:var(--viz-ink);font-family:inherit;font-size:11px;letter-spacing:.04em;padding:7px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .12s;}
+  .viz-fichar:hover{background:rgba(27,23,20,.05);}
+  .viz-fichar span{font-size:12px;}
+  .viz-eyebrow{font-size:9.5px;letter-spacing:.17em;color:var(--viz-ink2);}
+  .viz-title{font-size:34px;font-weight:400;letter-spacing:-.015em;line-height:.95;text-transform:lowercase;margin-top:3px;}
+  .viz-lede{font-size:12px;color:var(--viz-ink2);margin-top:5px;}
+  .viz-layout{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:10px;}
+  @media(min-width:980px){.viz-layout{display:grid;grid-template-columns:1fr 310px;grid-template-rows:1fr;gap:0;}
+    .viz-main{min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+    .viz-aside{padding-left:28px;margin-left:28px;border-left:1px solid var(--viz-line);min-height:0;display:flex;flex-direction:column;overflow:hidden;}}
+  /* Cifras titulares */
+  .viz-heronum{flex:0 0 auto;display:grid;grid-template-columns:1.3fr 1.1fr .7fr;border-top:1px solid var(--viz-line);border-bottom:1px solid var(--viz-line);}
+  .viz-hn{padding:13px 22px 14px;border-right:1px solid var(--viz-line);}
+  .viz-hn:last-child{border-right:0;}
+  .viz-hn.mini{display:flex;flex-direction:column;justify-content:center;}
+  .viz-hn-v{font-size:40px;font-weight:400;letter-spacing:-.03em;line-height:1;margin-top:7px;}
+  .viz-hn-v.sm{font-size:30px;}
+  .viz-hn-s{font-size:11px;margin-top:8px;}
+  .viz-hn-pct{font-size:26px;font-weight:400;}
+  /* Gráfico */
+  .viz-mainchart{flex:0 0 auto;padding:12px 0 2px;}
+  .viz-g{position:relative;}
+  .viz-g-plot{position:relative;padding-left:44px;}
+  .viz-g-plot svg{position:absolute;inset:0 0 0 44px;width:calc(100% - 44px);height:100%;overflow:visible;}
+  .viz-g-area{fill:var(--viz-accent);opacity:.07;}
+  .viz-g-line{fill:none;stroke:var(--viz-accent);stroke-width:1.4;vector-effect:non-scaling-stroke;stroke-linejoin:round;}
+  .viz-g-obj{fill:none;stroke:var(--viz-ink2);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;opacity:.75;}
+  .viz-g-grid{stroke:var(--viz-line);stroke-width:1;vector-effect:non-scaling-stroke;}
+  .viz-g-mk{stroke:var(--viz-ink2);stroke-width:1;stroke-dasharray:2 2;vector-effect:non-scaling-stroke;opacity:.65;}
+  .viz-g-dot{fill:var(--viz-accent);}
+  .viz-g-y{position:absolute;left:0;transform:translateY(-50%);font-size:9px;color:var(--viz-ink2);}
+  .viz-g-mklb{position:absolute;top:-2px;transform:translateX(-50%);font-size:9px;color:var(--viz-ink2);letter-spacing:.04em;}
+  .viz-g-legend{display:flex;justify-content:flex-end;gap:16px;font-size:9.5px;color:var(--viz-ink2);padding:0 2px 7px 44px;}
+  .viz-g-lg{display:flex;align-items:center;gap:5px;}
+  .viz-g-lg i{width:14px;height:0;border-top:1.4px solid var(--viz-accent);display:inline-block;}
+  .viz-g-lg i.dash{border-top:1px dashed var(--viz-ink2);}
+  .viz-g-x{display:flex;justify-content:space-between;font-size:9px;color:var(--viz-ink2);margin:5px 0 0 44px;letter-spacing:.04em;}
+  /* Indicadores */
+  .viz-stats{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--viz-line);border-bottom:1px solid var(--viz-line);}
+  .viz-st{padding:11px 18px 12px;border-right:1px solid var(--viz-line);}
+  .viz-st:last-child{border-right:0;}
+  .viz-st-v{font-size:25px;font-weight:400;letter-spacing:-.02em;line-height:1;margin-top:7px;}
+  .viz-st-s{font-size:10.5px;margin-top:7px;}
+  /* Decisiones + pulso */
+  .viz-dp{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr;gap:0;margin-top:12px;overflow:hidden;}
+  @media(min-width:860px){.viz-dp{grid-template-columns:1.15fr 1fr;gap:0;}.viz-dp>.viz-box:first-child{border-right:1px solid var(--viz-line);padding-right:24px;}.viz-dp>.viz-box:last-child{padding-left:24px;}}
+  .viz-box{min-height:0;display:flex;flex-direction:column;}
+  .viz-box-h{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;text-transform:uppercase;letter-spacing:.18em;padding-bottom:4px;}
+  .viz-box-h>span:first-child{color:var(--viz-ink);}
+  .viz-dec{display:grid;grid-template-columns:28px 1fr auto 16px;gap:12px;align-items:center;width:100%;background:none;border:0;border-top:1px solid var(--viz-line);padding:10px 2px;text-align:left;cursor:pointer;color:var(--viz-ink);font-family:inherit;}
+  .viz-dec:hover{background:rgba(27,23,20,.04);}
+  .viz-dec-n{font-size:18px;color:var(--viz-ink3);}
+  .viz-dec-t{display:block;font-size:13px;}
+  .viz-dec-m{display:block;font-size:11px;color:var(--viz-ink2);margin-top:2px;}
+  .viz-dec-i{text-align:right;font-size:10px;}
+  .viz-dec-i .viz-mut{display:block;}
+  .viz-imp{font-size:12px;}.viz-imp.alto{color:var(--viz-down);}.viz-imp.medio{color:var(--viz-warn);}
+  .viz-dec-go{color:var(--viz-ink2);}
+  .viz-pr{display:grid;grid-template-columns:20px 1fr auto 16px;gap:12px;align-items:center;width:100%;background:none;border:0;border-top:1px solid var(--viz-line);padding:10px 2px;text-align:left;cursor:pointer;color:var(--viz-ink);font-family:inherit;}
+  .viz-pr:hover{background:rgba(27,23,20,.04);}
+  .viz-pr-ic{width:18px;height:18px;color:var(--viz-ink2);}.viz-pr-ic svg{width:18px;height:18px;}
+  .viz-pr-l{display:block;font-size:12.5px;}
+  .viz-pr-s{display:block;font-size:10.5px;color:var(--viz-ink2);margin-top:1px;}
+  .viz-pr-v{font-size:19px;}.viz-pr-v small{font-size:11px;color:var(--viz-ink2);}
+  .viz-clear{font-size:12.5px;color:var(--viz-ink2);padding:10px 2px;}
+  /* Columna derecha */
+  .viz-aside-block{flex:0 0 auto;margin-bottom:16px;}
+  .viz-mes{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+  .viz-aside-h{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;text-transform:uppercase;letter-spacing:.18em;border-bottom:1px solid var(--viz-rule);padding-bottom:8px;margin-bottom:11px;}
+  .viz-aside-v{font-size:27px;font-weight:400;letter-spacing:-.02em;line-height:1;}
+  .viz-mes-row{display:flex;justify-content:space-between;align-items:flex-end;}
+  .viz-mes-pct{text-align:right;}.viz-mes-pct b{font-size:15px;font-weight:400;}.viz-mes-pct span{display:block;font-size:10.5px;}
+  .viz-pbar{height:8px;background:var(--viz-panel);margin:9px 0;overflow:hidden;}.viz-pbar>i{display:block;height:100%;background:var(--viz-accent);}
+  .viz-crow{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--viz-line);}
+  .viz-crow:last-child{border-bottom:0;}
+  .viz-aside-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--viz-rule);font-size:11px;color:var(--viz-ink2);display:flex;flex-direction:column;gap:3px;}
+  .viz-noch{font-size:11px;color:var(--viz-ink3);padding:30px 0;text-align:center;}
+  @media(prefers-color-scheme:dark){.viz{--viz-bg:#F1EEE6;--viz-ink:#1b1b16;}}
+  @media(max-width:859px){.viz-heronum{grid-template-columns:1fr;}.viz-hn{border-right:0;border-bottom:1px solid var(--viz-line);}.viz-stats{grid-template-columns:repeat(2,1fr);}}
+  .viz-skel{background:var(--viz-bg);margin:0;padding:34px;min-height:100vh;font-family:var(--font);}
+  .viz-skel-bar{height:12px;background:#E7E2D7;margin:12px 0;animation:vizpulse 1.3s ease-in-out infinite;}
+  @keyframes vizpulse{0%,100%{opacity:.5}50%{opacity:1}}
+</style>`; }
 
 function vizSkeleton(){
   return `<div class="viz-skel"><div style="font-size:30px;">visión general</div>

@@ -48,13 +48,17 @@ function aplicar(st) {
   const elaboracion = {};
   (st.readAll("recetas") || []).forEach((r) => { if (r && r.produce_materia_id) elaboracion[r.produce_materia_id] = true; });
 
+  // Materias que se calculan por DERIVACIÓN de la fruta entera (más abajo): no
+  // se emparejan en el match directo (la "naranja" entera no es "zumo de naranja").
+  const DERIVADA_IDS = new Set(["mat-lim-piel-lima", "mat-lim-piel-pomelo", "mat-lim-zumo-pomelo", "mat-lim-zumo-naranja"]);
+
   let fijados = 0;
   const detalle = [];
   (st.readAll("compras_productos") || []).forEach((a) => {
     let m = a.materia_id ? byId[a.materia_id] : null;
     if (!m) m = byName[norm(a.nombre)];
     if (!m) m = intake.mejorPorPalabras(a.nombre, materias); // empareja por palabras
-    if (!m || elaboracion[m.id]) return;
+    if (!m || elaboracion[m.id] || DERIVADA_IDS.has(m.id)) return;
     const c = costeUnidad(a, m);
     if (!(c > 0)) return;
     const actual = Number(m.coste_medio) || 0;
@@ -71,6 +75,32 @@ function aplicar(st) {
     fijados++;
     detalle.push({ materia: m.nombre, coste: c, desde: a.nombre });
   });
+
+  // MATERIAS DERIVADAS DE FRUTA ENTERA: la receta usa "piel"/"zumo", pero se
+  // compra la fruta entera. Se deriva el coste del artículo de compra de la
+  // fruta × un RENDIMIENTO estándar (g de fruta por g de piel/zumo), ajustable.
+  const compras = st.readAll("compras_productos") || [];
+  const matById = {}; (st.readAll("materias") || []).forEach((m) => (matById[m.id] = m));
+  const DERIV = [
+    { id: "mat-lim-piel-lima", fruta: /\blima/, factor: 8 },       // piel ≈ 1/8 de la lima
+    { id: "mat-lim-piel-pomelo", fruta: /pomelo|toronja/, factor: 8 },
+    { id: "mat-lim-zumo-pomelo", fruta: /pomelo|toronja/, factor: 2.2 }, // zumo ≈ 45% → 1 g zumo de 2,2 g fruta
+    { id: "mat-lim-zumo-naranja", fruta: /naranja/, factor: 2.2 },
+  ];
+  DERIV.forEach((der) => {
+    const m = matById[der.id];
+    if (!m || Number(m.coste_medio) > 0) return;      // ya tiene coste → no se toca
+    const art = compras.find((a) => der.fruta.test(norm(a.nombre)));
+    if (!art) return;                                  // la fruta aún no está en compras
+    const gfruta = { unidad: "g" };                    // coste por gramo de fruta
+    const cg = costeUnidad(art, gfruta);
+    if (!(cg > 0)) return;
+    const c = Math.round(cg * der.factor * 1e6) / 1e6; // €/g de piel o zumo
+    st.update("materias", der.id, { coste_medio: c, precio_compra: c, pendiente_coste: false });
+    m.coste_medio = c; fijados++;
+    detalle.push({ materia: m.nombre, coste: c, desde: art.nombre + " (fruta ×" + der.factor + ")" });
+  });
+
   return { fijados, detalle };
 }
 

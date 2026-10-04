@@ -126,5 +126,73 @@ test("rechaza un ZIP sin data/facturas.json", () => {
   assert.throws(() => fp.importar(z, { store: fakeStore() }), /facturas\.json/);
 });
 
+// — Formato GESTORÍA: Control .xlsx + PDFs organizados por proveedor (sin JSON) —
+// Construye un Excel de control con hoja de detalle y localiza cada PDF por su
+// "Ruta organizada". Es el paquete que exporta la gestoría (ENTREGA_GESTORIA).
+function xlsxControl() {
+  const inl = (ref, txt) => `<c r="${ref}" t="inlineStr"><is><t>${String(txt).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</t></is></c>`;
+  const n = (ref, v) => `<c r="${ref}"><v>${v}</v></c>`;
+  // Hoja 1: resumen por proveedor (no es detalle: sin Asunto/Archivo/Base).
+  const h1 = `<?xml version="1.0"?><worksheet><sheetData>` +
+    `<row r="1">${inl("A1", "Proveedor")}${inl("B1", "N.º facturas")}${inl("C1", "Total EUR")}</row>` +
+    `<row r="2">${inl("A2", "Prov A")}${n("B2", 1)}${n("C2", 100)}</row>` +
+    `</sheetData></worksheet>`;
+  // Hoja 2: DETALLE (una factura por fila) con la columna "Ruta organizada".
+  const cab = ["Fecha factura", "Proveedor", "N.º factura", "Asunto del correo", "Fecha correo", "Moneda", "Base imponible", "IVA", "Total", "Archivo original", "Ruta organizada"];
+  const COL = "ABCDEFGHIJK".split("");
+  const fila = (r, vals) => `<row r="${r}">` + vals.map((v, i) => (typeof v === "number" ? n(COL[i] + r, v) : inl(COL[i] + r, v))).join("") + `</row>`;
+  const h2 = `<?xml version="1.0"?><worksheet><sheetData>` +
+    fila(1, cab) +
+    fila(2, ["2026-10-02", "Prov A", "FA-1", "Factura FA-1", "Fri, 2 Oct 2026", "EUR", 90, 10, 100, "a.pdf", "Prov_A/2026-10-02_FA-1_a.pdf"]) +
+    fila(3, ["2026-09-03", "Prov B", "FB-9", "Factura FB-9", "Wed, 3 Sep 2026", "USD", "", "", 20, "b.pdf", "Prov_B/2026-09-03_FB-9_b.pdf"]) +
+    `</sheetData></worksheet>`;
+  return zip([
+    { name: "[Content_Types].xml", data: `<?xml version="1.0"?><Types/>` },
+    { name: "xl/sharedStrings.xml", data: `<?xml version="1.0"?><sst/>` },
+    { name: "xl/worksheets/sheet1.xml", data: h1 },
+    { name: "xl/worksheets/sheet2.xml", data: h2 },
+  ]);
+}
+
+function paqueteGestoria() {
+  return zip([
+    { name: "ENTREGA/Control_facturas_2026.xlsx", data: xlsxControl() },
+    { name: "ENTREGA/Facturas_por_proveedor/Prov_A/2026-10-02_FA-1_a.pdf", data: PDF_A },
+    { name: "ENTREGA/Facturas_por_proveedor/Prov_B/2026-09-03_FB-9_b.pdf", data: PDF_B },
+    { name: "ENTREGA/LEEME.txt", data: "estado" },
+  ]);
+}
+
+test("formato gestoría (Excel + PDFs por proveedor, sin JSON): importa y enlaza cada PDF", () => {
+  const store = fakeStore();
+  const { rep } = fp.importar(paqueteGestoria(), { store });
+  assert.strictEqual(rep.formato, "gestoria");
+  assert.strictEqual(rep.importadas, 2);
+  assert.strictEqual(rep.sin_pdf, 0);
+  assert.strictEqual(rep.errores, 0);
+  assert.strictEqual(rep.por_moneda.EUR, 100);
+  assert.strictEqual(rep.por_moneda.USD, 20);
+  const recs = store.readAll("recepciones");
+  assert.strictEqual(recs.length, 2);
+  assert.ok(recs.every((r) => r.tipo_documento === "factura"));           // nunca mueve stock
+  assert.ok(recs.every((r) => String(r.documento_pdf_url || "").startsWith("data:application/pdf"))); // OCR podrá leerlo
+  assert.ok(recs.every((r) => r.factura_sha256));                          // idempotencia por sha
+  const a = recs.find((r) => r.numero_documento === "FA-1");
+  assert.strictEqual(a.base_imponible, 90); assert.strictEqual(a.iva, 10);
+});
+
+test("formato gestoría: re-importar es idempotente (0 nuevas, todo duplicadas)", () => {
+  const store = fakeStore();
+  fp.importar(paqueteGestoria(), { store });
+  const { rep } = fp.importar(paqueteGestoria(), { store });
+  assert.strictEqual(rep.importadas, 0);
+  assert.strictEqual(rep.duplicadas, 2);
+});
+
+test("ZIP sin JSON y sin Excel se rechaza con mensaje claro", () => {
+  const z = zip([{ name: "pkg/otra.txt", data: "hola" }]);
+  assert.throws(() => fp.importar(z, { store: fakeStore() }), /facturas\.json|Excel/);
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en paquete de facturas`); process.exit(1); }
 console.log("  paquete de facturas OK");

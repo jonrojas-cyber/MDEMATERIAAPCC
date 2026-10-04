@@ -43,6 +43,7 @@ function mapearColumnas(cab) {
     iva: find((x) => x === "iva" || x.includes("i.v.a")),
     total: find((x) => x === "total" || (x.includes("total") && !x.includes("usd") && !x.includes("eur"))),
     archivo: find((x) => x.includes("archivo")),
+    ruta: find((x) => x.includes("ruta")), // "Ruta organizada" → ubicación del PDF en el paquete de gestoría
   };
 }
 
@@ -82,6 +83,7 @@ function filaAFactura(c, cols) {
     iva: num(g("iva")),
     total: num(g("total")),
     archivo: String(g("archivo") || "").trim(),
+    ruta: String(g("ruta") || "").trim(),
   };
 }
 

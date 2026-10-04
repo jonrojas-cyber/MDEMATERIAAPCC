@@ -25,16 +25,69 @@ const { unzip } = require("./xlsx-lite");
 function sha256(buf) { return crypto.createHash("sha256").update(buf).digest("hex"); }
 function r2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
-// Abre el ZIP y localiza data/facturas.json + la raíz del paquete.
+function norm(s) {
+  return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/\\/g, "/").replace(/\s+/g, " ").trim();
+}
+
+// Localiza el PDF dentro del ZIP a partir de la "Ruta organizada" del Excel
+// (p. ej. "Panamar_Bakery_Group/2026-10-02_..._Factura.PDF"), que es el SUFIJO
+// de la ruta real del fichero. Si no casa por sufijo, cae al nombre de archivo
+// solo cuando es inequívoco (un único PDF con ese nombre). Devuelve la clave
+// real del ZIP (con su prefijo de carpeta) o "".
+function localizarPdf(pdfKeys, ruta, archivo) {
+  const r = norm(ruta);
+  if (r) {
+    const hit = pdfKeys.find((k) => norm(k).endsWith(r));
+    if (hit) return hit;
+  }
+  const base = norm(archivo).split("/").pop();
+  if (base) {
+    const cands = pdfKeys.filter((k) => norm(k).split("/").pop() === base);
+    if (cands.length === 1) return cands[0];
+  }
+  return "";
+}
+
+// Abre el ZIP y devuelve { files, prefix, records }. Admite DOS formatos:
+//   1) Paquete canónico: data/facturas.json + PDFs en documentos/ (records del JSON).
+//   2) Paquete de gestoría: Control_facturas_*.xlsx + PDFs organizados por
+//      proveedor (ENTREGA_GESTORIA/...). Los registros se arman desde la hoja de
+//      detalle del Excel y cada PDF se localiza por su "Ruta organizada". Así el
+//      MISMO importador (y la lectura automática de PDFs) sirve para ambos.
 function leerPaquete(zipBuf) {
   const files = unzip(Buffer.isBuffer(zipBuf) ? zipBuf : Buffer.from(zipBuf));
   const fjName = Object.keys(files).find((n) => /(^|\/)data\/facturas\.json$/.test(n));
-  if (!fjName) throw new Error("El paquete no contiene data/facturas.json.");
-  const prefix = fjName.replace(/data\/facturas\.json$/, "");
-  const fj = JSON.parse(files[fjName].toString("utf8"));
-  const records = Array.isArray(fj) ? fj : (fj.records || fj.facturas || []);
-  if (!records.length) throw new Error("El paquete no trae registros de factura.");
-  return { files, prefix, records };
+  if (fjName) {
+    const prefix = fjName.replace(/data\/facturas\.json$/, "");
+    const fj = JSON.parse(files[fjName].toString("utf8"));
+    const records = Array.isArray(fj) ? fj : (fj.records || fj.facturas || []);
+    if (!records.length) throw new Error("El paquete no trae registros de factura.");
+    return { files, prefix, records, formato: "json" };
+  }
+
+  // Formato gestoría: localizar el Excel de control y armar los registros.
+  const xlsxName = Object.keys(files).find((n) => /\.xlsx$/i.test(n) && !/^__MACOSX/.test(n) && !/(^|\/)~\$/.test(n));
+  if (!xlsxName) throw new Error("El paquete no contiene data/facturas.json ni un Excel de control de facturas.");
+  const hojas = require("./xlsx-lite").readXlsxSheets(files[xlsxName]);
+  const filas = require("./facturas-control").parseFilas(hojas);
+  if (!filas.length) throw new Error("El Excel de control del paquete no trae facturas.");
+  const pdfKeys = Object.keys(files).filter((n) => /\.pdf$/i.test(n) && !/^__MACOSX/.test(n));
+  const records = filas.map((f) => ({
+    supplier_name: f.proveedor,
+    invoice_number: f.numero,
+    currency: f.moneda || "EUR",
+    total_amount: f.total,
+    taxable_base: f.base || null,
+    vat_amount: f.iva || null,
+    invoice_date: f.fecha || "",
+    original_filename: f.archivo || "",
+    email_subject: f.asunto || "",
+    document_path: localizarPdf(pdfKeys, f.ruta, f.archivo), // clave real dentro del ZIP (prefix = "")
+    payment_status: "unknown",
+    requires_review: true,
+  }));
+  return { files, prefix: "", records, formato: "gestoria" };
 }
 
 function dataUriPdf(buf) { return "data:application/pdf;base64," + buf.toString("base64"); }
@@ -43,11 +96,11 @@ function dataUriPdf(buf) { return "data:application/pdf;base64," + buf.toString(
 function importar(zipBuf, opts = {}) {
   const store = opts.store || storeDefault;
   const dryRun = !!opts.dryRun;
-  const { files, prefix, records } = leerPaquete(zipBuf);
+  const { files, prefix, records, formato } = leerPaquete(zipBuf);
   const proveedores = store.readAll("proveedores") || [];
 
   const rep = {
-    modo: dryRun ? "dry-run" : "importar",
+    modo: dryRun ? "dry-run" : "importar", formato: formato || "json",
     leidas: records.length, importadas: 0, actualizadas: 0, duplicadas: 0, errores: 0, sin_pdf: 0,
     por_moneda: {}, por_estado: {}, detalles: [],
   };

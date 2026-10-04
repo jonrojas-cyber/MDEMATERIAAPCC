@@ -14,7 +14,7 @@ async function login(page) {
   for (const d of "3333") {
     await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   }
-  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  await page.waitForSelector(".viz", { timeout: 15_000 });
 }
 
 test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
@@ -118,17 +118,17 @@ test("login: teclado numérico en pantalla (puntos, borrar y PIN incorrecto)", a
   await expect(page.locator("#pin-dots .pin-dot.on")).toHaveCount(0);
 });
 
-test("inicio: información importante · pulso del negocio, urgencias y rutina", async ({ page }) => {
+test("inicio: portada de dirección (CEO) · visión general y atención", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // El dueño ve el pulso del negocio (ventas/food cost/mermas → Negocio).
-  await expect(page.locator(".pulse")).toBeVisible();
-  await expect(page.locator(".pulse")).toContainText(/negocio/i);
-  // Bloque "lo importante ahora" (urgencias o "todo en orden").
-  await expect(page.locator(".home-sec")).toContainText(/importante/i);
-  await expect(page.locator(".home-routine")).toBeVisible();
-  // Navegación por dominios en la barra INFERIOR (4 fijos, estilo Spotify).
+  // El dueño ve la portada ejecutiva "visión general" (cuadro de mando, no un menú).
+  await expect(page.locator(".viz")).toBeVisible();
+  await expect(page.locator(".viz-title")).toContainText(/visión general/i);
+  // Banda de 4 KPIs dominantes + módulo "requiere tu atención".
+  await expect(page.locator(".viz-kpi, .viz-kpi-btn")).toHaveCount(4);
+  await expect(page.locator(".viz-block-h", { hasText: /requiere tu atención/i })).toBeVisible();
+  // Navegación por dominios en la barra INFERIOR (4 fijos) sigue presente.
   await expect(page.locator("#tabbar .tab")).toHaveCount(4);
   // Tres acciones fijas arriba: inicio · buscar · ajustes (esta última, dueño).
   await expect(page.locator("#tb-buscar")).toBeVisible();
@@ -199,7 +199,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
-  await page.waitForSelector(".home-routine");
+  await page.waitForSelector(".viz");
   await page.evaluate(() => irA_materias());
   await page.waitForSelector(".alm-macro");
   // Almacén de 3 niveles: macro → subcategoría → producto → ficha. Navegamos por
@@ -239,7 +239,7 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 
   // "Volver" otra vez debe llevar al inicio (la pregunta visible, sin botón volver).
   await page.click("#topbar-back");
-  await expect(page.locator(".home-routine")).toBeVisible();
+  await expect(page.locator(".viz")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
   expect(errors).toEqual([]);
@@ -266,7 +266,7 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el imagotipo del centro (o "inicio") → inicio.
   await page.click(".topbar-center .mark");
-  await expect(page.locator(".home-routine")).toBeVisible();
+  await expect(page.locator(".viz")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
@@ -574,8 +574,8 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // El dueño llega a Negocio desde el pulso del inicio ("negocio →").
-  await expect(page.locator(".pulse")).toContainText(/negocio/i);
+  // El dueño llega a Negocio desde la portada (los KPI enlazan al centro de control).
+  await expect(page.locator(".viz")).toBeVisible();
   await page.evaluate(() => irA_centroControl("mes"));
   await expect(page.locator(".cc-grid")).toBeVisible();
   await expect(page.locator(".cc-score").first()).toBeVisible(); // salud del negocio
@@ -855,7 +855,7 @@ test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  await page.waitForSelector(".viz", { timeout: 15_000 });
   expect(await page.evaluate(() => document.body.classList.contains("tpv"))).toBe(true);
   await page.evaluate(() => irA_pedidos());
   await page.selectOption("#ped-prov", { index: 1 });
@@ -880,7 +880,7 @@ test("MBDS: endpoint calcula parámetros y validación de las bebidas", async ({
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  await page.waitForSelector(".viz", { timeout: 15_000 });
   const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
   expect(Array.isArray(bebidas)).toBe(true);
   const ambar = bebidas.find((b) => b.nombre === "Ámbar");
@@ -900,7 +900,7 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  await page.waitForSelector(".viz", { timeout: 15_000 });
   await page.evaluate(() => irA_mbds());
   await expect(page.locator(".cc-label", { hasText: /Laboratorio de bebidas/ })).toBeVisible();
   await expect(page.locator(".cc-card", { hasText: /Ámbar/ }).first()).toBeVisible();
@@ -1749,7 +1749,7 @@ test("inicio: el botón de fichar está en la pantalla principal y abre el reloj
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  const btn = page.locator(".home-fichar");
+  const btn = page.locator(".viz-fichar");
   await expect(btn).toBeVisible();
   await expect(btn).toContainText(/Fichar/i);
   await btn.click();

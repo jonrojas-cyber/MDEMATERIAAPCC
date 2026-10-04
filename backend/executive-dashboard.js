@@ -129,6 +129,53 @@ function construir(preset = "hoy", opts = {}) {
   const puntoEquilibrio = breakEven.puntoEquilibrio(now);
   const ahorroFijos = costAnalytics.alertas(now);
 
+  // ── PANEL DE DIRECCIÓN (home CEO) ──────────────────────────────────────────
+  // Todo lo que la portada de dirección necesita, en UNA sola llamada. El
+  // objetivo es DINÁMICO: un 10% más que el mismo periodo del mes anterior.
+  const fin = financials.extrasFinancieros(now);
+  const rHoy = periods.rango("hoy", now);
+  const benHoy = financials.beneficio(rHoy, now);
+  const d0 = new Date(now); const primerDiaMes = new Date(d0.getFullYear(), d0.getMonth(), 1).getTime();
+  const primerDiaMesAnt = new Date(d0.getFullYear(), d0.getMonth() - 1, 1).getTime();
+  const benMesAnt = financials.beneficio({ desde: primerDiaMesAnt, hasta: primerDiaMes, preset: "mes_anterior" }, now);
+  const diasEnMes = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
+  const OBJ = 1.10; // regla: +10% sobre el mes anterior
+  const objetivoMes = eur(benMesAnt.ventas * OBJ);
+  const objetivoDia = eur(objetivoMes / diasEnMes);
+  const ticketsHoy = financials.ticketsEnRango(rHoy);
+  const ventasHoy = benHoy.ventas || 0;
+  // Previsión de cierre del día: proyección por fracción de jornada (8–23 h).
+  const horaDec = d0.getHours() + d0.getMinutes() / 60;
+  const fracDia = Math.min(1, Math.max(0.08, (horaDec - 8) / 15));
+  const prevCierre = eur(ventasHoy / fracDia);
+  const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : null);
+  const panel_direccion = {
+    objetivo_regla: "mes anterior × 1,10",
+    hoy: {
+      ventas: ventasHoy,
+      vs_anterior_pct: beneficio.vs_anterior && beneficio.vs_anterior.ventas ? beneficio.vs_anterior.ventas.pct : null,
+      tickets: ticketsHoy,
+      ticket_medio: ticketsHoy > 0 ? eur(ventasHoy / ticketsHoy) : null,
+      margen_pct: benHoy.margen_operativo_pct,
+      food_cost_pct: benHoy.food_cost_pct,
+      coste_laboral_pct: benHoy.coste_laboral_pct,
+      objetivo_dia: objetivoDia,
+      objetivo_dia_pct: pct(ventasHoy, objetivoDia),
+      prevision_cierre: prevCierre,
+      prevision_vs_objetivo_pct: objetivoDia > 0 ? Math.round(((prevCierre - objetivoDia) / objetivoDia) * 100) : null,
+    },
+    mes: {
+      ventas: benMes.ventas,
+      objetivo: objetivoMes,
+      objetivo_pct: pct(benMes.ventas, objetivoMes),
+      vs_anterior_pct: benMesAnt.ventas > 0 ? Math.round(((benMes.ventas - benMesAnt.ventas) / benMesAnt.ventas) * 100) : null,
+      ebitda_pct: fin.margen_mes_pct,
+      ebitda_eur: fin.ebitda_mes,
+      food_cost_pct: benMes.food_cost_pct,
+      coste_laboral_pct: benMes.coste_laboral_pct,
+    },
+  };
+
   // Inteligencia temporal: forecast de caja/salud y anomalías sobre la serie.
   const runwayForecast = forecast.runwayCaja();
   const anomalias = anomaly.detectar();
@@ -148,7 +195,8 @@ function construir(preset = "hoy", opts = {}) {
     comparativo: { anterior: res.anterior, anio_anterior: res.anio_anterior },
     salud: saludBloque,
     valor_empresa: patrimonio,
-    financiero: financials.extrasFinancieros(now), // burn, nómina/fijos esperados, EBITDA-ready
+    financiero: fin, // burn, nómina/fijos esperados, EBITDA-ready
+    panel_direccion,  // portada de dirección (home CEO): hoy + mes con objetivo dinámico
     beneficio,
     coste_abrir: costeAbrir,
     break_even: puntoEquilibrio,                   // ingreso/clientes/cafés para no perder + margen de seguridad

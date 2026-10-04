@@ -46,6 +46,7 @@ function recetas() {
     "Latte": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }, { materia_id: LECHE, cantidad: 200 }],
     "Iced Latte": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }, { materia_id: LECHE, cantidad: 200 }],
     "Ices americano": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }],
+    "Iced americano": [{ materia_id: CAFE, cantidad: GRAMOS_CAFE }],
     "México descafeinado": [{ materia_id: CAFE_DESCAF, cantidad: GRAMOS_CAFE }],
     "Coldbrew": [{ materia_id: CAFE_COLD, cantidad: GRAMOS_CAFE }],
     "Iced matcha origen": [{ materia_id: MATCHA, cantidad: 2 }, { materia_id: LECHE, cantidad: 200 }],
@@ -93,6 +94,17 @@ function aplicar(st) {
   crearMat(TE, "Té en bolsa", "ud", "Bebidas", "Infusiones");
   crearMat(CAFE_DESCAF, "Café descafeinado (México)", "g", "Bebidas", "Café");
   crearMat(COOKIE, "Cookie", "ud", "Panadería", "Repostería");
+
+  // Alias de Ágora: en caja se vende "Iced americano" pero el catálogo lo tiene
+  // como "Ices americano" → se le pone agora_ref para que la venta lo encuentre.
+  const ALIAS = { "ices americano": "Iced americano" };
+  (st.readAll("productos") || []).forEach((p) => {
+    const a = ALIAS[norm(p.nombre)] || ALIAS[norm(p.clave)];
+    // Fija el nombre REAL de caja como agora_ref (aunque ya tuviera otro), para
+    // que la venta "Iced americano" encuentre este producto. El nombre propio
+    // sigue casando igual, así que no se pierde nada.
+    if (a && norm(p.agora_ref) !== norm(a)) st.update("productos", p.id, { agora_ref: a });
+  });
 
   const mats = {}; (st.readAll("materias") || []).forEach((m) => (mats[m.id] = true));
   const mapa = recetas();

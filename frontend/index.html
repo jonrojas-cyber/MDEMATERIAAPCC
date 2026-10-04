@@ -36,20 +36,23 @@
      (proporciones reales del logo). Se pinta como máscara con currentColor, así
      el MISMO logo se usa en toda la marca y adopta el color de cada contexto. */
   --ig-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 179 430'%3E%3Crect fill='%23fff' width='23' height='430' rx='11.5'/%3E%3Crect fill='%23fff' x='78' width='23' height='430' rx='11.5'/%3E%3Crect fill='%23fff' x='156' width='23' height='430' rx='11.5'/%3E%3C/svg%3E");
-  --cream: #2A332B;   /* fondo: verde oliva de la app de grifos (mismo tono) */
-  --paper: #333C34;   /* celdas / tarjetas: un punto más claras (como grifos) */
-  --ink:   #F5F4EF;   /* texto principal = blanco cálido (máxima lectura) */
-  --olive: #A7B96E;   /* acento vivo sage (activo / selección / relleno) */
-  --olive-light: #3A4139;  /* superficies/entradas oscuras, tracks */
-  --muted: #DFE1D8;   /* secundario casi blanco · alta intensidad de lectura */
-  --warn:  #ECEAE3;   /* jerarquía por peso, sin color (= texto) */
-  --ok:    #ECEAE3;
-  --alert: #D62A1C;   /* rojo La Marzocco · solo criticidad */
-  --gold:  #A7B96E;   /* secundario colapsado al acento sage */
+  /* ── LÍNEA EDITORIAL CLARA (igual que "visión general") · papel cálido + grafito.
+     Neutro, profesional, sin verde en el contenido: el verde oscuro vive SOLO en
+     el marco (rail + barras). Esquinas rectas, hilos finos, sin sombras. ── */
+  --cream: #F1EEE6;   /* fondo: papel cálido */
+  --paper: #E9E5DA;   /* celdas / tarjetas: un punto más oscuras que el papel */
+  --ink:   #1B1B16;   /* texto principal = grafito */
+  --olive: #45443D;   /* acento NEUTRO (activo / selección / relleno) = grafito */
+  --olive-light: #E3DFD2;  /* superficies/entradas claras, tracks */
+  --muted: #86847A;   /* secundario = gris cálido */
+  --warn:  #1B1B16;   /* jerarquía por peso, sin color (= texto) */
+  --ok:    #1B1B16;
+  --alert: #B5321F;   /* rojo · solo criticidad (sobre papel) */
+  --gold:  #45443D;   /* secundario colapsado al acento neutro */
   /* Líneas y sombra */
-  --line:  rgba(236,234,227,0.32);   /* keyline a hilo sobre olivo */
+  --line:  rgba(27,23,20,0.16);   /* keyline a hilo sobre papel */
   --shadow: none;
-  /* Marco oliva (barra superior e inferior) = mismo olivo plano */
+  /* Marco (barra superior e inferior + rail) = VERDE OSCURO de marca */
   --olivebar: #2A332B;
   --oliveink: #C7CABF;
   /* Tipografía · fuente ÚNICA de marca (Courier). Todo hereda de aquí; ningún
@@ -67,16 +70,16 @@
   --kpi-lg: 34px;
   --kpi-md: 26px;
   --kpi-sm: 20px;
-  --track: #3A4139;        /* fondo de barras de progreso (oscuro) */
+  --track: #E3DFD2;        /* fondo de barras de progreso (claro) */
   /* ── Color de ESTADO · única gramática cromática, solo con función ──
      rojo=riesgo · ámbar=atención · azul=info · verde=correcto.
-     Ajustados para leerse como marca (punto/filete) sobre el olivo. */
-  --sev-risk: #EF4335;
-  --sev-warn: #D9A94A;
-  --sev-info: #86ABC6;
-  --sev-ok:   #7FB98F;
-  --div: rgba(236,234,227,0.14);   /* divisoria fina entre filas del feed */
-  color-scheme: dark;              /* controles nativos (select, spinner, date) en oscuro */
+     Ajustados para leerse como filete/punto sobre PAPEL. */
+  --sev-risk: #B5321F;
+  --sev-warn: #A56D48;
+  --sev-info: #5C7A90;
+  --sev-ok:   #6F7B58;
+  --div: rgba(27,23,20,0.10);   /* divisoria fina entre filas del feed */
+  color-scheme: light;             /* controles nativos (select, spinner, date) en claro */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1185,7 +1188,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .lab-panel { position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
   background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 24px 22px;
   transition: border-color .16s ease, background .16s ease; }
-.lab-panel:hover { border-color: var(--ink); background: #37413A; }
+.lab-panel:hover { border-color: var(--ink); background: var(--olive-light); }
 .lab-mark { display: inline-block; width: 15px; height: 26px; background: var(--olive);
   -webkit-mask: var(--ig-mask) center/contain no-repeat; mask: var(--ig-mask) center/contain no-repeat; }
 .lab-eyebrow { font-size: 9.5px; letter-spacing: .22em; text-transform: lowercase; color: var(--muted); margin-top: 12px; }

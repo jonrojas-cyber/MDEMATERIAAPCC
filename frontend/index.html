@@ -3130,12 +3130,21 @@ function vizHomeHTML(d, ini, dec, conc){
   const mesCorto=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
   const mesNombre=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   const diaLbl=(f)=>{const p=String(f||"").split("-"); return p.length>=3?`${+p[2]} ${mesCorto[(+p[1]-1)]||""}`:"";};
-  // Curva acumulada del mes (real) vs objetivo acumulado (objetivo_dia × día).
+  // El gráfico y la conciliación muestran el último mes con ventas: el mes EN CURSO
+  // si ya tiene ventas; si aún no, el último mes cerrado. Para no mezclar meses, todo
+  // el bloque "mes" (total, objetivo, curva) se calcula de ESA misma serie.
+  const hoyKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const mesKey=dias.length?String(dias[dias.length-1].fecha).slice(0,7):hoyKey;
+  const esMesActual=(mesKey===hoyKey);
   const objDia=Number(H.objetivo_dia)||0;
   let acc=0; const serieAcc=serieVentas.map(v=>(acc+=v));
-  const serieObjAcc=serieVentas.map((_,i)=>objDia*(i+1));
+  const mesTotal=serieVentas.reduce((s,v)=>s+v,0);
+  // El objetivo (mes anterior × 1,10) sólo aplica al mes EN CURSO. Un mes ya cerrado
+  // no se vuelve a medir contra un objetivo (sería tautológico): se muestra tal cual.
+  const hayObjetivo=esMesActual && objDia>0;
+  const serieObjAcc=hayObjetivo?serieVentas.map((_,i)=>objDia*(i+1)):null;
   const xlabels=(()=>{ const n=dias.length; if(n<2) return []; const out=[]; const k=Math.max(1,Math.floor((n-1)/4));
-    for(let i=0;i<n-1;i+=k) out.push(diaLbl(dias[i].fecha)); out.push("hoy"); return out; })();
+    for(let i=0;i<n-1;i+=k) out.push(diaLbl(dias[i].fecha)); out.push(esMesActual?"hoy":diaLbl(dias[n-1].fecha)); return out; })();
   const mesTit=(dias.length? (()=>{const p=String(dias[dias.length-1].fecha).split("-"); return `${mesNombre[(+p[1]-1)]||""} ${p[0]||""}`;})() : `${mesNombre[now.getMonth()]} ${now.getFullYear()}`);
 
   // ── HERO ──
@@ -3167,22 +3176,25 @@ function vizHomeHTML(d, ini, dec, conc){
   </div>`;
 
   // ── Gráfico principal: mes acumulado real vs objetivo ──
-  const ymax=Math.max(...serieAcc,...serieObjAcc,1);
+  const ymax=Math.max(...serieAcc,...(serieObjAcc||[0]),1);
   const mainChart=`<div class="viz-mainchart">${
     serieAcc.length>=2
     ? vizChart(serieAcc,{obj:serieObjAcc,h:172,marker:serieAcc.length-1,
         yticks:[ymax,ymax/2,0],fmtY:t=>t>=1000?Math.round(t/1000)+"k":Math.round(t),
-        xlabels,legend:[{t:"ventas reales"},{t:"objetivo",dashed:true}]})
-    : `<div class="viz-noch">— Importa las ventas del mes para ver la curva real vs objetivo</div>`
+        xlabels,legend:hayObjetivo?[{t:"ventas reales"},{t:"objetivo",dashed:true}]:[{t:"ventas reales"}]})
+    : `<div class="viz-noch">— Importa o sincroniza las ventas para ver la curva del mes</div>`
   }</div>`;
 
   // ── 4 indicadores ──
   const objFood=27, objPers=30;
+  // Coste de producto del MES mostrado (misma serie que la curva): coste/ingresos.
+  const mesCoste=dias.reduce((s,x)=>s+(Number(x.coste)||0),0);
+  const foodPctMes=mesTotal>0?(mesCoste/mesTotal*100):(M.food_cost_pct!=null?M.food_cost_pct:null);
   const stat=(v,l,sub)=>`<div class="viz-st"><div class="viz-lbl">${l}</div><div class="viz-st-v">${v}</div><div class="viz-st-s">${sub}</div></div>`;
   const stats=`<div class="viz-stats">
     ${stat(H.ticket_medio!=null?vizEur(H.ticket_medio,2):"—","ticket medio",`<span class="viz-mut">${H.tickets!=null?H.tickets+" tickets hoy":""}</span>`)}
     ${stat(vizPct(H.margen_pct),"margen operativo",`<span class="viz-mut">hoy</span>`)}
-    ${stat(vizPct(M.food_cost_pct),"coste de producto",`${M.food_cost_pct!=null?vizDelta(M.food_cost_pct-objFood,"pt",false):""} <span class="viz-mut">obj. ${objFood}%</span>`)}
+    ${stat(vizPct(foodPctMes),"coste de producto",`${foodPctMes!=null?vizDelta(foodPctMes-objFood,"pt",false):""} <span class="viz-mut">obj. ${objFood}%</span>`)}
     ${stat(vizPct(M.coste_laboral_pct),"coste de personal",`${M.coste_laboral_pct!=null?vizDelta(M.coste_laboral_pct-objPers,"pt",false):""} <span class="viz-mut">obj. ${objPers}%</span>`)}
   </div>`;
 
@@ -3213,10 +3225,11 @@ function vizHomeHTML(d, ini, dec, conc){
   </div>`;
 
   // ── Columna derecha: MES + CAJA ──
-  const objMesPct=Math.max(0,Math.min(100,M.objetivo_pct||0));
-  const sideMes=`<div class="viz-aside-block viz-mes"><div class="viz-aside-h"><span>mes</span><span class="viz-mut">${esc(mesTit)}</span></div>
-    <div class="viz-mes-row"><div class="viz-aside-v">${vizEur(M.ventas)}</div><div class="viz-mes-pct"><b>${M.objetivo_pct!=null?M.objetivo_pct+"%":"—"}</b><span class="viz-mut">${M.objetivo!=null?"de "+vizEur(M.objetivo):""}</span></div></div>
-    <div class="viz-pbar"><i style="width:${objMesPct}%"></i></div>
+  const objMesPct=hayObjetivo?Math.max(0,Math.min(100,M.objetivo_pct||0)):0;
+  const mesNum=esMesActual?vizEur(M.ventas):vizEur(mesTotal);
+  const sideMes=`<div class="viz-aside-block viz-mes"><div class="viz-aside-h"><span>mes</span><span class="viz-mut">${esc(mesTit)}${esMesActual?"":" · cerrado"}</span></div>
+    <div class="viz-mes-row"><div class="viz-aside-v">${mesNum}</div><div class="viz-mes-pct">${hayObjetivo?`<b>${M.objetivo_pct!=null?M.objetivo_pct+"%":"—"}</b><span class="viz-mut">${M.objetivo!=null?"de "+vizEur(M.objetivo):""}</span>`:`<span class="viz-mut">${serieVentas.length} ${serieVentas.length===1?"día abierto":"días abiertos"}</span>`}</div></div>
+    ${hayObjetivo?`<div class="viz-pbar"><i style="width:${objMesPct}%"></i></div>`:`<div style="height:9px;"></div>`}
     ${vizChart(serieAcc,{obj:serieObjAcc,h:118,marker:serieAcc.length-1,yticks:[ymax,ymax/2,0],fmtY:t=>t>=1000?Math.round(t/1000)+"k":Math.round(t),xlabels:[]})}
   </div>`;
   const sideCaja=`<div class="viz-aside-block viz-caja"><div class="viz-aside-h"><span>caja</span><span class="viz-mut">${now.toLocaleDateString("es-ES",{day:"numeric",month:"long"})}</span></div>

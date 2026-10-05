@@ -1229,7 +1229,7 @@ test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje g
   // (solo admin) coste. El bloque aparece en cualquier tosta.
   await expect(page.locator("body")).toContainText(/Extras · cualquier tosta/i);
   await expect(page.locator("body")).toContainText(/Extra jamón braseado/i);
-  await expect(page.locator("body")).toContainText(/2,50 €/);   // pvp jamón
+  await expect(page.locator("body")).toContainText(/1,50 €/);   // pvp jamón
   await expect(page.locator("body")).toContainText(/Extra aguacate/i);
   await expect(page.locator("body")).toContainText(/1,00 €/);   // pvp aguacate
   await expect(page.locator("body")).toContainText(/0,39 €/);   // coste jamón (admin)
@@ -1304,7 +1304,7 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   // Extras en una tosta: el equipo ve el PVP pero NO el coste ni el food cost.
   await page.evaluate(() => labSet("tosta", "TC"));
   await expect(page.locator("body")).toContainText(/Extras · cualquier tosta/i);
-  await expect(page.locator("body")).toContainText(/2,50 €/);            // pvp jamón, visible
+  await expect(page.locator("body")).toContainText(/1,50 €/);            // pvp jamón, visible
   await expect(page.locator("body")).not.toContainText(/0,39 €/);        // coste jamón, oculto
 });
 

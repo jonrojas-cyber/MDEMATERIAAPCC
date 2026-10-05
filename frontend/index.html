@@ -4798,6 +4798,15 @@ async function fitRender(){
 // ficha, perfil y montaje. Datos en front (como Burbujas); editar aquí.
 // ════════════════════════════════════════════════════════════════════════════
 const LAB_IVA_FOOD = 0.10; // IVA reducido de restauración
+// Extras que se pueden añadir a CUALQUIER tosta. El coste se deriva de la cantidad
+// que ponemos siempre × el coste real de la materia (única fuente de verdad):
+//   · jamón braseado (se compra ya braseado): 40 g × 0,016 €/g = 0,64 €
+//   · aguacate:                               50 g × 0,0042 €/g = 0,21 €
+// PVP con IVA (10 %) incluido, objetivo de food cost ~27 %, redondeado a carta.
+const LAB_EXTRAS_TOSTA = [
+  { n:"Extra jamón braseado", q:"40 g", c:0.64, pvp:2.50 },
+  { n:"Extra aguacate",       q:"50 g", c:0.21, pvp:1.00 },
+];
 const LAB_ESTADOS = {
   prueba:    { t:"Prueba",    c:"#c79a3a" },
   aprobado:  { t:"Aprobado",  c:"var(--olive)" },
@@ -5015,13 +5024,25 @@ function labRender(){
     <table class="lim-tab">${admin?"<thead><tr><th>ingrediente</th><th>coste</th></tr></thead>":""}<tbody>${ingRowsGen()}
       ${admin?`<tr class="tot"><td class="n">Coste unidad</td><td class="q big">${labEur(coste)}</td></tr>`:""}</tbody></table>
     ${admin?`<div class="lim-param"><div><b>${labEur(coste)}</b><span>coste unidad</span></div><div><b>${labEur(p.pvp)}</b><span>pvp</span></div><div><b>${Math.round(fc)}%</b><span>food cost</span></div><div><b>${labEur(margen)}</b><span>margen</span></div></div>`:""}`;
+  // Extras aplicables a CUALQUIER tosta (jamón braseado · aguacate). Coste y food
+  // cost solo los ve el admin; el PVP lo ve todo el mundo.
+  const extras = (tipo==='tosta') ? (()=>{
+    const rows = LAB_EXTRAS_TOSTA.map(e=>{
+      const neto = e.pvp/(1+LAB_IVA_FOOD), efc = neto>0?Math.round(e.c/neto*100):0;
+      return `<tr><td class="n">${esc(e.n)} <small>${esc(e.q)}</small></td>${admin?`<td class="q">${labEur(e.c)}</td>`:""}<td class="q">${labEur(e.pvp)}</td>${admin?`<td class="q">${efc}%</td>`:""}</tr>`;
+    }).join("");
+    const th = admin?"<thead><tr><th>extra</th><th>coste</th><th>pvp</th><th>food cost</th></tr></thead>":"<thead><tr><th>extra</th><th>pvp</th></tr></thead>";
+    return `<div class="section-label">Extras · cualquier tosta</div>
+      <table class="lim-tab">${th}<tbody>${rows}</tbody></table>
+      <div class="lim-nota" style="border-left-color:var(--muted);">Se pueden añadir a cualquier tosta · PVP con IVA incluido.${admin?" Coste = cantidad que ponemos siempre × coste real de la materia.":""}</div>`;
+  })() : "";
   const enlace = `<div class="lim-nota" style="border-left-color:var(--muted);"><b>${esc(p.nombre)}</b> en la carta · PVP ${labEur(p.pvp)}. Esta ficha es su producción.</div>
     <div class="card-actions" style="margin-top:14px;flex-wrap:wrap;gap:8px;">
       <button class="btn-primary" onclick="labVerProducto('${tipo}','${esc(p.nombre)}')">Ver «${esc(p.nombre)}» en la carta →</button>
       <button class="btn-ghost" onclick="labVerEnCarta('${tipo}')">Toda la sección · ${tipo==='sandwich'?'Sándwiches':'Tostas'}</button>
     </div>`;
   const nota = `<div class="lim-nota" style="border-left-color:var(--muted);">Estado <b>${est.t}</b> · flujo Prueba → Aprobado → Carta → Archivado.${admin?" Los costes solo los ves tú (admin); el equipo ve ficha, perfil y montaje.":""}</div>`;
-  setInner(head+controles+perfil+ficha+escand+montaje+cata+vers+enlace+nota);
+  setInner(head+controles+perfil+ficha+escand+extras+montaje+cata+vers+enlace+nota);
 }
 // Enlace con la carta (mismo patrón que Burbujas/Spritz).
 async function labVerEnCarta(tipo){ await irA_menu(); menuNivel(["comida", tipo==='sandwich'?'sandwiches':'tostas']); }

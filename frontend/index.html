@@ -4802,9 +4802,10 @@ const LAB_IVA_FOOD = 0.10; // IVA reducido de restauración
 // que ponemos siempre × el coste real de la materia (única fuente de verdad):
 //   · jamón braseado (se compra ya braseado, 9,80 €/kg): 40 g × 0,0098 €/g = 0,39 €
 //   · aguacate:                                          50 g × 0,0042 €/g = 0,21 €
-// PVP con IVA (10 %) incluido, redondeado a precio de carta.
+// PVP con IVA (10 %) incluido. Precio de extra: proporcional a la tostada (no casi
+// su precio), food cost en la franja ~25-30 % y redondeo de carta.
 const LAB_EXTRAS_TOSTA = [
-  { n:"Extra jamón braseado", q:"40 g", c:0.39, pvp:2.50 },
+  { n:"Extra jamón braseado", q:"40 g", c:0.39, pvp:1.50 },
   { n:"Extra aguacate",       q:"50 g", c:0.21, pvp:1.00 },
 ];
 const LAB_ESTADOS = {

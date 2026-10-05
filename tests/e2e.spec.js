@@ -1225,6 +1225,14 @@ test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje g
   await page.evaluate(() => labSet("tosta", "TC"));
   await expect(page.locator(".lim-h")).toContainText(/Tosta Colección/);
   await expect(page.locator("body")).toContainText(/nectarina caramelizada/i);
+  // Extras aplicables a cualquier tosta: jamón braseado y aguacate, con PVP y
+  // (solo admin) coste. El bloque aparece en cualquier tosta.
+  await expect(page.locator("body")).toContainText(/Extras · cualquier tosta/i);
+  await expect(page.locator("body")).toContainText(/Extra jamón braseado/i);
+  await expect(page.locator("body")).toContainText(/2,50 €/);   // pvp jamón
+  await expect(page.locator("body")).toContainText(/Extra aguacate/i);
+  await expect(page.locator("body")).toContainText(/1,00 €/);   // pvp aguacate
+  await expect(page.locator("body")).toContainText(/0,64 €/);   // coste jamón (admin)
   // Bases: elaboraciones compartidas con rinde y coste de lote.
   await page.evaluate(() => labSet("base", "SV"));
   await expect(page.locator(".lim-h")).toContainText(/Salsa Verde Materia/);
@@ -1293,6 +1301,11 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   await expect(page.locator("body")).toContainText(/Ingredientes/);      // ve los ingredientes
   await expect(page.locator("body")).not.toContainText(/Escandallo/);    // pero NO costes
   await expect(page.locator("body")).not.toContainText(/food cost/);
+  // Extras en una tosta: el equipo ve el PVP pero NO el coste ni el food cost.
+  await page.evaluate(() => labSet("tosta", "TC"));
+  await expect(page.locator("body")).toContainText(/Extras · cualquier tosta/i);
+  await expect(page.locator("body")).toContainText(/2,50 €/);            // pvp jamón, visible
+  await expect(page.locator("body")).not.toContainText(/0,64 €/);        // coste jamón, oculto
 });
 
 test("lab: producir se divide en Bebidas y Comida, con navegación coherente", async ({ page }) => {

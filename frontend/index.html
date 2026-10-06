@@ -2630,6 +2630,7 @@ function modulosMeta(d) {
     analisisMes:  { num:"03", name:"Análisis del mes", badge:"Ventas · mix · día de semana · ticket medio", urgent:false },
     cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
+    conectorTPV:  { num:"03", name:"Conector TPV (Ágora)", badge:"Conectar el TPV · ventas automáticas", urgent:false },
     pagos:        { num:"04", name:"Pagos y justificantes", badge:"Por proveedor", urgent:false },
     informeCompras:{ num:"05", name:"Informe de compras", badge:"Por proveedor · familia · fecha", urgent:false },
     archivo:      { num:"06", name:"Archivo albaranes", badge:"Por trimestre · gestoría", urgent:false },
@@ -2649,7 +2650,7 @@ const CATS = {
   equipo:     { name:"Equipo", desc:"Fichaje · Turnos · Ausencias · Tablón · Incidencias", ids:["turnos","fichaje","ausencias","tablon","incidencias"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Márgenes · Análisis · Ventas · Config", ids:["menu","carta","analisisDiario","analisisMes","cuentaResultados","ventas","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Carta · Márgenes · Análisis · Ventas · Config", ids:["menu","carta","analisisDiario","analisisMes","cuentaResultados","ventas","conectorTPV","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.

@@ -6,7 +6,7 @@
   "workplaces": "",
 
   "controlm_base": "https://TU-APP.onrender.com",
-  "conector_token": "PEGA-AQUI-EL-MISMO-TOKEN-QUE-EN-CONTROL-M",
+  "conector_token": "PEGA-AQUI-LA-CLAVE-GENERADA-EN-LA-APP (Centro de control -> Conector TPV)",
 
   "cada_min": 15,
   "filtro": "Invoices,DeliveryNotes,SalesOrders",

@@ -3215,10 +3215,16 @@ function vizHomeHTML(d, ini, dec, conc, tpv){
   // Puesta en marcha del conector TPV: si aún no está conectado (o tiene tickets
   // en espera), aparece como primera decisión con acceso directo al panel. Así no
   // hay que buscarlo en ningún menú: está donde miras cada día.
-  if(tpv && !tpv.configurado){
-    its.unshift({x:{titulo:"Conecta el TPV (Ágora)",motivo:"Para que las ventas entren solas por API",go:"irA_conectorTPV()"},k:"alto"});
-  } else if(tpv && tpv.bloqueados>0){
-    its.unshift({x:{titulo:`${tpv.bloqueados} ticket(s) del TPV en espera`,motivo:"Vincula los productos sin asignar para que entren",go:"irA_conectorTPV()"},k:"medio"});
+  if(tpv){
+    if(!tpv.configurado){
+      its.unshift({x:{titulo:"Conecta el TPV (Ágora)",motivo:"Para que las ventas entren solas por API",go:"irA_conectorTPV()"},k:"alto"});
+    } else if(tpv.bloqueados>0){
+      its.unshift({x:{titulo:`${tpv.bloqueados} ticket(s) del TPV en espera`,motivo:"Vincula los productos sin asignar para que entren",go:"irA_conectorTPV()"},k:"medio"});
+    } else if(!tpv.ultima_sync){
+      // Clave puesta pero el conector aún no ha traído ninguna venta: hay que
+      // revisar/terminar la puesta en marcha (es justo el caso de "me falla").
+      its.unshift({x:{titulo:"Revisa el conector TPV (Ágora)",motivo:"Hay clave pero aún no entran ventas automáticas",go:"irA_conectorTPV()"},k:"alto"});
+    }
   }
   const its3=its.slice(0,3);
   const decis=`<div class="viz-box"><div class="viz-box-h"><span>decisiones</span><span class="viz-mut">${its3.length} ${its3.length===1?"asunto requiere":"asuntos requieren"} tu atención</span></div>

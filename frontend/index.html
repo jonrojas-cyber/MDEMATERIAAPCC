@@ -3128,7 +3128,7 @@ function vizChart(real, opts){
   </div>`;
 }
 
-function vizHomeHTML(d, ini, dec, conc){
+function vizHomeHTML(d, ini, dec, conc, tpv){
   const P=(d&&d.panel_direccion)||{}, H=P.hoy||{}, M=P.mes||{};
   const T=(d&&d.tesoreria)||{}, OP=(d&&d.operaciones)||{}, EQ=(d&&d.equipo)||{};
   const ag=(ini&&ini.agora)||{};
@@ -3211,9 +3211,18 @@ function vizHomeHTML(d, ini, dec, conc){
 
   // ── Decisiones + Pulso ──
   const b=(typeof decBuckets==="function")?decBuckets(dec||{}):{critico:[],importante:[]};
-  const its=[...(b.critico||[]).map(x=>({x,k:"alto"})),...(b.importante||[]).map(x=>({x,k:"medio"}))].slice(0,3);
-  const decis=`<div class="viz-box"><div class="viz-box-h"><span>decisiones</span><span class="viz-mut">${its.length} ${its.length===1?"asunto requiere":"asuntos requieren"} tu atención</span></div>
-    ${its.length?its.map(({x,k},i)=>`<button class="viz-dec" onclick="${x.accion?`decAccion('${x.id}')`:"irA_tareas()"}">
+  const its=[...(b.critico||[]).map(x=>({x,k:"alto"})),...(b.importante||[]).map(x=>({x,k:"medio"}))];
+  // Puesta en marcha del conector TPV: si aún no está conectado (o tiene tickets
+  // en espera), aparece como primera decisión con acceso directo al panel. Así no
+  // hay que buscarlo en ningún menú: está donde miras cada día.
+  if(tpv && !tpv.configurado){
+    its.unshift({x:{titulo:"Conecta el TPV (Ágora)",motivo:"Para que las ventas entren solas por API",go:"irA_conectorTPV()"},k:"alto"});
+  } else if(tpv && tpv.bloqueados>0){
+    its.unshift({x:{titulo:`${tpv.bloqueados} ticket(s) del TPV en espera`,motivo:"Vincula los productos sin asignar para que entren",go:"irA_conectorTPV()"},k:"medio"});
+  }
+  const its3=its.slice(0,3);
+  const decis=`<div class="viz-box"><div class="viz-box-h"><span>decisiones</span><span class="viz-mut">${its3.length} ${its3.length===1?"asunto requiere":"asuntos requieren"} tu atención</span></div>
+    ${its3.length?its3.map(({x,k},i)=>`<button class="viz-dec" onclick="${x.go?x.go:(x.accion?`decAccion('${x.id}')`:"irA_tareas()")}">
       <span class="viz-dec-n">0${i+1}</span>
       <span class="viz-dec-b"><span class="viz-dec-t">${esc(x.titulo||"")}</span>${x.motivo?`<span class="viz-dec-m">${esc(x.motivo)}</span>`:""}</span>
       <span class="viz-dec-i"><span class="viz-mut">Impacto</span><span class="viz-imp ${k}">${k==="alto"?"Alto":"Medio"}</span></span>
@@ -3373,13 +3382,14 @@ async function loadHomeCEO(){
   try{ document.getElementById("screen-home").classList.add("home-ceo"); }catch(e){}
   el("home-content").innerHTML = vizSkeleton();
   // Carga por módulos: si uno falla, el panel se pinta igual con lo que haya.
-  const [d, ini, dec, conc] = await Promise.all([
+  const [d, ini, dec, conc, tpv] = await Promise.all([
     api("/executive-dashboard?preset=hoy").catch(()=>({_err:true})),
     api("/inicio").catch(()=>({_err:true})),
     api("/decisiones").catch(()=>null),
     api("/inventario/conciliacion").catch(()=>null),
+    api("/integraciones/tpv").catch(()=>null),
   ]);
-  el("home-content").innerHTML = vizHomeHTML(d, ini, dec, conc);
+  el("home-content").innerHTML = vizHomeHTML(d, ini, dec, conc, tpv);
 }
 
 async function loadHome() {

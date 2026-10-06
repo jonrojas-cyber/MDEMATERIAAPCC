@@ -217,23 +217,47 @@ app.all("/avisos/cron", async (req, res) => {
   }
 });
 
-// Ingesta del CONECTOR local de Ágora (público con token compartido). Un pequeño
-// programa en el local lee las ventas de Ágora y las EMPUJA aquí por HTTPS
-// saliente (cero puertos entrantes, cero IP fija). Autentica con un token en
-// cabecera, no con sesión de usuario (el token vive solo en variables de entorno).
-app.post("/agora/ingest", express.json({ limit: "12mb" }), async (req, res) => {
-  const token = process.env.AGORA_CONNECTOR_TOKEN;
-  if (!token) return res.status(503).json({ error: "AGORA_CONNECTOR_TOKEN no configurado en el servidor" });
-  const got = req.headers["x-connector-token"] || (req.query && req.query.token);
-  if (got !== token) return res.status(401).json({ error: "Token del conector inválido" });
-  try {
-    const docs = (req.body && (req.body.docs || req.body.documents || req.body)) || [];
-    const r = require("./agora").importarDocs(docs, { usuario: { nombre: "Conector Ágora" } });
-    await store.flush();
-    res.json(r); // incluye procesados_ref → el conector confirma a Ágora
-  } catch (e) {
-    res.status(500).json({ error: "No se pudo ingerir de Ágora: " + e.message });
+// ── CONECTOR TPV (Ágora) ──────────────────────────────────────────────────────
+// Un pequeño agente en el local lee las ventas del TPV y las EMPUJA aquí por HTTPS
+// saliente (cero puertos entrantes, cero IP fija). Autentica con la CLAVE del
+// conector (cabecera X-Connector-Token), no con sesión de usuario. La clave se
+// gestiona DENTRO de la app (Ajustes → Conector TPV); también se acepta la antigua
+// variable de entorno AGORA_CONNECTOR_TOKEN. Rutas públicas (sin sesión):
+//   POST /tpv/ingest   → ingiere ventas (array o { docs:[...] }); idempotente.
+//   GET  /tpv/ping      → prueba de conexión + clave (para "Probar conexión").
+//   POST /agora/ingest  → alias histórico, mismo comportamiento.
+const tpvConn = require("./tpv-connector");
+function tpvAutoriza(req, res) {
+  if (!tpvConn.claveActual(store)) {
+    res.status(503).json({ error: "Conector sin configurar: genera la clave en Ajustes → Conector TPV." });
+    return false;
   }
+  if (!tpvConn.verificar(store, tpvConn.tokenDePeticion(req))) {
+    res.status(401).json({ error: "Clave del conector inválida." });
+    return false;
+  }
+  return true;
+}
+async function tpvIngesta(req, res) {
+  if (!tpvAutoriza(req, res)) return;
+  try {
+    const r = tpvConn.ingerir(store, req.body, { usuario: { nombre: "Conector TPV" } });
+    await store.flush(); // stock + ventas + docs confirmados antes de responder
+    res.json(r); // incluye procesados_ref → el agente confirma a Ágora
+  } catch (e) {
+    res.status(e.code === "SIN_DOCS" ? 400 : 500).json({ error: "No se pudo ingerir del TPV: " + e.message });
+  }
+}
+app.post("/tpv/ingest", express.json({ limit: "12mb" }), tpvIngesta);
+app.post("/agora/ingest", express.json({ limit: "12mb" }), tpvIngesta);
+app.get("/tpv/ping", (req, res) => {
+  if (!tpvAutoriza(req, res)) return;
+  res.json({
+    ok: true,
+    servicio: "Control M · Conector TPV",
+    hora: new Date().toISOString(),
+    persistencia: db.isActive() ? "persistente" : "efimera",
+  });
 });
 
 // Ingesta de FACTURAS por correo (público con token compartido). La fundadora
@@ -348,6 +372,7 @@ app.use("/api/analisis-diario", require("./routes/analisis-diario")); // rayos X
 app.use("/api/dossier", require("./routes/dossier")); // dossier para asesoría con Claude (admin)
 app.use("/api/cuenta-resultados", require("./routes/cuenta-resultados")); // P&L mensual (admin)
 app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)
+app.use("/api/integraciones", require("./routes/integraciones")); // conector TPV (Ágora): clave, estado, prueba (admin)
 
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última

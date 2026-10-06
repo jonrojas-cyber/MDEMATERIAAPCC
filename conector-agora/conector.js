@@ -117,8 +117,8 @@ async function empujarAControlM(c, payload) {
     body: payload,
   });
   // Igual que con Ágora: los errores se reintentan, nunca cierran el conector.
-  if (r.status === 401) throw new Error("Control M rechazó el token (401). Si persiste, 'conector_token' debe ser igual a AGORA_CONNECTOR_TOKEN en Control M. Reintentando…");
-  if (r.status === 503) throw new Error("Control M aún no tiene AGORA_CONNECTOR_TOKEN (503). Reintentando…");
+  if (r.status === 401) throw new Error("Control M rechazó la clave (401). Revisa que 'conector_token' sea la clave generada en la app (Conector TPV). Reintentando…");
+  if (r.status === 503) throw new Error("Control M aún no tiene clave de conector (503). Genérala en la app (Conector TPV). Reintentando…");
   if (r.status >= 400) throw new Error(`Control M respondió ${r.status}: ${String(r.texto).slice(0, 200)}`);
   return r.body || {};
 }
@@ -160,9 +160,36 @@ async function sincronizar(c) {
   return r;
 }
 
+// ── Prueba de conexión (node conector.js --probar) ──────────────────────────
+// Comprueba, por separado, que (a) Control M acepta la clave del conector y (b)
+// que se puede leer de Ágora. Útil para validar la instalación "al milímetro"
+// antes de dejar el bucle corriendo.
+async function probar(c) {
+  let ok = true;
+  // (a) Control M: ping con la clave del conector.
+  try {
+    const url = `${c.controlm_base.replace(/\/$/, "")}/tpv/ping`;
+    const r = await pedir(url, { headers: { "X-Connector-Token": c.conector_token } });
+    if (r.status === 200 && r.body && r.body.ok) log("✓ Control M: conexión y clave correctas ·", r.body.servicio || "", "·", r.body.persistencia || "");
+    else if (r.status === 401) { ok = false; log("✗ Control M: clave inválida (401). Copia la clave exacta de la app (Conector TPV)."); }
+    else if (r.status === 503) { ok = false; log("✗ Control M: conector sin configurar (503). Genera la clave en la app (Conector TPV)."); }
+    else { ok = false; log(`✗ Control M: respuesta ${r.status}: ${String(r.texto).slice(0, 160)}`); }
+  } catch (e) { ok = false; log("✗ Control M: no se pudo conectar ·", e && e.message); }
+  // (b) Ágora: lectura del export (si hay token configurado).
+  if (c.agora_token) {
+    try { await leerDeAgora(c); log("✓ Ágora: lectura del export correcta ·", c.agora_base); }
+    catch (e) { ok = false; log("✗ Ágora:", e && e.message); }
+  } else {
+    log("⚠  Ágora: sin 'agora_token' en config.json (no se puede leer de Ágora todavía).");
+  }
+  log(ok ? "— Prueba OK: el conector está listo." : "— Prueba con fallos: revisa lo marcado con ✗.");
+  process.exit(ok ? 0 : 1);
+}
+
 // ── Bucle principal ─────────────────────────────────────────────────────────
 async function main() {
   const c = cargarConfig();
+  if (process.argv.slice(2).some((a) => a === "--probar" || a === "-p")) return probar(c);
   log(`Conector Ágora → Control M iniciado. Cada ${c.cada_min} min.`);
   log(`  Ágora:    ${c.agora_base}`);
   log(`  Control M: ${c.controlm_base}`);
@@ -190,4 +217,4 @@ async function main() {
 // Solo arranca el bucle si se ejecuta directamente (permite tests sin efectos).
 if (require.main === module) main();
 
-module.exports = { cargarConfig, pedir, leerDeAgora, empujarAControlM, confirmarAAgora, sincronizar };
+module.exports = { cargarConfig, pedir, leerDeAgora, empujarAControlM, confirmarAAgora, sincronizar, probar };

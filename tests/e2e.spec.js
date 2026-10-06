@@ -1805,3 +1805,57 @@ test("cuenta de resultados: la pantalla se abre y muestra la cuenta P&L", async 
   await expect(page.locator(".lim-tab").first()).toContainText(/EBITDA/i);
   expect(errors, "sin errores de JS").toEqual([]);
 });
+
+test("conector TPV: el admin genera la clave, prueba la conexión e ingiere una venta", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // La pantalla del conector se abre y muestra los datos del agente.
+  await page.evaluate(() => irA_conectorTPV());
+  await expect(page.locator("body")).toContainText(/Conector TPV/i);
+  await expect(page.locator("body")).toContainText(/Datos para el agente/i);
+  await expect(page.locator("body")).toContainText(/X-Connector-Token/);
+  // El estado trae la URL de ingesta y la cabecera.
+  const est = await page.evaluate(async () => await api("/integraciones/tpv"));
+  expect(est).toHaveProperty("url_ingest");
+  expect(est.cabecera).toBe("X-Connector-Token");
+  // Genera la clave (confirm automático) y queda en memoria para copiarla.
+  await page.evaluate(() => { window.confirm = () => true; });
+  await page.evaluate(async () => { await tpvGenerar(); });
+  const clave = await page.evaluate(() => window._tpv.claveNueva);
+  expect(clave).toMatch(/^mdm_[0-9a-f]{48}$/);
+  // Ping con la clave correcta → ok; con una mala → 401.
+  const ping = await page.evaluate(async (k) => { const r = await fetch("/tpv/ping", { headers: { "X-Connector-Token": k } }); return { status: r.status, j: await r.json() }; }, clave);
+  expect(ping.status).toBe(200);
+  expect(ping.j.ok).toBe(true);
+  const malPing = await page.evaluate(async () => { const r = await fetch("/tpv/ping", { headers: { "X-Connector-Token": "mal" } }); return r.status; });
+  expect(malPing).toBe(401);
+  // Ingesta sin clave → 401; con clave pero sin docs → 400.
+  const sinClave = await page.evaluate(async () => { const r = await fetch("/tpv/ingest", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); return r.status; });
+  expect(sinClave).toBe(401);
+  const sinDocs = await page.evaluate(async (k) => { const r = await fetch("/tpv/ingest", { method: "POST", headers: { "Content-Type": "application/json", "X-Connector-Token": k }, body: "{}" }); return r.status; }, clave);
+  expect(sinDocs).toBe(400);
+  // Ingesta real de una venta (producto vinculado del seed) → procesa; reenvío idempotente.
+  const doc = { GlobalId: "E2E-TPV-1", BusinessDay: "2026-10-06", Serie: "Z", Number: 1, Type: "Sale", Lines: [{ ProductName: "Matcha Latte", Quantity: 2, TotalAmount: 9, Base: 8.18 }] };
+  const ing1 = await page.evaluate(async ({ k, doc }) => { const r = await fetch("/tpv/ingest", { method: "POST", headers: { "Content-Type": "application/json", "X-Connector-Token": k }, body: JSON.stringify({ docs: [doc] }) }); return { status: r.status, j: await r.json() }; }, { k: clave, doc });
+  expect(ing1.status).toBe(200);
+  expect(ing1.j.procesados).toBe(1);
+  expect(ing1.j.unidades_vendidas).toBe(2);
+  const ing2 = await page.evaluate(async ({ k, doc }) => { const r = await fetch("/tpv/ingest", { method: "POST", headers: { "Content-Type": "application/json", "X-Connector-Token": k }, body: JSON.stringify({ docs: [doc] }) }); return (await r.json()); }, { k: clave, doc });
+  expect(ing2.procesados).toBe(0);               // idempotente: no reprocesa
+  expect(ing2.omitidos_ya_procesados).toBe(1);
+  expect(errors, "sin errores de JS").toEqual([]);
+});
+
+test("conector TPV: el trabajador NO puede gestionarlo (admin-only)", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara");
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  const bloqueado = await page.evaluate(async () => {
+    try { await api("/integraciones/tpv"); return false; } catch (e) { return true; }
+  });
+  expect(bloqueado).toBe(true);
+});

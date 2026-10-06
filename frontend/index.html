@@ -1467,6 +1467,16 @@ button.cc-card:hover { border-color: var(--ink); }
   font-size: 11px; letter-spacing: .04em; color: var(--muted); padding: 12px; cursor: pointer; text-align: left; }
 .cc-link:hover { color: var(--ink); border-color: var(--ink); }
 .cc-link-wide { grid-column: 1 / -1; }
+/* Conector TPV */
+.tpv-code { font-family: var(--font); font-size: 13px; letter-spacing: .02em; word-break: break-all;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); padding: 10px 12px; color: var(--ink); }
+.tpv-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.tpv-row:last-child { border-bottom: 0; }
+.tpv-k { flex: 0 0 110px; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.tpv-v { flex: 1 1 auto; font-family: var(--font); font-size: 12px; word-break: break-all; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 5px 8px; }
+.tpv-copy { flex: 0 0 auto; background: none; border: 1px solid var(--line); border-radius: 3px; font-family: var(--font); font-size: 10px; letter-spacing: .06em; color: var(--muted); padding: 5px 9px; cursor: pointer; }
+.tpv-copy:hover { color: var(--ink); border-color: var(--ink); }
+.tpv-chip { display: inline-block; font-size: 11px; color: var(--ink); background: var(--olive-light); border-radius: 3px; padding: 4px 9px; margin: 0 6px 6px 0; }
 .cc-cal-nav { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 10px; gap: 8px; }
 .cc-cal { display: flex; flex-direction: column; gap: 8px; }
 .cc-cal-dia { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-card); padding: 11px 13px; }
@@ -7236,6 +7246,7 @@ function ccRender(d){
       <button class="cc-link" onclick="irA_activos()">Activos</button>
       <button class="cc-link" onclick="irA_calendarioEmpresa()">Calendario</button>
       <button class="cc-link cc-link-wide" onclick="irA_maquinaTiempo()">¿Cómo estaba mi empresa?</button>
+      <button class="cc-link cc-link-wide" onclick="irA_conectorTPV()">Conector TPV (Ágora) · ventas automáticas por API</button>
     </div>`;
 }
 function ccObjBar(o){
@@ -8671,6 +8682,123 @@ async function regAjuste(){
       body:JSON.stringify({tipo_objetivo:_aj.tipo,objetivo_id:obj,cantidad:cant,motivo:_aj.motivo,observacion:obs,responsable:(getUser()&&getUser().nombre)||"Sin asignar"})});
     irA_ajustes();
   }catch(e){alert(e.message);}
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CONECTOR TPV (Ágora) · admin. Genera la clave, muestra la URL exacta a poner en
+// el agente del local y el estado de la sincronización (última sync, tickets
+// bloqueados, productos sin vincular). La clave completa solo se ve al generarla.
+// ════════════════════════════════════════════════════════════════════════════
+async function irA_conectorTPV(){
+  if(window._backOverride===undefined){} // deja el back por defecto
+  openSection("conector-tpv","Conector TPV");
+  window._tpv=window._tpv||{};
+  setInner(`<div class="cc-mini">Cargando estado del conector…</div>`);
+  try{
+    const d=await api("/integraciones/tpv");
+    window._tpv.data=d;
+    setInner(tpvRender(d, window._tpv.claveNueva));
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function tpvCopiar(txt){
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(()=>pbtToast("Copiado ✓",900)).catch(()=>prompt("Copia manualmente:",txt));
+    else prompt("Copia manualmente:",txt);
+  }catch(e){ prompt("Copia manualmente:",txt); }
+}
+function tpvRender(d, claveNueva){
+  const sync=d.ultima_sync;
+  const estadoTxt = d.configurado
+    ? `<span class="cc-delta up">● Conectado</span>`
+    : `<span class="cc-delta down">● Sin configurar</span>`;
+  const syncLinea = sync
+    ? `Última sincronización: <b>${fmt(sync.cuando)}</b> · ${sync.procesados||0} ticket(s), ${sync.unidades_vendidas||0} uds, ${labEur? labEur(sync.importe_total):((sync.importe_total||0)+" €")}`
+    : `Todavía no ha entrado ninguna venta por el conector.`;
+  // Bloque de la clave: al generar, se muestra COMPLETA una vez; si no, enmascarada.
+  const claveBloque = claveNueva
+    ? `<div class="card" style="border-color:var(--olive);">
+        <div class="section-label" style="margin-top:0;">Tu clave (cópiala ahora)</div>
+        <div class="cc-mini" style="margin-bottom:6px;">Por seguridad no se vuelve a mostrar completa. Pégala en el agente del local.</div>
+        <div class="tpv-code">${esc(claveNueva)}</div>
+        <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="tpvCopiar('${esc(claveNueva)}')">Copiar clave</button>
+          <button class="btn-ghost" onclick="tpvProbar()">Probar conexión</button></div>
+        <div id="tpv-prueba" class="cc-mini" style="margin-top:8px;"></div>
+      </div>`
+    : `<div class="card">
+        <div class="cc-line"><span>Clave del conector</span><b>${d.clave_mascara?esc(d.clave_mascara):"—"}</b></div>
+        <div class="cc-mini">${d.configurado?`Origen: ${d.origen_clave==="app"?"gestionada en la app":"variable de entorno"}.`:"Aún no hay clave. Genera una para activar el conector."}</div>
+        <div class="card-actions" style="margin-top:10px;">
+          <button class="btn-primary" onclick="tpvGenerar()">${d.configurado?"Generar clave nueva (rota la anterior)":"Generar clave"}</button>
+          ${d.configurado?`<button class="btn-ghost" onclick="tpvRevocar()">Revocar</button>`:""}
+        </div>
+      </div>`;
+  // Datos exactos a configurar en el agente.
+  const config = `<div class="section-label">Datos para el agente del local</div>
+    <div class="card">
+      <div class="tpv-row"><span class="tpv-k">URL (ingesta)</span><code class="tpv-v">${esc(d.url_ingest)}</code><button class="tpv-copy" onclick="tpvCopiar('${esc(d.url_ingest)}')">copiar</button></div>
+      <div class="tpv-row"><span class="tpv-k">Prueba (ping)</span><code class="tpv-v">${esc(d.url_ping)}</code><button class="tpv-copy" onclick="tpvCopiar('${esc(d.url_ping)}')">copiar</button></div>
+      <div class="tpv-row"><span class="tpv-k">Cabecera</span><code class="tpv-v">${esc(d.cabecera)}: ‹tu-clave›</code><button class="tpv-copy" onclick="tpvCopiar('${esc(d.cabecera)}')">copiar</button></div>
+      <div class="cc-mini" style="margin-top:8px;">El agente envía los tickets por <b>POST</b> a la URL de ingesta con la clave en la cabecera <b>${esc(d.cabecera)}</b>. Es idempotente: reenviar un ticket no lo duplica.</div>
+    </div>`;
+  // Productos sin vincular (los que bloquean tickets).
+  const nv=d.no_vinculados||[];
+  const bloq = d.bloqueados>0
+    ? `<div class="section-label">Atención · ${d.bloqueados} ticket(s) en espera</div>
+       <div class="card" style="border-left:3px solid var(--aviso);">
+         <div class="cc-mini">Hay ventas que no entran porque estos productos del TPV no están vinculados a un producto de la app. Vincúlalos (mismo nombre o <i>agora_id</i>) y volverán a procesarse solos:</div>
+         <div style="margin-top:8px;">${nv.map(n=>`<span class="tpv-chip">${esc(n)}</span>`).join("")||"—"}</div>
+         <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="irA_materias()">Ir a productos / materias →</button></div>
+       </div>`
+    : (d.configurado?`<div class="card"><div class="cc-mini">✓ No hay tickets bloqueados. Todo lo que llega se procesa.</div></div>`:"");
+  const ayuda = `<div class="section-label">Cómo conectarlo (resumen)</div>
+    <div class="card"><ol class="prep-steps">
+      <li>Genera la clave aquí arriba y cópiala.</li>
+      <li>En el PC del local, abre la carpeta <code>conector-agora</code>: copia <code>config.ejemplo.json</code> a <code>config.json</code> y pega la <b>URL de Control M</b>, la <b>clave</b> (campo <code>conector_token</code>) y el <b>Api-Token de Ágora</b>.</li>
+      <li>Comprueba la conexión: <code>node conector.js --probar</code> (debe decir «conexión y clave correctas»).</li>
+      <li>Déjalo corriendo (<code>arrancar.bat</code> o el autoarranque). A partir de ahí, las ventas entran solas y el dashboard se actualiza.</li>
+    </ol>
+    <div class="cc-mini">¿No usas la API de Ágora? Cualquier sistema que haga un <b>POST</b> a la URL de ingesta con la clave en la cabecera <b>${esc(d.cabecera)}</b> y el cuerpo <code>{ docs:[…] }</code> también vale (export programado, Zapier/Make, un script propio).</div></div>`;
+  return `<div class="cc-card cc-wide" style="display:block;">
+      <div class="cc-label">Conector TPV · Ágora ${estadoTxt}</div>
+      <div class="cc-mini" style="margin-top:6px;">${syncLinea}</div>
+    </div>
+    ${claveBloque}
+    ${config}
+    ${bloq}
+    ${ayuda}`;
+}
+async function tpvGenerar(){
+  if(!confirm("Se generará una clave nueva y la anterior dejará de funcionar. ¿Continuar?")) return;
+  try{
+    const r=await api("/integraciones/tpv/clave",{method:"POST"});
+    window._tpv.claveNueva=r.clave;
+    const d=await api("/integraciones/tpv"); window._tpv.data=d;
+    setInner(tpvRender(d, r.clave));
+    pbtToast("Clave generada ✓",1200);
+  }catch(e){ alert(e.message); }
+}
+async function tpvRevocar(){
+  if(!confirm("Al revocar, el conector dejará de aceptar ventas hasta que generes una clave nueva. ¿Seguro?")) return;
+  try{
+    await api("/integraciones/tpv/revocar",{method:"POST"});
+    window._tpv.claveNueva=null;
+    const d=await api("/integraciones/tpv"); window._tpv.data=d;
+    setInner(tpvRender(d,null));
+    pbtToast("Clave revocada",1200);
+  }catch(e){ alert(e.message); }
+}
+// Prueba de conexión real: golpea la URL pública de ping con la clave recién creada.
+async function tpvProbar(){
+  const out=el("tpv-prueba"); const clave=window._tpv&&window._tpv.claveNueva;
+  const d=window._tpv&&window._tpv.data;
+  if(!out||!clave||!d){ return; }
+  out.innerHTML=`Probando…`;
+  try{
+    const r=await fetch(d.url_ping,{headers:{[d.cabecera]:clave}});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.ok) out.innerHTML=`<span class="cc-delta up">✓ Conexión correcta</span> · ${esc(j.servicio||"")} · ${esc(j.persistencia||"")}`;
+    else out.innerHTML=`<span class="cc-delta down">✗ ${esc(j.error||("error "+r.status))}</span>`;
+  }catch(e){ out.innerHTML=`<span class="cc-delta down">✗ No se pudo conectar: ${esc(e.message)}</span>`; }
 }
 
 // ── PROVEEDORES ───────────────────────────────────────

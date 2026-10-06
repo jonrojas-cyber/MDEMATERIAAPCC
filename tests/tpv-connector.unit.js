@@ -1,0 +1,108 @@
+// Conector TPV (recepción por API): clave gestionada en la app, verificación en
+// tiempo constante, extracción tolerante de documentos e ingesta idempotente que
+// BLOQUEA (no inventa) cuando el producto no está vinculado.
+// Ejecutar: node tests/tpv-connector.unit.js
+const assert = require("assert");
+const tpv = require("../backend/tpv-connector");
+
+let fallos = 0;
+function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + (e && e.message)); } }
+
+// Store falso en memoria (mismo contrato que data-store para lo que usa el motor).
+function fakeStore(seed) {
+  const db = Object.assign({ config: [], productos: [], materias: [], ventas: [], docs_agora: [], stock_movements: [], sincronizaciones: [] }, seed || {});
+  return {
+    _db: db,
+    findById: (e, id) => (db[e] || []).find((x) => x.id === id),
+    insert: (e, o) => { (db[e] = db[e] || []).push(o); return o; },
+    update: (e, id, patch) => { const x = (db[e] || []).find((y) => y.id === id); if (x) Object.assign(x, patch); return x; },
+    remove: (e, id) => { db[e] = (db[e] || []).filter((x) => x.id !== id); },
+    readAll: (e) => db[e] || [],
+    writeAll: (e, arr) => { db[e] = arr; },
+    nextId: (p, e) => p + "-" + ((db[e] || []).length + 1),
+    flush: async () => {},
+  };
+}
+
+console.log("conector TPV");
+
+test("sin clave configurada → claveActual null, origen 'ninguno', no verifica", () => {
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+  const s = fakeStore();
+  assert.strictEqual(tpv.claveActual(s), null);
+  assert.strictEqual(tpv.origenClave(s), "ninguno");
+  assert.strictEqual(tpv.verificar(s, "lo-que-sea"), false);
+});
+
+test("variable de entorno como respaldo (origen 'entorno')", () => {
+  process.env.AGORA_CONNECTOR_TOKEN = "env-123456789";
+  const s = fakeStore();
+  assert.strictEqual(tpv.claveActual(s), "env-123456789");
+  assert.strictEqual(tpv.origenClave(s), "entorno");
+  assert.strictEqual(tpv.verificar(s, "env-123456789"), true);
+  assert.strictEqual(tpv.verificar(s, "otra"), false);
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+});
+
+test("generarClave: clave fuerte, gestionada en la app, verificación exacta", () => {
+  const s = fakeStore();
+  const r = tpv.generarClave(s, { nombre: "Moni" });
+  assert.ok(/^mdm_[0-9a-f]{48}$/.test(r.clave), "formato mdm_ + 48 hex");
+  assert.strictEqual(tpv.origenClave(s), "app");
+  assert.strictEqual(tpv.claveActual(s), r.clave);
+  assert.strictEqual(tpv.verificar(s, r.clave), true);
+  assert.strictEqual(tpv.verificar(s, r.clave + "x"), false, "longitud distinta no coincide");
+  assert.strictEqual(tpv.verificar(s, ""), false);
+});
+
+test("la clave de la app manda sobre la variable de entorno", () => {
+  process.env.AGORA_CONNECTOR_TOKEN = "env-999";
+  const s = fakeStore();
+  const r = tpv.generarClave(s);
+  assert.strictEqual(tpv.claveActual(s), r.clave);
+  assert.strictEqual(tpv.origenClave(s), "app");
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+});
+
+test("revocar: deja de aceptar hasta nueva clave", () => {
+  const s = fakeStore();
+  const r = tpv.generarClave(s);
+  tpv.revocar(s);
+  assert.strictEqual(tpv.claveActual(s), null);
+  assert.strictEqual(tpv.verificar(s, r.clave), false);
+});
+
+test("mascara: ni expone la clave ni la deja vacía", () => {
+  assert.strictEqual(tpv.mascara(null), null);
+  const m = tpv.mascara("mdm_0123456789abcdef");
+  assert.ok(m.includes("…") && !m.includes("23456789"), "enmascarada");
+});
+
+test("extraerDocs: array, {docs}, {documents}, documento suelto, vacío", () => {
+  assert.strictEqual(tpv.extraerDocs([{ a: 1 }]).length, 1);
+  assert.strictEqual(tpv.extraerDocs({ docs: [{ a: 1 }, { b: 2 }] }).length, 2);
+  assert.strictEqual(tpv.extraerDocs({ documents: [{ a: 1 }] }).length, 1);
+  assert.strictEqual(tpv.extraerDocs({ Lines: [{}] }).length, 1, "documento suelto con Lines");
+  assert.strictEqual(tpv.extraerDocs({}).length, 0);
+  assert.strictEqual(tpv.extraerDocs(null).length, 0);
+});
+
+test("ingerir sin documentos → error SIN_DOCS", () => {
+  const s = fakeStore();
+  let err = null;
+  try { tpv.ingerir(s, {}, {}); } catch (e) { err = e; }
+  assert.ok(err && err.code === "SIN_DOCS", "lanza SIN_DOCS");
+});
+// La ingesta completa (bloquea sin vincular, procesa vinculado, idempotente) se
+// prueba de extremo a extremo por HTTP en el e2e (usa el store real con seed).
+
+test("estado: forma esperada para el panel", () => {
+  const s = fakeStore();
+  tpv.generarClave(s);
+  const e = tpv.estado(s);
+  ["configurado", "origen_clave", "clave_mascara", "procesados", "bloqueados", "no_vinculados", "ventas_totales"].forEach((k) => assert.ok(k in e, "tiene " + k));
+  assert.strictEqual(e.configurado, true);
+});
+
+if (fallos) { console.error(`\n${fallos} fallo(s) en conector TPV`); process.exit(1); }
+console.log("  conector TPV OK");

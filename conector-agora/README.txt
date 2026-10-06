@@ -23,11 +23,23 @@ LO QUE NECESITAS ANTES DE EMPEZAR (3 cosas)
    Es la URL con la que entráis a la web (algo como
    https://control-m.onrender.com).
 
-3) El "token del conector".
-   Es una contraseña larga que se pone en DOS sitios y debe ser IDÉNTICA:
-     - en Control M (variable AGORA_CONNECTOR_TOKEN, lo pone el admin), y
-     - en este conector (config.json, campo "conector_token").
-   Si no coincide, Control M rechaza los datos (es la seguridad).
+3) La "clave del conector".
+   Se genera DENTRO de la app, sin tocar nada del servidor:
+     Centro de control -> Conector TPV (Ágora) -> "Generar clave".
+   Copia esa clave (empieza por "mdm_"; solo se ve completa una vez) y
+   pégala en este conector (config.json, campo "conector_token"). En esa
+   misma pantalla tienes la URL y un botón para probar la conexión.
+   Si la clave no coincide, Control M rechaza los datos (es la seguridad).
+
+   NOTA: antes se usaba una variable de entorno (AGORA_CONNECTOR_TOKEN) en
+   el servidor. Ya no hace falta: la clave se gestiona desde la app. Si esa
+   variable existe, también se sigue aceptando.
+
+COMPROBAR QUE TODO ESTÁ BIEN (antes de dejarlo corriendo)
+---------------------------------------------------------
+   Ejecuta:   node conector.js --probar
+   Debe decir "Control M: conexión y clave correctas" y, si hay Api-Token,
+   "Ágora: lectura del export correcta". Si algo falla, lo marca con una X.
 
 
 INSTALACIÓN (una sola vez)

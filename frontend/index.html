@@ -10288,9 +10288,10 @@ async function irA_pedidoProveedor(provId, opts){
     const money=n=>vizEur? null:null; // (no usar) — formateo propio abajo
     const fmtP=(n,d)=>new Intl.NumberFormat("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}).format(Number(n)||0);
     const rows=cat.articulos.map(a=>{
-      const sug=a.cantidad_sugerida>0?`<span class="ped-sugq">sugerido ${fmtP(a.cantidad_sugerida,a.dec)} ${esc(a.unidad_pedido)}</span>`:`<span class="ped-sugq ok">stock ok</span>`;
-      const pre=(opts.sugerir&&a.estado!=="correcto"&&a.cantidad_sugerida>0)?a.cantidad_sugerida:"";
-      return `<div class="ped-row" data-mat="${a.materia_id}" data-nombre="${esc((a.nombre||"").toLowerCase())}" data-factor="${a.factor}" data-pbase="${a.precio_base}" data-up="${esc(a.unidad_pedido)}" data-dec="${a.dec}">
+      const sug=a.estado==="catalogo"?`<span class="ped-sugq cat">de factura</span>`
+        :(a.cantidad_sugerida>0?`<span class="ped-sugq">sugerido ${fmtP(a.cantidad_sugerida,a.dec)} ${esc(a.unidad_pedido)}</span>`:`<span class="ped-sugq ok">stock ok</span>`);
+      const pre=(opts.sugerir&&a.estado!=="correcto"&&a.estado!=="catalogo"&&a.cantidad_sugerida>0)?a.cantidad_sugerida:"";
+      return `<div class="ped-row" data-mat="${a.materia_id||''}" data-compra="${a.compra_id||''}" data-dn="${esc(a.nombre||'')}" data-nombre="${esc((a.nombre||"").toLowerCase())}" data-factor="${a.factor}" data-pbase="${a.precio_base}" data-up="${esc(a.unidad_pedido)}" data-dec="${a.dec}">
         <span class="ped-name">${esc(a.nombre)} ${estBadge(a)}<span class="ped-price">${fmtP(a.precio_pedido,2)} €/${esc(a.unidad_pedido)}</span></span>
         ${sug}
         <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" value="${pre}" oninput="pedTotal()">
@@ -10353,8 +10354,10 @@ async function pedCrear(provId){
   const lineas=[...document.querySelectorAll("#ped-artlist .ped-row")].map(r=>{
     const cantP=Number(r.querySelector(".ped-cant").value)||0;
     const factor=Number(r.dataset.factor)||1, pbase=Number(r.dataset.pbase)||0;
-    return { materia_id:r.dataset.mat, cantidad:cantP*factor, precio_esperado:pbase,
-      unidad_pedido:r.dataset.up, cantidad_pedido:cantP, precio_pedido:pbase*factor };
+    const base={ cantidad:cantP*factor, precio_esperado:pbase, unidad_pedido:r.dataset.up, cantidad_pedido:cantP, precio_pedido:pbase*factor };
+    // Materia de stock, o artículo del catálogo de compra (de factura).
+    if(r.dataset.mat) return { materia_id:r.dataset.mat, ...base };
+    return { compra_id:r.dataset.compra, nombre:r.dataset.dn, ...base };
   }).filter(l=>l.cantidad_pedido>0);
   if(!lineas.length){ alert("Pon cantidad en al menos un artículo."); return; }
   if(!bloqueaDoble("pedido")) return;

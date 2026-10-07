@@ -321,7 +321,11 @@ test("proveedores iniciales: se siembran, sus artículos salen 'Pendiente de com
   await page.evaluate(() => irA_productosProveedor("prov-charcuteria"));
   await expect(page.locator(".card-meta", { hasText: /Falta completar la tarifa/ }).first()).toBeVisible();
   const arts = await page.evaluate(async () => await api("/compras-productos?proveedor_id=prov-charcuteria"));
-  expect(arts.every((a) => a.pendiente && a.precio_sin_iva === 0)).toBe(true);
+  // Los artículos de la pizarra (pendientes) nunca traen precio inventado. Pueden
+  // convivir con artículos reales enlazados desde las facturas (esos sí con precio).
+  const pendientes = arts.filter((a) => a.pendiente);
+  expect(pendientes.length).toBeGreaterThan(0);
+  expect(pendientes.every((a) => a.precio_sin_iva === 0)).toBe(true);
   // El formulario nuevo incluye los campos ampliados y el bloque de pago (admin).
   await page.evaluate(() => formProveedor("prov-charcuteria"));
   for (const id of ["#pv-razon", "#pv-nif", "#pv-telped", "#pv-hora", "#pv-bizum"]) {

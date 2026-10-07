@@ -1,0 +1,966 @@
+{
+ "generado": "3T-2026",
+ "fuente": "facturas gestoría 3T 2026",
+ "proveedores": [
+  {
+   "carpeta": "Mercadona",
+   "nombre": "MERCADONA S.A.",
+   "cif": "A-46103834",
+   "tipo": "detalle_productos",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "PECHUGA 2 UND",
+     "unidad": "ud",
+     "precio_sin_iva": 4.4091,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "BOLSA PLASTICO",
+     "unidad": "ud",
+     "precio_sin_iva": 0.124,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "QUESO FETA",
+     "unidad": "ud",
+     "precio_sin_iva": 2.3077,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "MEZCLA DE SEMILLAS",
+     "unidad": "ud",
+     "precio_sin_iva": 1.4038,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "DÁTIL SIN HUESO",
+     "unidad": "ud",
+     "precio_sin_iva": 1.5865,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "CANELA MOLIDA",
+     "unidad": "ud",
+     "precio_sin_iva": 0.9091,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "GRIEGO NATURAL",
+     "unidad": "ud",
+     "precio_sin_iva": 2.0192,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "PECHUGA FAMILIAR",
+     "unidad": "ud",
+     "precio_sin_iva": 6.6091,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "12 HUEVOS MEDIANOS-M",
+     "unidad": "docena",
+     "precio_sin_iva": 2.7404,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "RICOTTA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.4545,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Q. UNTAR SUAVE",
+     "unidad": "ud",
+     "precio_sin_iva": 1.3462,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "LIMPIADOR CON OXIGEN",
+     "unidad": "ud",
+     "precio_sin_iva": 1.1157,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "HIELO PACK 5",
+     "unidad": "ud",
+     "precio_sin_iva": 5.2273,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "TOMATE FRITO BRICK",
+     "unidad": "ud",
+     "precio_sin_iva": 1.2273,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "ARROZ ULTRACONGELADO",
+     "unidad": "ud",
+     "precio_sin_iva": 1.8269,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "ACEITUNA SIN HUESO",
+     "unidad": "ud",
+     "precio_sin_iva": 2.5455,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "SALCHICHAS PACK-4",
+     "unidad": "pack",
+     "precio_sin_iva": 2.2273,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "MOLINILLO PTA. NEGRA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.6818,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "SALSA CHIMICHURRI",
+     "unidad": "ud",
+     "precio_sin_iva": 1.3182,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "LECHE FRESCA SEMI",
+     "unidad": "ud",
+     "precio_sin_iva": 1.0481,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "LECHE FRESCA ENT",
+     "unidad": "ud",
+     "precio_sin_iva": 1.1058,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "ROLLO COCINA GIGANTE",
+     "unidad": "ud",
+     "precio_sin_iva": 2.438,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "BURRATA",
+     "unidad": "ud",
+     "precio_sin_iva": 2.1154,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "30 B.BASURA EXTRA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.9008,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "ESTROPAJO VERDE",
+     "unidad": "ud",
+     "precio_sin_iva": 0.7438,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "VINAGRE LIMPIEZA",
+     "unidad": "ud",
+     "precio_sin_iva": 0.7438,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "LOTE 3 BAYETAS PEQ.",
+     "unidad": "pack",
+     "precio_sin_iva": 1.2397,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "GEL FRUTAL",
+     "unidad": "ud",
+     "precio_sin_iva": 0.9917,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "PAPEL VEGETAL 30H",
+     "unidad": "ud",
+     "precio_sin_iva": 1.405,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "TOMATE ROSA",
+     "unidad": "ud",
+     "precio_sin_iva": 5.4615,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "PAPEL HIGIÉNICO 4 CA",
+     "unidad": "ud",
+     "precio_sin_iva": 3.0579,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "AMONÍACO MUY FUERTE",
+     "unidad": "ud",
+     "precio_sin_iva": 1.0331,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "HIERBABUENA 40 GR",
+     "unidad": "ud",
+     "precio_sin_iva": 1.2273,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "PERLAS MOZZARELLA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.8269,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "LIMA GRANEL",
+     "unidad": "kg",
+     "precio_sin_iva": 7.0096,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "ACEITE V.EXTRA",
+     "unidad": "ud",
+     "precio_sin_iva": 12.3077,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "TE CHAI",
+     "unidad": "ud",
+     "precio_sin_iva": 1.0455,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "C.SALMÓN F Y V",
+     "unidad": "ud",
+     "precio_sin_iva": 5.2727,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "AZUCAR",
+     "unidad": "ud",
+     "precio_sin_iva": 0.8182,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "HIELO CUBITO 2KG",
+     "unidad": "ud",
+     "precio_sin_iva": 1.0455,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "BLANQUEANTE DENTÍFR",
+     "unidad": "ud",
+     "precio_sin_iva": 3.2645,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "SAL YODADA",
+     "unidad": "ud",
+     "precio_sin_iva": 0.4091,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "DEO ROLL.ON HOMBRE",
+     "unidad": "ud",
+     "precio_sin_iva": 1.9008,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "FILM TRANSPARENTE",
+     "unidad": "ud",
+     "precio_sin_iva": 1.5289,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "LOTE 3 BAYETAS MICRO",
+     "unidad": "pack",
+     "precio_sin_iva": 1.3636,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "PERLAS SILICE GATO",
+     "unidad": "ud",
+     "precio_sin_iva": 2.7686,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "CHAMPÚ HYDRA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.5702,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "MANGO",
+     "unidad": "ud",
+     "precio_sin_iva": 3.0192,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "DULCE DE LECHE",
+     "unidad": "ud",
+     "precio_sin_iva": 2.4636,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "ACEITE VIRGEN 3L",
+     "unidad": "ud",
+     "precio_sin_iva": 11.2019,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "12 HUEVOS CAMPEROS",
+     "unidad": "docena",
+     "precio_sin_iva": 3.2212,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "Q. LONCHAS EDAM TIER",
+     "unidad": "ud",
+     "precio_sin_iva": 1.9231,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "RUCULA 50 G",
+     "unidad": "ud",
+     "precio_sin_iva": 0.8173,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "YOGUR COCO",
+     "unidad": "ud",
+     "precio_sin_iva": 0.9615,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "GRIEGO LIMÓN",
+     "unidad": "ud",
+     "precio_sin_iva": 1.5865,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "BEBER FRESA-P",
+     "unidad": "ud",
+     "precio_sin_iva": 1.4423,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "ALBAHACA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.4091,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "POMELO",
+     "unidad": "ud",
+     "precio_sin_iva": 2.6442,
+     "iva_pct": 4
+    }
+   ],
+   "notas": "Factura mensual consolidada (1 factura) que agrupa ~30 facturas simplificadas de septiembre. P.Unitario = base imponible sin IVA. Deduplicado quedandose con el precio mas reciente (fecha de ticket mas alta). LIMA GRANEL a granel (precio por kg); frescos por unidad de venta. Linea PARKING (0,00) excluida por no ser producto.",
+   "categoria": "Supermercado"
+  },
+  {
+   "carpeta": "Tuderex",
+   "nombre": "TUDEREX, S.L.",
+   "cif": "B06876072",
+   "tipo": "detalle_productos",
+   "n_facturas": 4,
+   "productos": [
+    {
+     "nombre": "DETERGENTE AUTOMATICO EXEL LV-60 5LT",
+     "unidad": "ud",
+     "precio_sin_iva": 20.66,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "FREGAPLUS VAJILLA MANUAL 5LT",
+     "unidad": "ud",
+     "precio_sin_iva": 6.81,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "ABRILLANTADOR AUTOMATICO T DEX BRILL 5LT",
+     "unidad": "ud",
+     "precio_sin_iva": 22.71,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "TD20 ESPUMA ACTIVA P.750ML",
+     "unidad": "ud",
+     "precio_sin_iva": 2.38,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "SANITEX LIMPIADOR OXIGENO ACTIVO SUPERF.P.750ML",
+     "unidad": "ud",
+     "precio_sin_iva": 2.44,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "GREASECUTTER/QUITACARBONILLA DESENGRAS.PLANCHA 5LT",
+     "unidad": "ud",
+     "precio_sin_iva": 22.14,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "CEPILLO|ESCOBA MOQUETA",
+     "unidad": "ud",
+     "precio_sin_iva": 1.8,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "FREGONA MICROFIBRA VERDE PREMIUN 165GR",
+     "unidad": "ud",
+     "precio_sin_iva": 1.7,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "BAYETA MICROFIBRA DARK [12UN]",
+     "unidad": "pack",
+     "precio_sin_iva": 8.5,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "CEPILLO COLORS AZUL",
+     "unidad": "ud",
+     "precio_sin_iva": 2.3,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "BOTELLA 1LT C/PULVERIZADOR AZUL",
+     "unidad": "ud",
+     "precio_sin_iva": 1.7,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "RECOGEDOR ANTIVUELCO AZUL",
+     "unidad": "ud",
+     "precio_sin_iva": 1.96,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "PALO AZUL ALU-PRO C/ROSCA 1.40MT",
+     "unidad": "ud",
+     "precio_sin_iva": 1.91,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "BWT BESTHEAD FLEX",
+     "unidad": "ud",
+     "precio_sin_iva": 74.15,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "BWT BESTDRINK V PREMIUM",
+     "unidad": "ud",
+     "precio_sin_iva": 108.14,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "TOALLA MANO 2C|21*22CM [4000F]",
+     "unidad": "caja",
+     "precio_sin_iva": 19.57,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "PORTA ROLLO SECAMANOS TRANSPARENTE FUME",
+     "unidad": "ud",
+     "precio_sin_iva": 34.07,
+     "iva_pct": 21
+    },
+    {
+     "nombre": "SERVILLETA RECICLADO 2C|20*20CM [24PAQ*100H]",
+     "unidad": "caja",
+     "precio_sin_iva": 25.26,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Precio = columna Precio (base sin IVA). BWT BESTHEAD FLEX con 20% dto. en factura; se refleja precio de tarifa. BOTELLA pulverizador figura con 100% dto. en una linea.",
+   "categoria": "Distribución alimentación"
+  },
+  {
+   "carpeta": "Ineffable_Coffee",
+   "nombre": "Ineffable Coffee SL",
+   "cif": "B42929810",
+   "tipo": "detalle_productos",
+   "n_facturas": 7,
+   "productos": [
+    {
+     "nombre": "Tibebu Roba - Etiopía - Natural (250GR)",
+     "unidad": "ud",
+     "precio_sin_iva": 9.98,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Quebraditas Coconut - Colombia - Cofermentado (250GR)",
+     "unidad": "ud",
+     "precio_sin_iva": 17.72,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Romario Umaña - Costa Rica - Natural (250GR)",
+     "unidad": "ud",
+     "precio_sin_iva": 11.23,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Tembo Tembo – Tanzania – Lavado (250GR)",
+     "unidad": "ud",
+     "precio_sin_iva": 8.23,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Sitio Colina - Brasil - Natural - 1 kg",
+     "unidad": "kg",
+     "precio_sin_iva": 23.9,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Café descafeinado - México - Swiss Water (1KG)",
+     "unidad": "kg",
+     "precio_sin_iva": 28.9,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Shoondhisa - Etiopía - Natural (1KG)",
+     "unidad": "kg",
+     "precio_sin_iva": 35.9,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Sitio Tripui – Brasil – Natural (1KG)",
+     "unidad": "kg",
+     "precio_sin_iva": 23.9,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Jhonatan Gasca Pink B. - Colombia - Lavado Thermal Shock (1KG)",
+     "unidad": "kg",
+     "precio_sin_iva": 40.9,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Edwin Noreña Candy Crush - Colombia - Honey co-fermentado 72h (250GR)",
+     "unidad": "ud",
+     "precio_sin_iva": 17.72,
+     "iva_pct": 10
+    }
+   ],
+   "notas": "Café verde/tostado al 10% IVA. Tamaño de bolsa indicado entre paréntesis: las de 250GR se registran como 'ud' (bolsa de 250 g) y las de 1KG como 'kg' (bolsa de 1 kg). Precios = PRECIO sin IVA de cada línea antes de descuentos puntuales (líneas 'Descuento' por factura no reflejadas en el precio unitario). Excluidas líneas no-producto: 'Envío Península'/'Envío gratuito' (portes, 21%), 'Ajuste de reconciliación' y la factura 2F260000399 de 'Formación en M de Materia' (servicio, 500€ con 100% dto, total 0€, 21%). Sitio Colina y Sitio Tripui se mantienen como nombres distintos tal cual impresos.",
+   "categoria": "Café"
+  },
+  {
+   "carpeta": "Malaga_Delicias",
+   "nombre": "MALAGA DELICIAS, S.L.",
+   "cif": "B29884137",
+   "tipo": "detalle_productos",
+   "n_facturas": 4,
+   "productos": [
+    {
+     "nombre": "PECTINASE 500 Gr. Toufood (005343)",
+     "unidad": "ud",
+     "precio_sin_iva": 49.817,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "ACIDO MALIC 800 Gr. Toufood (005718)",
+     "unidad": "ud",
+     "precio_sin_iva": 15.05,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "TARTARIC \"ACIDO TARTARICO\" 700 Gr. Toufood (005385)",
+     "unidad": "ud",
+     "precio_sin_iva": 20.708,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "GOMA GELLAN 350 Gr. Toufood (005449)",
+     "unidad": "ud",
+     "precio_sin_iva": 80.733,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "CITRIC ACID \"ACIDO CITRICO\" 800 Gr. Toufood (005380)",
+     "unidad": "ud",
+     "precio_sin_iva": 15.108,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "ASCORBIC \"ACIDO ASCORBICO\" 800 Gr. Toufood (005379)",
+     "unidad": "ud",
+     "precio_sin_iva": 28.933,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "XANTHAN \"XANTANA\" 600 Gr. Toufood (005378)",
+     "unidad": "ud",
+     "precio_sin_iva": 31.85,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "PURE DE FRUTA DE LA PASION 1Kg. Boiron (001072)",
+     "unidad": "ud",
+     "precio_sin_iva": 17.061,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "FRUCTOSA EN POLVO 800 Gr. Toufood (005491)",
+     "unidad": "ud",
+     "precio_sin_iva": 13.417,
+     "iva_pct": 10
+    }
+   ],
+   "notas": "Facturas con detalle de producto (3 de Julio, 1 de Agosto). Productos envasados de las marcas Toufood y Boiron vendidos por unidad/envase; todos al 10% de IVA. Sin duplicados entre facturas, cada producto aparece una sola vez.",
+   "categoria": "Obrador / aditivos"
+  },
+  {
+   "carpeta": "Francisco_Javier_De_Osos_Lopez",
+   "nombre": "Francisco Javier De Oses Lopez",
+   "cif": "44652877x",
+   "tipo": "detalle_productos",
+   "n_facturas": 2,
+   "productos": [
+    {
+     "nombre": "Jamón Braseado.",
+     "unidad": "ud",
+     "precio_sin_iva": 148.74,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Mortadela Italiana.",
+     "unidad": "ud",
+     "precio_sin_iva": 72.88,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Crema de Queso Payoyo 1kg.",
+     "unidad": "ud",
+     "precio_sin_iva": 25,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "Jamón cocido braseado La Selva 19,50 euros kg.566,87",
+     "unidad": "ud",
+     "precio_sin_iva": 463.85,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Jamón cocido braseado Fríal 9 euros kg.",
+     "unidad": "ud",
+     "precio_sin_iva": 45.08,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "Mortadela Italiana Levoni 16.90 euros kg.",
+     "unidad": "ud",
+     "precio_sin_iva": 26.12,
+     "iva_pct": 10
+    }
+   ],
+   "notas": "Precio = BASE UD (sin IVA). Nombres de jamon/mortadela de septiembre difieren de los de agosto, se conservan ambos tal cual. Puesto Mercado Municipal de El Palo.",
+   "categoria": "Distribución alimentación"
+  },
+  {
+   "carpeta": "Lehmann_SA",
+   "nombre": "LEHMANN SA",
+   "cif": "FR82301210696",
+   "tipo": "detalle_productos",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "GOBELET DUBAI 39 CL FH CRISTALLIN SANS PLOMB + SIGNATURE C6/24",
+     "unidad": "ud",
+     "precio_sin_iva": 2.79,
+     "iva_pct": 0
+    },
+    {
+     "nombre": "GOBELET RIO 30 CL FB CRISTALLIN SANS PLOMB +SIGNATURE C6/24",
+     "unidad": "ud",
+     "precio_sin_iva": 2.51,
+     "iva_pct": 0
+    },
+    {
+     "nombre": "SYNERGIE 52 CL + POINCON CRISTALLIN SANS PLOMB+SIGNATURE LEHMANN",
+     "unidad": "ud",
+     "precio_sin_iva": 3.85,
+     "iva_pct": 0
+    }
+   ],
+   "notas": "Factura francesa (Reims). IVA 0% por exoneracion intracomunitaria (art. 262 ter CGI). Px unit. en euros. Transporte y palette perdida no incluidos como producto.",
+   "categoria": "Distribución"
+  },
+  {
+   "carpeta": "Oatly_Spain",
+   "nombre": "Oatly Spain, SL",
+   "cif": "B27627512",
+   "tipo": "detalle_productos",
+   "n_facturas": 2,
+   "productos": [
+    {
+     "nombre": "Oatly Oat Drink Barista Edition 1,5 L ES/FR/IT/PT",
+     "unidad": "caja",
+     "precio_sin_iva": 15.78,
+     "iva_pct": 10
+    },
+    {
+     "nombre": "OatlyBaristaedition",
+     "unidad": "caja",
+     "precio_sin_iva": 10.8,
+     "iva_pct": 10
+    }
+   ],
+   "notas": "Unidad de venta 'case' = caja. Mismos productos y precios en ambas facturas (07/2026 y 09/2026). El N.º de IVA impreso difiere entre facturas (B09802240 en 07/2026, B27627512 en 09/2026); se usa el más reciente. Códigos de artículo: 62320 y 62403. IVA 10%.",
+   "categoria": "Bebida vegetal"
+  },
+  {
+   "carpeta": "Pan_con_Alma_y_Pasion_SL",
+   "nombre": "PAN CON ALMA Y PASION SL",
+   "cif": "B16821753",
+   "tipo": "detalle_productos",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "CHAPATA DE CENTENO",
+     "unidad": "ud",
+     "precio_sin_iva": 0.4,
+     "iva_pct": 4
+    },
+    {
+     "nombre": "ESPELTA INTEGRAL MOLDE 550 g",
+     "unidad": "ud",
+     "precio_sin_iva": 3.8,
+     "iva_pct": 4
+    }
+   ],
+   "notas": "1 factura (FC26/000055) con 2 productos itemizados, unidad Unidades, IVA 4%.",
+   "categoria": "Panadería"
+  },
+  {
+   "carpeta": "Bodegas_Malaga_Virgen",
+   "nombre": "Bodegas Málaga Virgen, S.A.U.",
+   "cif": "A78581204",
+   "tipo": "detalle_productos",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "C/12 BOT.75 CL.PERNALES CHARDONNAY",
+     "unidad": "caja",
+     "precio_sin_iva": 126.948,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Vino tranquilo. Caja de 12 botellas de 75 cl (cód. 5020554, lote L-26019001). PRECIO UNIDADES impreso = 126,948 €/caja sin IVA; con descuentos comerciales (20% + 33,38% + 24,98%) el importe neto fue 152,28€ por 3 cajas (~50,76€/caja neto). IVA 21%.",
+   "categoria": "Bodega / bebidas"
+  },
+  {
+   "carpeta": "Nawo_-_Black_Basicorn",
+   "nombre": "Black Basicorn S.L.",
+   "cif": "B56221229",
+   "tipo": "detalle_productos",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "Matcha Ceremonial 02",
+     "unidad": "kg",
+     "precio_sin_iva": 190,
+     "iva_pct": 10
+    }
+   ],
+   "notas": "Marca Nawo (naworoutines.com), emitida por Black Basicorn S.L. Matcha ceremonial a 190€/kg sin IVA, IVA 10%. Observación de la factura: se entregan 250 g de matcha ceremonial 02 y 750 g de matcha ceremonial 03 al precio del matcha ceremonial 02.",
+   "categoria": "Matcha / té"
+  },
+  {
+   "carpeta": "Panamar_Bakery_Group",
+   "nombre": "PANAMAR BAKERY GROUP S.L.",
+   "cif": "ESB82409772",
+   "tipo": "detalle_productos",
+   "n_facturas": 5,
+   "productos": [
+    {
+     "nombre": "CROISSANT INTENSE MM HELENE 80G",
+     "unidad": "ud",
+     "precio_sin_iva": 0.5997,
+     "iva_pct": 10
+    }
+   ],
+   "notas": "5 facturas, todas con el mismo producto al mismo precio (0,5997/ud, IVA 10%). Precio por unidad (Ud.Venta); se vende por caja (55 ud/caja aprox). Deduplicado a 1 producto.",
+   "categoria": "Panadería"
+  },
+  {
+   "carpeta": "Klimer_2000",
+   "nombre": "KLIMER 2000, S.L.",
+   "cif": "B82049537",
+   "tipo": "detalle_productos",
+   "n_facturas": 3,
+   "productos": [
+    {
+     "nombre": "**LATA ALUMINIO C/TAPA 250ML (70 UDS)",
+     "unidad": "caja",
+     "precio_sin_iva": 31.802,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "3 facturas (una RECT26 es abono/nota de credito con importe negativo). Mismo producto, caja de 70 uds, precio 31,80200/caja, IVA 21%. Deduplicado a 1 producto.",
+   "categoria": "Envases"
+  },
+  {
+   "carpeta": "Horeca_Profesional_Andalucia",
+   "nombre": "Horeca Profesional Andalucia SL",
+   "cif": "B-93146496",
+   "tipo": "detalle_productos",
+   "n_facturas": 2,
+   "productos": [
+    {
+     "nombre": "Latas Alumino Slim con Tapa (Capacidad: 250 ml)",
+     "unidad": "ud",
+     "precio_sin_iva": 32.75,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Mismo producto y precio en ambas facturas (ref 100/1064). Gastos de envio aparte, no incluidos.",
+   "categoria": "Hostelería / envases"
+  },
+  {
+   "carpeta": "Repsol",
+   "nombre": "Repsol Comercializadora de Electricidad y Gas, S.L.U.",
+   "cif": "B39540760",
+   "tipo": "servicio",
+   "n_facturas": 5,
+   "productos": [
+    {
+     "nombre": "Suministro eléctrico (luz)",
+     "unidad": "ud",
+     "precio_sin_iva": 100.8,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Factura de luz mensual del local; base imponible 100,80 e IVA 21% sobre factura ejemplo de 121,97 EUR.",
+   "categoria": "Suministros (luz)"
+  },
+  {
+   "carpeta": "Render_Services",
+   "nombre": "Render Services, Inc dba Render",
+   "cif": "US EIN 82-4269471",
+   "tipo": "servicio",
+   "n_facturas": 3,
+   "productos": [
+    {
+     "nombre": "Hosting/servidores cloud",
+     "unidad": "ud",
+     "precio_sin_iva": 1.5,
+     "iva_pct": 0
+    }
+   ],
+   "notas": "Proveedor de EE.UU., facturado en USD, sin IVA repercutido (servicio cloud/servidores).",
+   "categoria": "Servicios (hosting)"
+  },
+  {
+   "carpeta": "Prudencio_Castano_Rodriguez_-_Alquiler",
+   "nombre": "Prudencio Castaño Rodríguez",
+   "cif": "07841644R",
+   "tipo": "servicio",
+   "n_facturas": 3,
+   "productos": [
+    {
+     "nombre": "Alquiler de local (cafetería)",
+     "unidad": "ud",
+     "precio_sin_iva": 550,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Alquiler mensual del local; IVA 21% y retención IRPF 19%.",
+   "categoria": "Alquiler local"
+  },
+  {
+   "carpeta": "IGT_Microelectronics",
+   "nombre": "IGT Microelectronics, S.L.",
+   "cif": "B78032034",
+   "tipo": "servicio",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "Processing fees / servicio de autenticación",
+     "unidad": "ud",
+     "precio_sin_iva": 0.03,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Comisiones de procesamiento y servicio de autenticación; parte exenta de IVA (servicios financieros).",
+   "categoria": "Servicios TPV"
+  },
+  {
+   "carpeta": "OEPM",
+   "nombre": "Oficina Española de Patentes y Marcas",
+   "cif": "Q2820005C",
+   "tipo": "servicio",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "Tasa solicitud de marca (3 clases)",
+     "unidad": "ud",
+     "precio_sin_iva": 293.56,
+     "iva_pct": 0
+    }
+   ],
+   "notas": "Tasa oficial OEPM código 511 por solicitud de marca/nombre por clase; tasa pública sin IVA.",
+   "categoria": "Tasas / marcas"
+  },
+  {
+   "carpeta": "Retail_Offshore",
+   "nombre": "Retail Offshore S.L.U. (THR Spain)",
+   "cif": "B02930675",
+   "tipo": "servicio",
+   "n_facturas": 2,
+   "productos": [
+    {
+     "nombre": "Alquiler TPV/software Ágora",
+     "unidad": "ud",
+     "precio_sin_iva": 34,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Cuota mensual de alquiler del sistema TPV Ágora (hardware/software punto de cobro).",
+   "categoria": "Servicios TPV (Ágora)"
+  },
+  {
+   "carpeta": "Zara_Home",
+   "nombre": "Zara Home España, S.A.",
+   "cif": "",
+   "tipo": "servicio",
+   "n_facturas": 1,
+   "productos": [
+    {
+     "nombre": "Menaje/decoración (taburete acero inoxidable)",
+     "unidad": "ud",
+     "precio_sin_iva": 0,
+     "iva_pct": 21
+    }
+   ],
+   "notas": "Ticket de compra; importe 59,99 EUR IVA incluido (base neta no desglosada en el ticket); menaje/decoración del local.",
+   "categoria": "Menaje / decoración"
+  },
+  {
+   "carpeta": "Malaga_Costa_Fruit",
+   "nombre": "MALAGA COSTA FRUIT SL",
+   "cif": "B-01751502",
+   "tipo": "resumen_albaranes",
+   "n_facturas": 7,
+   "productos": [],
+   "notas": "Las 7 facturas (Agosto y Septiembre) son resumenes mensuales que solo listan 'Albaran Nro. XXXX/A6' con su importe; sin detalle de producto, cantidad ni precio unitario. IVA en bases 4% (fruta fresca) y ocasionalmente 10%.",
+   "categoria": "Frutería"
+  },
+  {
+   "carpeta": "CMD_Comercial_Maldonado_Dominguez",
+   "nombre": "COMERCIAL MALDONADO DOMINGUEZ S.L.",
+   "cif": "",
+   "tipo": "resumen_albaranes",
+   "n_facturas": 21,
+   "productos": [],
+   "notas": "Libro de facturas emitidas 3T 2026 (resumen): solo numero de factura, fecha, base 21% y total; sin lineas de producto. 21 facturas, base total 702.93, cuota 28.13, total 731.06. CIF de CMD no aparece en el documento.",
+   "categoria": "Distribución"
+  }
+ ]
+}

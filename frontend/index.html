@@ -1992,6 +1992,39 @@ button.cc-card:hover { border-color: var(--ink); }
 .ped-row .ped-cant { width: 84px; text-align: center; }
 .ped-row .ped-precio { width: 96px; text-align: right; }
 .ped-row .ped-u { font-size: 11px; color: var(--muted); min-width: 26px; }
+/* ── Pedidos · buscador de proveedores → catálogo → WhatsApp ── */
+.ped-provlist { display: grid; gap: 8px; margin: 8px 0 4px; }
+.ped-prov { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 2px 10px; width: 100%; text-align: left;
+  background: none; border: 1px solid var(--line); border-radius: var(--r-card); padding: 12px 14px; cursor: pointer; color: var(--ink); font-family: var(--font); position: relative; }
+.ped-prov:hover { border-color: var(--ink); }
+.ped-prov-top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ped-prov-n { font-size: 15px; font-weight: 700; letter-spacing: .01em; }
+.ped-prov-m { grid-column: 1; font-size: 11px; color: var(--muted); }
+.ped-prov-go { position: absolute; right: 12px; bottom: 10px; color: var(--muted); font-size: 15px; }
+.ped-badge { font-size: 10px; letter-spacing: .04em; color: #8a6d2f; background: #f3ecdb; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.ped-badge.crit { color: #fff; background: var(--alert); }
+.ped-sugwrap { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
+.ped-sugcard { background: none; border: 1px solid var(--line); border-left: 3px solid #c79a3a; border-radius: var(--r-card); padding: 9px 12px; cursor: pointer; color: var(--ink); font-family: var(--font); text-align: left; }
+.ped-sugcard.crit { border-left-color: var(--alert); }
+.ped-sugcard:hover { border-color: var(--ink); }
+.ped-sugn { display: block; font-size: 13px; font-weight: 700; }
+.ped-sugm { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+.ped-head { border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 10px; }
+.ped-head-n { font-size: 20px; font-weight: 700; letter-spacing: .01em; }
+.ped-head-m { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.ped-tools { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.ped-row .ped-price { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+.ped-tag { font-size: 9.5px; letter-spacing: .03em; border-radius: 999px; padding: 2px 7px; vertical-align: middle; }
+.ped-tag.crit { color: #fff; background: var(--alert); }
+.ped-tag.warn { color: #7a5a1a; background: #f3ecdb; }
+.ped-sugq { font-size: 11px; color: #8a6d2f; min-width: 110px; }
+.ped-sugq.ok { color: var(--muted); }
+.ped-row .ped-lineimp { font-size: 12px; color: var(--ink); min-width: 70px; text-align: right; font-weight: 700; }
+.ped-bar { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--cream); border-top: 1px solid var(--line); padding: 12px 2px; margin-top: 10px; }
+.ped-bar-tot { font-size: 13px; } .ped-bar-tot b { font-size: 18px; }
+.ped-send { display: flex; flex-wrap: wrap; gap: 10px; }
+.ped-foot { font-size: 11px; color: var(--muted); margin-top: 14px; }
+.lk { background: none; border: 0; color: var(--olive); text-decoration: underline; cursor: pointer; font-family: var(--font); font-size: 11px; padding: 0; }
 
 /* ── MODO TPV · elementos más grandes para pantalla táctil de mostrador ── */
 body.tpv .ped-row { padding: 14px 8px; }
@@ -10169,169 +10202,279 @@ async function incEstado(id,accion){ try{ await api(`/incidencias/${id}/${accion
 async function incBorrar(id){ if(!confirm("¿Borrar esta incidencia?"))return; try{ await api("/incidencias/"+id,{method:"DELETE"}); irA_incidencias(); }catch(e){ alert(e.message); } }
 
 // ── PEDIDOS ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// PEDIDOS · buscador de proveedores → catálogo (precio actualizado + unidad de
+// pedido + cantidad sugerida) → generar pedido → WhatsApp al proveedor + copia a
+// Jon. Nada al azar: precios del coste real, reposición sugerida hasta stock ideal.
+// ════════════════════════════════════════════════════════════════════════════
+function pedN(n,d){return (Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:(d==null?2:d),maximumFractionDigits:(d==null?2:d)});}
 async function irA_pedidos(pre){
   navReset(); // raíz de Pedidos
+  // Atajo desde una sugerencia/aviso: directo al catálogo del proveedor.
+  if(pre&&pre.proveedor_id){ return irA_pedidoProveedor(pre.proveedor_id, {sugerir:true}); }
   openSection("pedidos","Pedidos");
   try{
-    const [provs,mats,peds,sug]=await Promise.all([api("/proveedores"),api("/materias"),api("/pedidos"),api("/pedidos/sugerencias").catch(()=>[])]);
-    window._provPed=provs; window._matPed=mats; window._pedSug=sug;
-    // Sugerencias de compra POR PROVEEDOR (lo mismo que el aviso de las 16:00).
+    const [provs,sug,peds,cfg]=await Promise.all([
+      api("/proveedores"),
+      api("/pedidos/sugerencias").catch(()=>[]),
+      api("/pedidos").catch(()=>[]),
+      api("/pedidos/config").catch(()=>({copia_whatsapp:""})),
+    ]);
+    window._provPed=provs; window._pedSug=sug; window._pedsAll=peds; window._pedCfg=cfg;
+    const sugByProv={}; (sug||[]).forEach(g=>{ sugByProv[g.proveedor_id]={items:g.total_items,criticos:g.criticos}; });
+    window._pedSugByProv=sugByProv;
+
+    // Sugerencias de compra (proveedores que necesitan pedido ya) — acceso directo.
     let sugHtml="";
-    if(sug.length){
-      sugHtml=`<div class="section-label">Sugerencias de compra · por proveedor</div>`+
-        sug.map((g,idx)=>{
-          const items=g.items.map(it=>`${esc(it.nombre)} <span style="color:${it.estado==='critico'?'var(--alert)':'#c79a3a'};font-weight:700;">(${it.estado==='critico'?'bajo mínimo':'va justo'})</span> · sugerido ${it.cantidad_sugerida} ${esc(it.unidad)}`).join("<br>");
-          return `<div class="card" style="${g.criticos?'border-color:var(--alert);':''}">
-            <div class="card-name">${esc(g.proveedor)} · ${g.total_items} producto(s)${g.criticos?` · ${g.criticos} bajo mínimo`:""}</div>
-            <div class="card-meta" style="margin-top:4px;line-height:1.6;">${items}</div>
-            <div class="card-actions"><button class="btn-primary" onclick="prepararPedidoDesdeSug(${idx})">Preparar pedido</button></div>
-          </div>`;
-        }).join("");
+    if((sug||[]).length){
+      sugHtml=`<div class="section-label">Hay que pedir · ${sug.length} proveedor(es)</div>
+        <div class="ped-sugwrap">`+sug.map((g,idx)=>`<button class="ped-sugcard${g.criticos?' crit':''}" onclick="prepararPedidoDesdeSug(${idx})">
+          <span class="ped-sugn">${esc(g.proveedor)}</span>
+          <span class="ped-sugm">${g.total_items} art.${g.criticos?` · ${g.criticos} bajo mínimo`:""} · preparar →</span>
+        </button>`).join("")+`</div>`;
     }
-    let html=`
-      <div class="section-label">Buscar artículo · proveedor y precio</div>
+
+    const copia=(cfg&&cfg.copia_whatsapp)||"";
+    const html=`
+      <div class="section-label">Buscar proveedor</div>
+      <input id="ped-prov-q" class="mat-q" placeholder="Nombre del proveedor…" oninput="pedFiltrarProveedores(this.value)">
+      <div id="ped-prov-list" class="ped-provlist"></div>
+      ${sugHtml}
+      <div class="section-label" style="margin-top:18px;">¿De quién es un producto?</div>
       <input id="ped-cat-q" class="mat-q" placeholder="Escribe un artículo y te digo proveedor y precio…" oninput="buscarArticuloGlobal(this.value)">
-      <div id="ped-cat-res"></div>`
-      +sugHtml+`
-      <div class="section-label">Nuevo pedido</div>
-      <div class="card">
-        <div class="field"><label>Proveedor</label>
-          <select id="ped-prov" onchange="renderPedidoLineas()">
-            <option value="">Selecciona…</option>
-            ${provs.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join("")}
-          </select>
-        </div>
-        <div id="ped-lineas"></div>
-        <div class="card-actions"><button class="btn-primary" onclick="crearPedido()">Crear pedido</button></div>
-      </div>`;
-    window._pedsAll=peds;
-    html+=`<div class="section-label">Pedidos realizados</div>
+      <div id="ped-cat-res"></div>
+      <div class="section-label" style="margin-top:18px;">Pedidos realizados</div>
       <input id="ped-buscar" class="mat-q" placeholder="Buscar por proveedor o artículo…" oninput="filtrarPedidos(this.value)">
-      <div id="ped-lista"></div>`;
+      <div id="ped-lista"></div>
+      <div class="ped-foot">Copia de cada pedido por WhatsApp → <b>${copia?("+"+esc(copia)):"— sin configurar —"}</b> · <button class="lk" onclick="pedCambiarCopia()">cambiar</button></div>`;
     setInner(html);
+    pedRenderProveedores(provs);
     renderPedidosLista(peds);
-    // Si venimos del aviso "Pedir a X": proveedor preseleccionado y cantidades
-    // sugeridas ya puestas. El usuario solo revisa y confirma.
-    if(pre&&pre.proveedor_id){
-      const sel=el("ped-prov");
-      if(sel){ sel.value=pre.proveedor_id; renderPedidoLineas(); }
-      (pre.sugeridos||[]).forEach(s=>{
-        const row=document.querySelector(`.ped-row[data-mat="${s.materia_id}"]`);
-        if(row){ const inp=row.querySelector(".ped-cant"); if(inp && s.cantidad>0) inp.value=s.cantidad; }
-      });
-    }
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
-// Tarjeta de un pedido realizado (misma info que antes, reutilizable por el buscador).
+// ── Lista + buscador de proveedores ──────────────────────────────────────────
+function pedProvCard(p){
+  const s=(window._pedSugByProv||{})[p.id];
+  const badge=s?`<span class="ped-badge${s.criticos?' crit':''}">${s.items} por pedir${s.criticos?` · ${s.criticos} ⚠`:""}</span>`:"";
+  const dias=(p.dias_reparto&&p.dias_reparto.length)?`Reparto: ${p.dias_reparto.join(", ")}`:(p.categoria?esc(p.categoria):"");
+  const n=(p.productos_nombres&&p.productos_nombres.length)||0;
+  return `<button class="ped-prov" onclick="irA_pedidoProveedor('${p.id}')">
+    <span class="ped-prov-top"><span class="ped-prov-n">${esc(p.nombre)}</span>${badge}</span>
+    <span class="ped-prov-m">${esc(dias)}${n?` · ${n} artículo(s)`:""}</span>
+    <span class="ped-prov-go">→</span></button>`;
+}
+function pedRenderProveedores(list){
+  const c=el("ped-prov-list"); if(!c) return;
+  c.innerHTML=(list&&list.length)?list.map(pedProvCard).join(""):`<div class="empty">No hay proveedores.</div>`;
+}
+function pedFiltrarProveedores(q){
+  const s=(q||"").toLowerCase().trim(); const all=window._provPed||[];
+  const f=!s?all:all.filter(p=>(p.nombre||"").toLowerCase().includes(s)||(p.categoria||"").toLowerCase().includes(s)||(p.contacto||"").toLowerCase().includes(s));
+  pedRenderProveedores(f);
+}
+
+// ── Catálogo del proveedor + armado del pedido ───────────────────────────────
+async function irA_pedidoProveedor(provId, opts){
+  opts=opts||{};
+  navInto(()=>irA_pedidos());           // "atrás" vuelve al buscador de proveedores
+  openSection("ped-prov-cat","Pedido");
+  setInner(`<div class="cc-mini">Cargando catálogo…</div>`);
+  try{
+    const [cat,cfg]=await Promise.all([ api(`/pedidos/proveedor/${provId}`), api("/pedidos/config").catch(()=>({copia_whatsapp:""})) ]);
+    window._pedCat=cat; window._pedCfg=cfg;
+    const pr=cat.proveedor;
+    const estBadge=a=>a.estado==="critico"?`<span class="ped-tag crit">bajo mínimo</span>`:(a.estado==="por_pedir"?`<span class="ped-tag warn">va justo</span>`:``);
+    const money=n=>vizEur? null:null; // (no usar) — formateo propio abajo
+    const fmtP=(n,d)=>new Intl.NumberFormat("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}).format(Number(n)||0);
+    const rows=cat.articulos.map(a=>{
+      const sug=a.cantidad_sugerida>0?`<span class="ped-sugq">sugerido ${fmtP(a.cantidad_sugerida,a.dec)} ${esc(a.unidad_pedido)}</span>`:`<span class="ped-sugq ok">stock ok</span>`;
+      const pre=(opts.sugerir&&a.estado!=="correcto"&&a.cantidad_sugerida>0)?a.cantidad_sugerida:"";
+      return `<div class="ped-row" data-mat="${a.materia_id}" data-nombre="${esc((a.nombre||"").toLowerCase())}" data-factor="${a.factor}" data-pbase="${a.precio_base}" data-up="${esc(a.unidad_pedido)}" data-dec="${a.dec}">
+        <span class="ped-name">${esc(a.nombre)} ${estBadge(a)}<span class="ped-price">${fmtP(a.precio_pedido,2)} €/${esc(a.unidad_pedido)}</span></span>
+        ${sug}
+        <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" value="${pre}" oninput="pedTotal()">
+        <span class="ped-u">${esc(a.unidad_pedido)}</span>
+        <span class="ped-lineimp" data-imp>—</span>
+      </div>`;
+    }).join("");
+    const waOk=(pr.whatsapp||"").replace(/[^0-9]/g,"");
+    const meta=[
+      pr.contacto?`<span>${esc(pr.contacto)}</span>`:"",
+      (pr.dias_reparto&&pr.dias_reparto.length)?`<span>Reparto: ${esc(pr.dias_reparto.join(", "))}</span>`:"",
+      pr.pedido_minimo?`<span>Pedido mín. ${fmtP(pr.pedido_minimo,2)} €</span>`:"",
+      pr.hora_limite?`<span>Hasta ${esc(pr.hora_limite)}</span>`:"",
+    ].filter(Boolean).join(" · ");
+    const html=`
+      <div class="ped-head">
+        <div class="ped-head-n">${esc(pr.nombre)}</div>
+        <div class="ped-head-m">${meta||"&nbsp;"}</div>
+        ${waOk?`<div class="ped-head-m">WhatsApp: +${esc(waOk)}</div>`:`<div class="ped-head-m" style="color:var(--alert)">Sin WhatsApp — añádelo en Proveedores</div>`}
+      </div>
+      <div class="ped-tools">
+        <input id="ped-artq" class="mat-q" placeholder="Buscar artículo…" oninput="pedFiltrarArticulos(this.value)" style="flex:1;">
+        <button class="btn-ghost" onclick="pedUsarSugeridos()">Reponer sugerido</button>
+      </div>
+      <div id="ped-artlist">${rows||`<div class="empty">Este proveedor aún no tiene artículos. Añádelos en su ficha (Proveedores) o se crean solos al escanear un albarán.</div>`}</div>
+      <div class="ped-bar">
+        <div class="ped-bar-tot">Total estimado: <b id="ped-total">0,00 €</b> <span id="ped-total-n" class="viz-mut"></span></div>
+        <button class="btn-primary" onclick="pedCrear('${provId}')">Generar pedido</button>
+      </div>`;
+    setInner(html);
+    pedTotal();
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function pedFiltrarArticulos(q){
+  const s=(q||"").toLowerCase().trim();
+  document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{ r.style.display=(!s||(r.dataset.nombre||"").includes(s))?"":"none"; });
+}
+function pedUsarSugeridos(){
+  const cat=window._pedCat; if(!cat) return;
+  const byId={}; cat.articulos.forEach(a=>byId[a.materia_id]=a);
+  document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{
+    const a=byId[r.dataset.mat]; const inp=r.querySelector(".ped-cant");
+    if(a&&inp&&a.cantidad_sugerida>0){ inp.value=a.cantidad_sugerida; }
+  });
+  pedTotal();
+}
+function pedTotal(){
+  let tot=0,n=0;
+  document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{
+    const cant=Number(r.querySelector(".ped-cant").value)||0;
+    const pp=Number(r.dataset.pbase)*Number(r.dataset.factor); // €/unidad de pedido
+    const imp=cant*pp; const cell=r.querySelector("[data-imp]");
+    if(cant>0){ n++; tot+=imp; if(cell) cell.textContent=new Intl.NumberFormat("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}).format(imp)+" €"; }
+    else if(cell) cell.textContent="—";
+  });
+  const t=el("ped-total"); if(t) t.textContent=new Intl.NumberFormat("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}).format(tot)+" €";
+  const tn=el("ped-total-n"); if(tn) tn.textContent=n?`· ${n} artículo(s)`:"";
+}
+async function pedCrear(provId){
+  const lineas=[...document.querySelectorAll("#ped-artlist .ped-row")].map(r=>{
+    const cantP=Number(r.querySelector(".ped-cant").value)||0;
+    const factor=Number(r.dataset.factor)||1, pbase=Number(r.dataset.pbase)||0;
+    return { materia_id:r.dataset.mat, cantidad:cantP*factor, precio_esperado:pbase,
+      unidad_pedido:r.dataset.up, cantidad_pedido:cantP, precio_pedido:pbase*factor };
+  }).filter(l=>l.cantidad_pedido>0);
+  if(!lineas.length){ alert("Pon cantidad en al menos un artículo."); return; }
+  if(!bloqueaDoble("pedido")) return;
+  try{
+    const p=await api("/pedidos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({proveedor_id:provId,lineas})});
+    pedConfirmacion(p);
+  }catch(e){ alert(e.message); }
+  finally{ liberaDoble("pedido"); }
+}
+// Pantalla de confirmación: botones explícitos (cada window.open = un gesto fiable).
+function pedConfirmacion(p){
+  openSection("ped-ok","Pedido creado");
+  const copia=((window._pedCfg||{}).copia_whatsapp)||"";
+  const prov=(window._pedCat&&window._pedCat.proveedor)||{};
+  const waProv=(prov.whatsapp||"").replace(/[^0-9]/g,"");
+  const lineas=(p.lineas||[]).map(l=>{
+    const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
+    return `• ${esc(l.nombre)}: ${c} ${esc(u)} × ${pedN(pu)} €/${esc(u)}`;
+  }).join("<br>");
+  setInner(`<div class="card" style="border-color:var(--olive)">
+      <div class="card-name">✓ ${esc(p.codigo)} · ${esc(p.proveedor_nombre)}</div>
+      <div class="card-meta">${pedN(p.total_estimado)} € · ${(p.lineas||[]).length} artículo(s)</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7;">${lineas}</div>
+    </div>
+    <div class="section-label">Enviar por WhatsApp</div>
+    <div class="ped-send">
+      ${waProv?`<button class="btn-primary" onclick="pedEnviarWA('${p.id}','prov')">📤 Enviar al proveedor</button>`:`<div class="err">El proveedor no tiene WhatsApp.</div>`}
+      ${copia?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','copia')">📋 Enviar copia a Jon (+${esc(copia)})</button>`:""}
+    </div>
+    <div class="card-actions" style="margin-top:14px;">
+      <button class="btn-ghost" onclick="irA_pedidos()">Volver a pedidos</button>
+    </div>
+    <div class="ped-foot">Consejo: envía primero al proveedor y luego la copia a Jon.</div>`);
+}
+async function pedEnviarWA(id, destino){
+  try{
+    const p=await api(`/pedidos/${id}`);
+    let prov=(window._pedCat&&window._pedCat.proveedor&&window._pedCat.proveedor.id===p.proveedor_id)?window._pedCat.proveedor:null;
+    if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`);
+    const cfg=window._pedCfg||await api("/pedidos/config").catch(()=>({copia_whatsapp:""}));
+    const lineas=(p.lineas||[]).map(l=>{
+      const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
+      return `• ${l.nombre}: ${c} ${u} × ${pedN(pu)} €/${u} = ${pedN(c*(Number(pu)||0))} €`;
+    }).join("\n");
+    const total=pedN(p.total_estimado);
+    const dias=(prov.dias_reparto&&prov.dias_reparto.length)?`\n(Reparto habitual: ${prov.dias_reparto.join(", ")})`:"";
+    let tel, texto;
+    if(destino==="copia"){
+      tel=(cfg.copia_whatsapp||"").replace(/[^0-9]/g,"");
+      if(!tel){ alert("No hay número de copia configurado."); return; }
+      texto=`📋 COPIA pedido ${p.codigo} → ${prov.nombre}\n${lineas}\n\nTotal estimado: ${total} €`;
+    } else {
+      tel=(prov.whatsapp||"").replace(/[^0-9]/g,"");
+      if(!tel){ alert("Este proveedor no tiene WhatsApp."); return; }
+      texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}\n\nTotal estimado: ${total} €${dias}\n\nGracias.`;
+      await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
+    }
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
+  }catch(e){ alert(e.message); }
+}
+// Cambiar el número de la copia (Jon) desde la propia pantalla.
+async function pedCambiarCopia(){
+  const actual=((window._pedCfg||{}).copia_whatsapp)||"";
+  const v=prompt("Número de WhatsApp para la copia de cada pedido (con prefijo, solo dígitos):", actual);
+  if(v==null) return;
+  try{ const r=await api("/pedidos/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({copia_whatsapp:v})}); window._pedCfg=r; irA_pedidos(); }
+  catch(e){ alert(e.message); }
+}
+
+// ── Pedidos realizados (historial) + buscador ────────────────────────────────
 function pedidoCard(p){
   const provs=window._provPed||[];
   const prov=provs.find(x=>x.id===p.proveedor_id);
-  const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="enviarPedidoWA('${p.id}')">Enviar por WhatsApp</button>`:"";
+  const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>`:"";
   const recibir=(p.estado!=="recibido")?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
+  const linTxt=(p.lineas||[]).map(l=>{
+    const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:(Number(l.precio_esperado)||0);
+    return `${esc(l.nombre)}: ${c} ${esc(u)} × ${pedN(pu)} € = ${pedN(c*(Number(pu)||0))} €`;
+  }).join("<br>");
   return card(
     `${esc(p.codigo)} — ${esc(p.proveedor_nombre)}`,
-    `${esc(p.estado)} · ${(p.total_estimado||0).toFixed(2)} € · ${p.lineas.length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
+    `${esc(p.estado)} · ${pedN(p.total_estimado)} € · ${(p.lineas||[]).length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
     recibir+wa,
-    `<div style="font-size:10px;color:#888070;margin-top:6px;">${p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `${esc(l.nombre)}: ${l.cantidad} ${esc(l.unidad||"")} × ${pu.toFixed(4)} €/${esc(l.unidad||"ud")} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("<br>")}</div>`
+    `<div style="font-size:10px;color:#888070;margin-top:6px;">${linTxt}</div>`
   );
 }
 function renderPedidosLista(list){
   const c=el("ped-lista"); if(!c) return;
   c.innerHTML=(list&&list.length)?list.map(pedidoCard).join(""):`<div class="empty">Ningún pedido coincide con la búsqueda.</div>`;
 }
-// Buscador de pedidos por proveedor o por artículo (nombre de producto de una línea).
 function filtrarPedidos(q){
-  const s=(q||"").toLowerCase().trim();
-  const all=window._pedsAll||[];
+  const s=(q||"").toLowerCase().trim(); const all=window._pedsAll||[];
   if(!s) return renderPedidosLista(all);
-  const f=all.filter(p=>
-    (p.proveedor_nombre||"").toLowerCase().includes(s) ||
-    (p.codigo||"").toLowerCase().includes(s) ||
-    (p.lineas||[]).some(l=>(l.nombre||"").toLowerCase().includes(s))
-  );
+  const f=all.filter(p=>(p.proveedor_nombre||"").toLowerCase().includes(s)||(p.codigo||"").toLowerCase().includes(s)||(p.lineas||[]).some(l=>(l.nombre||"").toLowerCase().includes(s)));
   renderPedidosLista(f);
 }
-function renderPedidoLineas(){
-  const provId=el("ped-prov").value, cont=el("ped-lineas"); if(!cont) return;
-  if(!provId){cont.innerHTML="";return;}
-  const prov=(window._provPed||[]).find(p=>p.id===provId);
-  const aso=(prov&&prov.productos_asociados)||[];
-  // Artículos de ESTE proveedor: por vínculo directo (proveedor_id) o por catálogo
-  // (productos_asociados). Así aparecen también los creados al escanear un albarán.
-  let mats=(window._matPed||[]).filter(m=> m.proveedor_id===provId || aso.includes(m.id));
-  const soloProv=mats.length>0;
-  if(!mats.length) mats=window._matPed||[]; // sin catálogo aún: muestra todo
-  mats=mats.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||""));
-  const rows=mats.map(m=>`<div class="ped-row" data-mat="${m.id}" data-nombre="${esc((m.nombre||"").toLowerCase())}">
-      <span class="ped-name">${esc(m.nombre)}</span>
-      <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0">
-      <span class="ped-u">${esc(m.unidad||"")}</span>
-      <input class="ped-precio" type="number" inputmode="decimal" step="0.0001" value="${m.coste_medio}" title="Precio esperado por ${esc(m.unidad||"ud")}">
-      <span class="ped-u">€/${esc(m.unidad||"ud")}</span>
-    </div>`).join("");
-  cont.innerHTML=`<div class="section-label" style="margin-top:8px;">${soloProv?`Artículos de este proveedor · ${mats.length}`:"Productos (pon cantidad a los que pidas)"}</div>
-    <input id="ped-artq" class="mat-q" placeholder="Buscar artículo de este proveedor…" oninput="buscarArticuloPedido(this.value)" style="margin:6px 0;">
-    <div id="ped-artlist">${rows}</div>`;
-}
-// Buscador RÁPIDO dentro de los artículos del proveedor (oculta/muestra filas,
-// así no se pierde la cantidad ya escrita).
-function buscarArticuloPedido(q){
-  const s=(q||"").toLowerCase().trim();
-  document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{
-    r.style.display=(!s||(r.dataset.nombre||"").includes(s))?"":"none";
-  });
+// Reenviar un pedido ya creado: abre su confirmación (con proveedor cargado).
+async function irA_reenviarPedido(id){
+  try{
+    const p=await api(`/pedidos/${id}`);
+    const cat=await api(`/pedidos/proveedor/${p.proveedor_id}`).catch(()=>null);
+    if(cat) window._pedCat=cat;
+    if(!window._pedCfg) window._pedCfg=await api("/pedidos/config").catch(()=>({copia_whatsapp:""}));
+    pedConfirmacion(p);
+  }catch(e){ alert(e.message); }
 }
 // Buscador GENERAL de artículos: dado un nombre, dice de qué proveedor es y su precio.
 function buscarArticuloGlobal(q){
   const s=(q||"").toLowerCase().trim(); const out=el("ped-cat-res"); if(!out) return;
   if(!s){ out.innerHTML=""; return; }
-  const items=(window._matPed||[]).filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40);
-  out.innerHTML=items.length?items.map(m=>`<div class="card">
+  const items=(window._matPed||window._matCache||[]);
+  const base=items.length?items:(window._provPed? [] : []);
+  // Usa materias si están cacheadas; si no, pide al vuelo una vez.
+  const render=(arr)=>{ out.innerHTML=arr.length?arr.map(m=>`<div class="card">
       <div class="card-name">${esc(m.nombre)}</div>
       <div class="card-meta">Proveedor: <b>${esc(m.proveedor_nombre||"— sin asignar —")}</b> · ${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"ud")} · stock ${m.disponibilidad_actual} ${esc(m.unidad||"")}</div>
-      ${m.proveedor_id?`<div class="card-actions"><button class="btn-ghost" onclick="pedirDeProveedor('${m.proveedor_id}','${m.id}')">Pedir a este proveedor</button></div>`:""}
-    </div>`).join(""):`<div class="empty">Ningún artículo coincide.</div>`;
-}
-// Desde un resultado de la búsqueda general: selecciona el proveedor y enfoca el artículo.
-function pedirDeProveedor(provId, matId){
-  const sel=el("ped-prov"); if(sel){ sel.value=provId; renderPedidoLineas(); }
-  const res=el("ped-cat-res"); if(res) res.innerHTML=""; const q=el("ped-cat-q"); if(q) q.value="";
-  setTimeout(()=>{ const row=document.querySelector(`#ped-artlist .ped-row[data-mat="${matId}"]`); if(row){ row.scrollIntoView({block:"center"}); const inp=row.querySelector(".ped-cant"); if(inp) inp.focus(); } },60);
-}
-
-async function crearPedido(){
-  const provId=el("ped-prov").value;
-  if(!provId){alert("Selecciona un proveedor.");return;}
-  const lineas=[...document.querySelectorAll(".ped-row")].map(r=>({
-    materia_id:r.dataset.mat,
-    cantidad:Number(r.querySelector(".ped-cant").value)||0,
-    precio_esperado:Number(r.querySelector(".ped-precio").value)||0,
-  })).filter(l=>l.cantidad>0);
-  if(!lineas.length){alert("Pon cantidad en al menos un producto.");return;}
-  if(!bloqueaDoble("pedido")) return;
-  try{
-    const p=await api("/pedidos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({proveedor_id:provId,lineas})});
-    if(confirm("Pedido creado. ¿Enviarlo ahora por WhatsApp al proveedor?")){ enviarPedidoWA(p.id); }
-    else { irA_pedidos(); }
-  }catch(e){alert(e.message);}
-  finally{ liberaDoble("pedido"); }
-}
-
-async function enviarPedidoWA(id){
-  try{
-    const p=await api(`/pedidos/${id}`);
-    let prov=(window._provPed||[]).find(x=>x.id===p.proveedor_id);
-    if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`);
-    const tel=(prov.whatsapp||"").replace(/[^0-9+]/g,"").replace(/^\+/,"");
-    if(!tel){alert("Este proveedor no tiene WhatsApp.");return;}
-    const lineas=p.lineas.map(l=>{const pu=Number(l.precio_esperado)||0;return `• ${l.nombre}: ${l.cantidad} ${l.unidad} × ${pu.toFixed(2)} €/${l.unidad||"ud"} = ${(l.cantidad*pu).toFixed(2)} €`;}).join("\n");
-    const total=(Number(p.total_estimado)||p.lineas.reduce((s,l)=>s+l.cantidad*(Number(l.precio_esperado)||0),0)).toFixed(2);
-    const texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}\n\nTotal estimado: ${total} €\n\nGracias.`;
-    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
-    await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
-    irA_pedidos();
-  }catch(e){alert(e.message);}
+      ${m.proveedor_id?`<div class="card-actions"><button class="btn-ghost" onclick="irA_pedidoProveedor('${m.proveedor_id}')">Pedir a este proveedor</button></div>`:""}
+    </div>`).join(""):`<div class="empty">Ningún artículo coincide.</div>`; };
+  if(window._matPed){ render(window._matPed.filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40)); }
+  else { api("/materias").then(ms=>{ window._matPed=ms; render(ms.filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40)); }).catch(()=>{ out.innerHTML=""; }); }
 }
 
 // Avisos del cotejo albarán↔pedido↔precios.

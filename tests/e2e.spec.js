@@ -823,26 +823,57 @@ test("navegación: atrás vuelve al nivel anterior del almacén, no al inicio", 
 });
 
 // Pedidos: buscador por proveedor o artículo.
-test("pedidos: el buscador filtra la lista de pedidos", async ({ page }) => {
+test("pedidos: buscador de proveedores, buscador de artículo y catálogo del proveedor", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_pedidos());
-  // Buscador general de artículo (proveedor + precio).
+  // Buscador de PROVEEDORES + tarjetas de proveedor.
+  await expect(page.locator("#ped-prov-q")).toBeVisible();
+  await expect(page.locator(".ped-prov").first()).toBeVisible();
+  // Buscador general de artículo (dime proveedor + precio).
   await expect(page.locator("#ped-cat-q")).toBeVisible();
-  await page.fill("#ped-cat-q", "matcha");
+  await page.fill("#ped-cat-q", "aguacate");
   await expect(page.locator("#ped-cat-res .card").first()).toBeVisible();
   await expect(page.locator("#ped-cat-res .card-meta").first()).toContainText(/Proveedor:/);
   await page.fill("#ped-cat-q", "");
-  // Al elegir un proveedor: aparecen sus artículos con su buscador.
-  await page.selectOption("#ped-prov", { index: 1 });
-  await expect(page.locator("#ped-artq")).toBeVisible();
-  await expect(page.locator("#ped-artlist")).toBeVisible();
   // Buscador de la lista de pedidos realizados.
   await expect(page.locator("#ped-buscar")).toBeVisible();
   await page.fill("#ped-buscar", "zzz_no_existe_zzz");
   await expect(page.locator("#ped-lista .empty")).toBeVisible();
   await page.fill("#ped-buscar", "");
+  // Catálogo de un proveedor: artículos con precio en unidad de pedido + sugerido.
+  await page.evaluate(() => irA_pedidoProveedor("prov-001"));
+  await expect(page.locator(".ped-head-n")).toContainText(/Frutas Pedregalejo/i);
+  await expect(page.locator("#ped-artq")).toBeVisible();
+  await expect(page.locator("#ped-artlist .ped-row").first()).toBeVisible();
+  await expect(page.locator(".ped-row .ped-cant").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("pedidos: genera un pedido y lo envía por WhatsApp al proveedor y copia a Jon", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // Captura las URLs de WhatsApp sin abrir pestañas reales.
+  await page.evaluate(() => { window.__wa = []; window.open = (u) => { window.__wa.push(u); return null; }; });
+  await page.evaluate(() => irA_pedidoProveedor("prov-001"));
+  await expect(page.locator(".ped-row .ped-cant").first()).toBeVisible();
+  await page.locator(".ped-row .ped-cant").first().fill("2");
+  await expect(page.locator("#ped-total")).toContainText(/€/);
+  await page.locator("button", { hasText: "Generar pedido" }).click();
+  // Confirmación con los dos botones de WhatsApp (proveedor + copia a Jon).
+  await expect(page.locator(".card-name")).toContainText(/PED-/);
+  await expect(page.locator("button", { hasText: "Enviar al proveedor" })).toBeVisible();
+  await expect(page.locator("button", { hasText: /copia a Jon/ })).toBeVisible();
+  await page.locator("button", { hasText: "Enviar al proveedor" }).click();
+  await page.locator("button", { hasText: /copia a Jon/ }).click();
+  // Los onclick son async (crean el mensaje y luego abren WhatsApp): esperamos a
+  // que se hayan capturado los dos enlaces antes de comprobar.
+  await expect.poll(() => page.evaluate(() => (window.__wa || []).length)).toBeGreaterThanOrEqual(2);
+  const was = await page.evaluate(() => window.__wa || []);
+  expect(was.some((u) => /wa\.me\/34682250373/.test(u)), "copia a Jon").toBe(true);
+  expect(was.some((u) => /wa\.me\/\d+\?text=/.test(u) && /PED-/.test(decodeURIComponent(u))), "pedido al proveedor").toBe(true);
   expect(errors).toEqual([]);
 });
 
@@ -858,7 +889,7 @@ test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async
   await page.waitForSelector(".viz", { timeout: 15_000 });
   expect(await page.evaluate(() => document.body.classList.contains("tpv"))).toBe(true);
   await page.evaluate(() => irA_pedidos());
-  await page.selectOption("#ped-prov", { index: 1 });
+  await page.evaluate(() => irA_pedidoProveedor("prov-001"));
   const cant = page.locator(".ped-row .ped-cant").first();
   await cant.click();
   await expect(page.locator("#tpv-keypad.on")).toBeVisible();

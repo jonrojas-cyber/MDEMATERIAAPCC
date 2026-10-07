@@ -426,8 +426,13 @@ store
     require("./seed-fit").seedFit().catch(() => {}); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
     require("./seed-analisis-mes").seedAnalisisMes().catch(() => {}); // snapshot de análisis del mes (sept 2026)
     require("./seed-etiquetas").seedEtiquetas().catch(() => {}); // catálogo de etiquetas de producción (buscador)
-    // Siembra idempotente de proveedores reales (Frutería y siguientes).
-    require("./seed-proveedores").seedProveedores().catch(() => {});
+    // Siembra idempotente de proveedores reales (Frutería y siguientes) y, después,
+    // los productos por proveedor extraídos de las facturas del 3T 2026 (catálogo de
+    // compra para el buscador de Pedidos). El segundo depende de que existan los
+    // proveedores, por eso se encadena.
+    require("./seed-proveedores").seedProveedores()
+      .then(() => { try { require("./seed-productos-facturas").aplicar(store); } catch (e) {} })
+      .catch(() => {});
     // Siembra idempotente de los productos de venta de Ágora que Control M no
     // tenía (para que el conector deje de bloquear tickets por "no vinculado").
     require("./seed-productos-agora").seedProductosAgora().catch(() => {});

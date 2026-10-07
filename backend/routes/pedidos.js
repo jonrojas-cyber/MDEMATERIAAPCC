@@ -54,6 +54,32 @@ function catalogoProveedor(st, provId) {
       cantidad_sugerida: rN(sugBase / up.factor, up.dec),    // en unidad de pedido (0 si está ok)
     };
   });
+  // Catálogo de COMPRA del proveedor (compras_productos, p.ej. extraído de facturas):
+  // artículos que se le compran aunque no sean materias de stock. Se añaden si no los
+  // cubre ya una materia (mismo nombre normalizado). Son pedibles con su precio.
+  const norm = (s) => String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const vistos = new Set(articulos.map((a) => norm(a.nombre)));
+  let calc = null; try { calc = require("../compras-productos-calc"); } catch (e) {}
+  (st.readAll("compras_productos") || []).filter((c) => c.proveedor_id === provId).forEach((c0) => {
+    const c = calc && calc.calcular ? Object.assign({}, c0, calc.calcular(c0)) : c0;
+    const nn = norm(c.nombre);
+    if (!c.nombre || vistos.has(nn)) return;
+    vistos.add(nn);
+    const formato = c.formato || c.unidad || "ud";
+    const precioPedido = c.precio_con_iva != null ? Number(c.precio_con_iva)
+      : (Number(c.precio_sin_iva) || 0) * (1 + (Number(c.iva) || 0) / 100);
+    const dec = /^(kg|l|litro|litros)$/i.test(formato) ? 2 : 0;
+    articulos.push({
+      compra_id: c.id,
+      nombre: c.nombre,
+      unidad_base: formato, factor: 1, unidad_pedido: formato, dec,
+      precio_base: rN(precioPedido, 4), precio_pedido: rN(precioPedido, 4),
+      disponibilidad_base: null, disponibilidad_pedido: null,
+      stock_minimo: 0, stock_ideal: 0,
+      estado: "catalogo", cantidad_sugerida: 0,
+    });
+  });
+  articulos.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
   return {
     proveedor: {
       id: prov.id, nombre: prov.nombre, contacto: prov.contacto || "",
@@ -116,20 +142,34 @@ router.post("/", (req, res) => {
   const { proveedor_id, lineas } = req.body || {};
   if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor" });
 
-  const candidatas = (Array.isArray(lineas) ? lineas : []).filter((l) => l.materia_id && Number(l.cantidad) > 0);
+  const candidatas = (Array.isArray(lineas) ? lineas : []).filter((l) => (l.materia_id || l.compra_id) && Number(l.cantidad) > 0);
   if (!candidatas.length) return res.status(400).json({ error: "Añade al menos un producto con cantidad" });
 
   const prov = store.findById("proveedores", proveedor_id);
   const materias = store.readAll("materias");
+  const compras = store.readAll("compras_productos") || [];
   const lineasN = candidatas.map((l) => {
-    const m = materias.find((x) => x.id === l.materia_id);
-    const linea = {
-      materia_id: l.materia_id,
-      nombre: m ? m.nombre : l.materia_id,
-      unidad: m ? m.unidad : "",
-      cantidad: Number(l.cantidad), // unidad base
-      precio_esperado: l.precio_esperado != null ? Number(l.precio_esperado) : m ? m.coste_medio : 0,
-    };
+    let linea;
+    if (l.materia_id) {
+      const m = materias.find((x) => x.id === l.materia_id);
+      linea = {
+        materia_id: l.materia_id,
+        nombre: m ? m.nombre : l.materia_id,
+        unidad: m ? m.unidad : "",
+        cantidad: Number(l.cantidad), // unidad base
+        precio_esperado: l.precio_esperado != null ? Number(l.precio_esperado) : m ? m.coste_medio : 0,
+      };
+    } else {
+      // Artículo del catálogo de compra (sin materia de stock): se guarda tal cual.
+      const c = compras.find((x) => x.id === l.compra_id);
+      linea = {
+        compra_id: l.compra_id,
+        nombre: l.nombre || (c ? c.nombre : l.compra_id),
+        unidad: l.unidad_pedido || (c ? c.formato || c.unidad || "ud" : "ud"),
+        cantidad: Number(l.cantidad),
+        precio_esperado: l.precio_esperado != null ? Number(l.precio_esperado) : c && c.precio_con_iva != null ? Number(c.precio_con_iva) : 0,
+      };
+    }
     // Unidad de pedido (amigable) — opcional, del flujo nuevo.
     if (l.unidad_pedido) linea.unidad_pedido = String(l.unidad_pedido);
     if (l.cantidad_pedido != null) linea.cantidad_pedido = Number(l.cantidad_pedido);

@@ -90,6 +90,17 @@ const BATCHES = [
       { id: "ventas_mes_2026-09", valor: 12492.72 },
     ],
   },
+  {
+    // Costes fijos reales que faltaban (facturas 3T 2026): alquiler del TPV/Ágora y
+    // hosting de la app. Categoría TPV/Software (NO personal): el personal es su
+    // propio segmento (fc-lara/fc-daniel). Importes aprox., editables en Costes fijos.
+    flag: "negocio_seed_v10_tpv_hosting",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-tpv-agora", name: "Alquiler TPV / software Ágora", category: "TPV", amount: 42, vat: 21, periodicity: "monthly", active: true, start_date: "2026-07-01", notes: "Alquiler del TPV/Ágora (THR Spain / Retail Offshore). Importe real aprox. factura 3T 2026; editable." },
+      { id: "fc-hosting", name: "Hosting / servidor (app)", category: "Software", amount: 16, vat: 0, periodicity: "monthly", active: true, start_date: "2026-07-01", notes: "Hosting de Control M en Render (~17,5 $/mes). Editable." },
+    ],
+  },
 ];
 
 async function seedNegocio() {

@@ -2659,7 +2659,9 @@ function modulosMeta(d) {
     analisis:     { num:"02", name:"Análisis", badge:"Reportes y stock", urgent:false },
     analisisDiario:{ num:"02", name:"Análisis diario", badge:"Rayos X · venta y compra del día", urgent:false },
     dossier:      { num:"02", name:"Dossier para Claude", badge:"Todo el negocio · para asesoría", urgent:false },
+    financiero:   { num:"03", name:"Resumen financiero", badge:"EBITDA día · mes · año · prime cost", urgent:false },
     cuentaResultados:{ num:"03", name:"Cuenta de resultados", badge:"P&L del mes · ingresos, gastos, resultado", urgent:false },
+    revisionCatalogo:{ num:"05", name:"Revisión del catálogo", badge:"Cada 2 meses · archivar lo no pedido", urgent:false },
     analisisMes:  { num:"03", name:"Análisis del mes", badge:"Ventas · mix · día de semana · ticket medio", urgent:false },
     cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
@@ -2683,7 +2685,7 @@ const CATS = {
   equipo:     { name:"Equipo", desc:"Fichaje · Turnos · Ausencias · Tablón · Incidencias", ids:["turnos","fichaje","ausencias","tablon","incidencias"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Carta · Márgenes · Análisis · Ventas · Config", ids:["menu","carta","analisisDiario","analisisMes","cuentaResultados","ventas","conectorTPV","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Financiero · Carta · Márgenes · Análisis · Ventas · Config", ids:["menu","carta","financiero","analisisDiario","analisisMes","cuentaResultados","ventas","conectorTPV","revisionCatalogo","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -3161,7 +3163,7 @@ function vizChart(real, opts){
   </div>`;
 }
 
-function vizHomeHTML(d, ini, dec, conc, tpv){
+function vizHomeHTML(d, ini, dec, conc, tpv, fin){
   const P=(d&&d.panel_direccion)||{}, H=P.hoy||{}, M=P.mes||{};
   const T=(d&&d.tesoreria)||{}, OP=(d&&d.operaciones)||{}, EQ=(d&&d.equipo)||{};
   const ag=(ini&&ini.agora)||{};
@@ -3242,6 +3244,18 @@ function vizHomeHTML(d, ini, dec, conc, tpv){
     ${stat(vizPct(M.coste_laboral_pct),"coste de personal",`${M.coste_laboral_pct!=null?vizDelta(M.coste_laboral_pct-objPers,"pt",false):""} <span class="viz-mut">obj. ${objPers}%</span>`)}
   </div>`;
 
+  // ── EBITDA por día abierto (resumen financiero, clic → vista día·mes·año) ──
+  let ebitdaBand="";
+  if(fin && fin.tiene_materia && fin.escalas && fin.escalas.dia){
+    const fd=fin.escalas.dia, fr=fin.ratios||{}; const posE=(fd.ebitda||0)>=0;
+    ebitdaBand=`<button class="viz-ebit" onclick="irA_financiero()">
+      <span class="viz-ebit-l">EBITDA<br>por día abierto</span>
+      <span class="viz-ebit-v ${posE?'pos':'neg'}">${vizEur(fd.ebitda)}</span>
+      <span class="viz-ebit-r">prime cost <b>${fr.prime_cost_pct!=null?fr.prime_cost_pct+'%':'—'}</b> · personal ${fr.personal_pct!=null?fr.personal_pct+'%':'—'} · food ${fr.food_cost_pct!=null?fr.food_cost_pct+'%':'—'} · fijos ${fr.fijos_pct!=null?fr.fijos_pct+'%':'—'} · <b>EBITDA ${fr.ebitda_pct!=null?fr.ebitda_pct+'%':'—'}</b></span>
+      <span class="viz-ebit-go">día · mes · año →</span>
+    </button>`;
+  }
+
   // ── Decisiones + Pulso ──
   const b=(typeof decBuckets==="function")?decBuckets(dec||{}):{critico:[],importante:[]};
   const its=[...(b.critico||[]).map(x=>({x,k:"alto"})),...(b.importante||[]).map(x=>({x,k:"medio"}))];
@@ -3304,7 +3318,7 @@ function vizHomeHTML(d, ini, dec, conc, tpv){
     ${hero}
     <div class="viz-layout">
       <div class="viz-main">
-        ${heroNums}${mainChart}${stats}
+        ${heroNums}${mainChart}${stats}${ebitdaBand}
         <div class="viz-dp">${decis}${pulso}</div>
       </div>
       <aside class="viz-aside">${sideMes}${sideCaja}${sideFoot}</aside>
@@ -3391,6 +3405,15 @@ function vizHomeCSS(){ return `<style>
   .viz-pr-s{display:block;font-size:10.5px;color:var(--viz-ink2);margin-top:1px;}
   .viz-pr-v{font-size:19px;}.viz-pr-v small{font-size:11px;color:var(--viz-ink2);}
   .viz-clear{font-size:12.5px;color:var(--viz-ink2);padding:10px 2px;}
+  /* EBITDA por día abierto (banda clicable) */
+  .viz-ebit{flex:0 0 auto;display:flex;align-items:center;gap:16px;width:100%;background:none;border:0;border-bottom:1px solid var(--viz-line);padding:11px 2px;text-align:left;cursor:pointer;color:var(--viz-ink);font-family:inherit;}
+  .viz-ebit:hover{background:rgba(27,23,20,.04);}
+  .viz-ebit-l{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--viz-ink2);line-height:1.25;white-space:nowrap;}
+  .viz-ebit-v{font-size:24px;font-weight:400;letter-spacing:-.02em;white-space:nowrap;}
+  .viz-ebit-v.pos{color:var(--viz-up);}.viz-ebit-v.neg{color:var(--viz-down);}
+  .viz-ebit-r{font-size:10.5px;color:var(--viz-ink2);}.viz-ebit-r b{color:var(--viz-ink);font-weight:700;}
+  .viz-ebit-go{margin-left:auto;font-size:10px;color:var(--viz-ink2);white-space:nowrap;letter-spacing:.04em;}
+  @media(max-width:719px){.viz-ebit{flex-wrap:wrap;gap:8px 14px;}.viz-ebit-go{margin-left:0;}}
   /* Columna derecha */
   .viz-aside-block{flex:0 0 auto;margin-bottom:16px;}
   .viz-mes{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
@@ -3421,14 +3444,15 @@ async function loadHomeCEO(){
   try{ document.getElementById("screen-home").classList.add("home-ceo"); }catch(e){}
   el("home-content").innerHTML = vizSkeleton();
   // Carga por módulos: si uno falla, el panel se pinta igual con lo que haya.
-  const [d, ini, dec, conc, tpv] = await Promise.all([
+  const [d, ini, dec, conc, tpv, fin] = await Promise.all([
     api("/executive-dashboard?preset=hoy").catch(()=>({_err:true})),
     api("/inicio").catch(()=>({_err:true})),
     api("/decisiones").catch(()=>null),
     api("/inventario/conciliacion").catch(()=>null),
     api("/integraciones/tpv").catch(()=>null),
+    api("/financiero").catch(()=>null),
   ]);
-  el("home-content").innerHTML = vizHomeHTML(d, ini, dec, conc, tpv);
+  el("home-content").innerHTML = vizHomeHTML(d, ini, dec, conc, tpv, fin);
 }
 
 async function loadHome() {
@@ -7290,6 +7314,7 @@ function ccRender(d){
     <div class="cc-card cc-wide" id="cc-mermas"><div class="cc-label">Mermas</div><div class="cc-mini">analizando mermas del periodo…</div></div>
     <div class="section-label" style="margin-top:16px;">Más detalle</div>
     <div class="cc-links">
+      <button class="cc-link cc-link-wide" onclick="irA_financiero()">Resumen financiero · EBITDA día · mes · año (con prime cost)</button>
       <button class="cc-link cc-link-wide" onclick="irA_timeline()">Línea temporal · pasado, presente y futuro</button>
       <button class="cc-link" onclick="irA_panel()">Análisis y tendencias</button>
       <button class="cc-link" onclick="irA_costesFijos()">Costes fijos</button>
@@ -9824,6 +9849,211 @@ async function crBorrarCierre(btn){
     window._cr.ventas="";
     crRender(r);
   }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FINANCIERO · resumen zoomable (día abierto · mes · año) con cascada EBITDA.
+// La cascada que mira un hostelero: Ventas → food cost → margen bruto → personal
+// → PRIME COST → costes fijos → EBITDA (€ y %). Fuente única: /api/financiero
+// (que toma el P&L de cuenta-resultados y lo escala). Solo dirección.
+// ════════════════════════════════════════════════════════════════════════════
+async function irA_financiero(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("financiero","Resumen financiero");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección ve el resumen financiero.</div>`); return; }
+  window._fin = window._fin || { scope:"dia", mes:"" };
+  await finCargar();
+}
+async function finCargar(){
+  setInner(`<div class="empty">Calculando el resumen…</div>`);
+  try{
+    const qs=new URLSearchParams(); if(window._fin.mes) qs.set("mes",window._fin.mes);
+    const r=await api("/financiero"+(qs.toString()?("?"+qs.toString()):""));
+    window._finData=r;
+    if(!window._fin.mes) window._fin.mes=r.mes_base;
+    finRender();
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function finFechaMes(etq){
+  const mn=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const p=String(etq||"").split("-"); return p.length>=2?`${mn[(+p[1]-1)]||""} ${p[0]}`:String(etq||"");
+}
+function finRender(){
+  const r=window._finData; if(!r){ return finCargar(); }
+  const scope=window._fin.scope||"dia";
+  const style=`<style>
+    .fin-toggle{display:flex;gap:0;border:1px solid var(--line,#3a3a2e);border-radius:8px;overflow:hidden;margin:2px 0 12px;}
+    .fin-tg{flex:1;background:none;border:0;border-right:1px solid var(--line,#3a3a2e);padding:10px 4px;font-family:var(--sans);font-size:13px;font-weight:700;color:var(--muted,#8a8577);cursor:pointer;}
+    .fin-tg:last-child{border-right:0;}
+    .fin-tg.on{background:var(--olive,#4b4a42);color:#f0ebe0;}
+    .fin-hero{border:1px solid var(--line,#3a3a2e);border-radius:10px;padding:16px;text-align:center;margin-bottom:12px;}
+    .fin-hero-l{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted,#8a8577);}
+    .fin-hero-v{font-size:38px;font-weight:300;letter-spacing:-.02em;line-height:1.05;margin-top:6px;}
+    .fin-hero-v.pos{color:var(--ok,#3c7a4a);} .fin-hero-v.neg{color:var(--alert,#b23b3b);}
+    .fin-hero-s{font-size:12px;color:var(--muted,#8a8577);margin-top:6px;}
+    .fin-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px;}
+    .fin-chip{font-size:11px;padding:4px 9px;border:1px solid var(--line,#3a3a2e);border-radius:20px;color:var(--muted,#8a8577);}
+    .fin-chip b{color:var(--ink,#1b1b16);font-weight:700;}
+    .fin-chip.key{border-color:var(--olive,#4b4a42);}
+    .fin-seg-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line,#3a3a2e);}
+    .fin-seg-row:last-child{border-bottom:0;}
+    .fin-seg-row .q{text-align:right;white-space:nowrap;}
+    .fin-seg-row .pc{color:var(--muted,#8a8577);font-size:11px;margin-left:6px;}
+  </style>`;
+  if(!r.tiene_materia){
+    setInner(`${style}
+      <div class="section-label">Resumen financiero · ${esc(finFechaMes(r.mes_base))}</div>
+      <div class="ad-note">Aún no puedo calcular el EBITDA de <b>${esc(finFechaMes(r.mes_base))}</b>: no hay ventas con escandallo ni cierre guardado para este mes. Guarda el cierre del mes en <b>Cuenta de resultados</b> (o arranca el conector de Ágora) y verás aquí la cascada completa.</div>
+      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="irA_cuentaResultados()">Ir a Cuenta de resultados →</button></div>`);
+    return;
+  }
+  const E=r.escalas[scope]||{}; const R=r.ratios||{}; const Q=r.equilibrio||{};
+  const posE=(E.ebitda||0)>=0;
+  const scopeLbl={dia:"por día abierto",mes:"este mes",anio:"al año (ritmo actual)"}[scope];
+  const toggle=`<div class="fin-toggle">
+    ${[["dia","Día"],["mes","Mes"],["anio","Año"]].map(([s,l])=>`<button class="fin-tg${s===scope?' on':''}" onclick="window._fin.scope='${s}';finRender()">${l}</button>`).join("")}
+  </div>`;
+  const hero=`<div class="fin-hero">
+    <div class="fin-hero-l">EBITDA · ${scopeLbl}</div>
+    <div class="fin-hero-v ${posE?'pos':'neg'}">${adEur(E.ebitda)}</div>
+    <div class="fin-hero-s">${R.ebitda_pct!=null?`margen EBITDA ${R.ebitda_pct} % · `:""}sobre ${adEur(E.ventas)} de ventas</div>
+  </div>`;
+  const chips=`<div class="fin-chips">
+    <div class="fin-chip">food cost <b>${finPct(R.food_cost_pct)}</b></div>
+    <div class="fin-chip">personal <b>${finPct(R.personal_pct)}</b></div>
+    <div class="fin-chip key">prime cost <b>${finPct(R.prime_cost_pct)}</b></div>
+    <div class="fin-chip">costes fijos <b>${finPct(R.fijos_pct)}</b></div>
+    <div class="fin-chip key">EBITDA <b>${finPct(R.ebitda_pct)}</b></div>
+  </div>`;
+  const row=(lbl,val,o)=>{ o=o||{};
+    const color = o.strong&&o.accent ? ((val==null?0:val)>=0?'var(--ok,#3c7a4a)':'var(--alert,#b23b3b)') : (o.neg?'var(--alert,#b23b3b)':'');
+    return `<tr${o.strong?' style="font-weight:800;border-top:1px solid var(--line,#3a3a2e);"':''}>
+      <td>${esc(lbl)}${o.pct!=null?` <span style="color:var(--muted,#8a8577);font-weight:400;">${o.pct} %</span>`:""}</td>
+      <td class="q" style="text-align:right;${color?`color:${color};`:''}">${(o.neg?'−':'')+adEur(Math.abs(val==null?0:val))}</td></tr>`;
+  };
+  const cascada=`<table class="lim-tab"><tbody>
+    ${row("Ventas (neto)",E.ventas)}
+    ${row("− Food cost",E.coste_materia,{neg:true,pct:R.food_cost_pct})}
+    ${row("= Margen bruto",E.margen_bruto,{pct:R.margen_bruto_pct})}
+    ${row("− Personal",E.personal,{neg:true,pct:R.personal_pct})}
+    ${row("= Prime cost (materia + personal)",E.prime_cost,{pct:R.prime_cost_pct})}
+    ${row("− Costes fijos",E.otros_fijos,{neg:true,pct:R.fijos_pct})}
+    ${(E.variables>0)?row("− Variables / mermas",E.variables,{neg:true,pct:R.variables_pct}):""}
+    ${row("= EBITDA",E.ebitda,{strong:true,accent:true,pct:R.ebitda_pct})}
+    ${row("− Cuota de préstamos",E.cuota_creditos,{neg:true})}
+    ${row("= Resultado (caja)",E.resultado_caja,{strong:true,accent:true})}
+  </tbody></table>`;
+  // Break-even por día abierto.
+  const be=Q.dia_abierto!=null?`<div class="ad-note" style="margin-top:10px;">
+    <b>Break-even por día abierto:</b> necesitas vender <b>${adEur(Q.dia_abierto)}</b> cada día que abres para no perder (con préstamos, ${adEur(Q.dia_abierto_con_creditos)}).
+    Al ritmo de ${esc(finFechaMes(r.mes_base))} vendes <b>${adEur(Q.ventas_dia_abierto)}</b>/día →
+    ${Q.margen_seguridad_pct!=null?`margen de seguridad <b style="color:${Q.en_perdidas?'var(--alert,#b23b3b)':'var(--ok,#3c7a4a)'};">${Q.margen_seguridad_pct} %</b>`:"—"}.
+  </div>`:"";
+  // Segmentos: personal por persona + otros fijos por concepto (coste mensual).
+  const seg=r.segmentos||{};
+  const segLista=(arr)=>(arr||[]).map(l=>`<div class="fin-seg-row"><span>${esc(l.nombre)}</span><span class="q">${adEur(l.mensual)}<span class="pc">${l.pct!=null?l.pct+" %":""}</span></span></div>`).join("")||`<div class="fin-seg-row"><span class="muted">Sin líneas.</span></div>`;
+  const segmentos=`
+    <div class="section-label" style="margin-top:16px;">Personal (coste mensual)</div>
+    ${segLista(seg.personal)}
+    <div class="fin-seg-row" style="font-weight:800;border-top:1px solid var(--line,#3a3a2e);"><span>Total personal</span><span class="q">${adEur(seg.personal_total_mes)}<span class="pc">${R.personal_pct!=null?R.personal_pct+" %":""}</span></span></div>
+    <div class="section-label" style="margin-top:14px;">Costes fijos (coste mensual)</div>
+    ${segLista(seg.fijos)}
+    <div class="fin-seg-row" style="font-weight:800;border-top:1px solid var(--line,#3a3a2e);"><span>Total costes fijos</span><span class="q">${adEur(seg.fijos_total_mes)}<span class="pc">${R.fijos_pct!=null?R.fijos_pct+" %":""}</span></span></div>`;
+  const notaMes = r.autodetectado?`<div class="ad-dia" style="margin-top:4px;">Mostrando el último mes con datos: <b>${esc(finFechaMes(r.mes_base))}</b>. El mes en curso aún no tiene ventas registradas.</div>`:"";
+  const origenTxt = r.ventas_origen==="cierre_guardado"?"cierre del mes guardado ✓":r.ventas_origen==="manual_agora"?"ventas escritas a mano (Ágora)":"ventas registradas en la app";
+  setInner(`${style}
+    <div class="section-label">Resumen financiero</div>
+    <div class="field"><label>Mes base</label><input type="month" value="${esc(r.mes_base)}" onchange="window._fin.mes=this.value;finCargar()" style="width:100%;"></div>
+    ${notaMes}
+    ${toggle}
+    ${hero}
+    ${chips}
+    ${be}
+    <div class="section-label" style="margin-top:16px;">Cascada · ${scopeLbl}</div>
+    ${cascada}
+    <div class="ad-foot">${scope==="dia"?`Cada cifra es el reparto de ${esc(finFechaMes(r.mes_base))} entre los ${r.dias_abiertos_mes} días que abres al mes (${r.dias_semana} días/semana).`:scope==="anio"?`Proyección a 12 meses al ritmo de ${esc(finFechaMes(r.mes_base))}.`:`Mes completo de ${esc(finFechaMes(r.mes_base))}.`} · Food cost ${r.food_cost_origen==="manual"?"manual (provisional)":"calculado de escandallos"} · ${origenTxt}.</div>
+    ${segmentos}
+    <div class="ad-foot" style="margin-top:12px;">Prime cost (materia + personal) es la cifra clave en hostelería: objetivo ≈ 60–65 % de las ventas. EBITDA = antes de intereses de préstamos; el resultado de caja ya se los resta.</div>
+    <div class="card-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-ghost" onclick="irA_cuentaResultados()">Cuenta de resultados →</button>
+      <button class="btn-ghost" onclick="irA_costesFijos()">Editar costes fijos →</button>
+    </div>
+  `);
+}
+function finPct(n){ return n==null?"—":(n+" %"); }
+
+// ════════════════════════════════════════════════════════════════════════════
+// REVISIÓN DEL CATÁLOGO · cada 2 meses, lo no pedido se propone para ARCHIVAR
+// (no se borra: recuperable). Solo dirección.
+// ════════════════════════════════════════════════════════════════════════════
+async function irA_revisionCatalogo(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("revisionCatalogo","Revisión del catálogo");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección revisa el catálogo.</div>`); return; }
+  await rcCargar();
+}
+async function rcCargar(){
+  setInner(`<div class="empty">Revisando el catálogo…</div>`);
+  try{ const r=await api("/catalogo-revision"); window._rc=r; rcRender(r); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function rcFecha(iso){ if(!iso) return "—"; const d=new Date(iso); return d.toLocaleDateString("es-ES",{day:"numeric",month:"short",year:"numeric"}); }
+function rcRender(r){
+  const cand=r.candidatos||[], arch=r.archivados||[];
+  const dueBadge = r.due
+    ? `<span style="color:#c79a3a;font-weight:700;">Toca revisión</span> · cada ${r.periodo_dias} días`
+    : `<span style="color:var(--ok,#3c7a4a);">Al día</span> · próxima ${rcFecha(r.proxima_revision)}`;
+  const candBloque = cand.length
+    ? `<div class="section-label" style="margin-top:10px;">No pedido en ${r.periodo_dias} días · ${cand.length} artículo${cand.length===1?"":"s"}</div>
+       <div class="ad-note">Revisa la lista: deja marcado lo que quieras <b>archivar</b> (desaparece del buscador de pedidos, pero se puede recuperar). Desmarca lo que quieras conservar.</div>
+       <div style="margin:8px 0;">${cand.map(c=>`
+         <label class="rc-row" style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line,#3a3a2e);cursor:pointer;">
+           <input type="checkbox" class="rc-chk" value="${esc(c.id)}" checked style="width:18px;height:18px;flex:0 0 auto;">
+           <span style="min-width:0;flex:1;"><b>${esc(c.nombre)}</b><br><span style="font-size:11px;color:var(--muted,#8a8577);">${esc(c.proveedor_nombre)} · ${c.nunca_pedido?"nunca pedido":esc(c.dias_sin_pedir+" días sin pedir")}</span></span>
+         </label>`).join("")}</div>
+       <div class="card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+         <button class="btn-primary" onclick="rcArchivarSeleccionados(this)">Archivar seleccionados</button>
+         <button class="btn-ghost" onclick="rcDarRevisada(this)">Conservar todos · dar por revisada</button>
+       </div>`
+    : `<div class="section-label" style="margin-top:10px;">Nada que archivar</div>
+       <div class="todo-clear">✓ Todo tu catálogo se ha pedido (o es reciente) en los últimos ${r.periodo_dias} días.</div>
+       <div class="card-actions" style="margin-top:8px;"><button class="btn-ghost" onclick="rcDarRevisada(this)">Dar por revisada</button></div>`;
+  const archBloque = arch.length
+    ? `<div class="section-label" style="margin-top:18px;">Archivados · ${arch.length}</div>
+       <div class="ad-foot">No aparecen en el buscador de pedidos. Puedes recuperarlos cuando quieras.</div>
+       ${arch.map(c=>`<div class="fin-seg-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#3a3a2e);">
+         <span style="min-width:0;"><b>${esc(c.nombre)}</b><br><span style="font-size:11px;color:var(--muted,#8a8577);">${esc(c.proveedor_nombre)} · archivado ${rcFecha(c.archivado_en)}</span></span>
+         <button class="btn-ghost" style="flex:0 0 auto;" onclick="rcRecuperar('${esc(c.id)}',this)">Recuperar</button>
+       </div>`).join("")}`
+    : "";
+  setInner(`
+    <div class="section-label">Revisión del catálogo</div>
+    <div class="ad-dia">${dueBadge} · última ${rcFecha(r.ultima_revision)}</div>
+    <div class="ad-foot">Cada 2 meses repaso el catálogo de compra. Lo que no has pedido se propone para archivar (nunca se borra). Solo afecta al catálogo de pedidos; las materias de stock no se tocan.</div>
+    ${candBloque}
+    ${archBloque}
+  `);
+}
+async function rcArchivarSeleccionados(btn){
+  const ids=[...document.querySelectorAll(".rc-chk:checked")].map(c=>c.value);
+  if(!ids.length){ alert("No has marcado ningún artículo para archivar."); return; }
+  if(!confirm(`Archivar ${ids.length} artículo${ids.length===1?"":"s"}? Podrás recuperarlos luego.`)) return;
+  if(btn) btn.disabled=true;
+  try{
+    await api("/catalogo-revision/archivar",{method:"POST",body:JSON.stringify({ids})});
+    await api("/catalogo-revision/hecha",{method:"POST",body:JSON.stringify({})});
+    await rcCargar();
+  }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function rcRecuperar(id,btn){
+  if(btn) btn.disabled=true;
+  try{ await api("/catalogo-revision/recuperar",{method:"POST",body:JSON.stringify({ids:[id]})}); await rcCargar(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function rcDarRevisada(btn){
+  if(btn) btn.disabled=true;
+  try{ await api("/catalogo-revision/hecha",{method:"POST",body:JSON.stringify({})}); await rcCargar(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
 }
 
 // ── TURNOS · calendario del equipo por fecha (equipo ve; admin edita) ─────────

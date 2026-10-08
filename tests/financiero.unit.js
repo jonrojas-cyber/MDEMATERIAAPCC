@@ -1,0 +1,96 @@
+// FINANCIERO · resumen día·mes·año con cascada EBITDA. Comprueba el escalado
+// (día abierto ↔ mes ↔ año), los ratios (food cost, personal, PRIME COST, fijos,
+// EBITDA), el break-even por día abierto y que `calcular` autodetecta el último
+// mes con datos. Ejecutar: node tests/financiero.unit.js (revertir backend/data).
+
+const assert = require("assert");
+const store = require("../backend/data-store");
+const financiero = require("../backend/financiero");
+
+let fallos = 0;
+function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + (e && e.message)); } }
+const near = (a, b, tol) => Math.abs(a - b) <= (tol == null ? 0.5 : tol);
+
+console.log("financiero · cascada día·mes·año + ratios + break-even");
+
+// ── componer (puro) ─────────────────────────────────────────────────────────
+const BASE = { ingresos: 12492.72, coste_materia: 3248.11, personal: 4931.51, otros_fijos: 1379.34, variables: 0, cuota_creditos: 698.33 };
+
+test("mes = base; día = mes / días abiertos; año = mes × 12 (escalado lineal)", () => {
+  const c = financiero.componer(BASE, { dias_abiertos_mes: 26.1 });
+  assert.ok(near(c.escalas.mes.ebitda, 2933.76, 0.5), "EBITDA mes ≈ 2933,76 (fue " + c.escalas.mes.ebitda + ")");
+  assert.ok(near(c.escalas.dia.ebitda, 2933.76 / 26.1, 0.2), "EBITDA día = mes/26,1");
+  assert.ok(near(c.escalas.anio.ebitda, 2933.76 * 12, 1), "EBITDA año = mes×12");
+  // Consistencia: día × días abiertos ≈ mes.
+  assert.ok(near(c.escalas.dia.ventas * 26.1, c.escalas.mes.ventas, 1), "ventas día × 26,1 ≈ ventas mes");
+});
+
+test("ratios: food cost, personal, PRIME COST, fijos y EBITDA sobre ventas", () => {
+  const c = financiero.componer(BASE, { dias_abiertos_mes: 26.1 });
+  assert.ok(near(c.ratios.food_cost_pct, 26, 0.3), "food cost ≈ 26%");
+  assert.ok(near(c.ratios.personal_pct, 39.5, 0.3), "personal ≈ 39,5%");
+  assert.ok(near(c.ratios.prime_cost_pct, 65.5, 0.3), "prime cost ≈ 65,5% (materia+personal)");
+  assert.ok(near(c.ratios.fijos_pct, 11, 0.3), "fijos ≈ 11%");
+  assert.ok(near(c.ratios.ebitda_pct, 23.5, 0.3), "EBITDA ≈ 23,5%");
+  // Prime cost = food cost + personal (coherencia interna).
+  assert.ok(near(c.ratios.prime_cost_pct, c.ratios.food_cost_pct + c.ratios.personal_pct, 0.2), "prime = food + personal");
+});
+
+test("prime cost en € = materia + personal a cualquier escala", () => {
+  const c = financiero.componer(BASE, { dias_abiertos_mes: 26.1 });
+  ["dia", "mes", "anio"].forEach((s) => {
+    const e = c.escalas[s];
+    assert.ok(near(e.prime_cost, e.coste_materia + e.personal, 0.1), "prime = materia+personal en " + s);
+  });
+});
+
+test("break-even por día abierto, con y sin créditos", () => {
+  const c = financiero.componer(BASE, { dias_abiertos_mes: 26.1 });
+  const contrib = 1 - BASE.coste_materia / BASE.ingresos;      // ≈ 0,74
+  const equMes = (BASE.personal + BASE.otros_fijos) / contrib;
+  assert.ok(near(c.equilibrio.mes, equMes, 1), "equilibrio mes = fija/contribución");
+  assert.ok(near(c.equilibrio.dia_abierto, equMes / 26.1, 0.2), "equilibrio día = mes/26,1");
+  assert.ok(c.equilibrio.dia_abierto_con_creditos > c.equilibrio.dia_abierto, "con créditos pide vender más");
+  assert.ok(c.equilibrio.margen_seguridad_pct > 0 && !c.equilibrio.en_perdidas, "vende por encima del equilibrio");
+});
+
+test("sin coste de materia → EBITDA y ratios a null (no inventa)", () => {
+  const c = financiero.componer({ ingresos: 1000, coste_materia: null, personal: 500, otros_fijos: 100, variables: 0, cuota_creditos: 0 }, { dias_abiertos_mes: 26.1 });
+  assert.strictEqual(c.escalas.mes.ebitda, null);
+  assert.strictEqual(c.ratios.food_cost_pct, null);
+  assert.strictEqual(c.ratios.prime_cost_pct, null);
+});
+
+// ── calcular (store) ──────────────────────────────────────────────────────────
+function limpiar() {
+  ["fixed_costs", "materias", "productos", "ventas", "config", "debts", "business_config", "variable_costs", "ajustes", "staff_finance"].forEach((e) => store.writeAll(e, []));
+}
+
+test("calcular autodetecta el último mes con datos (cierre de septiembre)", () => {
+  limpiar();
+  store.writeAll("config", [
+    { id: "ventas_mes_2026-09", valor: 12492.72 },
+    { id: "food_cost_manual_pct", valor: 26 },
+  ]);
+  store.writeAll("fixed_costs", [
+    { id: "fc-lara", name: "Salario Lara", category: "Personal", amount: 2500, periodicity: "monthly", active: true },
+    { id: "fc-daniel", name: "Salario Daniel", category: "Personal", amount: 2500, periodicity: "monthly", active: true },
+    { id: "fc-alquiler", name: "Alquiler", category: "Alquiler", amount: 665.5, periodicity: "monthly", active: true },
+    { id: "fc-luz", name: "Luz", category: "Luz", amount: 500, periodicity: "monthly", active: true },
+  ]);
+  store.writeAll("business_config", [{ id: "perfil", dias_semana: 6 }]);
+  const now = new Date(2026, 9, 8, 12, 0, 0).getTime(); // octubre 2026 (sin ventas)
+  const r = financiero.calcular({ now });
+  assert.strictEqual(r.mes_base, "2026-09", "usa septiembre, el último mes con datos");
+  assert.strictEqual(r.autodetectado, true, "marca que no es el mes en curso");
+  assert.ok(r.tiene_materia, "con cierre + food cost manual sí hay cascada");
+  assert.ok(near(r.ratios.food_cost_pct, 26, 0.5), "food cost 26%");
+  // Personal segmentado como personal (no enterrado en fijos).
+  assert.ok(r.segmentos.personal.length === 2, "dos personas en el segmento personal");
+  assert.ok(near(r.segmentos.personal_total_mes, 5000, 1), "personal total 5.000 €/mes");
+  assert.ok(near(r.segmentos.fijos_total_mes, 1165.5, 1), "otros fijos 1.165,5 €/mes (sin personal)");
+  limpiar();
+});
+
+if (fallos) { console.error(`\n${fallos} fallo(s) en financiero`); process.exit(1); }
+console.log("  financiero OK");

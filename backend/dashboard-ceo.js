@@ -301,9 +301,14 @@ function calcular(opts = {}) {
   const ventas = store.readAll("ventas") || [];
   const vSemPasada = analisisDiario.ventaDia(analisisDiario.restarDias(new Date(now).toISOString().slice(0, 10), 7), ventas, idx.byId, idx.byName, idxMat);
   const objTicket = objDe("ticket_medio");
+  // La jornada ya está completa (tras el cierre, ~23 h). El nº de tickets es un
+  // RECUENTO acumulado: comparar el día EN CURSO (parcial) contra el mismo día de la
+  // semana pasada COMPLETO es injusto (siempre saldría "por debajo"). El ticket medio
+  // es una MEDIA (escala-invariante), así que ese sí se compara siempre.
+  const diaCompleto = fracDia >= 1;
   const comercial = {
     ticket_medio: { valor: vDia.ticket_medio || null, objetivo: objTicket, vs_dia_equivalente: comparar(vDia.ticket_medio, vSemPasada.ticket_medio), estado: vDia.tickets > 0 ? estado(vDia.ticket_medio, { objetivo: objTicket }) : "sin_datos" },
-    tickets: { valor: vDia.tickets || 0, vs_dia_equivalente: comparar(vDia.tickets, vSemPasada.tickets), estado: vDia.tickets > 0 ? "ok" : "sin_datos" },
+    tickets: { valor: vDia.tickets || 0, vs_dia_equivalente: diaCompleto ? comparar(vDia.tickets, vSemPasada.tickets) : null, parcial: !diaCompleto, estado: vDia.tickets > 0 ? "ok" : "sin_datos" },
     unidades_por_ticket: { valor: vDia.unidades_por_ticket || null, estado: vDia.tickets > 0 ? "ok" : "sin_datos" },
     bebidas_por_ticket: { valor: bebidasPorTicket, estado: vDia.tickets > 0 ? "ok" : "sin_datos" },
     ventas_por_hora: { valor: ventasPorHora, estado: ventasPorHora != null ? "ok" : "sin_datos" },
@@ -432,6 +437,8 @@ function calcular(opts = {}) {
     prevision_cierre: prevCierreMes,
     desviacion_prevista: (prevCierreMes != null && objetivoMes != null) ? eur(prevCierreMes - objetivoMes) : null,
     vs_mes_anterior_pct: M.vs_anterior_pct != null ? pct1(M.vs_anterior_pct) : null,
+    vs_mes_anterior_dias: M.dias_comparados != null ? M.dias_comparados : null, // nº de días comparados (1..N)
+    ventas_mes_anterior_td: M.ventas_mes_anterior_td != null ? eur(M.ventas_mes_anterior_td) : null, // mes ant. a igual fecha
     resultado_operativo: (base.financiero && base.financiero.ebitda_mes != null) ? eur(base.financiero.ebitda_mes) : null,
     ebitda_pct: M.ebitda_pct,
     serie: serieMes,

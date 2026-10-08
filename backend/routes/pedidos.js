@@ -95,13 +95,25 @@ function catalogoProveedor(st, provId) {
   };
 }
 
-// ── Configuración de pedidos (a quién va la COPIA por WhatsApp) ───────────────
+// ── Configuración de pedidos (WhatsApp de m de materia + copia) ──────────────
+// Dos números, una sola fuente (entidad `config`, id `pedidos_config`):
+//   · whatsapp_negocio → el WhatsApp de m de materia. Es el que se instala en la
+//     tablet (WhatsApp Business) y desde el que salen los pedidos. Vacío hasta que
+//     la fundadora dé de alta la línea (no es inventable: es una línea real).
+//   · copia_whatsapp   → a quién llega una copia de cada pedido (por defecto Jon).
 const CFG_ID = "pedidos_config";
 const COPIA_DEFAULT = "34682250373"; // Jon — copia de cada pedido por WhatsApp
+const COPIA_NOMBRE_DEFAULT = "Jon";
 function leerConfig(st) {
-  const c = st.findById("config", CFG_ID);
-  return { copia_whatsapp: (c && c.copia_whatsapp) || COPIA_DEFAULT };
+  const c = st.findById("config", CFG_ID) || {};
+  return {
+    whatsapp_negocio: c.whatsapp_negocio || "",
+    copia_whatsapp: c.copia_whatsapp || COPIA_DEFAULT,
+    copia_nombre: c.copia_nombre || COPIA_NOMBRE_DEFAULT,
+  };
 }
+// Normaliza un teléfono a solo dígitos (prefijo incluido). Devuelve "" si vacío.
+function soloDigitos(v) { return String(v == null ? "" : v).replace(/[^0-9]/g, ""); }
 
 // ── Rutas ────────────────────────────────────────────────────────────────────
 router.get("/", (req, res) => {
@@ -116,9 +128,14 @@ router.get("/sugerencias", (req, res) => {
 // Configuración (copia por WhatsApp). GET lo usa todo el mundo (admin-only ya por ruta).
 router.get("/config", (req, res) => res.json(leerConfig(store)));
 router.put("/config", (req, res) => {
-  const w = String((req.body && req.body.copia_whatsapp) || "").replace(/[^0-9]/g, "");
-  if (store.findById("config", CFG_ID)) store.update("config", CFG_ID, { copia_whatsapp: w });
-  else store.insert("config", { id: CFG_ID, copia_whatsapp: w });
+  const b = req.body || {};
+  // Solo se tocan los campos presentes en el cuerpo (merge parcial).
+  const patch = {};
+  if ("whatsapp_negocio" in b) patch.whatsapp_negocio = soloDigitos(b.whatsapp_negocio);
+  if ("copia_whatsapp" in b) patch.copia_whatsapp = soloDigitos(b.copia_whatsapp);
+  if ("copia_nombre" in b) patch.copia_nombre = String(b.copia_nombre || "").trim().slice(0, 40);
+  if (store.findById("config", CFG_ID)) store.update("config", CFG_ID, patch);
+  else store.insert("config", { id: CFG_ID, ...patch });
   res.json(leerConfig(store));
 });
 

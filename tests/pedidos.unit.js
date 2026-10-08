@@ -70,5 +70,28 @@ test("config: copia por defecto a Jon; se puede cambiar", () => {
   assert.strictEqual(ped.leerConfig(s).copia_whatsapp, "34611111111");
 });
 
+test("config: valores por defecto (negocio vacío, copia Jon)", () => {
+  const c = ped.leerConfig(fakeStore());
+  assert.strictEqual(c.whatsapp_negocio, "", "sin número de negocio hasta que se dé de alta la línea");
+  assert.strictEqual(c.copia_whatsapp, "34682250373");
+  assert.strictEqual(c.copia_nombre, "Jon", "nombre de la copia configurable, por defecto Jon");
+});
+
+test("config: whatsapp_negocio (el de la tablet) se guarda y lee", () => {
+  const s = fakeStore();
+  s.insert("config", { id: "pedidos_config", whatsapp_negocio: "34600112233" });
+  const c = ped.leerConfig(s);
+  assert.strictEqual(c.whatsapp_negocio, "34600112233");
+  assert.strictEqual(c.copia_whatsapp, "34682250373", "la copia sigue con su valor por defecto (merge, no se pisa)");
+});
+
+test("config: el nombre de la copia deja de estar pegado a Jon", () => {
+  const s = fakeStore();
+  s.insert("config", { id: "pedidos_config", copia_whatsapp: "34677777777", copia_nombre: "Mónica" });
+  const c = ped.leerConfig(s);
+  assert.strictEqual(c.copia_whatsapp, "34677777777");
+  assert.strictEqual(c.copia_nombre, "Mónica");
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en pedidos`); process.exit(1); }
 console.log("  pedidos OK");

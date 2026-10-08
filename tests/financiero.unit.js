@@ -63,7 +63,7 @@ test("sin coste de materia → EBITDA y ratios a null (no inventa)", () => {
 
 // ── calcular (store) ──────────────────────────────────────────────────────────
 function limpiar() {
-  ["fixed_costs", "materias", "productos", "ventas", "config", "debts", "business_config", "variable_costs", "ajustes", "staff_finance"].forEach((e) => store.writeAll(e, []));
+  ["fixed_costs", "materias", "productos", "ventas", "config", "debts", "business_config", "variable_costs", "ajustes", "staff_finance", "business_targets"].forEach((e) => store.writeAll(e, []));
 }
 
 test("calcular autodetecta el último mes con datos (cierre de septiembre)", () => {
@@ -89,6 +89,45 @@ test("calcular autodetecta el último mes con datos (cierre de septiembre)", () 
   assert.ok(r.segmentos.personal.length === 2, "dos personas en el segmento personal");
   assert.ok(near(r.segmentos.personal_total_mes, 5000, 1), "personal total 5.000 €/mes");
   assert.ok(near(r.segmentos.fijos_total_mes, 1165.5, 1), "otros fijos 1.165,5 €/mes (sin personal)");
+  limpiar();
+});
+
+test("estadoObjetivo: verde/ámbar/rojo según objetivo (menos-mejor y más-mejor)", () => {
+  // Menos es mejor (food/personal/prime/fijos).
+  assert.strictEqual(financiero.estadoObjetivo(26, 27, true), "ok", "por debajo del objetivo → ok");
+  assert.strictEqual(financiero.estadoObjetivo(65.5, 65, true), "warn", "un pelín por encima → ámbar");
+  assert.strictEqual(financiero.estadoObjetivo(39.5, 30, true), "bad", "muy por encima → rojo");
+  // Más es mejor (EBITDA).
+  assert.strictEqual(financiero.estadoObjetivo(23.5, 20, false), "ok", "por encima del objetivo → ok");
+  assert.strictEqual(financiero.estadoObjetivo(18, 20, false), "warn", "un poco por debajo → ámbar");
+  assert.strictEqual(financiero.estadoObjetivo(10, 20, false), "bad", "muy por debajo → rojo");
+  // Sin objetivo → sin color.
+  assert.strictEqual(financiero.estadoObjetivo(26, null, true), null);
+});
+
+test("calcular incluye el semáforo de objetivos (business_targets)", () => {
+  limpiar();
+  store.writeAll("config", [{ id: "ventas_mes_2026-09", valor: 12492.72 }, { id: "food_cost_manual_pct", valor: 26 }]);
+  store.writeAll("fixed_costs", [
+    { id: "fc-lara", name: "Lara", category: "Personal", amount: 2500, periodicity: "monthly", active: true },
+    { id: "fc-daniel", name: "Daniel", category: "Personal", amount: 2500, periodicity: "monthly", active: true },
+    { id: "fc-alquiler", name: "Alquiler", category: "Alquiler", amount: 665.5, periodicity: "monthly", active: true },
+    { id: "fc-luz", name: "Luz", category: "Luz", amount: 500, periodicity: "monthly", active: true },
+  ]);
+  store.writeAll("business_config", [{ id: "perfil", dias_semana: 6 }]);
+  store.writeAll("business_targets", [
+    { id: "t1", tipo: "food_cost", valor: 27, activo: true },
+    { id: "t2", tipo: "coste_laboral", valor: 30, activo: true },
+    { id: "t3", tipo: "ebitda", valor: 20, activo: true },
+  ]);
+  const r = financiero.calcular({ now: new Date(2026, 9, 8, 12).getTime() });
+  assert.strictEqual(r.objetivos.food_cost.estado, "ok", "food 26 ≤ 27 → ok");
+  assert.strictEqual(r.objetivos.food_cost.objetivo, 27);
+  assert.strictEqual(r.objetivos.personal.estado, "bad", "personal ~39,5 >> 30 → rojo");
+  assert.strictEqual(r.objetivos.ebitda.estado, "ok", "EBITDA ~23,5 ≥ 20 → ok");
+  // Sin objetivo configurado → objetivo null, sin estado.
+  assert.strictEqual(r.objetivos.fijos.objetivo, null);
+  assert.strictEqual(r.objetivos.fijos.estado, null);
   limpiar();
 });
 

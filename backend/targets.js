@@ -5,10 +5,10 @@
 const store = require("./data-store");
 
 // Para estos objetivos, MENOS es mejor (cumples si el real está por debajo).
-const MENOR_MEJOR = new Set(["food_cost", "coste_laboral", "merma"]);
+const MENOR_MEJOR = new Set(["food_cost", "coste_laboral", "prime_cost", "gastos_fijos", "merma"]);
 
 const TIPOS = [
-  "ventas", "beneficio", "food_cost", "coste_laboral", "merma",
+  "ventas", "beneficio", "ebitda", "food_cost", "coste_laboral", "prime_cost", "gastos_fijos", "merma",
   "ticket_medio", "clientes", "socios", "reserva_caja",
 ];
 

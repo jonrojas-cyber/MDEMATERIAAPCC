@@ -91,6 +91,40 @@ function componer(base, opts = {}) {
   };
 }
 
+// Semáforo de un ratio contra su objetivo. UMBRAL = margen (en puntos) antes de
+// pasar de "ok" a "ámbar". null si no hay valor u objetivo. Única fuente del color.
+const UMBRAL_PT = 3;
+function estadoObjetivo(real, objetivo, menorMejor) {
+  if (real == null || objetivo == null || !(objetivo > 0)) return null;
+  const exceso = menorMejor ? (real - objetivo) : (objetivo - real); // >0 = peor que el objetivo
+  if (exceso <= 0) return "ok";
+  if (exceso <= UMBRAL_PT) return "warn";
+  return "bad";
+}
+
+// Mapa ratio→{objetivo, estado, menor_mejor} usando los objetivos configurados
+// (business_targets, fuente única). Lo consumen la vista Financiero y la portada.
+function semaforo(ratios) {
+  const targets = require("./targets");
+  const porTipo = {};
+  targets.lista().forEach((t) => { if (t && t.tipo && porTipo[t.tipo] == null) porTipo[t.tipo] = Number(t.valor) || 0; });
+  const MENOR = targets.MENOR_MEJOR;
+  const defs = [
+    ["food_cost", "food_cost", ratios.food_cost_pct],
+    ["personal", "coste_laboral", ratios.personal_pct],
+    ["prime_cost", "prime_cost", ratios.prime_cost_pct],
+    ["fijos", "gastos_fijos", ratios.fijos_pct],
+    ["ebitda", "ebitda", ratios.ebitda_pct],
+  ];
+  const out = {};
+  defs.forEach(([clave, tipo, real]) => {
+    const objetivo = porTipo[tipo] != null ? porTipo[tipo] : null;
+    const menor = MENOR.has(tipo);
+    out[clave] = { objetivo, menor_mejor: menor, estado: estadoObjetivo(real, objetivo, menor) };
+  });
+  return out;
+}
+
 // Último mes (hasta 13 atrás) con ventas > 0, para que al abrir la app el resumen
 // muestre un EBITDA real y no los ceros del mes en curso sin cierre.
 function mesConDatos(now = Date.now()) {
@@ -135,6 +169,7 @@ function calcular(opts = {}) {
     dias_semana,
     dias_abiertos_mes,
     ratios: comp.ratios,
+    objetivos: semaforo(comp.ratios),
     escalas: comp.escalas,
     equilibrio: comp.equilibrio,
     segmentos: segmentos(now, Number(base.ingresos) || 0),
@@ -156,4 +191,4 @@ function segmentos(now, ventasMes) {
   };
 }
 
-module.exports = { calcular, componer, mesConDatos, diasAbiertos, eur };
+module.exports = { calcular, componer, mesConDatos, diasAbiertos, semaforo, estadoObjetivo, eur };

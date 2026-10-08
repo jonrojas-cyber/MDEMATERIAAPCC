@@ -115,6 +115,18 @@ const BATCHES = [
       { id: "fc-hosting", amount: 17.5, notes: "Hosting Control M (Render Services). Importe REAL factura 2026: 17,50 €/mes (sep 2026)." },
     ],
   },
+  {
+    // Importes REALES del paquete de facturas 3T 2026 (jul/ago/sep):
+    //   · Alquiler (Prudencio Castaño Rodríguez): 550 € + 115,50 € IVA = 665,50 €/mes
+    //     los 3 meses (facturas 202600000024/27/30). Confirma el valor ya sembrado.
+    //   · Luz (Repsol): 5 facturas 3T = 1.262,36 € → 420,79 €/mes de media (antes 500).
+    flag: "negocio_seed_v12_facturas_3t_alquiler_luz",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-alquiler", name: "Alquiler del local", category: "Alquiler", amount: 665.50, vat: 21, periodicity: "monthly", active: true, notes: "Prudencio Castaño Rodríguez · 550 € + IVA = 665,50 €/mes. Importe REAL facturas 3T 2026 (jul/ago/sep)." },
+      { id: "fc-luz", name: "Luz", category: "Luz", amount: 420.79, vat: 21, periodicity: "monthly", active: true, notes: "Repsol · media REAL 3T 2026: 1.262,36 € / 3 meses = 420,79 €/mes (jul 371,50 · ago 383,57 · sep 507,29). Editable." },
+    ],
+  },
 ];
 
 async function seedNegocio() {

@@ -74,6 +74,9 @@ function actualesObjetivos(now, benCache = {}) {
       case "beneficio": out.beneficio = ben.beneficio_operativo; break;
       case "food_cost": out.food_cost = ben.food_cost_pct; break;
       case "coste_laboral": out.coste_laboral = ben.coste_laboral_pct; break;
+      case "prime_cost": out.prime_cost = ben.prime_cost_pct; break;
+      case "gastos_fijos": out.gastos_fijos = ben.gastos_fijos_pct; break;
+      case "ebitda": out.ebitda = ben.margen_operativo_pct; break;
       case "merma": out.merma = ben.ventas > 0 ? Math.round((financials.mermaEnRango(r) / ben.ventas) * 1000) / 10 : null; break;
       case "ticket_medio": { const tk = financials.ticketsEnRango(r); out.ticket_medio = tk > 0 ? Math.round((ben.ventas / tk) * 100) / 100 : null; break; }
       case "clientes": out.clientes = financials.ticketsEnRango(r); break;

@@ -3232,7 +3232,10 @@ function vizHomeHTML(d, ini, dec, conc, tpv, fin){
   }</div>`;
 
   // ── 4 indicadores ──
-  const objFood=27, objPers=30;
+  // Objetivos configurados (business_targets, fuente única); si no hay, valores de referencia.
+  const _fo=(fin&&fin.objetivos)||{};
+  const objFood=(_fo.food_cost&&_fo.food_cost.objetivo!=null)?_fo.food_cost.objetivo:27;
+  const objPers=(_fo.personal&&_fo.personal.objetivo!=null)?_fo.personal.objetivo:30;
   // Coste de producto del MES mostrado (misma serie que la curva): coste/ingresos.
   const mesCoste=dias.reduce((s,x)=>s+(Number(x.coste)||0),0);
   const foodPctMes=mesTotal>0?(mesCoste/mesTotal*100):(M.food_cost_pct!=null?M.food_cost_pct:null);
@@ -3247,11 +3250,12 @@ function vizHomeHTML(d, ini, dec, conc, tpv, fin){
   // ── EBITDA por día abierto (resumen financiero, clic → vista día·mes·año) ──
   let ebitdaBand="";
   if(fin && fin.tiene_materia && fin.escalas && fin.escalas.dia){
-    const fd=fin.escalas.dia, fr=fin.ratios||{}; const posE=(fd.ebitda||0)>=0;
+    const fd=fin.escalas.dia, fr=fin.ratios||{}, oB=fin.objetivos||{}; const posE=(fd.ebitda||0)>=0;
+    const cP=finColorEstado((oB.prime_cost||{}).estado), cE=finColorEstado((oB.ebitda||{}).estado);
     ebitdaBand=`<button class="viz-ebit" onclick="irA_financiero()">
       <span class="viz-ebit-l">EBITDA<br>por día abierto</span>
       <span class="viz-ebit-v ${posE?'pos':'neg'}">${vizEur(fd.ebitda)}</span>
-      <span class="viz-ebit-r">prime cost <b>${fr.prime_cost_pct!=null?fr.prime_cost_pct+'%':'—'}</b> · personal ${fr.personal_pct!=null?fr.personal_pct+'%':'—'} · food ${fr.food_cost_pct!=null?fr.food_cost_pct+'%':'—'} · fijos ${fr.fijos_pct!=null?fr.fijos_pct+'%':'—'} · <b>EBITDA ${fr.ebitda_pct!=null?fr.ebitda_pct+'%':'—'}</b></span>
+      <span class="viz-ebit-r">prime cost <b style="color:${cP}">${fr.prime_cost_pct!=null?fr.prime_cost_pct+'%':'—'}</b> · personal ${fr.personal_pct!=null?fr.personal_pct+'%':'—'} · food ${fr.food_cost_pct!=null?fr.food_cost_pct+'%':'—'} · fijos ${fr.fijos_pct!=null?fr.fijos_pct+'%':'—'} · <b style="color:${cE}">EBITDA ${fr.ebitda_pct!=null?fr.ebitda_pct+'%':'—'}</b></span>
       <span class="viz-ebit-go">día · mes · año →</span>
     </button>`;
   }
@@ -7817,7 +7821,7 @@ async function irA_objetivos(){
   }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
 }
 function ccTgtForm(id){
-  const TIPOS=[["ventas","Ventas","eur"],["beneficio","Beneficio","eur"],["food_cost","Food cost","pct"],["coste_laboral","Coste laboral","pct"],["merma","Merma","pct"],["ticket_medio","Ticket medio","eur"],["clientes","Clientes","num"],["reserva_caja","Reserva de caja","eur"]];
+  const TIPOS=[["ventas","Ventas","eur"],["beneficio","Beneficio","eur"],["ebitda","EBITDA (%)","pct"],["food_cost","Food cost","pct"],["coste_laboral","Coste de personal","pct"],["prime_cost","Prime cost (materia+personal)","pct"],["gastos_fijos","Costes fijos","pct"],["merma","Merma","pct"],["ticket_medio","Ticket medio","eur"],["clientes","Clientes","num"],["reserva_caja","Reserva de caja","eur"]];
   let reg={tipo:"ventas",label:"",periodo:"mes",valor:"",unidad:"eur"};
   if(id){ const f=(window._ccTgtList||[]).find(x=>x.id===id); if(f) reg=f; }
   window._ccTgtEdit=id||null;
@@ -9895,6 +9899,10 @@ function finRender(){
     .fin-chip{font-size:11px;padding:4px 9px;border:1px solid var(--line,#3a3a2e);border-radius:20px;color:var(--muted,#8a8577);}
     .fin-chip b{color:var(--ink,#1b1b16);font-weight:700;}
     .fin-chip.key{border-color:var(--olive,#4b4a42);}
+    .fin-chip-obj{margin-left:6px;opacity:.65;}
+    .fin-chip.ok{background:rgba(60,122,74,.09);} .fin-chip.warn{background:rgba(199,154,58,.12);} .fin-chip.bad{background:rgba(178,59,59,.09);}
+    .fin-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--muted,#8a8577);margin:2px 0 2px;}
+    .fin-leg span{display:inline-flex;align-items:center;gap:5px;} .fin-leg i{width:9px;height:9px;border-radius:50%;display:inline-block;}
     .fin-seg-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line,#3a3a2e);}
     .fin-seg-row:last-child{border-bottom:0;}
     .fin-seg-row .q{text-align:right;white-space:nowrap;}
@@ -9907,39 +9915,46 @@ function finRender(){
       <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="irA_cuentaResultados()">Ir a Cuenta de resultados →</button></div>`);
     return;
   }
-  const E=r.escalas[scope]||{}; const R=r.ratios||{}; const Q=r.equilibrio||{};
+  const E=r.escalas[scope]||{}; const R=r.ratios||{}; const Q=r.equilibrio||{}; const O=r.objetivos||{};
   const posE=(E.ebitda||0)>=0;
   const scopeLbl={dia:"por día abierto",mes:"este mes",anio:"al año (ritmo actual)"}[scope];
   const toggle=`<div class="fin-toggle">
     ${[["dia","Día"],["mes","Mes"],["anio","Año"]].map(([s,l])=>`<button class="fin-tg${s===scope?' on':''}" onclick="window._fin.scope='${s}';finRender()">${l}</button>`).join("")}
   </div>`;
-  const hero=`<div class="fin-hero">
+  const ebEst=(O.ebitda||{}).estado;
+  const hero=`<div class="fin-hero" style="${ebEst?`border-color:${finColorEstado(ebEst)};`:''}">
     <div class="fin-hero-l">EBITDA · ${scopeLbl}</div>
     <div class="fin-hero-v ${posE?'pos':'neg'}">${adEur(E.ebitda)}</div>
-    <div class="fin-hero-s">${R.ebitda_pct!=null?`margen EBITDA ${R.ebitda_pct} % · `:""}sobre ${adEur(E.ventas)} de ventas</div>
+    <div class="fin-hero-s">${R.ebitda_pct!=null?`margen EBITDA <b style="color:${finColorEstado(ebEst)}">${R.ebitda_pct} %</b>${(O.ebitda&&O.ebitda.objetivo!=null)?` · obj ${O.ebitda.objetivo} %`:""} · `:""}sobre ${adEur(E.ventas)} de ventas</div>
   </div>`;
+  const chip=(lbl,val,key)=>{ const o=O[key]||{}; const col=finColorEstado(o.estado);
+    return `<div class="fin-chip${o.estado?' '+o.estado:''}" style="${o.estado?`border-color:${col};`:''}">${lbl} <b style="${o.estado?`color:${col};`:''}">${finPct(val)}</b>${o.objetivo!=null?`<span class="fin-chip-obj">obj ${o.objetivo}%</span>`:''}</div>`;
+  };
   const chips=`<div class="fin-chips">
-    <div class="fin-chip">food cost <b>${finPct(R.food_cost_pct)}</b></div>
-    <div class="fin-chip">personal <b>${finPct(R.personal_pct)}</b></div>
-    <div class="fin-chip key">prime cost <b>${finPct(R.prime_cost_pct)}</b></div>
-    <div class="fin-chip">costes fijos <b>${finPct(R.fijos_pct)}</b></div>
-    <div class="fin-chip key">EBITDA <b>${finPct(R.ebitda_pct)}</b></div>
+    ${chip("food cost",R.food_cost_pct,"food_cost")}
+    ${chip("personal",R.personal_pct,"personal")}
+    ${chip("prime cost",R.prime_cost_pct,"prime_cost")}
+    ${chip("costes fijos",R.fijos_pct,"fijos")}
+    ${chip("EBITDA",R.ebitda_pct,"ebitda")}
   </div>`;
   const row=(lbl,val,o)=>{ o=o||{};
     const color = o.strong&&o.accent ? ((val==null?0:val)>=0?'var(--ok,#3c7a4a)':'var(--alert,#b23b3b)') : (o.neg?'var(--alert,#b23b3b)':'');
+    const est=o.key?(O[o.key]||{}):null;
+    const pctCol=est&&est.estado?finColorEstado(est.estado):'var(--muted,#8a8577)';
+    const pctTxt=o.pct!=null?` <span style="color:${pctCol};font-weight:600;">${o.pct} %${est&&est.objetivo!=null?` · obj ${est.objetivo}%`:''}</span>`:"";
     return `<tr${o.strong?' style="font-weight:800;border-top:1px solid var(--line,#3a3a2e);"':''}>
-      <td>${esc(lbl)}${o.pct!=null?` <span style="color:var(--muted,#8a8577);font-weight:400;">${o.pct} %</span>`:""}</td>
+      <td>${esc(lbl)}${pctTxt}</td>
       <td class="q" style="text-align:right;${color?`color:${color};`:''}">${(o.neg?'−':'')+adEur(Math.abs(val==null?0:val))}</td></tr>`;
   };
   const cascada=`<table class="lim-tab"><tbody>
     ${row("Ventas (neto)",E.ventas)}
-    ${row("− Food cost",E.coste_materia,{neg:true,pct:R.food_cost_pct})}
+    ${row("− Food cost",E.coste_materia,{neg:true,pct:R.food_cost_pct,key:"food_cost"})}
     ${row("= Margen bruto",E.margen_bruto,{pct:R.margen_bruto_pct})}
-    ${row("− Personal",E.personal,{neg:true,pct:R.personal_pct})}
-    ${row("= Prime cost (materia + personal)",E.prime_cost,{pct:R.prime_cost_pct})}
-    ${row("− Costes fijos",E.otros_fijos,{neg:true,pct:R.fijos_pct})}
+    ${row("− Personal",E.personal,{neg:true,pct:R.personal_pct,key:"personal"})}
+    ${row("= Prime cost (materia + personal)",E.prime_cost,{pct:R.prime_cost_pct,key:"prime_cost"})}
+    ${row("− Costes fijos",E.otros_fijos,{neg:true,pct:R.fijos_pct,key:"fijos"})}
     ${(E.variables>0)?row("− Variables / mermas",E.variables,{neg:true,pct:R.variables_pct}):""}
-    ${row("= EBITDA",E.ebitda,{strong:true,accent:true,pct:R.ebitda_pct})}
+    ${row("= EBITDA",E.ebitda,{strong:true,accent:true,pct:R.ebitda_pct,key:"ebitda"})}
     ${row("− Cuota de préstamos",E.cuota_creditos,{neg:true})}
     ${row("= Resultado (caja)",E.resultado_caja,{strong:true,accent:true})}
   </tbody></table>`;
@@ -9968,6 +9983,12 @@ function finRender(){
     ${toggle}
     ${hero}
     ${chips}
+    <div class="fin-leg">
+      <span><i style="background:var(--ok,#3c7a4a)"></i>en objetivo</span>
+      <span><i style="background:#c79a3a"></i>algo desviado</span>
+      <span><i style="background:var(--alert,#b23b3b)"></i>fuera de objetivo</span>
+      <button class="btn-ghost" style="margin-left:auto;padding:3px 10px;font-size:11px;" onclick="irA_objetivos()">Editar objetivos →</button>
+    </div>
     ${be}
     <div class="section-label" style="margin-top:16px;">Cascada · ${scopeLbl}</div>
     ${cascada}
@@ -9981,6 +10002,7 @@ function finRender(){
   `);
 }
 function finPct(n){ return n==null?"—":(n+" %"); }
+function finColorEstado(e){ return e==="ok"?"var(--ok,#3c7a4a)":e==="warn"?"#c79a3a":e==="bad"?"var(--alert,#b23b3b)":"var(--muted,#8a8577)"; }
 
 // ════════════════════════════════════════════════════════════════════════════
 // REVISIÓN DEL CATÁLOGO · cada 2 meses, lo no pedido se propone para ARCHIVAR

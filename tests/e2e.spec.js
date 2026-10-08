@@ -1903,6 +1903,9 @@ test("financiero: la API trae la cascada escalada (día·mes·año), ratios y se
   expect(r.escalas).toBeTruthy();
   ["dia", "mes", "anio"].forEach((s) => expect(r.escalas[s]).toHaveProperty("ebitda"));
   expect(r.ratios).toHaveProperty("prime_cost_pct");
+  // Semáforo de objetivos presente (business_targets sembrados).
+  expect(r.objetivos).toBeTruthy();
+  ["food_cost", "personal", "prime_cost", "fijos", "ebitda"].forEach((k) => expect(r.objetivos).toHaveProperty(k));
   // Escalado coherente: día × días abiertos ≈ mes; mes × 12 ≈ año.
   if (r.tiene_materia) {
     expect(Math.abs(r.escalas.dia.ventas * r.dias_abiertos_mes - r.escalas.mes.ventas)).toBeLessThan(2);
@@ -1910,6 +1913,9 @@ test("financiero: la API trae la cascada escalada (día·mes·año), ratios y se
     // Personal y costes fijos son segmentos separados (personal no está en fijos).
     expect(r.segmentos.personal.length).toBeGreaterThan(0);
     expect(r.segmentos.fijos.every((f) => (f.categoria || "").toLowerCase() !== "personal")).toBe(true);
+    // Con objetivos sembrados, el food cost real (26%) cumple su objetivo (27%).
+    expect(r.objetivos.food_cost.objetivo).toBeGreaterThan(0);
+    expect(["ok", "warn", "bad"]).toContain(r.objetivos.food_cost.estado);
   }
 });
 

@@ -424,6 +424,9 @@ store
     require("./seed-cafe").seedCafe().catch(() => {});
     // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
     require("./seed-negocio").seedNegocio().catch(() => {});
+    // Objetivos de referencia (food cost, personal, prime cost, fijos, EBITDA) para
+    // el semáforo del resumen financiero. Idempotente por tipo (no pisa los tuyos).
+    require("./seed-objetivos").seedObjetivos().catch(() => {});
     require("./seed-turnos").seedTurnos().catch(() => {}); // rotación de turnos (7 sep–15 nov 2026)
     require("./seed-fit").seedFit().catch(() => {}); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
     require("./seed-analisis-mes").seedAnalisisMes().catch(() => {}); // snapshot de análisis del mes (sept 2026)

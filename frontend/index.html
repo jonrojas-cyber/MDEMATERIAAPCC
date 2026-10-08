@@ -2024,6 +2024,12 @@ button.cc-card:hover { border-color: var(--ink); }
 .ped-bar-tot { font-size: 13px; } .ped-bar-tot b { font-size: 18px; }
 .ped-send { display: flex; flex-wrap: wrap; gap: 10px; }
 .ped-foot { font-size: 11px; color: var(--muted); margin-top: 14px; }
+.ped-wacfg { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 12px; }
+.ped-wacfg-h { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.ped-wacfg-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink); padding: 4px 0; }
+.ped-wacfg-k { color: var(--muted); } .ped-wacfg-k small { color: var(--muted); }
+.ped-wacfg-v { text-align: right; } .ped-wacfg-v small { color: var(--muted); } .ped-wacfg-v i { color: var(--muted); }
+.ped-wacfg-help { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 2px 0 8px; }
 .lk { background: none; border: 0; color: var(--olive); text-decoration: underline; cursor: pointer; font-family: var(--font); font-size: 11px; padding: 0; }
 
 /* ── MODO TPV · elementos más grandes para pantalla táctil de mostrador ── */
@@ -10863,8 +10869,8 @@ async function incBorrar(id){ if(!confirm("¿Borrar esta incidencia?"))return; t
 // ── PEDIDOS ───────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
 // PEDIDOS · buscador de proveedores → catálogo (precio actualizado + unidad de
-// pedido + cantidad sugerida) → generar pedido → WhatsApp al proveedor + copia a
-// Jon. Nada al azar: precios del coste real, reposición sugerida hasta stock ideal.
+// pedido + cantidad sugerida) → generar pedido → WhatsApp al proveedor + copia
+// configurable. Nada al azar: precios del coste real, reposición hasta stock ideal.
 // ════════════════════════════════════════════════════════════════════════════
 function pedN(n,d){return (Number(n)||0).toLocaleString("es-ES",{minimumFractionDigits:(d==null?2:d),maximumFractionDigits:(d==null?2:d)});}
 async function irA_pedidos(pre){
@@ -10894,6 +10900,8 @@ async function irA_pedidos(pre){
     }
 
     const copia=(cfg&&cfg.copia_whatsapp)||"";
+    const copiaNom=(cfg&&cfg.copia_nombre)||"copia";
+    const negocio=(cfg&&cfg.whatsapp_negocio)||"";
     const html=`
       <div class="section-label">Buscar proveedor</div>
       <input id="ped-prov-q" class="mat-q" placeholder="Nombre del proveedor…" oninput="pedFiltrarProveedores(this.value)">
@@ -10905,7 +10913,20 @@ async function irA_pedidos(pre){
       <div class="section-label" style="margin-top:18px;">Pedidos realizados</div>
       <input id="ped-buscar" class="mat-q" placeholder="Buscar por proveedor o artículo…" oninput="filtrarPedidos(this.value)">
       <div id="ped-lista"></div>
-      <div class="ped-foot">Copia de cada pedido por WhatsApp → <b>${copia?("+"+esc(copia)):"— sin configurar —"}</b> · <button class="lk" onclick="pedCambiarCopia()">cambiar</button></div>`;
+      <div class="ped-wacfg">
+        <div class="ped-wacfg-h">WhatsApp de pedidos</div>
+        <div class="ped-wacfg-row">
+          <span class="ped-wacfg-k">Número de m de materia <small>(el que va en la tablet)</small></span>
+          <span class="ped-wacfg-v">${negocio?("+"+esc(negocio)):"<i>— sin configurar —</i>"} · <button class="lk" onclick="pedCambiarNegocio()">cambiar</button></span>
+        </div>
+        ${negocio
+          ? `<div class="ped-wacfg-help">Instala <b>WhatsApp Business</b> con este número en la tablet. Desde él salen todos los pedidos.</div>`
+          : `<div class="ped-wacfg-help">Da de alta una línea para m de materia (p. ej. tarjeta prepago o eSIM), instala <b>WhatsApp Business</b> en la tablet con ese número y apúntalo aquí. Es una línea real: no se puede generar desde la app.</div>`}
+        <div class="ped-wacfg-row">
+          <span class="ped-wacfg-k">Copia de cada pedido</span>
+          <span class="ped-wacfg-v">${copia?("+"+esc(copia)+" <small>("+esc(copiaNom)+")</small>"):"<i>— sin configurar —</i>"} · <button class="lk" onclick="pedCambiarCopia()">cambiar</button></span>
+        </div>
+      </div>`;
     setInner(html);
     pedRenderProveedores(provs);
     renderPedidosLista(peds);
@@ -11030,6 +11051,7 @@ async function pedCrear(provId){
 function pedConfirmacion(p){
   openSection("ped-ok","Pedido creado");
   const copia=((window._pedCfg||{}).copia_whatsapp)||"";
+  const copiaNom=((window._pedCfg||{}).copia_nombre)||"copia";
   const prov=(window._pedCat&&window._pedCat.proveedor)||{};
   const waProv=(prov.whatsapp||"").replace(/[^0-9]/g,"");
   const lineas=(p.lineas||[]).map(l=>{
@@ -11044,12 +11066,12 @@ function pedConfirmacion(p){
     <div class="section-label">Enviar por WhatsApp</div>
     <div class="ped-send">
       ${waProv?`<button class="btn-primary" onclick="pedEnviarWA('${p.id}','prov')">📤 Enviar al proveedor</button>`:`<div class="err">El proveedor no tiene WhatsApp.</div>`}
-      ${copia?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','copia')">📋 Enviar copia a Jon (+${esc(copia)})</button>`:""}
+      ${copia?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','copia')">📋 Enviar copia a ${esc(copiaNom)} (+${esc(copia)})</button>`:""}
     </div>
     <div class="card-actions" style="margin-top:14px;">
       <button class="btn-ghost" onclick="irA_pedidos()">Volver a pedidos</button>
     </div>
-    <div class="ped-foot">Consejo: envía primero al proveedor y luego la copia a Jon.</div>`);
+    <div class="ped-foot">Consejo: envía primero al proveedor y luego la copia.</div>`);
 }
 async function pedEnviarWA(id, destino){
   try{
@@ -11077,12 +11099,22 @@ async function pedEnviarWA(id, destino){
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
   }catch(e){ alert(e.message); }
 }
-// Cambiar el número de la copia (Jon) desde la propia pantalla.
-async function pedCambiarCopia(){
-  const actual=((window._pedCfg||{}).copia_whatsapp)||"";
-  const v=prompt("Número de WhatsApp para la copia de cada pedido (con prefijo, solo dígitos):", actual);
+// Cambiar el número de m de materia (el que va en la tablet) desde la pantalla.
+async function pedCambiarNegocio(){
+  const actual=((window._pedCfg||{}).whatsapp_negocio)||"";
+  const v=prompt("WhatsApp de m de materia (el que instalas en la tablet). Con prefijo del país, solo dígitos. Ej.: 34600112233. Déjalo vacío para quitarlo:", actual);
   if(v==null) return;
-  try{ const r=await api("/pedidos/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({copia_whatsapp:v})}); window._pedCfg=r; irA_pedidos(); }
+  try{ const r=await api("/pedidos/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({whatsapp_negocio:v})}); window._pedCfg=r; irA_pedidos(); }
+  catch(e){ alert(e.message); }
+}
+// Cambiar el número (y el nombre) de la copia desde la propia pantalla.
+async function pedCambiarCopia(){
+  const cfg=window._pedCfg||{};
+  const v=prompt("Número de WhatsApp para la copia de cada pedido (con prefijo, solo dígitos):", cfg.copia_whatsapp||"");
+  if(v==null) return;
+  const nom=prompt("¿A nombre de quién es esa copia? (p. ej. Jon, Mónica, m de materia):", cfg.copia_nombre||"");
+  if(nom==null) return;
+  try{ const r=await api("/pedidos/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({copia_whatsapp:v,copia_nombre:nom})}); window._pedCfg=r; irA_pedidos(); }
   catch(e){ alert(e.message); }
 }
 

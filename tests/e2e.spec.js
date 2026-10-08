@@ -1906,14 +1906,21 @@ test("financiero: la API trae la cascada escalada (día·mes·año), ratios y se
   // Semáforo de objetivos presente (business_targets sembrados).
   expect(r.objetivos).toBeTruthy();
   ["food_cost", "personal", "prime_cost", "fijos", "ebitda"].forEach((k) => expect(r.objetivos).toHaveProperty(k));
-  // Escalado coherente: día × días abiertos ≈ mes; mes × 12 ≈ año.
+  // El AÑO es el acumulado REAL (no una proyección ×12): trae su info y sus ratios.
+  expect(r.anio_info).toBeTruthy();
+  expect(r.anio_info.acumulado).toBe(true);
+  expect(r).toHaveProperty("ratios_anio");
+  expect(r).toHaveProperty("objetivos_anio");
   if (r.tiene_materia) {
+    // Día × días abiertos ≈ mes (el día es el ritmo del mes base).
     expect(Math.abs(r.escalas.dia.ventas * r.dias_abiertos_mes - r.escalas.mes.ventas)).toBeLessThan(2);
-    expect(Math.abs(r.escalas.mes.ebitda * 12 - r.escalas.anio.ebitda)).toBeLessThan(2);
+    // El acumulado del año incluye al menos el mes base (ventas año ≥ ventas mes).
+    expect(r.anio_info.meses).toBeGreaterThanOrEqual(1);
+    expect(r.escalas.anio.ventas).toBeGreaterThanOrEqual(r.escalas.mes.ventas - 1);
     // Personal y costes fijos son segmentos separados (personal no está en fijos).
     expect(r.segmentos.personal.length).toBeGreaterThan(0);
     expect(r.segmentos.fijos.every((f) => (f.categoria || "").toLowerCase() !== "personal")).toBe(true);
-    // Con objetivos sembrados, el food cost real (26%) cumple su objetivo (27%).
+    // Con objetivos sembrados, el food cost real cumple/estado presente.
     expect(r.objetivos.food_cost.objetivo).toBeGreaterThan(0);
     expect(["ok", "warn", "bad"]).toContain(r.objetivos.food_cost.estado);
   }
@@ -1940,11 +1947,17 @@ test("financiero: la vista pinta la cascada y el toggle día/mes/año cambia la 
   // Segmentos separados.
   await expect(page.locator("text=Personal (coste mensual)")).toBeVisible();
   await expect(page.locator("text=Costes fijos (coste mensual)")).toBeVisible();
-  // Toggle a "Año": el EBITDA mostrado debe ser ~12× el del mes.
+  // Toggle de escala: día (ritmo) < mes; año = acumulado real (≥ el mes base).
+  const num = (t) => Number(String(t).replace(/[^\d,-]/g, "").replace(/\./g, "").replace(",", "."));
+  const diaTxt = await page.evaluate(() => { window._fin.scope = "dia"; finRender(); return document.querySelector(".fin-hero-v").textContent; });
   const mesTxt = await page.evaluate(() => { window._fin.scope = "mes"; finRender(); return document.querySelector(".fin-hero-v").textContent; });
   const anioTxt = await page.evaluate(() => { window._fin.scope = "anio"; finRender(); return document.querySelector(".fin-hero-v").textContent; });
-  const num = (t) => Number(String(t).replace(/[^\d,-]/g, "").replace(/\./g, "").replace(",", "."));
-  if (num(mesTxt) !== 0) expect(Math.abs(num(anioTxt) / num(mesTxt) - 12)).toBeLessThan(0.5);
+  if (num(mesTxt) > 0) {
+    expect(num(diaTxt)).toBeLessThan(num(mesTxt)); // el día es una fracción del mes
+    expect(num(anioTxt)).toBeGreaterThanOrEqual(num(mesTxt) - 1); // acumulado ≥ un mes
+  }
+  // El año se etiqueta como acumulado (no proyección).
+  await expect(page.locator("text=Acumulado").first()).toBeVisible();
   expect(errors, "sin errores de JS").toEqual([]);
 });
 

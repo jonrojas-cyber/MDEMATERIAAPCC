@@ -22,13 +22,13 @@ function diasAbiertos(perfil) {
   return { dias_semana: d, dias_abiertos_mes: Math.round(d * (365 / 12 / 7) * 10) / 10 };
 }
 
-// ── COMPONER (puro) ─────────────────────────────────────────────────────────
-// base = P&L de UN mes completo (de cuenta-resultados): { ingresos, coste_materia,
-// personal, otros_fijos, variables, cuota_creditos }. Devuelve la cascada escalada.
-function componer(base, opts = {}) {
-  const diasAb = Number(opts.dias_abiertos_mes) > 0 ? Number(opts.dias_abiertos_mes) : 26.1;
-  const tieneMateria = base.coste_materia != null;
+const MESCORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
+// Cascada en € a partir de un P&L (base: {ingresos, coste_materia, personal,
+// otros_fijos, variables, cuota_creditos}). Sirve igual para un mes, para el día
+// abierto (base escalada ÷ días) o para el ACUMULADO del año (suma de meses).
+function cascadaDe(base) {
+  const tieneMateria = base.coste_materia != null;
   const V = Number(base.ingresos) || 0;
   const materia = tieneMateria ? (Number(base.coste_materia) || 0) : null;
   const personal = Number(base.personal) || 0;
@@ -37,25 +37,34 @@ function componer(base, opts = {}) {
   const margenBruto = tieneMateria ? V - materia : null;
   const primeCost = tieneMateria ? materia + personal : null;
   const ebitda = tieneMateria ? margenBruto - personal - fijos - variables : null;
-  const credMes = Number(base.cuota_creditos) || 0;
-  const cajaMes = ebitda != null ? ebitda - credMes : null;
+  const cred = Number(base.cuota_creditos) || 0;
+  const caja = ebitda != null ? ebitda - cred : null;
+  return {
+    ventas: eur(V),
+    coste_materia: materia != null ? eur(materia) : null,
+    margen_bruto: margenBruto != null ? eur(margenBruto) : null,
+    personal: eur(personal),
+    prime_cost: primeCost != null ? eur(primeCost) : null,
+    otros_fijos: eur(fijos),
+    variables: eur(variables),
+    ebitda: ebitda != null ? eur(ebitda) : null,
+    cuota_creditos: eur(cred),
+    resultado_caja: caja != null ? eur(caja) : null,
+  };
+}
 
-  // Escalado lineal: mes (f=1) → día abierto (f=1/díasAbiertos) → año (f=12).
-  const escala = (f) => ({
-    ventas: eur(V * f),
-    coste_materia: materia != null ? eur(materia * f) : null,
-    margen_bruto: margenBruto != null ? eur(margenBruto * f) : null,
-    personal: eur(personal * f),
-    prime_cost: primeCost != null ? eur(primeCost * f) : null,
-    otros_fijos: eur(fijos * f),
-    variables: eur(variables * f),
-    ebitda: ebitda != null ? eur(ebitda * f) : null,
-    cuota_creditos: eur(credMes * f),
-    resultado_caja: cajaMes != null ? eur(cajaMes * f) : null,
-  });
-
-  // Ratios (idénticos a cualquier escala, por eso se calculan una vez sobre el mes).
-  const ratios = {
+// Ratios sobre ventas (food cost, personal, prime cost, fijos, EBITDA) de un P&L.
+function ratiosDe(base) {
+  const tieneMateria = base.coste_materia != null;
+  const V = Number(base.ingresos) || 0;
+  const materia = tieneMateria ? (Number(base.coste_materia) || 0) : null;
+  const personal = Number(base.personal) || 0;
+  const fijos = Number(base.otros_fijos) || 0;
+  const variables = Number(base.variables) || 0;
+  const margenBruto = tieneMateria ? V - materia : null;
+  const primeCost = tieneMateria ? materia + personal : null;
+  const ebitda = tieneMateria ? margenBruto - personal - fijos - variables : null;
+  return {
     food_cost_pct: materia != null ? pctDe(materia, V) : null,
     margen_bruto_pct: margenBruto != null ? pctDe(margenBruto, V) : null,
     personal_pct: pctDe(personal, V),
@@ -64,6 +73,30 @@ function componer(base, opts = {}) {
     variables_pct: pctDe(variables, V),
     ebitda_pct: ebitda != null ? pctDe(ebitda, V) : null,
   };
+}
+
+// Escala un P&L por un factor (para pasar de mes a día abierto, o a proyección ×N).
+function escalarBase(base, f) {
+  return {
+    ingresos: (Number(base.ingresos) || 0) * f,
+    coste_materia: base.coste_materia != null ? (Number(base.coste_materia) || 0) * f : null,
+    personal: (Number(base.personal) || 0) * f,
+    otros_fijos: (Number(base.otros_fijos) || 0) * f,
+    variables: (Number(base.variables) || 0) * f,
+    cuota_creditos: (Number(base.cuota_creditos) || 0) * f,
+  };
+}
+
+// ── COMPONER (puro) ─────────────────────────────────────────────────────────
+// base = P&L de UN mes completo. Devuelve día abierto / mes / año (proyección ×12,
+// que calcular() sustituye por el ACUMULADO real), ratios del mes y break-even.
+function componer(base, opts = {}) {
+  const diasAb = Number(opts.dias_abiertos_mes) > 0 ? Number(opts.dias_abiertos_mes) : 26.1;
+  const V = Number(base.ingresos) || 0;
+  const materia = base.coste_materia != null ? (Number(base.coste_materia) || 0) : null;
+  const personal = Number(base.personal) || 0;
+  const fijos = Number(base.otros_fijos) || 0;
+  const credMes = Number(base.cuota_creditos) || 0;
 
   // Break-even por día abierto, consistente con la cascada del mes base.
   const contrib = (materia != null && V > 0) ? 1 - (materia / V) : null;
@@ -76,8 +109,8 @@ function componer(base, opts = {}) {
   const margenSeg = (equDiaAb != null && ventasDiaAb > 0) ? Math.round(((ventasDiaAb - equDiaAb) / ventasDiaAb) * 1000) / 10 : null;
 
   return {
-    ratios,
-    escalas: { dia: escala(1 / diasAb), mes: escala(1), anio: escala(12) },
+    ratios: ratiosDe(base),
+    escalas: { dia: cascadaDe(escalarBase(base, 1 / diasAb)), mes: cascadaDe(base), anio: cascadaDe(escalarBase(base, 12)) },
     equilibrio: {
       contribucion_pct: contrib != null ? Math.round(contrib * 1000) / 10 : null,
       dia_abierto: equDiaAb != null ? eur(equDiaAb) : null,
@@ -88,6 +121,40 @@ function componer(base, opts = {}) {
       margen_seguridad_pct: margenSeg,
       en_perdidas: margenSeg != null ? margenSeg < 0 : null,
     },
+  };
+}
+
+// ── ACUMULADO DEL AÑO (YTD real) ─────────────────────────────────────────────
+// Suma el P&L REAL de cada mes del año en curso con actividad (ventas o costes
+// fijos activos), usando la cuenta mensual (fuente única). El mes en curso entra
+// hasta hoy. Es "lo que de verdad llevas", no una proyección.
+function acumuladoAnio(now = Date.now()) {
+  const d = new Date(now);
+  const year = d.getFullYear(), mNow = d.getMonth();
+  const sum = { ingresos: 0, coste_materia: 0, personal: 0, otros_fijos: 0, variables: 0, cuota_creditos: 0 };
+  let tieneMateria = false, primero = null, ultimo = null, nMeses = 0;
+  for (let m = 0; m <= mNow; m++) {
+    const etq = `${year}-${String(m + 1).padStart(2, "0")}`;
+    const c = cr.calcular({ mes: etq, now });
+    const cu = c.cuenta || {};
+    const V = Number(cu.ingresos) || 0;
+    // Solo meses con ventas registradas: así el mes en curso sin cierre (conector
+    // atrasado) no distorsiona el acumulado con costes y 0 ingresos. Entra en cuanto
+    // tiene ventas. (El coste real del mes en curso se ve en la pestaña "Mes".)
+    if (V <= 0) continue;
+    sum.ingresos += V;
+    if (cu.coste_materia != null) { sum.coste_materia += Number(cu.coste_materia) || 0; tieneMateria = true; }
+    sum.personal += Number(cu.personal) || 0;
+    sum.otros_fijos += Number(cu.otros_fijos) || 0;
+    sum.variables += Number(cu.variables) || 0;
+    sum.cuota_creditos += Number(cu.cuota_creditos) || 0;
+    if (primero == null) primero = m;
+    ultimo = m; nMeses++;
+  }
+  if (!tieneMateria) sum.coste_materia = null;
+  return {
+    base: sum, meses: nMeses, year,
+    etiqueta: nMeses ? (primero === ultimo ? `${MESCORTO[primero]} ${year}` : `${MESCORTO[primero]}–${MESCORTO[ultimo]} ${year}`) : String(year),
   };
 }
 
@@ -156,8 +223,14 @@ function calcular(opts = {}) {
   }
 
   const c = cr.calcular({ mes: mesBase, ventas: opts.ventas, foodCost: opts.foodCost, now });
-  const base = c.proyeccion || c.cuenta;    // P&L a mes completo (run-rate)
+  const base = c.proyeccion || c.cuenta;    // P&L a mes completo (ritmo del mes base)
   const comp = componer(base, { dias_abiertos_mes });
+
+  // AÑO = acumulado REAL del año en curso (suma de meses), no una proyección ×12.
+  // Es "lo que de verdad llevas". Tiene su propia cascada y sus propios ratios.
+  const ytd = acumuladoAnio(now);
+  comp.escalas.anio = cascadaDe(ytd.base);
+  const ratiosAnio = ratiosDe(ytd.base);
 
   return {
     mes_base: c.mes,
@@ -168,12 +241,15 @@ function calcular(opts = {}) {
     ventas_origen: c.cuenta.ventas_origen,
     dias_semana,
     dias_abiertos_mes,
-    ratios: comp.ratios,
+    ratios: comp.ratios,                             // ritmo del mes base (día y mes)
+    ratios_anio: ratiosAnio,                         // ratios reales del acumulado del año
     objetivos: semaforo(comp.ratios),
+    objetivos_anio: semaforo(ratiosAnio),
     escalas: comp.escalas,
     equilibrio: comp.equilibrio,
     segmentos: segmentos(now, Number(base.ingresos) || 0),
-    nota_anio: `Proyección a 12 meses al ritmo de ${c.mes}`,
+    anio_info: { acumulado: true, meses: ytd.meses, etiqueta: ytd.etiqueta, year: ytd.year },
+    nota_anio: ytd.meses ? `Acumulado real de ${ytd.etiqueta} (${ytd.meses} ${ytd.meses === 1 ? "mes" : "meses"})` : `Año ${ytd.year}`,
   };
 }
 
@@ -191,4 +267,4 @@ function segmentos(now, ventasMes) {
   };
 }
 
-module.exports = { calcular, componer, mesConDatos, diasAbiertos, semaforo, estadoObjetivo, eur };
+module.exports = { calcular, componer, acumuladoAnio, cascadaDe, ratiosDe, mesConDatos, diasAbiertos, semaforo, estadoObjetivo, eur };

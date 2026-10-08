@@ -92,6 +92,36 @@ test("calcular autodetecta el último mes con datos (cierre de septiembre)", () 
   limpiar();
 });
 
+test("acumuladoAnio suma el P&L real de los meses con ventas (no proyecta)", () => {
+  limpiar();
+  store.writeAll("config", [
+    { id: "food_cost_manual_pct", valor: 26 },
+    { id: "ventas_mes_2026-07", valor: 8000 },
+    { id: "ventas_mes_2026-08", valor: 11000 },
+    { id: "ventas_mes_2026-09", valor: 12492.72 },
+  ]);
+  store.writeAll("fixed_costs", [
+    { id: "fc-lara", category: "Personal", amount: 2500, periodicity: "monthly", active: true, start_date: "2026-07-01" },
+    { id: "fc-daniel", category: "Personal", amount: 2500, periodicity: "monthly", active: true, start_date: "2026-07-01" },
+    { id: "fc-alquiler", category: "Alquiler", amount: 665.5, periodicity: "monthly", active: true, start_date: "2026-07-01" },
+    { id: "fc-luz", category: "Luz", amount: 500, periodicity: "monthly", active: true, start_date: "2026-07-01" },
+  ]);
+  store.writeAll("business_config", [{ id: "perfil", dias_semana: 6 }]);
+  const now = new Date(2026, 9, 8, 12).getTime(); // 8 oct 2026 (octubre sin ventas)
+  const ytd = financiero.acumuladoAnio(now);
+  assert.strictEqual(ytd.meses, 3, "jul, ago, sep (octubre sin ventas no cuenta)");
+  assert.ok(near(ytd.base.ingresos, 31492.72, 1), "ventas año = 8000+11000+12492,72");
+  // El año es acumulado real, NO mes×12.
+  const r = financiero.calcular({ now });
+  assert.strictEqual(r.anio_info.acumulado, true);
+  assert.strictEqual(r.anio_info.meses, 3);
+  assert.ok(near(r.escalas.anio.ventas, 31492.72, 1), "escala año = ventas acumuladas reales");
+  assert.ok(Math.abs(r.escalas.mes.ebitda * 12 - r.escalas.anio.ebitda) > 1000, "el año NO es mes×12");
+  // Ratios del año son los reales acumulados (personal más alto que en septiembre solo).
+  assert.ok(r.ratios_anio.personal_pct > r.ratios.personal_pct, "personal acumulado > personal del mes base");
+  limpiar();
+});
+
 test("estadoObjetivo: verde/ámbar/rojo según objetivo (menos-mejor y más-mejor)", () => {
   // Menos es mejor (food/personal/prime/fijos).
   assert.strictEqual(financiero.estadoObjetivo(26, 27, true), "ok", "por debajo del objetivo → ok");

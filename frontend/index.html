@@ -3251,11 +3251,14 @@ function vizHomeHTML(d, ini, dec, conc, tpv, fin){
   let ebitdaBand="";
   if(fin && fin.tiene_materia && fin.escalas && fin.escalas.dia){
     const fd=fin.escalas.dia, fr=fin.ratios||{}, oB=fin.objetivos||{}; const posE=(fd.ebitda||0)>=0;
+    const fa=fin.escalas.anio||{}, ai=fin.anio_info||{};
     const cP=finColorEstado((oB.prime_cost||{}).estado), cE=finColorEstado((oB.ebitda||{}).estado);
+    const acum=fa.ebitda!=null?`<span class="viz-ebit-acc">acumulado ${esc(ai.etiqueta||'año')}<b class="${(fa.ebitda||0)>=0?'pos':'neg'}"> ${vizEur(fa.ebitda)}</b></span>`:"";
     ebitdaBand=`<button class="viz-ebit" onclick="irA_financiero()">
       <span class="viz-ebit-l">EBITDA<br>por día abierto</span>
       <span class="viz-ebit-v ${posE?'pos':'neg'}">${vizEur(fd.ebitda)}</span>
       <span class="viz-ebit-r">prime cost <b style="color:${cP}">${fr.prime_cost_pct!=null?fr.prime_cost_pct+'%':'—'}</b> · personal ${fr.personal_pct!=null?fr.personal_pct+'%':'—'} · food ${fr.food_cost_pct!=null?fr.food_cost_pct+'%':'—'} · fijos ${fr.fijos_pct!=null?fr.fijos_pct+'%':'—'} · <b style="color:${cE}">EBITDA ${fr.ebitda_pct!=null?fr.ebitda_pct+'%':'—'}</b></span>
+      ${acum}
       <span class="viz-ebit-go">día · mes · año →</span>
     </button>`;
   }
@@ -3416,6 +3419,8 @@ function vizHomeCSS(){ return `<style>
   .viz-ebit-v{font-size:24px;font-weight:400;letter-spacing:-.02em;white-space:nowrap;}
   .viz-ebit-v.pos{color:var(--viz-up);}.viz-ebit-v.neg{color:var(--viz-down);}
   .viz-ebit-r{font-size:10.5px;color:var(--viz-ink2);}.viz-ebit-r b{color:var(--viz-ink);font-weight:700;}
+  .viz-ebit-acc{font-size:10.5px;color:var(--viz-ink2);white-space:nowrap;padding-left:4px;}
+  .viz-ebit-acc b{font-weight:700;}.viz-ebit-acc b.pos{color:var(--viz-up);}.viz-ebit-acc b.neg{color:var(--viz-down);}
   .viz-ebit-go{margin-left:auto;font-size:10px;color:var(--viz-ink2);white-space:nowrap;letter-spacing:.04em;}
   @media(max-width:719px){.viz-ebit{flex-wrap:wrap;gap:8px 14px;}.viz-ebit-go{margin-left:0;}}
   /* Columna derecha */
@@ -9915,9 +9920,13 @@ function finRender(){
       <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="irA_cuentaResultados()">Ir a Cuenta de resultados →</button></div>`);
     return;
   }
-  const E=r.escalas[scope]||{}; const R=r.ratios||{}; const Q=r.equilibrio||{}; const O=r.objetivos||{};
+  const esAnio=(scope==="anio");
+  const E=r.escalas[scope]||{}; const Q=r.equilibrio||{};
+  const R=esAnio?(r.ratios_anio||{}):(r.ratios||{});
+  const O=esAnio?(r.objetivos_anio||{}):(r.objetivos||{});
+  const AI=r.anio_info||{};
   const posE=(E.ebitda||0)>=0;
-  const scopeLbl={dia:"por día abierto",mes:"este mes",anio:"al año (ritmo actual)"}[scope];
+  const scopeLbl={dia:"por día abierto",mes:"este mes",anio:AI.etiqueta?`acumulado · ${AI.etiqueta}`:"acumulado del año"}[scope];
   const toggle=`<div class="fin-toggle">
     ${[["dia","Día"],["mes","Mes"],["anio","Año"]].map(([s,l])=>`<button class="fin-tg${s===scope?' on':''}" onclick="window._fin.scope='${s}';finRender()">${l}</button>`).join("")}
   </div>`;
@@ -9992,7 +10001,7 @@ function finRender(){
     ${be}
     <div class="section-label" style="margin-top:16px;">Cascada · ${scopeLbl}</div>
     ${cascada}
-    <div class="ad-foot">${scope==="dia"?`Cada cifra es el reparto de ${esc(finFechaMes(r.mes_base))} entre los ${r.dias_abiertos_mes} días que abres al mes (${r.dias_semana} días/semana).`:scope==="anio"?`Proyección a 12 meses al ritmo de ${esc(finFechaMes(r.mes_base))}.`:`Mes completo de ${esc(finFechaMes(r.mes_base))}.`} · Food cost ${r.food_cost_origen==="manual"?"manual (provisional)":"calculado de escandallos"} · ${origenTxt}.</div>
+    <div class="ad-foot">${scope==="dia"?`Ritmo: reparto de ${esc(finFechaMes(r.mes_base))} entre los ${r.dias_abiertos_mes} días que abres al mes (${r.dias_semana} días/semana).`:scope==="anio"?`Acumulado REAL del año: suma de lo facturado y gastado en ${esc(AI.etiqueta||"")} (${AI.meses||0} ${AI.meses===1?"mes":"meses"}), no una proyección.`:`Mes completo de ${esc(finFechaMes(r.mes_base))}.`} · Food cost ${r.food_cost_origen==="manual"?"manual (provisional)":"calculado de escandallos"} · ${origenTxt}.</div>
     ${segmentos}
     <div class="ad-foot" style="margin-top:12px;">Prime cost (materia + personal) es la cifra clave en hostelería: objetivo ≈ 60–65 % de las ventas. EBITDA = antes de intereses de préstamos; el resultado de caja ya se los resta.</div>
     <div class="card-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">

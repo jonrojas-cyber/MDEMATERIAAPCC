@@ -357,6 +357,7 @@ app.use("/api/incidencias", require("./routes/incidencias")); // partes del equi
 // Todos estos segmentos quedan FUERA de EQUIPO_ALLOWED en auth.js, por lo que el
 // middleware `requerido` ya bloquea a los no-admin; cada ruta lo reafirma además.
 app.use("/api/executive-dashboard", require("./routes/executive-dashboard"));
+app.use("/api/dashboard", require("./routes/dashboard")); // centro de mando de la portada (CEO)
 app.use("/api/cierre-mes", require("./routes/cierre-mes")); // informe de cierre mensual (admin)
 app.use("/api/financials", require("./routes/financials"));
 app.use("/api/ebitda", require("./routes/ebitda"));

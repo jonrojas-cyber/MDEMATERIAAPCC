@@ -3449,19 +3449,358 @@ function vizSkeleton(){
     <div class="viz-skel-bar" style="height:70px;margin-top:20px;"></div>
     <div class="viz-skel-bar" style="height:120px;margin-top:16px;"></div></div>`;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// DASHBOARD CEO · centro de mando (consume /api/dashboard, una sola llamada).
+// Jerarquía: cabecera+freshness → 5 KPIs → evolución del día + mes → comercial →
+// requiere tu atención + pulso → tesorería. Mismo lenguaje visual editorial
+// (Courier, arena, oliva, hairlines, sin sombras ni degradados).
+// ════════════════════════════════════════════════════════════════════════════
+// Estado → [color, símbolo, texto]. El estado SIEMPRE se acompaña de símbolo+texto,
+// no solo de color (accesibilidad). Fuente única del semáforo en el front.
+function dashEstado(e){
+  return ({
+    ok:["var(--dk-up)","●","correcto"], atencion:["var(--dk-warn)","▲","atención"],
+    critico:["var(--dk-down)","■","crítico"], sin_datos:["var(--dk-ink3)","·","sin datos"],
+    pendiente:["var(--dk-ink3)","·","pendiente"], desactualizado:["var(--dk-warn)","!","desactualizado"],
+  })[e] || ["var(--dk-ink2)","",""];
+}
+function dashChip(e){ const [c,s,t]=dashEstado(e); return `<span class="dk-chip" style="color:${c}"><i>${s}</i>${t}</span>`; }
+// Valor grande o estado vacío elegante (nunca un 0 cuando el dato es desconocido).
+function dashVal(valor, estado, fmt){
+  // Estado vacío elegante: solo "—" (el chip y la nota ya explican el porqué).
+  if(estado==="sin_datos"||estado==="pendiente"||valor==null) return `<span class="dk-empty">—</span>`;
+  return (fmt||vizEur)(valor);
+}
+function dashKpi(k, label, fmt, refTxt){
+  const [c] = dashEstado(k.estado);
+  const delta = k.delta_pct!=null ? vizDelta(k.delta_pct,"pct",true) : "";
+  return `<div class="dk-kpi" title="${esc(k.nota||"")}">
+    <div class="dk-kpi-l">${esc(label)}</div>
+    <div class="dk-kpi-v" style="color:${(k.estado==="critico"||k.estado==="atencion")?c:"var(--dk-ink)"}">${dashVal(k.valor, k.estado, fmt)}</div>
+    <div class="dk-kpi-s">${refTxt||""}${delta?` ${delta}`:""}</div>
+    <div class="dk-kpi-st">${dashChip(k.estado)}</div>
+  </div>`;
+}
+
+function dashHomeHTML(dsh){
+  const now=new Date();
+  const fechaUP=now.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
+  const F=dsh.freshness||{}, K=dsh.kpis||{}, DIA=dsh.dia||{}, C=dsh.comercial||{}, AT=dsh.atencion||{items:[],total:0}, P=dsh.pulso||{}, T=dsh.tesoreria||{}, MES=dsh.mes||{};
+
+  // ── CABECERA + FRESHNESS ──
+  const hhmm=F.agora_sync?new Date(F.agora_sync).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}):null;
+  const [fc,fs,ft]=dashEstado(F.estado);
+  const freshTxt = F.estado==="pendiente" ? "Sin datos de Ágora todavía — importa o conecta el TPV"
+    : F.origen==="conector" ? `Conector Ágora · última venta ${hhmm||"—"}${F.desactualizado?" · desactualizado":""}`
+    : `Última importación de Ágora: ${hhmm||"—"}${F.desactualizado?" · desactualizado":""}`;
+  const hero=`<header class="dk-hd">
+    <div>
+      <div class="dk-eyebrow">${esc(fechaUP)}</div>
+      <h1 class="dk-title">visión general</h1>
+      <div class="dk-lede">El negocio hoy y hacia dónde vamos.</div>
+      <div class="dk-fresh" style="color:${fc}"><i>${fs}</i>${esc(freshTxt)}</div>
+    </div>
+    <button class="dk-fichar" onclick="irA_fichaje()">🕐 Fichar</button>
+  </header>`;
+
+  // ── 5 KPIs ──
+  const objDiaTxt = K.ventas_hoy && K.ventas_hoy.objetivo!=null ? `obj ${vizEur(K.ventas_hoy.objetivo)}` : "";
+  const kpis=`<section class="dk-kpis">
+    ${dashKpi(K.ventas_hoy||{}, "ventas hoy", vizEur, objDiaTxt)}
+    ${dashKpi(K.resultado_dia||{}, "resultado del día", vizEur, (K.resultado_dia&&K.resultado_dia.parcial)?"<span class='dk-mut'>parcial</span>":"")}
+    ${dashKpi(K.productividad||{}, "productividad", (v)=>vizEur(v)+"/h", (K.productividad&&K.productividad.objetivo!=null)?`obj ${vizEur(K.productividad.objetivo)}/h`:"")}
+    ${dashKpi(K.objetivo_dia||{}, "% del objetivo", (v)=>vizFmt(v)+" %", (K.objetivo_dia&&K.objetivo_dia.referencia!=null)?`meta ${vizEur(K.objetivo_dia.referencia)}`:"")}
+    ${dashKpi(K.cierre_previsto||{}, "cierre previsto", vizEur, (K.cierre_previsto&&K.cierre_previsto.metodo&&K.cierre_previsto.metodo!=="sin_datos")?`<span class='dk-mut'>${K.cierre_previsto.metodo==="fraccion_jornada"?"ritmo de hoy":"media histórica"}</span>`:"")}
+  </section>`;
+
+  // ── EVOLUCIÓN DEL DÍA (ritmo) ──
+  const objD=DIA.objetivo||0, vD=DIA.ventas||0, prevD=DIA.prevision||0;
+  const maxD=Math.max(objD,prevD,vD,1);
+  const barra = objD>0 ? `<div class="dk-bar">
+      <div class="dk-bar-fill" style="width:${Math.min(100,Math.round(vD/maxD*100))}%"></div>
+      <div class="dk-bar-mk" style="left:${Math.min(100,Math.round(objD/maxD*100))}%" title="objetivo ${vizEur(objD)}"></div>
+      ${prevD>0?`<div class="dk-bar-mk prev" style="left:${Math.min(100,Math.round(prevD/maxD*100))}%" title="cierre previsto ${vizEur(prevD)}"></div>`:""}
+    </div>
+    <div class="dk-bar-leg"><span>hoy ${vizEur(vD)}</span><span>objetivo ${vizEur(objD)}</span><span>previsto ${prevD>0?vizEur(prevD):"—"}</span></div>`
+    : `<div class="dk-noch">Sin objetivo del día: necesita histórico de ventas del mes anterior.</div>`;
+  const evoDia=`<section class="dk-sec dk-evo">
+    <div class="dk-sec-h"><span>evolución del día</span><span class="dk-mut">${esc(DIA.conclusion?"":"")}</span></div>
+    ${barra}
+    <div class="dk-concl">${esc(DIA.conclusion||"")}</div>
+    <div class="dk-foot">${esc(DIA.nota_intradia||"")}</div>
+  </section>`;
+
+  // ── MES ──
+  const serie=(MES.serie||[]).map(x=>Number(x.ventas)||0);
+  let acc=0; const serieAcc=serie.map(v=>acc+=v);
+  const objMes=MES.objetivo||0;
+  const chart = serieAcc.length>=2
+    ? vizChart(serieAcc,{h:96,marker:serieAcc.length-1,yticks:[Math.max(...serieAcc,objMes,1),0],fmtY:t=>t>=1000?Math.round(t/1000)+"k":Math.round(t),xlabels:[]})
+    : `<div class="dk-noch">— sin ventas del mes todavía</div>`;
+  const mes=`<section class="dk-sec dk-mes">
+    <div class="dk-sec-h"><span>mes</span>${dashChip(MES.estado)}</div>
+    <div class="dk-mes-v">${MES.ventas_acum!=null?vizEur(MES.ventas_acum):"—"}<small> / ${objMes>0?vizEur(objMes):"sin objetivo"}</small></div>
+    <div class="dk-mes-bar"><i style="width:${Math.min(100,Math.max(0,MES.pct||0))}%"></i></div>
+    ${chart}
+    <div class="dk-rows">
+      <div><span>ritmo necesario/día</span><b>${MES.ritmo_necesario_dia!=null?vizEur(MES.ritmo_necesario_dia):"—"}</b></div>
+      <div><span>previsión de cierre</span><b>${MES.prevision_cierre!=null?vizEur(MES.prevision_cierre):"—"}</b></div>
+      <div><span>días abiertos restantes</span><b>${MES.dias_abiertos_restantes!=null?MES.dias_abiertos_restantes:"—"}</b></div>
+      <div><span>resultado operativo (EBITDA)</span><b>${MES.resultado_operativo!=null?vizEur(MES.resultado_operativo):"—"}</b></div>
+      <div><span>vs mes anterior</span><b>${MES.vs_mes_anterior_pct!=null?vizDelta(MES.vs_mes_anterior_pct,"pct",true):"—"}</b></div>
+    </div>
+  </section>`;
+
+  // ── RENDIMIENTO COMERCIAL ──
+  const cItem=(label,obj,extra)=>{ const [c]=dashEstado(obj.estado); const val=obj.valor;
+    const emptyish=(obj.estado==="sin_datos"||obj.estado==="pendiente"||val==null);
+    const show=emptyish?`<span class="dk-empty">—</span>`:(extra==="pct"?vizFmt(val)+" %":extra==="eur"?vizEur(val):extra==="num"?vizFmt(val):vizFmt(val,1));
+    const sub=(obj.vs_dia_equivalente && !emptyish)?`<div class="dk-c-s">${vizDelta(obj.vs_dia_equivalente.pct,"pct",true)} <span class="dk-mut">vs día equiv.</span></div>`:(obj.objetivo!=null?`<div class="dk-c-s dk-mut">obj ${extra==="pct"?obj.objetivo+"%":vizEur(obj.objetivo)}</div>`:"");
+    return `<div class="dk-c"><div class="dk-c-l">${esc(label)}</div><div class="dk-c-v">${show}</div>${sub}</div>`;
+  };
+  const prodTop=C.producto_top?`${esc(C.producto_top.nombre)} <span class="dk-mut">${C.producto_top.unidades} ud</span>`:"—";
+  const prodMargen=C.producto_margen?`${esc(C.producto_margen.nombre)} <span class="dk-mut">${C.producto_margen.margen_pct!=null?C.producto_margen.margen_pct+"%":""}</span>`:"—";
+  const comercial=`<section class="dk-sec">
+    <div class="dk-sec-h"><span>rendimiento comercial</span>${C.sin_datos?`<span class="dk-mut">sin ventas hoy</span>`:""}</div>
+    <div class="dk-cgrid">
+      ${cItem("ticket medio", C.ticket_medio||{}, "eur")}
+      ${cItem("nº tickets", C.tickets||{}, "num")}
+      ${cItem("bebidas/ticket", C.bebidas_por_ticket||{}, "dec")}
+      ${cItem("ventas/hora", C.ventas_por_hora||{}, "eur")}
+      ${cItem("coste producto %", C.coste_producto_pct||{}, "pct")}
+      ${cItem("coste personal %", C.coste_personal_pct||{}, "pct")}
+    </div>
+    <div class="dk-rows dk-rows-wide">
+      <div><span>producto más vendido</span><b>${prodTop}</b></div>
+      <div><span>mayor margen</span><b>${prodMargen}</b></div>
+      <div><span>menor margen (riesgo)</span><b>${C.producto_riesgo?esc(C.producto_riesgo.nombre)+` <span class="dk-mut">${C.producto_riesgo.margen_pct!=null?C.producto_riesgo.margen_pct+"%":""}</span>`:"—"}</b></div>
+    </div>
+  </section>`;
+
+  // ── REQUIERE TU ATENCIÓN ──
+  const sevColor=(s)=>({critico:"var(--dk-down)",importante:"var(--dk-warn)",info:"var(--dk-ink2)"})[s]||"var(--dk-ink2)";
+  const atItems = (AT.items||[]).map((a,i)=>`<button class="dk-at" onclick="dashAccion('${esc(a.id)}')">
+      <span class="dk-at-n" style="color:${sevColor(a.severidad)}">${String(i+1).padStart(2,"0")}</span>
+      <span class="dk-at-b">
+        <span class="dk-at-t">${esc(a.titulo||"")}</span>
+        <span class="dk-at-m">${esc(a.motivo||"")}</span>
+        <span class="dk-at-meta">${a.impacto_eur!=null?`impacto ${vizEur(a.impacto_eur)} · `:""}${a.appcc?"APPCC · ":""}${a.tiempo_min!=null?`~${a.tiempo_min} min`:""}</span>
+      </span>
+      <span class="dk-at-go">${a.accion&&a.accion.label?esc(a.accion.label):"Ver"} →</span>
+    </button>`).join("");
+  const atencion=`<section class="dk-sec dk-atencion">
+    <div class="dk-sec-h"><span>requiere tu atención</span><span class="dk-mut">${AT.total} ${AT.total===1?"asunto":"asuntos"}${AT.criticos?` · ${AT.criticos} crítico${AT.criticos===1?"":"s"}`:""}</span></div>
+    ${atItems || `<div class="dk-clear">✓ Nada urgente ahora mismo.</div>`}
+    ${AT.total>3?`<button class="dk-vermas" onclick="irA_tareas()">Ver los ${AT.total} →</button>`:""}
+  </section>`;
+
+  // ── PULSO OPERATIVO ──
+  const pulsoBox=(titulo,estado,go,filas)=>`<button class="dk-pulso" onclick="${go}()">
+    <div class="dk-pulso-h">${esc(titulo)} ${dashChip(estado)}</div>
+    <div class="dk-pulso-rows">${filas.map(([l,v])=>`<div><span>${esc(l)}</span><b>${v}</b></div>`).join("")}</div>
+  </button>`;
+  const PP=P.produccion||{}, PS=P.stock||{}, PE=P.equipo||{}, PA=P.appcc||{};
+  const pulso=`<section class="dk-sec">
+    <div class="dk-sec-h"><span>pulso operativo</span></div>
+    <div class="dk-pulso-grid">
+      ${pulsoBox("Producción",PP.estado,"irA_lab",[["completadas hoy",PP.completadas],["en curso",PP.en_curso],["pendientes",PP.pendientes==null?"—":PP.pendientes]])}
+      ${pulsoBox("Stock",PS.estado,"irA_materias",[["bajo mínimo",PS.bajo_minimo],["caducan 48 h",PS.caducan_48h],["valor crítico",PS.valor_critico!=null?vizEur(PS.valor_critico):"—"]])}
+      ${pulsoBox("Equipo",PE.estado,"irA_equipoHub",[["trabajando ahora",PE.trabajando_ahora],["horas real/plan",`${vizFmt(PE.horas_reales,1)}/${vizFmt(PE.horas_plan,1)} h`],["fichajes abiertos",PE.fichajes_abiertos]])}
+      ${pulsoBox("APPCC",PA.estado,"irA_appcc",[["completadas",`${PA.completadas}/${PA.total}`],["pendientes",PA.pendientes],["fuera de rango",PA.fuera_rango]])}
+    </div>
+  </section>`;
+
+  // ── TESORERÍA ──
+  const [tc]=dashEstado(T.estado);
+  const tRow=(l,v,cls)=>`<div class="dk-t ${cls||""}"><span>${esc(l)}</span><b>${v==null?"—":vizEur(v)}</b></div>`;
+  const tesoreria=`<section class="dk-sec dk-tes">
+    <div class="dk-sec-h"><span>tesorería inmediata</span>${dashChip(T.estado)}</div>
+    <div class="dk-tgrid">
+      ${tRow("caja (efectivo)",T.caja)}
+      ${tRow("banco",T.banco)}
+      ${tRow("liquidez disponible",T.liquidez,"dk-strong")}
+      ${tRow("cobros pendientes",T.cobros_pendientes)}
+      ${tRow("pagos próximos 7 días",T.pagos_7d)}
+      ${tRow("comprometido (IVA/IRPF/SS/pagos)",T.comprometido)}
+      ${tRow("saldo previsto a 7 días",T.saldo_previsto_7d,"dk-strong")}
+      <div class="dk-t"><span>días de supervivencia</span><b>${T.dias_supervivencia!=null?T.dias_supervivencia:"—"}</b></div>
+    </div>
+    <div class="dk-concl" style="color:${tc}">${esc(T.frase||"")}</div>
+    <div class="dk-foot">${esc(T.pendiente_desglose||"")}</div>
+  </section>`;
+
+  return `${dashHomeCSS()}<div class="dash">
+    ${hero}
+    ${kpis}
+    <div class="dk-row2 dk-row-at">${atencion}${pulso}</div>
+    <div class="dk-row2">${evoDia}${mes}</div>
+    ${comercial}
+    ${tesoreria}
+    <div class="dk-end">Dirigir también es saber dónde mirar. — M de materia</div>
+  </div>`;
+}
+
+// Ejecuta la acción de una alerta de "Requiere tu atención" y refresca la portada.
+function dashAccion(id){
+  const a=(window._dashAt||[]).find(x=>x.id===id);
+  if(!a){ irA_tareas(); return; }
+  const acc=a.accion||{};
+  try{
+    if(acc.handler==="decisionProducir" && acc.args){ iniciarYAbrir(acc.args.receta_id, acc.args.cantidad); return; }
+    if(acc.handler && typeof window[acc.handler]==="function"){ window[acc.handler](acc.args); return; }
+  }catch(e){}
+  irA_tareas();
+}
+
+function dashHomeCSS(){ return `<style>
+  #screen-home.home-ceo{padding:0;overflow-y:auto;}
+  .dash{--dk-bg:#F1EEE6;--dk-panel:#E7E2D7;--dk-ink:#1b1b16;--dk-ink2:#86847a;--dk-ink3:#b2b0a4;
+    --dk-line:rgba(27,23,20,.14);--dk-rule:rgba(27,23,20,.82);--dk-up:#4b4a42;--dk-down:#8E4F3D;--dk-warn:#A56D48;
+    background:var(--dk-bg);color:var(--dk-ink);font-family:var(--font);font-variant-numeric:tabular-nums lining-nums;
+    line-height:1.4;padding:20px 32px 44px;min-height:100%;display:flex;flex-direction:column;}
+  @media(max-width:719px){.dash{padding:16px 16px 40px;}}
+  .dash *{box-sizing:border-box;font-variant-numeric:tabular-nums lining-nums;}
+  .dash .dk-mut{color:var(--dk-ink2);}
+  .dash small{color:var(--dk-ink2);font-size:.72em;}
+  /* Cabecera */
+  .dk-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid var(--dk-rule);padding-bottom:14px;}
+  .dk-eyebrow{font-size:10px;letter-spacing:.18em;color:var(--dk-ink2);}
+  .dk-title{font-size:33px;font-weight:400;letter-spacing:-.015em;line-height:.98;text-transform:lowercase;margin:4px 0 0;}
+  .dk-lede{font-size:12.5px;color:var(--dk-ink2);margin-top:5px;}
+  .dk-fresh{font-size:11.5px;margin-top:9px;display:flex;align-items:center;gap:7px;}
+  .dk-fresh i{font-style:normal;font-size:9px;}
+  .dk-fichar{flex:0 0 auto;background:none;border:1px solid var(--dk-rule);color:var(--dk-ink);font-family:inherit;font-size:12px;letter-spacing:.03em;padding:9px 16px;cursor:pointer;}
+  .dk-fichar:hover{background:rgba(27,23,20,.05);}
+  /* KPIs */
+  .dk-kpis{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--dk-line);margin-top:2px;}
+  .dk-kpi{padding:16px 18px 15px;border-right:1px solid var(--dk-line);min-width:0;}
+  .dk-kpi:last-child{border-right:0;}
+  .dk-kpi-l{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--dk-ink2);}
+  .dk-kpi-v{font-size:30px;font-weight:400;letter-spacing:-.02em;line-height:1;margin-top:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dk-kpi-s{font-size:11px;color:var(--dk-ink2);margin-top:8px;min-height:14px;}
+  .dk-kpi-st{margin-top:8px;}
+  .dk-empty{color:var(--dk-ink3);} .dk-empty small{display:inline;}
+  .dk-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.02em;}
+  .dk-chip i{font-style:normal;font-size:8px;}
+  /* Secciones */
+  .dk-row2{display:flex;align-items:stretch;}
+  .dk-row2>.dk-sec{flex:1 1 0;min-width:0;border-right:1px solid var(--dk-line);padding-right:24px;}
+  .dk-row2>.dk-sec:first-child{flex:2 1 0;}
+  .dk-row2>.dk-sec:last-child{border-right:0;padding-right:0;padding-left:24px;}
+  .dk-sec{padding:16px 0 18px;border-bottom:1px solid var(--dk-line);min-width:0;}
+  .dk-sec-h{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;text-transform:uppercase;letter-spacing:.17em;padding-bottom:12px;}
+  .dk-sec-h>span:first-child{color:var(--dk-ink);}
+  /* Evolución del día */
+  .dk-bar{position:relative;height:12px;background:var(--dk-panel);margin:4px 0 8px;}
+  .dk-bar-fill{height:100%;background:var(--dk-up);}
+  .dk-bar-mk{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--dk-rule);}
+  .dk-bar-mk.prev{background:var(--dk-warn);}
+  .dk-bar-leg{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dk-ink2);}
+  .dk-concl{font-size:13.5px;margin-top:12px;line-height:1.45;}
+  .dk-foot{font-size:10.5px;color:var(--dk-ink3);margin-top:10px;line-height:1.4;}
+  .dk-noch{font-size:11.5px;color:var(--dk-ink3);padding:18px 0;text-align:center;}
+  /* Mes */
+  .dk-mes-v{font-size:26px;font-weight:400;letter-spacing:-.02em;}
+  .dk-mes-bar{height:7px;background:var(--dk-panel);margin:9px 0;}.dk-mes-bar>i{display:block;height:100%;background:var(--dk-up);}
+  /* Gráfico (reutiliza vizChart): trazos finos, sin relleno pesado. */
+  .dash .viz-g{position:relative;}
+  .dash .viz-g-plot{position:relative;padding-left:40px;}
+  .dash .viz-g-plot svg{position:absolute;inset:0 0 0 40px;width:calc(100% - 40px);height:100%;overflow:visible;}
+  .dash .viz-g-area{fill:var(--dk-up);opacity:.06;}
+  .dash .viz-g-line{fill:none;stroke:var(--dk-up);stroke-width:1.4;vector-effect:non-scaling-stroke;stroke-linejoin:round;}
+  .dash .viz-g-obj{fill:none;stroke:var(--dk-ink2);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;opacity:.7;}
+  .dash .viz-g-grid{stroke:var(--dk-line);stroke-width:1;vector-effect:non-scaling-stroke;}
+  .dash .viz-g-mk{stroke:var(--dk-ink2);stroke-width:1;stroke-dasharray:2 2;vector-effect:non-scaling-stroke;opacity:.6;}
+  .dash .viz-g-dot{fill:var(--dk-up);}
+  .dash .viz-g-y{position:absolute;left:0;transform:translateY(-50%);font-size:9px;color:var(--dk-ink2);}
+  .dash .viz-g-mklb{position:absolute;top:-2px;transform:translateX(-50%);font-size:9px;color:var(--dk-ink2);}
+  .dash .viz-g-x{display:flex;justify-content:space-between;font-size:9px;color:var(--dk-ink2);margin:5px 0 0 40px;}
+  .dash .viz-g-legend{display:flex;justify-content:flex-end;gap:14px;font-size:9px;color:var(--dk-ink2);padding:0 2px 6px 40px;}
+  .dash .viz-g-lg{display:flex;align-items:center;gap:5px;}
+  .dash .viz-g-lg i{width:14px;height:0;border-top:1.4px solid var(--dk-up);display:inline-block;}
+  .dk-rows{margin-top:10px;}
+  .dk-rows>div{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:6px 0;border-bottom:1px solid var(--dk-line);}
+  .dk-rows>div:last-child{border-bottom:0;}
+  .dk-rows>div>span{color:var(--dk-ink2);} .dk-rows>div>b{font-weight:700;white-space:nowrap;}
+  .dk-rows-wide{display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px;}
+  @media(max-width:719px){.dk-rows-wide{grid-template-columns:1fr;}}
+  /* Comercial */
+  .dk-cgrid{display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--dk-line);border-bottom:1px solid var(--dk-line);}
+  .dk-c{padding:12px 14px;border-right:1px solid var(--dk-line);min-width:0;}
+  .dk-c:last-child{border-right:0;}
+  .dk-c-l{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--dk-ink2);}
+  .dk-c-v{font-size:21px;font-weight:400;margin-top:7px;white-space:nowrap;}
+  .dk-c-s{font-size:10.5px;margin-top:6px;}
+  /* Atención */
+  .dk-atencion .dk-sec-h>span:first-child{font-size:11px;}
+  .dk-at{display:grid;grid-template-columns:30px 1fr auto;gap:14px;align-items:start;width:100%;background:none;border:0;border-top:1px solid var(--dk-line);padding:13px 2px;text-align:left;cursor:pointer;color:var(--dk-ink);font-family:inherit;}
+  .dk-at:hover{background:rgba(27,23,20,.04);}
+  .dk-at-n{font-size:17px;}
+  .dk-at-t{display:block;font-size:13.5px;font-weight:700;}
+  .dk-at-m{display:block;font-size:11.5px;color:var(--dk-ink2);margin-top:3px;line-height:1.4;}
+  .dk-at-meta{display:block;font-size:10.5px;color:var(--dk-ink3);margin-top:4px;letter-spacing:.02em;}
+  .dk-at-go{font-size:11px;color:var(--dk-up);white-space:nowrap;align-self:center;}
+  .dk-clear{font-size:13px;color:var(--dk-ink2);padding:12px 2px;}
+  .dk-vermas{margin-top:8px;background:none;border:0;color:var(--dk-up);font-family:inherit;font-size:11.5px;cursor:pointer;padding:4px 2px;}
+  /* Pulso */
+  .dk-pulso-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .dk-pulso{text-align:left;background:none;border:0;border-top:1px solid var(--dk-line);border-left:1px solid var(--dk-line);padding:12px 14px;cursor:pointer;color:var(--dk-ink);font-family:inherit;}
+  .dk-pulso:nth-child(odd){border-left:0;}
+  .dk-pulso:hover{background:rgba(27,23,20,.04);}
+  .dk-pulso-h{font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:6px;}
+  .dk-pulso-rows{margin-top:8px;}
+  .dk-pulso-rows>div{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:3px 0;}
+  .dk-pulso-rows>div>span{color:var(--dk-ink2);}.dk-pulso-rows>div>b{font-weight:700;}
+  /* Tesorería */
+  .dk-tgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 28px;border-top:1px solid var(--dk-line);}
+  .dk-t{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:8px 0;border-bottom:1px solid var(--dk-line);}
+  .dk-t>span{color:var(--dk-ink2);}.dk-t>b{font-weight:700;white-space:nowrap;}
+  .dk-t.dk-strong>b{font-size:14px;}
+  .dk-end{text-align:center;font-size:11px;color:var(--dk-ink3);padding-top:18px;letter-spacing:.02em;}
+  /* Dark / sistema: se mantiene el arena (identidad fija del panel). */
+  @media(prefers-color-scheme:dark){.dash{--dk-bg:#F1EEE6;--dk-ink:#1b1b16;}}
+  /* Responsive: apilar por prioridad (KPIs → atención → evolución → comercial → tesorería). */
+  @media(max-width:960px){
+    .dk-cgrid{grid-template-columns:repeat(3,1fr);}
+    .dk-row2{flex-direction:column;}
+    .dk-row2>.dk-sec{flex:none;border-right:0;padding-left:0;padding-right:0;}
+    .dk-tgrid{grid-template-columns:1fr;}
+  }
+  @media(max-width:600px){
+    .dk-kpis{grid-template-columns:repeat(2,1fr);}
+    .dk-kpi{border-bottom:1px solid var(--dk-line);}
+    .dk-kpi:nth-child(odd){border-right:1px solid var(--dk-line);}
+    .dk-kpi:nth-child(even){border-right:0;}
+    .dk-cgrid{grid-template-columns:repeat(2,1fr);}
+    .dk-pulso-grid{grid-template-columns:1fr;}
+    .dk-pulso{border-left:0;}
+    .dk-hd{flex-direction:column;}
+    .dk-kpi-v{font-size:25px;}
+  }
+</style>`; }
 async function loadHomeCEO(){
   try{ document.getElementById("screen-home").classList.add("home-ceo"); }catch(e){}
-  el("home-content").innerHTML = vizSkeleton();
-  // Carga por módulos: si uno falla, el panel se pinta igual con lo que haya.
-  const [d, ini, dec, conc, tpv, fin] = await Promise.all([
-    api("/executive-dashboard?preset=hoy").catch(()=>({_err:true})),
-    api("/inicio").catch(()=>({_err:true})),
-    api("/decisiones").catch(()=>null),
-    api("/inventario/conciliacion").catch(()=>null),
-    api("/integraciones/tpv").catch(()=>null),
-    api("/financiero").catch(()=>null),
-  ]);
-  el("home-content").innerHTML = vizHomeHTML(d, ini, dec, conc, tpv, fin);
+  // Centro de mando: UNA sola llamada (/api/dashboard) que compone todo el panel.
+  const yaPintado = !!(el("home-content") && el("home-content").querySelector(".dash"));
+  if(!yaPintado) el("home-content").innerHTML = vizSkeleton();
+  try{
+    const dsh = await api("/dashboard");
+    window._dashAt = (dsh.atencion && dsh.atencion.items) || [];
+    el("home-content").innerHTML = dashHomeHTML(dsh);
+  }catch(e){
+    el("home-content").innerHTML = `<div class="err" style="margin:24px;">No pude cargar el panel de dirección: ${esc(e.message)}</div>`;
+  }
+  dashProgramarRefresco();
+}
+// Refresco en vivo SIN recargar la página: al volver a la pestaña y, suavemente,
+// cada pocos minutos mientras la portada está a la vista. Un solo temporizador.
+let _dashTimer=null;
+function _homeVisible(){ try{ return document.getElementById("screen-home").classList.contains("active") && el("home-content") && el("home-content").querySelector(".dash"); }catch(e){ return false; } }
+function dashProgramarRefresco(){
+  if(!window._dashVis){ window._dashVis=true; document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && _homeVisible()) loadHomeCEO(); }); }
+  if(_dashTimer) return;
+  _dashTimer=setInterval(()=>{ if(document.visibilityState==="visible" && _homeVisible()) loadHomeCEO(); }, 180000);
 }
 
 async function loadHome() {

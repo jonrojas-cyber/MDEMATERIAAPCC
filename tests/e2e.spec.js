@@ -14,7 +14,7 @@ async function login(page) {
   for (const d of "3333") {
     await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   }
-  await page.waitForSelector(".viz", { timeout: 15_000 });
+  await page.waitForSelector(".dash", { timeout: 15_000 }); // portada CEO (centro de mando)
 }
 
 test("la API de salud responde y reporta el modo de persistencia", async ({ request }) => {
@@ -122,12 +122,12 @@ test("inicio: portada de dirección (CEO) · visión general y atención", async
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  // El dueño ve la portada ejecutiva "visión general" (cuadro de mando, no un menú).
-  await expect(page.locator(".viz")).toBeVisible();
-  await expect(page.locator(".viz-title")).toContainText(/visión general/i);
-  // Banda de 4 indicadores + módulo de decisiones ("requieren tu atención").
-  await expect(page.locator(".viz-st")).toHaveCount(4);
-  await expect(page.locator(".viz-box-h", { hasText: /tu atención/i })).toBeVisible();
+  // El dueño ve la portada ejecutiva "visión general" (centro de mando, no un menú).
+  await expect(page.locator(".dash")).toBeVisible();
+  await expect(page.locator(".dk-title")).toContainText(/visión general/i);
+  // Banda de 5 KPIs + bloque "requiere tu atención".
+  await expect(page.locator(".dk-kpi")).toHaveCount(5);
+  await expect(page.locator(".dk-sec-h", { hasText: /tu atención/i })).toBeVisible();
   // Navegación por dominios en la barra INFERIOR (4 fijos) sigue presente.
   await expect(page.locator("#tabbar .tab")).toHaveCount(4);
   // Tres acciones fijas arriba: inicio · buscar · ajustes (esta última, dueño).
@@ -199,7 +199,7 @@ test("navegación: categoría → módulos y ficha técnica de materia", async (
 
   // Vuelve al inicio y abre la ficha de una materia.
   await page.evaluate(() => goHome());
-  await page.waitForSelector(".viz");
+  await page.waitForSelector(".dash");
   await page.evaluate(() => irA_materias());
   await page.waitForSelector(".alm-macro");
   // Almacén de 3 niveles: macro → subcategoría → producto → ficha. Navegamos por
@@ -239,7 +239,7 @@ test("volver: desde una sección regresa a su submenú y luego al inicio", async
 
   // "Volver" otra vez debe llevar al inicio (la pregunta visible, sin botón volver).
   await page.click("#topbar-back");
-  await expect(page.locator(".viz")).toBeVisible();
+  await expect(page.locator(".dash")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 
   expect(errors).toEqual([]);
@@ -266,7 +266,7 @@ test("el logo del encabezado vuelve al inicio desde cualquier sección", async (
   await expect(page.locator(".screen-head")).toContainText(/almac/i);
   // Clic en el imagotipo del centro (o "inicio") → inicio.
   await page.click(".topbar-center .mark");
-  await expect(page.locator(".viz")).toBeVisible();
+  await expect(page.locator(".dash")).toBeVisible();
   await expect(page.locator("#topbar-back")).not.toBeVisible();
 });
 
@@ -579,7 +579,7 @@ test("centro de control: el admin abre la sala de mando con todos los bloques", 
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   // El dueño llega a Negocio desde la portada (los KPI enlazan al centro de control).
-  await expect(page.locator(".viz")).toBeVisible();
+  await expect(page.locator(".dash")).toBeVisible();
   await page.evaluate(() => irA_centroControl("mes"));
   await expect(page.locator(".cc-grid")).toBeVisible();
   await expect(page.locator(".cc-score").first()).toBeVisible(); // salud del negocio
@@ -890,7 +890,7 @@ test("TPV: el teclado numérico en pantalla escribe en el campo enfocado", async
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".viz", { timeout: 15_000 });
+  await page.waitForSelector(".dash", { timeout: 15_000 });
   expect(await page.evaluate(() => document.body.classList.contains("tpv"))).toBe(true);
   await page.evaluate(() => irA_pedidos());
   await page.evaluate(() => irA_pedidoProveedor("prov-001"));
@@ -915,7 +915,7 @@ test("MBDS: endpoint calcula parámetros y validación de las bebidas", async ({
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".viz", { timeout: 15_000 });
+  await page.waitForSelector(".dash", { timeout: 15_000 });
   const bebidas = await page.evaluate(async () => await api("/mbds/bebidas"));
   expect(Array.isArray(bebidas)).toBe(true);
   const ambar = bebidas.find((b) => b.nombre === "Ámbar");
@@ -935,7 +935,7 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   await page.click("#ubtn-Moni");
   await page.waitForSelector("#pin-wrap", { state: "visible" });
   for (const d of "3333") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
-  await page.waitForSelector(".viz", { timeout: 15_000 });
+  await page.waitForSelector(".dash", { timeout: 15_000 });
   await page.evaluate(() => irA_mbds());
   await expect(page.locator(".cc-label", { hasText: /Laboratorio de bebidas/ })).toBeVisible();
   await expect(page.locator(".cc-card", { hasText: /Ámbar/ }).first()).toBeVisible();
@@ -1797,7 +1797,7 @@ test("inicio: el botón de fichar está en la pantalla principal y abre el reloj
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
-  const btn = page.locator(".viz-fichar");
+  const btn = page.locator(".dk-fichar");
   await expect(btn).toBeVisible();
   await expect(btn).toContainText(/Fichar/i);
   await btn.click();
@@ -1970,4 +1970,57 @@ test("revisión de catálogo: la vista carga su estado y se puede dar por revisa
   // Hay un botón de acción (archivar o dar por revisada) según haya candidatos.
   await expect(page.locator("button", { hasText: /revisada|Archivar/ }).first()).toBeVisible();
   expect(errors, "sin errores de JS").toEqual([]);
+});
+
+// ── DASHBOARD CEO · centro de mando de la portada ───────────────────────────
+test("dashboard CEO: la API trae todas las secciones con estados explícitos", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const headers = { Authorization: `Bearer ${sesion.token}` };
+  const d = await (await request.get("/api/dashboard", { headers })).json();
+  for (const k of ["freshness", "kpis", "dia", "comercial", "atencion", "pulso", "tesoreria", "mes"]) expect(d).toHaveProperty(k);
+  // 5 KPIs, cada uno con estado.
+  for (const k of ["ventas_hoy", "resultado_dia", "productividad", "objetivo_dia", "cierre_previsto"]) {
+    expect(d.kpis[k]).toBeTruthy();
+    expect(typeof d.kpis[k].estado).toBe("string");
+  }
+  // Pulso: 4 áreas.
+  for (const a of ["produccion", "stock", "equipo", "appcc"]) expect(d.pulso[a]).toHaveProperty("estado");
+  // Nunca un dato desconocido como 0: si no hay ventas, el estado lo dice.
+  expect(["ok", "atencion", "critico", "sin_datos", "pendiente", "desactualizado"]).toContain(d.kpis.ventas_hoy.estado);
+  expect(d.tesoreria).toHaveProperty("frase");
+  expect(d.mes).toHaveProperty("dias_abiertos_restantes");
+});
+
+test("dashboard CEO: el equipo NO puede ver el panel de dirección (admin-only)", async ({ request }) => {
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const r = await request.get("/api/dashboard", { headers: { Authorization: "Bearer " + lara.token } });
+  expect(r.status()).toBe(403);
+});
+
+test("dashboard CEO: la portada se pinta sin errores de consola y con sus bloques", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.waitForSelector(".dash", { timeout: 20000 });
+  // Bloques clave visibles.
+  await expect(page.locator("text=visión general")).toBeVisible();
+  await expect(page.locator("text=requiere tu atención")).toBeVisible();
+  await expect(page.locator("text=pulso operativo")).toBeVisible();
+  await expect(page.locator("text=tesorería inmediata")).toBeVisible();
+  // 5 KPIs renderizados.
+  expect(await page.locator(".dk-kpi").count()).toBe(5);
+  // Pulso: 4 áreas clicables.
+  expect(await page.locator(".dk-pulso").count()).toBe(4);
+  expect(errors, "sin errores de JS en la portada").toEqual([]);
+});
+
+test("dashboard CEO: el equipo (no admin) sigue viendo su portada operativa, no la de dirección", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara");
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".home-routine", { timeout: 15000 });
+  // No debe aparecer el panel de dirección.
+  expect(await page.locator(".dash").count()).toBe(0);
 });

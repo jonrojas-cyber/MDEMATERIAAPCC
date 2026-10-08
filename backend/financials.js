@@ -73,17 +73,18 @@ function variablesEnRango(r) {
 // gastos variables puntuales. NO incluye materia prima (es variable con la venta)
 // ni cuota de deuda (es financiación, se ve en Tesorería/Deuda).
 function costeDeAbrir(r, now = Date.now()) {
-  const fijo = fixedCosts.costeEnRango(r, now);
-  const laboral = staff.costeEnRango(r);
+  const seg = fixedCosts.costeEnRangoSegmentado(r, now);
+  // Personal = fijos de categoría "Personal" + módulo staff (capa aditiva opcional).
+  const laboral = eur(seg.personal + seg.personal_puntual + staff.costeEnRango(r));
   const variable = variablesEnRango(r);
-  const total = eur(fijo.total + laboral + variable);
+  const total = eur(seg.otros + seg.otros_puntual + laboral + variable);
   return {
     total,
-    personal: eur(laboral),
-    fijos: eur(fijo.recurrente),
-    fijos_puntuales: eur(fijo.puntual),
+    personal: laboral,
+    fijos: seg.otros,
+    fijos_puntuales: seg.otros_puntual,
     variables: eur(variable),
-    dias: fijo.dias,
+    dias: seg.dias,
     por_categoria: fixedCosts.porCategoria(now),
     prorrateo: fixedCosts.totales(now),
   };
@@ -117,9 +118,12 @@ function beneficio(r, now = Date.now()) {
   const idxProd = indicesProducto();
   const ventas = eur(ventasEnRango(r));
   const costeMateria = eur(costeMateriaVendidaEnRango(r, idxMat, idxProd));
-  const laboral = eur(staff.costeEnRango(r));
+  // Segmentación única: personal (categoría "Personal") vs otros fijos. El personal
+  // deja de estar enterrado dentro de "gastos_fijos" y el ratio laboral deja de ser 0.
+  const seg = fixedCosts.costeEnRangoSegmentado(r, now);
+  const laboral = eur(seg.personal + staff.costeEnRango(r));
   const variables = eur(variablesEnRango(r) + mermaEnRango(r));
-  const fijos = eur(fixedCosts.costeEnRango(r, now).recurrente);
+  const fijos = eur(seg.otros);
   const operativo = eur(ventas - costeMateria - laboral - variables - fijos);
   // Beneficio neto estimado: operativo menos intereses de deuda imputables al
   // periodo (proporción de la cuota mensual). Etiquetado como estimación.
@@ -135,6 +139,10 @@ function beneficio(r, now = Date.now()) {
     beneficio_neto_estimado: neto,
     food_cost_pct: ventas > 0 ? Math.round((costeMateria / ventas) * 100) : null,
     coste_laboral_pct: ventas > 0 ? Math.round((laboral / ventas) * 100) : null,
+    // Prime cost = materia + personal (la cifra que los hosteleros vigilan; objetivo ~60-65%).
+    prime_cost: eur(costeMateria + laboral),
+    prime_cost_pct: ventas > 0 ? Math.round(((costeMateria + laboral) / ventas) * 100) : null,
+    gastos_fijos_pct: ventas > 0 ? Math.round((fijos / ventas) * 100) : null,
     margen_operativo_pct: ventas > 0 ? Math.round((operativo / ventas) * 100) : null,
   };
 }
@@ -158,14 +166,15 @@ function costeMedioDiario(now = Date.now()) {
 // nómina esperada, coste fijo esperado y EBITDA (preparado: el add-back de
 // amortización es 0 hasta que los activos amorticen en la cuenta de resultados).
 function extrasFinancieros(now = Date.now()) {
-  const fijo = fixedCosts.totales(now);
-  const laboralDiario = staff.costeDiarioTotal();
+  const seg = fixedCosts.totalesSegmentado(now);
+  const laboralDiario = seg.personal.diario + staff.costeDiarioTotal();
   const MES = 365 / 12;
   const benMes = beneficio(periods.rango("mes", now), now);
   return {
-    monthly_burn: eur((fijo.diario + laboralDiario) * MES),
-    expected_payroll: eur(laboralDiario * MES),
-    expected_fixed_costs: fijo.mensual,
+    // Burn mensual = todo lo que sale sí o sí (personal + otros fijos), SIN materia.
+    monthly_burn: eur((seg.total.diario + staff.costeDiarioTotal()) * MES),
+    expected_payroll: eur(laboralDiario * MES),      // nómina esperada (ya separada de los fijos)
+    expected_fixed_costs: seg.otros.mensual,         // otros fijos, SIN personal
     beneficio_mes: benMes.beneficio_operativo,
     margen_mes_pct: benMes.margen_operativo_pct,
     ebitda_mes: benMes.beneficio_operativo, // EBITDA-ready (ver comentario)

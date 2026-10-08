@@ -144,17 +144,12 @@ function calcular(opts = {}) {
     coste_materia = ventasProd > 0 ? materiaProd : null;
   }
 
-  // Personal vs otros fijos, prorrateados al periodo transcurrido.
+  // Personal vs otros fijos, prorrateados al periodo transcurrido. El corte
+  // personal/fijos vive en una ÚNICA función (fixed-costs.costeEnRangoSegmentado).
   const dias = Math.max(1, (rango.hasta - rango.desde) / 86400000);
-  let personalFijos = 0, otrosFijos = 0;
-  (store.readAll("fixed_costs") || []).forEach((fc) => {
-    if (!fixedCosts.activoEn(fc, now)) return;
-    if (fc.periodicity === "one_time") return;
-    const dia = fixedCosts.costeDiario(fc) * dias;
-    if ((fc.category || "").toLowerCase() === "personal") personalFijos += dia;
-    else otrosFijos += dia;
-  });
-  const personal = personalFijos + staff.costeEnRango(rango); // staff-module por si se usa
+  const seg = fixedCosts.costeEnRangoSegmentado(rango, now);
+  const personal = seg.personal + staff.costeEnRango(rango); // staff-module por si se usa (capa aditiva)
+  const otrosFijos = seg.otros;
   const variables = financials.variablesEnRango(rango) + financials.mermaEnRango(rango);
   const cuotaMes = require("./debts").resumen(now).cuota_mensual_total || 0;
   const cuota_creditos = cuotaMes * (dias / MES);

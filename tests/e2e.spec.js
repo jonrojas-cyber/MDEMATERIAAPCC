@@ -1894,3 +1894,61 @@ test("conector TPV: el trabajador NO puede gestionarlo (admin-only)", async ({ p
   });
   expect(bloqueado).toBe(true);
 });
+
+// ── FINANCIERO · resumen día·mes·año con cascada EBITDA ──────────────────────
+test("financiero: la API trae la cascada escalada (día·mes·año), ratios y segmentos", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const headers = { Authorization: `Bearer ${sesion.token}` };
+  const r = await (await request.get("/api/financiero", { headers })).json();
+  expect(r.escalas).toBeTruthy();
+  ["dia", "mes", "anio"].forEach((s) => expect(r.escalas[s]).toHaveProperty("ebitda"));
+  expect(r.ratios).toHaveProperty("prime_cost_pct");
+  // Escalado coherente: día × días abiertos ≈ mes; mes × 12 ≈ año.
+  if (r.tiene_materia) {
+    expect(Math.abs(r.escalas.dia.ventas * r.dias_abiertos_mes - r.escalas.mes.ventas)).toBeLessThan(2);
+    expect(Math.abs(r.escalas.mes.ebitda * 12 - r.escalas.anio.ebitda)).toBeLessThan(2);
+    // Personal y costes fijos son segmentos separados (personal no está en fijos).
+    expect(r.segmentos.personal.length).toBeGreaterThan(0);
+    expect(r.segmentos.fijos.every((f) => (f.categoria || "").toLowerCase() !== "personal")).toBe(true);
+  }
+});
+
+test("financiero: el equipo NO puede ver el resumen ni la revisión de catálogo", async ({ request }) => {
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const headers = { Authorization: "Bearer " + lara.token };
+  for (const path of ["/api/financiero", "/api/catalogo-revision"]) {
+    const r = await request.get(path, { headers });
+    expect(r.status(), path + " debe estar prohibido para el equipo").toBe(403);
+  }
+});
+
+test("financiero: la vista pinta la cascada y el toggle día/mes/año cambia la escala", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_financiero());
+  await page.waitForSelector(".fin-hero-v", { timeout: 15_000 });
+  // Cascada presente (EBITDA, prime cost).
+  await expect(page.locator(".lim-tab", { hasText: /EBITDA/ })).toBeVisible();
+  await expect(page.locator("text=Prime cost").first()).toBeVisible();
+  // Segmentos separados.
+  await expect(page.locator("text=Personal (coste mensual)")).toBeVisible();
+  await expect(page.locator("text=Costes fijos (coste mensual)")).toBeVisible();
+  // Toggle a "Año": el EBITDA mostrado debe ser ~12× el del mes.
+  const mesTxt = await page.evaluate(() => { window._fin.scope = "mes"; finRender(); return document.querySelector(".fin-hero-v").textContent; });
+  const anioTxt = await page.evaluate(() => { window._fin.scope = "anio"; finRender(); return document.querySelector(".fin-hero-v").textContent; });
+  const num = (t) => Number(String(t).replace(/[^\d,-]/g, "").replace(/\./g, "").replace(",", "."));
+  if (num(mesTxt) !== 0) expect(Math.abs(num(anioTxt) / num(mesTxt) - 12)).toBeLessThan(0.5);
+  expect(errors, "sin errores de JS").toEqual([]);
+});
+
+test("revisión de catálogo: la vista carga su estado y se puede dar por revisada", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_revisionCatalogo());
+  await expect(page.locator("text=Revisión del catálogo").first()).toBeVisible({ timeout: 15_000 });
+  // Hay un botón de acción (archivar o dar por revisada) según haya candidatos.
+  await expect(page.locator("button", { hasText: /revisada|Archivar/ }).first()).toBeVisible();
+  expect(errors, "sin errores de JS").toEqual([]);
+});

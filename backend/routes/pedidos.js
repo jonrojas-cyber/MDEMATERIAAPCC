@@ -60,7 +60,7 @@ function catalogoProveedor(st, provId) {
   const norm = (s) => String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
   const vistos = new Set(articulos.map((a) => norm(a.nombre)));
   let calc = null; try { calc = require("../compras-productos-calc"); } catch (e) {}
-  (st.readAll("compras_productos") || []).filter((c) => c.proveedor_id === provId).forEach((c0) => {
+  (st.readAll("compras_productos") || []).filter((c) => c.proveedor_id === provId && c.archivado !== true).forEach((c0) => {
     const c = calc && calc.calcular ? Object.assign({}, c0, calc.calcular(c0)) : c0;
     const nn = norm(c.nombre);
     if (!c.nombre || vistos.has(nn)) return;

@@ -371,6 +371,8 @@ app.use("/api/business-time-machine", require("./routes/business-time-machine"))
 app.use("/api/analisis-diario", require("./routes/analisis-diario")); // rayos X del día (admin)
 app.use("/api/dossier", require("./routes/dossier")); // dossier para asesoría con Claude (admin)
 app.use("/api/cuenta-resultados", require("./routes/cuenta-resultados")); // P&L mensual (admin)
+app.use("/api/financiero", require("./routes/financiero")); // resumen día·mes·año con cascada EBITDA (admin)
+app.use("/api/catalogo-revision", require("./routes/catalogo-revision")); // revisión bimestral del catálogo de compra (admin)
 app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)
 app.use("/api/integraciones", require("./routes/integraciones")); // conector TPV (Ágora): clave, estado, prueba (admin)
 

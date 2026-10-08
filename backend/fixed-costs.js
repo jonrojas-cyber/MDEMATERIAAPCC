@@ -94,6 +94,59 @@ function costeEnRango(rango, now = Date.now(), lista = null) {
   return { recurrente: eur(recurrente), puntual: eur(puntual), total: eur(recurrente + puntual), dias: Math.round(dias * 100) / 100 };
 }
 
+// ¿El coste es de PERSONAL? (categoría "Personal"). FUENTE ÚNICA del criterio que
+// separa el coste laboral del resto de costes fijos (luz, alquiler, agua, gestoría…).
+// El P&L, el EBITDA y la vista Financiero consumen este corte para que el personal
+// y los costes fijos sean segmentos separados, contados UNA sola vez.
+function esPersonal(fc) {
+  return String((fc && fc.category) || "").trim().toLowerCase() === "personal";
+}
+
+// Como costeEnRango pero SEGMENTADO: separa el personal de los demás fijos.
+// `personal`/`otros` son recurrentes (excluyen one_time, igual que costeEnRango);
+// los one_time del rango salen en `*_puntual`.
+function costeEnRangoSegmentado(rango, now = Date.now(), lista = null) {
+  const todos = lista || store.readAll("fixed_costs");
+  const dias = (rango.hasta - rango.desde) / 86400000;
+  let personal = 0, otros = 0, personalPuntual = 0, otrosPuntual = 0;
+  todos.forEach((f) => {
+    if (f.active === false) return;
+    const pers = esPersonal(f);
+    if (f.periodicity === "one_time") {
+      const t = f.start_date ? new Date(f.start_date).getTime() : null;
+      if (t != null && t >= rango.desde && t < rango.hasta) { if (pers) personalPuntual += Number(f.amount) || 0; else otrosPuntual += Number(f.amount) || 0; }
+      return;
+    }
+    if (activoEn(f, rango.hasta - 1)) { const c = costeDiario(f) * dias; if (pers) personal += c; else otros += c; }
+  });
+  return {
+    personal: eur(personal), personal_puntual: eur(personalPuntual),
+    otros: eur(otros), otros_puntual: eur(otrosPuntual),
+    total: eur(personal + personalPuntual + otros + otrosPuntual),
+    dias: Math.round(dias * 100) / 100,
+  };
+}
+
+// Prorrateo total SEGMENTADO (personal vs otros fijos) a día/semana/mes/año.
+function totalesSegmentado(now = Date.now(), lista = null) {
+  const fijos = (lista || store.readAll("fixed_costs")).filter((f) => activoEn(f, now) && f.periodicity !== "one_time");
+  let pd = 0, od = 0;
+  fijos.forEach((f) => { const c = costeDiario(f); if (esPersonal(f)) pd += c; else od += c; });
+  const mk = (d) => ({ diario: eur(d), semanal: eur(d * 7), mensual: eur(d * (365 / 12)), anual: eur(d * 365) });
+  return { personal: mk(pd), otros: mk(od), total: mk(pd + od) };
+}
+
+// Líneas de coste fijo (para segmentar el detalle en la vista Financiero): cada
+// una con su coste mensual prorrateado y si es personal. Excluye one_time.
+function lineasMensuales(now = Date.now(), lista = null) {
+  const fijos = (lista || store.readAll("fixed_costs")).filter((f) => activoEn(f, now) && f.periodicity !== "one_time");
+  return fijos.map((f) => ({
+    id: f.id, nombre: f.name, categoria: f.category || "Otros", es_personal: esPersonal(f),
+    periodicidad: f.periodicity, importe: eur(Number(f.amount) || 0),
+    mensual: eur(costeDiario(f) * (365 / 12)),
+  })).sort((a, b) => b.mensual - a.mensual);
+}
+
 // Desglose por categoría (para el detalle del "coste de abrir la persiana").
 function porCategoria(now = Date.now(), lista = null) {
   const fijos = (lista || store.readAll("fixed_costs")).filter((f) => activoEn(f, now) && f.periodicity !== "one_time");
@@ -152,5 +205,6 @@ function mayorGasto(now = Date.now(), lista = null) {
 
 module.exports = {
   DIAS, PERIODICIDADES, diasDe, costeDiario, activoEn, prorrateo, totales, costeEnRango,
+  esPersonal, costeEnRangoSegmentado, totalesSegmentado, lineasMensuales,
   porCategoria, costePorHora, costeAnualProyectado, mayorGasto, eur,
 };

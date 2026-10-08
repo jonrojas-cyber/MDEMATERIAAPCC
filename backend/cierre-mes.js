@@ -194,10 +194,22 @@ function informe(mesStr, now = Date.now()) {
   const idxMat = costing.indiceMaterias(materias);
   const productos = store.readAll("productos");
 
-  // Comparativas: mes anterior completo y mismo mes del año anterior.
+  // Comparativas. Si el mes está EN CURSO se compara A LA MISMA FECHA (días 1..N del
+  // mes/año anterior, no el período completo: comparar 8 días contra 30 infla la
+  // caída). Si el mes ya está CERRADO se comparan meses completos entre sí, que es lo
+  // correcto para un cierre. Regla pedida por la fundadora: 10 vs 10, 11 vs 11…
   const [y, m] = r.label.split("-").map(Number);
-  const rAnterior = rangoMes(`${new Date(y, m - 2, 1).getFullYear()}-${String(new Date(y, m - 2, 1).getMonth() + 1).padStart(2, "0")}`, now);
-  const rAnioAnt = rangoMes(`${y - 1}-${String(m).padStart(2, "0")}`, now);
+  const lblDe = (ts) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+  let rAnterior, rAnioAnt;
+  if (r.en_curso) {
+    const tAnt = periods.tramoHastaMismoDia(now, { meses: 1 });
+    const tAnio = periods.tramoHastaMismoDia(now, { anios: 1 });
+    rAnterior = { ...tAnt, label: lblDe(tAnt.desde), en_curso: false, parcial: true, dias: tAnt.dias };
+    rAnioAnt = { ...tAnio, label: lblDe(tAnio.desde), en_curso: false, parcial: true, dias: tAnio.dias };
+  } else {
+    rAnterior = rangoMes(`${new Date(y, m - 2, 1).getFullYear()}-${String(new Date(y, m - 2, 1).getMonth() + 1).padStart(2, "0")}`, now);
+    rAnioAnt = rangoMes(`${y - 1}-${String(m).padStart(2, "0")}`, now);
+  }
 
   const actual = pyl(r, now);
   const anterior = pyl(rAnterior, now);
@@ -248,8 +260,8 @@ function informe(mesStr, now = Date.now()) {
 
     // ── COMPARATIVAS ─────────────────────────────────────────────────────────
     comparativas: {
-      mes_anterior: { mes: rAnterior.label, pyl: anterior, delta_ventas_pct: delta(actual.ventas, anterior.ventas), delta_ebitda_pct: delta(actual.ebitda, anterior.ebitda) },
-      anio_anterior: { mes: rAnioAnt.label, pyl: anioAnterior, delta_ventas_pct: delta(actual.ventas, anioAnterior.ventas), delta_ebitda_pct: delta(actual.ebitda, anioAnterior.ebitda) },
+      mes_anterior: { mes: rAnterior.label, pyl: anterior, delta_ventas_pct: delta(actual.ventas, anterior.ventas), delta_ebitda_pct: delta(actual.ebitda, anterior.ebitda), parcial: !!rAnterior.parcial, dias: rAnterior.dias || null },
+      anio_anterior: { mes: rAnioAnt.label, pyl: anioAnterior, delta_ventas_pct: delta(actual.ventas, anioAnterior.ventas), delta_ebitda_pct: delta(actual.ebitda, anioAnterior.ebitda), parcial: !!rAnioAnt.parcial, dias: rAnioAnt.dias || null },
     },
 
     // ── MICRO (producto a producto) ─────────────────────────────────────────

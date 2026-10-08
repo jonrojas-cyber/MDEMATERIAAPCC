@@ -141,6 +141,12 @@ function construir(preset = "hoy", opts = {}) {
   const d0 = new Date(now); const primerDiaMes = new Date(d0.getFullYear(), d0.getMonth(), 1).getTime();
   const primerDiaMesAnt = new Date(d0.getFullYear(), d0.getMonth() - 1, 1).getTime();
   const benMesAnt = financials.beneficio({ desde: primerDiaMesAnt, hasta: primerDiaMes, preset: "mes_anterior" }, now);
+  // Comparativa JUSTA "a la misma fecha": el mes anterior SOLO hasta el mismo día del
+  // mes que hoy (días 1..N contra 1..N). El mes anterior COMPLETO (benMesAnt) se usa
+  // para el OBJETIVO del mes entero, pero NUNCA como referencia del % del mes en curso
+  // (eso compararía 8 días contra 30 e inflaría la caída).
+  const tramoAntTD = periods.tramoHastaMismoDia(now, { meses: 1 });
+  const benMesAntTD = financials.beneficio(tramoAntTD, now);
   const diasEnMes = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
   // Días ABIERTOS del mes anterior = días con venta (no el calendario). El objetivo
   // diario se reparte entre los días que de verdad se abre, no entre 30/31.
@@ -181,12 +187,15 @@ function construir(preset = "hoy", opts = {}) {
       ventas: benMes.ventas,
       objetivo: objetivoMes,
       objetivo_pct: pct(benMes.ventas, objetivoMes),
-      vs_anterior_pct: benMesAnt.ventas > 0 ? Math.round(((benMes.ventas - benMesAnt.ventas) / benMesAnt.ventas) * 100) : null,
+      // % vs mes anterior A LA MISMA FECHA (mismos días transcurridos), no vs mes completo.
+      vs_anterior_pct: benMesAntTD.ventas > 0 ? Math.round(((benMes.ventas - benMesAntTD.ventas) / benMesAntTD.ventas) * 100) : null,
       ebitda_pct: fin.margen_mes_pct,
       ebitda_eur: fin.ebitda_mes,
       food_cost_pct: benMes.food_cost_pct,
       coste_laboral_pct: benMes.coste_laboral_pct,
-      ventas_mes_anterior: benMesAnt.ventas,
+      ventas_mes_anterior: benMesAnt.ventas,            // mes anterior COMPLETO (contexto del objetivo)
+      ventas_mes_anterior_td: benMesAntTD.ventas,        // mes anterior hasta el mismo día (base del %)
+      dias_comparados: tramoAntTD.dias,                  // nº de días que se comparan (1..N)
       dias_abiertos_anterior: diasAbiertosAnt,
     },
   };

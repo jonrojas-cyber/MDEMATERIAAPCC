@@ -121,6 +121,29 @@ function resolver(preset, opts = {}) {
   };
 }
 
+// COMPARATIVO "A LA MISMA FECHA" (to-date). Para comparar un mes/periodo EN CURSO
+// hay que medir el mismo tramo transcurrido del periodo anterior: los días 1..N
+// contra los días 1..N (regla de la fundadora: "los 10 primeros contra los 10 que
+// llevamos; cuando llevamos 11, 11 con 11"). NO comparar un mes parcial contra el
+// mes anterior COMPLETO (eso infla la caída).
+//
+// Devuelve el rango [desde, hasta) del mes situado `meses`/`anios` atrás, cubriendo
+// los días 1..D donde D = día del mes de `now` (incluido). Si ese mes tiene menos
+// días que D, se capa a su último día (no se puede comparar un día que no existió).
+// `hasta` es exclusivo = inicio del día D+1 de ese mes, para incluir el día D entero
+// (los datos de venta son a nivel de día: hoy ya cuenta como día completo).
+function tramoHastaMismoDia(now = Date.now(), { meses = 0, anios = 0 } = {}) {
+  const d = new Date(now);
+  const dia = d.getDate();
+  const y = d.getFullYear() - anios;
+  const m = d.getMonth() - meses;
+  const desde = new Date(y, m, 1).getTime();
+  const ultimoDia = new Date(y, m + 1, 0).getDate(); // nº de días de ese mes
+  const diaCap = Math.min(dia, ultimoDia);
+  const hasta = new Date(y, m, diaCap + 1).getTime(); // exclusivo: incluye el día diaCap
+  return { desde, hasta, dias: diaCap };
+}
+
 // Nº de días (fracción) que abarca un rango — para prorratear costes a un periodo.
 function diasDe(r) {
   return (r.hasta - r.desde) / DAY;
@@ -136,4 +159,5 @@ module.exports = {
   DAY, PRESETS, ETIQUETAS,
   startOfDay, startOfWeek, startOfMonth, startOfYear, addMonths, addYears,
   rango, comparativoAnterior, comparativoAnioAnterior, resolver, diasDe, dentro,
+  tramoHastaMismoDia,
 };

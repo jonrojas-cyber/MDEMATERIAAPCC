@@ -3556,7 +3556,7 @@ function dashHomeHTML(dsh){
       <div><span>previsión de cierre</span><b>${MES.prevision_cierre!=null?vizEur(MES.prevision_cierre):"—"}</b></div>
       <div><span>días abiertos restantes</span><b>${MES.dias_abiertos_restantes!=null?MES.dias_abiertos_restantes:"—"}</b></div>
       <div><span>resultado operativo (EBITDA)</span><b>${MES.resultado_operativo!=null?vizEur(MES.resultado_operativo):"—"}</b></div>
-      <div><span>vs mes anterior</span><b>${MES.vs_mes_anterior_pct!=null?vizDelta(MES.vs_mes_anterior_pct,"pct",true):"—"}</b></div>
+      <div><span title="Comparado hasta el mismo día del mes anterior (${MES.vs_mes_anterior_dias!=null?MES.vs_mes_anterior_dias:"?"} días), no contra el mes completo.">vs mes anterior${MES.vs_mes_anterior_dias!=null?` <span class="viz-mut">(primeros ${MES.vs_mes_anterior_dias} días)</span>`:""}</span><b>${MES.vs_mes_anterior_pct!=null?vizDelta(MES.vs_mes_anterior_pct,"pct",true):"—"}</b></div>
     </div>
   </section>`;
 
@@ -13268,7 +13268,7 @@ async function irA_cierreMes(mes){
     </div>`;
 
     const macroKpis = `<div class="section-label">Macro · ${esc(inf.mes)}</div><div class="home-kpis">
-      ${kbox("Ventas", E(py.ventas), cmp.mes_anterior?`vs mes ant.${D(cmp.mes_anterior.delta_ventas_pct)}`.replace(/<[^>]+>/g,m=>m):"")}
+      ${kbox("Ventas", E(py.ventas), cmp.mes_anterior?`vs mes ant.${cmp.mes_anterior.parcial?` (primeros ${cmp.mes_anterior.dias||"?"} d)`:""}${D(cmp.mes_anterior.delta_ventas_pct)}`.replace(/<[^>]+>/g,m=>m):"")}
       ${kbox("Food cost", P(py.food_cost_pct), "materia / ventas", py.food_cost_pct!=null&&py.food_cost_pct>35)}
       ${kbox("Coste laboral", P(py.coste_laboral_pct), E(py.coste_laboral))}
       ${kbox("Gastos fijos", E(py.gastos_fijos), "del mes")}
@@ -13281,9 +13281,9 @@ async function irA_cierreMes(mes){
     </div>`;
 
     const comp = `<div class="section-label">Comparativas</div>
-      <div class="card"><div class="card-name">vs mes anterior (${esc(cmp.mes_anterior.mes)})</div>
+      <div class="card"><div class="card-name">vs mes anterior (${esc(cmp.mes_anterior.mes)})${cmp.mes_anterior.parcial?` · a la misma fecha (primeros ${cmp.mes_anterior.dias||"?"} días)`:""}</div>
         <div class="card-meta">Ventas ${E(cmp.mes_anterior.pyl.ventas)}${D(cmp.mes_anterior.delta_ventas_pct)} · EBITDA ${E(cmp.mes_anterior.pyl.ebitda)}${D(cmp.mes_anterior.delta_ebitda_pct)}</div></div>
-      <div class="card"><div class="card-name">vs año anterior (${esc(cmp.anio_anterior.mes)})</div>
+      <div class="card"><div class="card-name">vs año anterior (${esc(cmp.anio_anterior.mes)})${cmp.anio_anterior.parcial?` · a la misma fecha (primeros ${cmp.anio_anterior.dias||"?"} días)`:""}</div>
         <div class="card-meta">Ventas ${E(cmp.anio_anterior.pyl.ventas)}${D(cmp.anio_anterior.delta_ventas_pct)} · EBITDA ${E(cmp.anio_anterior.pyl.ebitda)}${D(cmp.anio_anterior.delta_ebitda_pct)}</div></div>`;
 
     const ig = inf.micro.ingenieria_menu;

@@ -56,9 +56,11 @@ function resumen(now = Date.now()) {
   const semana = flujo(periods.rango("semana", now), now);
   const mes = flujo(periods.rango("mes", now), now);
   const anio = flujo(periods.rango("anio", now), now);
-  const mesAnterior = flujo(periods.rango("mes_anterior", now), now);
-  const tendencia = mesAnterior.neto !== 0
-    ? Math.round(((mes.neto - mesAnterior.neto) / Math.abs(mesAnterior.neto)) * 100)
+  // Tendencia JUSTA: mes en curso contra el mes anterior A LA MISMA FECHA (mismos
+  // días transcurridos: 1..N vs 1..N), no contra el mes anterior COMPLETO.
+  const mesAnteriorTD = flujo(periods.tramoHastaMismoDia(now, { meses: 1 }), now);
+  const tendencia = mesAnteriorTD.neto !== 0
+    ? Math.round(((mes.neto - mesAnteriorTD.neto) / Math.abs(mesAnteriorTD.neto)) * 100)
     : null;
   return {
     hoy, semana, mes, anio,

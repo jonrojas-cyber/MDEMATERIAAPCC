@@ -101,6 +101,20 @@ const BATCHES = [
       { id: "fc-hosting", name: "Hosting / servidor (app)", category: "Software", amount: 16, vat: 0, periodicity: "monthly", active: true, start_date: "2026-07-01", notes: "Hosting de Control M en Render (~17,5 $/mes). Editable." },
     ],
   },
+  {
+    // Importes REALES de las facturas 2026 (paquete gestoría actualizado 04-10-2026):
+    //   · TPV/Ágora (Retail Offshore): 36 € (oct/sep), 34 € (ago) → 36 €/mes.
+    //   · Hosting (Render Services): 17,50 € (sep) → 17,50 €/mes.
+    // Luz (Repsol) y alquiler no vienen en el paquete (Repsol pendiente de reenvío;
+    // alquiler solo como documento firmado sin importe mensual claro): se mantienen
+    // los valores confirmados por la fundadora (editables en Gastos fijos).
+    flag: "negocio_seed_v11_facturas_reales_tpv_hosting",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-tpv-agora", amount: 36, notes: "TPV/Ágora (Retail Offshore / THR Spain). Importe REAL factura 2026: 36 €/mes (oct 2026)." },
+      { id: "fc-hosting", amount: 17.5, notes: "Hosting Control M (Render Services). Importe REAL factura 2026: 17,50 €/mes (sep 2026)." },
+    ],
+  },
 ];
 
 async function seedNegocio() {

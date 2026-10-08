@@ -2024,3 +2024,28 @@ test("dashboard CEO: el equipo (no admin) sigue viendo su portada operativa, no 
   // No debe aparecer el panel de dirección.
   expect(await page.locator(".dash").count()).toBe(0);
 });
+
+// ── LIMPIAR CATÁLOGO · archivar productos/producciones no vinculados ─────────
+test("limpiar catálogo: API admin-only con previsualización reversible", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const d = await (await request.get("/api/limpieza-catalogo", { headers: { Authorization: `Bearer ${sesion.token}` } })).json();
+  expect(d).toHaveProperty("candidatos_productos");
+  expect(d).toHaveProperty("candidatos_recetas");
+  expect(d).toHaveProperty("archivados");
+  // El equipo no puede.
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const r = await request.get("/api/limpieza-catalogo", { headers: { Authorization: "Bearer " + lara.token } });
+  expect(r.status()).toBe(403);
+});
+
+test("limpiar catálogo: la vista se abre sin errores y Gastos fijos es accesible", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  await page.evaluate(() => irA_limpiezaCatalogo());
+  await expect(page.locator("text=Limpiar catálogo").first()).toBeVisible({ timeout: 15000 });
+  // Gastos fijos (Costes fijos) accesible desde el mismo menú de Informes.
+  await page.evaluate(() => irA_costesFijos());
+  await expect(page.locator("text=Costes fijos").first()).toBeVisible({ timeout: 15000 });
+  expect(errors, "sin errores de JS").toEqual([]);
+});

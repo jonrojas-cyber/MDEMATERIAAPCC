@@ -2662,6 +2662,8 @@ function modulosMeta(d) {
     financiero:   { num:"03", name:"Resumen financiero", badge:"EBITDA día · mes · año · prime cost", urgent:false },
     cuentaResultados:{ num:"03", name:"Cuenta de resultados", badge:"P&L del mes · ingresos, gastos, resultado", urgent:false },
     revisionCatalogo:{ num:"05", name:"Revisión del catálogo", badge:"Cada 2 meses · archivar lo no pedido", urgent:false },
+    costesFijos:  { num:"04", name:"Gastos fijos", badge:"Alquiler · luz · agua · personal · TPV", urgent:false },
+    limpiezaCatalogo:{ num:"05", name:"Limpiar catálogo", badge:"Archivar productos no vendidos ni en carta", urgent:false },
     analisisMes:  { num:"03", name:"Análisis del mes", badge:"Ventas · mix · día de semana · ticket medio", urgent:false },
     cierreMes:    { num:"03", name:"Cierre de mes", badge:"Informe macro+micro · food cost", urgent:false },
     ventas:       { num:"03", name:"Ventas · Ágora", badge:"Sincronización automática", urgent:false },
@@ -2685,7 +2687,7 @@ const CATS = {
   equipo:     { name:"Equipo", desc:"Fichaje · Turnos · Ausencias · Tablón · Incidencias", ids:["turnos","fichaje","ausencias","tablon","incidencias"] },
   materia:    { name:"Materia", desc:"Almacén · Pedidos · Proveedores · Recepción · Inventario · Cierre de caja", ids:["materias","pedidos","proveedores","recepcion","inventario","cierreCaja"] },
   appcc:      { name:"APPCC", desc:"Lotes · Caducidades · Trazabilidad", ids:["lotes"] },
-  informes:   { name:"Informes", desc:"Financiero · Carta · Márgenes · Análisis · Ventas · Config", ids:["menu","carta","financiero","analisisDiario","analisisMes","cuentaResultados","ventas","conectorTPV","revisionCatalogo","pagos","informeCompras","archivo","avisos","manual"], admin:true },
+  informes:   { name:"Informes", desc:"Financiero · Gastos fijos · Carta · Análisis · Ventas · Config", ids:["menu","carta","financiero","costesFijos","analisisDiario","analisisMes","cuentaResultados","ventas","conectorTPV","revisionCatalogo","limpiezaCatalogo","pagos","informeCompras","archivo","avisos","manual"], admin:true },
 };
 
 // Centro de alertas: caducidad y seguridad puestas DELANTE, con color por riesgo.
@@ -3628,6 +3630,7 @@ function dashHomeHTML(dsh){
     </div>
     <div class="dk-concl" style="color:${tc}">${esc(T.frase||"")}</div>
     <div class="dk-foot">${esc(T.pendiente_desglose||"")}</div>
+    <div style="margin-top:10px;"><button class="dk-vermas" onclick="irA_costesFijos()">Ver y editar gastos fijos (alquiler · luz · agua · personal) →</button></div>
   </section>`;
 
   return `${dashHomeCSS()}<div class="dash">
@@ -10423,6 +10426,62 @@ async function rcRecuperar(id,btn){
 async function rcDarRevisada(btn){
   if(btn) btn.disabled=true;
   try{ await api("/catalogo-revision/hecha",{method:"POST",body:JSON.stringify({})}); await rcCargar(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LIMPIAR CATÁLOGO · archiva productos/producciones que no están en la carta ni
+// se han vendido en Ágora. Reversible (no borra el histórico). Solo dirección.
+// ════════════════════════════════════════════════════════════════════════════
+async function irA_limpiezaCatalogo(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("limpiezaCatalogo","Limpiar catálogo");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección limpia el catálogo.</div>`); return; }
+  await lcCargar();
+}
+async function lcCargar(){
+  setInner(`<div class="empty">Analizando el catálogo…</div>`);
+  try{ const r=await api("/limpieza-catalogo"); window._lc=r; lcRender(r); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function lcFecha(iso){ if(!iso) return "—"; return new Date(iso).toLocaleDateString("es-ES",{day:"numeric",month:"short",year:"numeric"}); }
+function lcRender(r){
+  const cp=r.candidatos_productos||[], cr=r.candidatos_recetas||[], arch=r.archivados||{productos:[],recetas:[]};
+  const total=cp.length+cr.length, nArch=(arch.productos||[]).length+(arch.recetas||[]).length;
+  const lista=(arr,tipo)=>arr.map(x=>`<label class="rc-row" style="display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line,#3a3a2e);cursor:pointer;">
+      <input type="checkbox" class="lc-chk" data-tipo="${tipo}" value="${esc(x.id)}" checked style="width:18px;height:18px;flex:0 0 auto;">
+      <span style="min-width:0;flex:1;"><b>${esc(x.nombre)}</b>${x.categoria?`<br><span style="font-size:11px;color:var(--muted,#8a8577);">${esc(x.categoria)}</span>`:""}</span>
+    </label>`).join("");
+  const bloque = total
+    ? `<div class="section-label" style="margin-top:10px;">A archivar · ${cp.length} producto${cp.length===1?"":"s"}${cr.length?` · ${cr.length} producci${cr.length===1?"ón":"ones"}`:""}</div>
+       <div class="ad-note">Se crearon solo para casar con Ágora y <b>nunca se han vendido</b>, o son producciones que se quedan sin uso. La carta real y todo lo vendido se conservan. Se <b>archivan</b> (desaparecen de la app) y se pueden recuperar; no se borra el histórico.</div>
+       ${cp.length?`<div class="section-label" style="margin-top:8px;">Productos</div>${lista(cp,"productos")}`:""}
+       ${cr.length?`<div class="section-label" style="margin-top:8px;">Producciones</div>${lista(cr,"recetas")}`:""}
+       <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="lcArchivar(this)">Archivar seleccionados</button></div>`
+    : `<div class="section-label" style="margin-top:10px;">Nada que archivar</div>
+       <div class="todo-clear">✓ Tu catálogo está limpio: todo está en la carta o se ha vendido en Ágora.</div>`;
+  const archBloque = nArch
+    ? `<div class="section-label" style="margin-top:18px;">Archivados · ${nArch}</div>
+       <div class="ad-foot">No aparecen en la app. Puedes recuperarlos cuando quieras.</div>
+       ${[...(arch.productos||[]).map(x=>["productos",x]),...(arch.recetas||[]).map(x=>["recetas",x])].map(([tipo,x])=>`<div class="fin-seg-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#3a3a2e);"><span style="min-width:0;"><b>${esc(x.nombre)}</b> <span style="font-size:11px;color:var(--muted,#8a8577);">${tipo==="recetas"?"producción":esc(x.categoria||"")} · ${lcFecha(x.archivado_en)}</span></span><button class="btn-ghost" style="flex:0 0 auto;" onclick="lcRecuperar('${esc(x.id)}','${tipo}',this)">Recuperar</button></div>`).join("")}`
+    : "";
+  setInner(`<div class="section-label">Limpiar catálogo</div>
+    <div class="ad-foot">Archiva lo que no está en la carta ni se ha vendido en Ágora. Reversible; conserva el histórico de ventas.</div>
+    ${bloque}${archBloque}`);
+}
+async function lcArchivar(btn){
+  const sel={productos:[],recetas:[]};
+  document.querySelectorAll(".lc-chk:checked").forEach(c=>{ (sel[c.dataset.tipo]=sel[c.dataset.tipo]||[]).push(c.value); });
+  const total=sel.productos.length+sel.recetas.length;
+  if(!total){ alert("No has marcado nada para archivar."); return; }
+  if(!confirm(`¿Archivar ${total} elemento${total===1?"":"s"}? Podrás recuperarlos.`)) return;
+  if(btn) btn.disabled=true;
+  try{ await api("/limpieza-catalogo/aplicar",{method:"POST",body:JSON.stringify(sel)}); await lcCargar(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+async function lcRecuperar(id,tipo,btn){
+  if(btn) btn.disabled=true;
+  try{ await api("/limpieza-catalogo/recuperar",{method:"POST",body:JSON.stringify({ids:[id],tipo})}); await lcCargar(); }
   catch(e){ if(btn) btn.disabled=false; alert(e.message); }
 }
 

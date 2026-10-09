@@ -87,6 +87,27 @@ test("extraerDocs: array, {docs}, {documents}, documento suelto, vacío", () => 
   assert.strictEqual(tpv.extraerDocs(null).length, 0);
 });
 
+test("extraerDocs: formato REAL de Ágora { Invoices:[...] } → aplana con __type", () => {
+  const body = { Invoices: [{ Serie: "T", Number: 3719, BusinessDay: "2026-10-09" }, { Serie: "T", Number: 3720 }], DeliveryNotes: [{ Serie: "A", Number: 5 }] };
+  const docs = tpv.extraerDocs(body);
+  assert.strictEqual(docs.length, 3, "2 Invoices + 1 DeliveryNote");
+  assert.strictEqual(docs[0].__type, "Invoice", "etiqueta el tipo (Invoices → Invoice)");
+  assert.strictEqual(docs[0].Number, 3719, "conserva los campos del documento");
+  assert.strictEqual(docs[2].__type, "DeliveryNote");
+});
+
+test("extraerDocs: DOBLE envoltura del agente { documents: { Invoices:[...] } }", () => {
+  const body = { documents: { Invoices: [{ Serie: "T", Number: 1 }, { Serie: "T", Number: 2 }] } };
+  const docs = tpv.extraerDocs(body);
+  assert.strictEqual(docs.length, 2, "desenvuelve documents→Invoices");
+  assert.strictEqual(docs[0].__type, "Invoice");
+});
+
+test("tieneCampoDocs: un { Invoices:[] } vacío es ciclo sin novedades (latido), no malformado", () => {
+  assert.strictEqual(tpv.tieneCampoDocs({ Invoices: [] }), true);
+  assert.strictEqual(tpv.tieneCampoDocs({ documents: { Invoices: [] } }), true);
+});
+
 test("ingerir sin documentos → error SIN_DOCS", () => {
   const s = fakeStore();
   let err = null;

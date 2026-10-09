@@ -11,24 +11,29 @@ const ID = "perfil";
 const DEFAULTS = {
   dias_semana: 6,        // días de apertura a la semana
   horas_dia: 10,         // horas de apertura al día
+  hora_apertura: 8,      // hora a la que abre (para la previsión del día)
+  hora_cierre: 16,       // hora a la que cierra (m de materia cierra a las 16:00)
   ticket_medio: 4.5,     // gasto medio por cliente (€) — semilla; se refina con ventas
   cafe_medio: 2.2,       // precio medio de un café (€) — para "cafés hasta equilibrio"
   inflacion_anual_pct: 3, // subida anual por defecto para proyección de costes
 };
+const CAMPOS = ["dias_semana", "horas_dia", "hora_apertura", "hora_cierre", "ticket_medio", "cafe_medio", "inflacion_anual_pct"];
 
 function leer() {
   const reg = store.findById("business_config", ID) || {};
   const p = { ...DEFAULTS };
-  ["dias_semana", "horas_dia", "ticket_medio", "cafe_medio", "inflacion_anual_pct"].forEach((k) => {
+  CAMPOS.forEach((k) => {
     if (reg[k] != null && reg[k] !== "" && Number.isFinite(Number(reg[k]))) p[k] = Number(reg[k]);
   });
+  // Coherencia: el cierre debe ir después de la apertura; si no, se ignora el override.
+  if (!(p.hora_cierre > p.hora_apertura)) { p.hora_apertura = DEFAULTS.hora_apertura; p.hora_cierre = DEFAULTS.hora_cierre; }
   return p;
 }
 
 async function guardar(patch = {}) {
   const actual = store.findById("business_config", ID);
   const limpio = {};
-  ["dias_semana", "horas_dia", "ticket_medio", "cafe_medio", "inflacion_anual_pct"].forEach((k) => {
+  CAMPOS.forEach((k) => {
     if (patch[k] != null && patch[k] !== "" && Number.isFinite(Number(patch[k]))) limpio[k] = Number(patch[k]);
   });
   if (actual) {

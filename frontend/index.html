@@ -1608,40 +1608,60 @@ button.cc-card:hover { border-color: var(--ink); }
 .card.clickable:active { transform: translateY(1px); box-shadow: none !important; }
 
 /* Teclas de login (Jon/Lara/Mónica): teclas oscuras en relieve. */
-.ubtn {
-  border-radius: 5px !important;
-  background: linear-gradient(180deg, #24221A 0%, #1A1812 100%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.07),
-    inset 0 -1px 0 rgba(0,0,0,.4),
-    0 3px 7px rgba(0,0,0,.45),
-    0 1px 2px rgba(0,0,0,.3) !important;
-  transition: transform .1s ease, box-shadow .14s ease, border-color .12s ease;
+/* ── LOGIN · entrada al taller (papel cálido + grafito + Courier) ──────────
+   No es un TPV oscuro: es la portada del cuaderno de producción. Centrado a
+   prueba de balas (capa fija + grid) para que en escritorio quede equilibrado,
+   no escorado. Fichas de persona con keyline a hilo; la activa se invierte. */
+.login-screen {
+  position: fixed; inset: 0; width: 100vw; min-height: 100dvh;
+  display: grid; place-items: center; overflow: auto;
+  background: var(--cream); color: var(--ink);
+  padding: 32px 24px calc(32px + env(safe-area-inset-bottom, 0px));
 }
-.ubtn:hover {
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.10),
-    0 5px 12px rgba(0,0,0,.5),
-    0 1px 2px rgba(0,0,0,.3) !important;
-}
-.ubtn:active {
-  transform: translateY(1px);
-  box-shadow: inset 0 2px 5px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04) !important;
-}
+.login-card { width: 100%; max-width: 384px; text-align: center; }
+.login-mark { color: var(--ink); height: 30px; }
+.login-word { font-family: var(--font); font-size: 30px; font-weight: 700; line-height: 1; margin: 16px 0 0; letter-spacing: .01em; }
+.login-eyebrow { font-size: 9px; letter-spacing: .26em; text-transform: lowercase; color: var(--muted); margin-top: 9px; }
+.login-rule { width: 38px; height: 1px; background: var(--line); margin: 26px auto; }
+.login-ask { font-size: 9.5px; letter-spacing: .2em; text-transform: lowercase; color: var(--muted); margin-bottom: 16px; }
 
-/* Teclado numérico del PIN (login): teclas oscuras en relieve, tipo TPV. */
-.pin-pad { display: grid; grid-template-columns: repeat(3, 70px); gap: 12px; justify-content: center; }
-.pin-key {
-  font-family: var(--font); font-size: 24px; color: #E7E4D7;
-  width: 70px; height: 62px; border-radius: 7px; border: 1px solid #2A2820; cursor: pointer;
-  background: linear-gradient(180deg, #24221A 0%, #1A1812 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), inset 0 -1px 0 rgba(0,0,0,.4), 0 3px 7px rgba(0,0,0,.45);
-  transition: transform .08s ease, box-shadow .12s ease;
+/* Selector de persona: fichas de papel (no teclas TPV). */
+.login-people { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ubtn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  padding: 14px 16px; width: 100%; text-align: left;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--cream); color: var(--ink);
+  transition: border-color .14s ease, background .14s ease, color .14s ease, transform .08s ease;
 }
-.pin-key:active { transform: translateY(1px); box-shadow: inset 0 2px 5px rgba(0,0,0,.55); }
-.pin-key-ghost { background: none; box-shadow: none; border-color: #2A2820; font-size: 20px; color: #888070; }
-.pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #555040; transition: background .12s, border-color .12s; }
-.pin-dot.on { background: #E7E4D7; border-color: #E7E4D7; }
+.ubtn:hover { border-color: var(--ink); background: var(--paper); }
+.ubtn:active { transform: translateY(1px); }
+.ubtn-idx { font-size: 9px; letter-spacing: .16em; font-weight: 700; color: var(--muted); transition: color .14s ease; }
+.ubtn-name { font-size: 16px; font-weight: 700; line-height: 1; letter-spacing: .01em; }
+.ubtn.sel { background: var(--ink); border-color: var(--ink); color: var(--cream); }
+.ubtn.sel .ubtn-idx { color: rgba(241,238,230,.55); }
+
+/* Paso del PIN: teclas de papel con keyline (legibles, no en relieve oscuro). */
+.login-pin { margin-top: 2px; }
+.pin-back { background: none; border: none; color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: lowercase; padding: 4px 0; margin-bottom: 16px; }
+.pin-back:hover { color: var(--ink); }
+.pin-dots { display: flex; gap: 14px; justify-content: center; margin-bottom: 24px; }
+.pin-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--muted); transition: background .12s, border-color .12s; }
+.pin-dot.on { background: var(--ink); border-color: var(--ink); }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 12px; justify-content: center; }
+.pin-key {
+  font-family: var(--font); font-size: 22px; font-weight: 700; color: var(--ink);
+  width: 64px; height: 58px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--cream); cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, transform .07s ease;
+}
+.pin-key:hover { border-color: var(--ink); background: var(--paper); }
+.pin-key:active { transform: translateY(1px); background: var(--paper); }
+.pin-key-ghost { border-color: transparent; background: none; color: var(--muted); font-size: 20px; }
+.pin-key-ghost:hover { border-color: transparent; background: none; color: var(--ink); }
+.pin-err { font-size: 11px; color: var(--alert); margin-top: 18px; min-height: 16px; letter-spacing: .02em; }
+.login-foot { font-size: 8.5px; letter-spacing: .24em; text-transform: lowercase; color: var(--muted); margin-top: 40px; opacity: .8; }
+@media (prefers-reduced-motion: reduce) { .ubtn, .pin-key, .pin-dot { transition: none; } }
 
 /* "Salir" en la barra: chip en relieve sobre el oliva. */
 .topbar .user-chip {
@@ -2274,23 +2294,30 @@ let _loginKey = null;
 
 function mostrarLogin() {
   document.body.style.overflow = "auto";
+  const gente = Object.entries(USUARIOS);
   document.body.innerHTML = `
-    <div style="min-height:100vh;background:var(--cream);display:flex;align-items:center;justify-content:center;font-family:var(--font);padding:24px;">
-      <div style="text-align:center;color:var(--ink);">
-        <span class="mark" style="color:var(--ink);height:34px;"><i></i><i></i><i></i></span>
-        <div style="font-family:var(--font);font-size:30px;font-weight:700;line-height:1;margin-top:18px;letter-spacing:.01em;">m de materia</div>
-        <div style="font-size:9px;letter-spacing:0.24em;text-transform:lowercase;color:var(--muted);margin-top:8px;margin-bottom:52px;">Control de producción</div>
-        <div style="font-size:9px;letter-spacing:0.18em;text-transform:lowercase;color:var(--muted);margin-bottom:18px;">¿Quién prepara hoy?</div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;">
-          ${Object.entries(USUARIOS).map(([k,u]) => `
-            <button id="ubtn-${k}" class="ubtn" onclick="seleccionarUsuario('${k}')"
-              style="font-family:inherit;font-size:13px;padding:15px 30px;border:1px solid var(--line);color:var(--ink);cursor:pointer;background:none;">
-              ${u.nombre}
-            </button>`).join("")}
+    <div class="login-screen">
+      <div class="login-card">
+        <span class="mark login-mark"><i></i><i></i><i></i></span>
+        <div class="login-word">m de materia</div>
+        <div class="login-eyebrow">control de producción</div>
+        <div class="login-rule"></div>
+
+        <div id="login-choose">
+          <div class="login-ask">¿quién prepara hoy?</div>
+          <div class="login-people">
+            ${gente.map(([k,u],i) => `
+              <button id="ubtn-${k}" class="ubtn" onclick="seleccionarUsuario('${k}')">
+                <span class="ubtn-idx">${String(i+1).padStart(2,"0")}</span>
+                <span class="ubtn-name">${u.nombre}</span>
+              </button>`).join("")}
+          </div>
         </div>
-        <div id="pin-wrap" style="display:none;">
-          <div style="font-size:9px;letter-spacing:0.18em;text-transform:lowercase;color:var(--muted);margin-bottom:16px;">PIN de <span id="pin-quien"></span></div>
-          <div id="pin-dots" style="display:flex;gap:16px;justify-content:center;margin-bottom:24px;">
+
+        <div id="pin-wrap" class="login-pin" style="display:none;">
+          <button type="button" class="pin-back" onclick="volverAUsuarios()">← cambiar persona</button>
+          <div class="login-ask">pin de <span id="pin-quien"></span></div>
+          <div id="pin-dots" class="pin-dots">
             <span class="pin-dot" data-i="0"></span><span class="pin-dot" data-i="1"></span><span class="pin-dot" data-i="2"></span><span class="pin-dot" data-i="3"></span>
           </div>
           <div class="pin-pad">
@@ -2307,8 +2334,10 @@ function mostrarLogin() {
             <button type="button" class="pin-key" onclick="pinPush('0')">0</button>
             <button type="button" class="pin-key pin-key-ghost" onclick="pinDel()" aria-label="Borrar">⌫</button>
           </div>
-          <div id="pin-err" style="font-size:11px;color:#E7E4D7;margin-top:18px;min-height:16px;"></div>
+          <div id="pin-err" class="pin-err"></div>
         </div>
+
+        <div class="login-foot">el palo · pedregalejo · málaga</div>
       </div>
     </div>`;
   document.addEventListener("keydown", _pinKeydown);
@@ -2320,9 +2349,10 @@ function seleccionarUsuario(key) {
   _loginKey = key;
   Object.keys(USUARIOS).forEach(k => {
     const b = document.getElementById("ubtn-"+k);
-    if(b) b.style.borderColor = k===key ? "#5C6145" : "#2A2820";
-    if(b) b.style.color = k===key ? "#F0EBE0" : "#888070";
+    if (b) b.classList.toggle("sel", k === key);
   });
+  const choose = document.getElementById("login-choose");
+  if (choose) choose.style.display = "none";
   const w = document.getElementById("pin-wrap");
   w.style.display = "block";
   const quien = document.getElementById("pin-quien");
@@ -2330,6 +2360,20 @@ function seleccionarUsuario(key) {
   _pinVal = "";
   pintarPinDots();
   document.getElementById("pin-err").textContent = "";
+}
+
+// Volver del PIN al selector de persona (botón "← cambiar persona").
+function volverAUsuarios() {
+  _loginKey = null;
+  _pinVal = "";
+  const w = document.getElementById("pin-wrap");
+  if (w) w.style.display = "none";
+  const choose = document.getElementById("login-choose");
+  if (choose) choose.style.display = "block";
+  Object.keys(USUARIOS).forEach(k => {
+    const b = document.getElementById("ubtn-"+k);
+    if (b) b.classList.remove("sel");
+  });
 }
 
 function pintarPinDots() {
@@ -13495,6 +13539,8 @@ const APP_SHELL = document.body.innerHTML;
 // Pinta la app ya autenticada. Sin recargar la página (la recarga causaba el
 // bucle de splash y la pérdida del contexto JS tras el login).
 function entrarApp() {
+  document.removeEventListener("keydown", _pinKeydown); // el login ya no está
+  document.body.style.overflow = ""; // restaura el overflow:hidden del shell
   document.body.innerHTML = APP_SHELL;
   renderUserChips();
   loadHome();

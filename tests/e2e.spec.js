@@ -1348,18 +1348,19 @@ test("lab: producir se divide en Bebidas y Comida, con navegación coherente", a
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_lab());
-  // Índice de producción: SOLO dos paneles (bebidas, comida). Nada más en el menú.
-  await expect(page.locator(".lab-panel")).toHaveCount(2);
-  await expect(page.locator(".lab-title", { hasText: /^bebidas$/ })).toBeVisible();
-  await expect(page.locator(".lab-title", { hasText: /^comida$/ })).toBeVisible();
+  // Índice de producción: SOLO dos filas (bebidas, comida), compactas como el resto
+  // de carpetas. Nada más en el menú.
+  await expect(page.locator(".lab-rows > .lab-row")).toHaveCount(2);
+  await expect(page.locator(".lr-name", { hasText: /^bebidas$/ })).toBeVisible();
+  await expect(page.locator(".lr-name", { hasText: /^comida$/ })).toBeVisible();
   // Bebidas → las cuatro líneas.
   await page.evaluate(() => irA_labBebidas());
   for (const n of [/limonadas/i, /latas fit/i, /cold brew/i, /spritz/i]) {
     await expect(page.locator(".lr-name", { hasText: n })).toBeVisible();
   }
-  // Back vuelve al hub de Lab (dos paneles).
+  // Back vuelve al hub de Lab (dos filas).
   await page.evaluate(() => goBack());
-  await expect(page.locator(".lab-panel")).toHaveCount(2);
+  await expect(page.locator(".lab-rows > .lab-row")).toHaveCount(2);
   // Comida → producciones reales + la salsa con trufa como PENDIENTE (sin inventar receta).
   await page.evaluate(() => irA_labComida());
   await expect(page.locator(".lr-name", { hasText: /Salsa Verde Materia/i })).toBeVisible();

@@ -200,10 +200,22 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const procesados = [];     // {clave, serie, number, type}
   const bloqueados = [];     // {clave, no_vinculados:[...]}
   const omitidos = [];
+  const deduplicados = [];   // {serie, number} ya existentes por otra vía (no se duplican)
   const noVinculados = new Set();
   const movimientos = [];
   let unidades = 0, importeTotal = 0;
   const nowISO = new Date().toISOString();
+
+  // Anti-duplicados por CLAVE DE NEGOCIO (Serie + Número + día). Evita contar dos
+  // veces una venta que ya entró por otra vía (p. ej. el import manual del "Análisis
+  // de Ventas", cuya clave idempotente es "TicketExport:…" en vez de "Invoice:…").
+  // El número se normaliza a entero (Ágora da 3719; el export da "003719").
+  const bizKey = (s, n, f) => {
+    const num = parseInt(String(n == null ? "" : n).replace(/[^0-9]/g, ""), 10);
+    return `${String(s == null ? "" : s).trim()}|${Number.isFinite(num) ? num : 0}|${String(f || "").slice(0, 10)}`;
+  };
+  const ventasBiz = new Set();
+  ventas.forEach((v) => { if (v.doc_serie != null || v.doc_number != null) ventasBiz.add(bizKey(v.doc_serie, v.doc_number, v.fecha)); });
 
   lista.forEach((doc) => {
     const clave = claveIdem(doc);
@@ -213,6 +225,16 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     const fecha = campoDoc(doc, ["BusinessDay", "businessDay", "business_day", "Date", "date", "fecha"]) || nowISO;
     const { serie, number } = serieNumero(doc);
     const type = tipoDoc(doc);
+
+    // ¿Esta venta ya existe por otra vía (mismo Serie+Número+día)? No duplicar: se
+    // marca procesada (para confirmarla a Ágora y que no la reenvíe) y se omite.
+    const bk = bizKey(serie, number, fecha);
+    if (serie != null && number != null && ventasBiz.has(bk)) {
+      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, dedup: true };
+      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+      deduplicados.push({ serie, number });
+      return;
+    }
 
     // 1) Resolver TODAS las líneas primero (no descontamos nada aún).
     const resueltas = [];
@@ -269,6 +291,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO };
     if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
     procesados.push({ clave, serie, number, type });
+    ventasBiz.add(bk); // ya presente: evita duplicar la misma venta dentro del lote
   });
 
   movimientos.forEach((mv) => store.insert("stock_movements", mv));
@@ -281,6 +304,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     procesados: procesados.length,
     bloqueados: bloqueados.length,
     omitidos_ya_procesados: omitidos.length,
+    duplicados_evitados: deduplicados.length,
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
     productos_no_vinculados: [...noVinculados],
@@ -288,8 +312,13 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   };
   registrarSync(resumen);
   if (typeof registrar === "function") registrar(resumen);
-  // procesados_ref: lo que hay que confirmar a Ágora (POST /api/doc/processed).
-  return { ...resumen, procesados_ref: procesados.map((p) => ({ Serie: p.serie, Number: p.number })), bloqueados_detalle: bloqueados };
+  // procesados_ref: lo que hay que confirmar a Ágora (POST /api/doc/processed). Se
+  // confirman también los deduplicados (ya existían) para que Ágora no los reenvíe.
+  return {
+    ...resumen,
+    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number }))],
+    bloqueados_detalle: bloqueados,
+  };
 }
 
 function registrarSync(resumen) {

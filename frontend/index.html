@@ -9164,8 +9164,29 @@ function tpvRender(d, claveNueva){
           ${d.configurado?`<button class="btn-ghost" onclick="tpvRevocar()">Revocar</button>`:""}
         </div>
       </div>`;
+  // ── OPCIÓN FÁCIL (recomendada): por email, sin instalar nada ───────────────
+  const em = d.email_ingesta || {};
+  const dir = em.direccion ? esc(em.direccion) : "el mismo buzón donde reenvías las facturas";
+  const emailBloque = `<div class="section-label">Opción fácil · por email (recomendada, sin instalar nada)</div>
+    <div class="card" style="border-color:var(--olive);">
+      <div class="cc-mini" style="line-height:1.7;">
+        Manda el export <b>“Análisis de Ventas”</b> de Ágora (Excel o CSV) a <b>${dir}</b> y se
+        importa <b>solo</b>: reemplaza el mes, guarda el neto y no duplica. No hace falta el
+        Api-Token de Ágora ni instalar nada en el local.
+      </div>
+      <ol class="prep-steps" style="margin-top:8px;">
+        <li>En Ágora, saca el export de ventas como ya lo haces (o prográmalo para que se envíe solo).</li>
+        <li>Reenvíalo (o que Ágora lo envíe) a <b>${dir}</b>.</li>
+        <li>Mira en <b>Informes → Ventas · Ágora</b>: aparecerá la última importación.</li>
+      </ol>
+      <div class="cc-mini" style="margin-top:6px;color:${em.configurada?"var(--muted)":"#B45309"};">
+        ${em.configurada ? "✓ Buzón de correo activo." : "⚠ El buzón de correo aún no está configurado en el servidor (falta FACTURAS_INGESTA_TOKEN). Avísame y lo dejo listo."}
+      </div>
+    </div>`;
   // Datos exactos a configurar en el agente.
-  const config = `<div class="section-label">Datos para el agente del local</div>
+  const config = `<div class="section-label">Opción avanzada · agente en tiempo real (requiere Api-Token de Ágora)</div>
+    <div class="cc-mini" style="margin:-4px 0 8px;">Entra cada 15 min por la API de Ágora. Más inmediato, pero hay que instalar un programita en el PC del local y tener el Api-Token de Ágora.</div>
+    <div class="section-label">Datos para el agente del local</div>
     <div class="card">
       <div class="tpv-row"><span class="tpv-k">URL (ingesta)</span><code class="tpv-v">${esc(d.url_ingest)}</code><button class="tpv-copy" onclick="tpvCopiar('${esc(d.url_ingest)}')">copiar</button></div>
       <div class="tpv-row"><span class="tpv-k">Prueba (ping)</span><code class="tpv-v">${esc(d.url_ping)}</code><button class="tpv-copy" onclick="tpvCopiar('${esc(d.url_ping)}')">copiar</button></div>
@@ -9194,6 +9215,7 @@ function tpvRender(d, claveNueva){
       <div class="cc-label">Conector TPV · Ágora ${estadoTxt}</div>
       <div class="cc-mini" style="margin-top:6px;">${syncLinea}</div>
     </div>
+    ${emailBloque}
     ${claveBloque}
     ${config}
     ${bloq}

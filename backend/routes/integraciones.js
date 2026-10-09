@@ -24,6 +24,11 @@ router.get("/tpv", (req, res) => {
     url_ingest: base + "/tpv/ingest",
     url_ping: base + "/tpv/ping",
     cabecera: tpv.CABECERA,
+    // Vía fácil (sin instalar nada): reenviar el export de ventas al buzón de correo.
+    email_ingesta: {
+      configurada: !!process.env.FACTURAS_INGESTA_TOKEN,
+      direccion: process.env.INGESTA_EMAIL || null, // si no está, es "el mismo buzón de las facturas"
+    },
   });
 });
 

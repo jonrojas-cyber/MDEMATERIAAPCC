@@ -272,19 +272,27 @@ app.post("/facturas/ingesta", express.json({ limit: "25mb" }), async (req, res) 
   const got = req.headers["x-ingesta-token"] || (req.query && req.query.token);
   if (got !== token) return res.status(401).json({ error: "Token de ingesta inválido" });
   try {
-    const ocr = require("./ocr");
-    if (!ocr.disponible()) return res.status(503).json({ error: "OCR no configurado (define ANTHROPIC_API_KEY)" });
     // Resend Inbound manda solo metadatos: hay que descargar los adjuntos aparte.
     // Otros reenviadores (Zapier/Make) mandan el contenido en el propio cuerpo.
     const resendInbound = require("./resend-inbound");
     const payload = resendInbound.esEventoInbound(req.body)
       ? await resendInbound.aPayload(req.body)
       : req.body;
+    // ¿Es el export de VENTAS de Ágora (CSV/Excel) y no una factura? Se importa solo
+    // con el mismo motor que la subida manual (reemplaza el mes). No necesita OCR.
+    const ventasEmail = require("./ventas-email");
+    if (ventasEmail.esCorreoDeVentas(payload)) {
+      const rv = await ventasEmail.ingestar(store, payload);
+      return res.json({ tipo: "ventas", ...rv });
+    }
+    // Si no, es una factura: cada adjunto PDF/imagen se lee con OCR.
+    const ocr = require("./ocr");
+    if (!ocr.disponible()) return res.status(503).json({ error: "OCR no configurado (define ANTHROPIC_API_KEY)" });
     const r = await require("./facturas-email").ingestar(payload, { ocrFn: ocr.extraerDesdeAdjunto });
     try { require("./factura-procesar").programar(store); } catch (e) {} // lee las facturas recién entradas (automático)
-    res.json(r);
+    res.json({ tipo: "factura", ...r });
   } catch (e) {
-    res.status(500).json({ error: "No se pudo ingerir el correo de facturas: " + e.message });
+    res.status(500).json({ error: "No se pudo ingerir el correo: " + e.message });
   }
 });
 

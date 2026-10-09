@@ -11959,6 +11959,7 @@ async function irA_ventas(){
         <div class="card-meta">Última sincronización: ${cuando} · ${est.procesados||0} documento(s) procesados</div>
         <div class="card-meta" style="margin-top:6px;font-size:10px;color:#888070;">Las ventas entran solas desde el <b>conector del local</b> (lee Ágora y las envía a Control M). Se mapea cada producto a su escandallo y se descuenta el stock, una sola vez por documento.</div>
       </div>`;
+    if(mbdsEsAdmin()) html+=`<div id="conc-box"></div>`;
     if(bloqueados.length){
       html+=`<div class="section-label">Documentos bloqueados · ${bloqueados.length}</div>
         <div class="card" style="border-color:#c79a3a;">
@@ -11976,7 +11977,71 @@ async function irA_ventas(){
         <div id="csv-res" style="font-size:11px;color:#888070;margin-top:10px;"></div>
       </div>`;
     setInner(html);
+    if(mbdsEsAdmin()) conciliacionRender();
   }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+}
+
+// ── CONCILIACIÓN CON ÁGORA · cuadrar el total al céntimo (solo admin) ──
+// Compara lo que Control M tiene registrado hoy con lo que marca Ágora y enseña
+// de dónde sale cualquier diferencia: por tipo de documento, duplicados cruzados
+// (albarán ya facturado) y precio real por producto frente al PVP de la carta.
+async function conciliacionRender(dia){
+  const box=el("conc-box"); if(!box) return;
+  box.innerHTML=`<div class="section-label">Conciliación con Ágora · hoy</div><div class="card"><div class="card-meta">Calculando…</div></div>`;
+  try{
+    const c=await api("/ventas/conciliacion"+(dia?("?dia="+encodeURIComponent(dia)):""));
+    window._conc=c;
+    const dupBloque = (c.total_duplicado>0) ? `
+      <div class="card" style="border-color:var(--alert);">
+        <div class="card-name" style="color:var(--alert);">Doble conteo detectado: ${fmtEur(c.total_duplicado,"€")}</div>
+        <div class="card-meta">La misma venta aparece bajo varios tipos de documento (p. ej. un <b>albarán</b> que luego se <b>facturó</b>). Eso infla el total. Se queda la factura y se quita el resto.</div>
+        ${c.duplicados.slice(0,12).map(d=>`<div class="card-meta" style="margin-top:6px;">· ${fmtEur(d.importe_unitario,"€")} × ${d.veces}: ${d.tickets.map(t=>`${esc(t.tipo)} ${esc(t.ref)}${t.hora?" ("+t.hora+")":""}`).join(" = ")} <span style="color:var(--alert)">→ sobra ${fmtEur(d.importe_duplicado,"€")}</span></div>`).join("")}
+        <div class="card-actions"><button class="btn-primary" onclick="conciliarQuitarDuplicados(this)">Quitar duplicados y reponer stock (${fmtEur(c.total_duplicado,"€")})</button></div>
+        <div id="conc-dup-msg" style="font-size:12px;color:var(--olive);margin-top:8px;"></div>
+      </div>` : `
+      <div class="card"><div class="card-meta">✔ Sin doble conteo estructural (albarán/factura). Si aún no cuadra con Ágora, mira el desglose por tipo y el ticket a ticket.</div></div>`;
+
+    const preciosMal=(c.por_producto||[]).filter(p=>p.coincide===false);
+    const escaneo = `
+      <div class="section-label">Escaneo de precios · real vs carta</div>
+      ${preciosMal.length?`<div class="card" style="border-color:#c79a3a;"><div class="card-name" style="color:#9C5A2E;">${preciosMal.length} producto(s) con precio distinto a la carta</div>${preciosMal.map(p=>`<div class="card-meta">· <b>${esc(p.nombre)}</b>: cobrado ${fmtEur(p.precio_real,"€")} · carta ${p.pvp_carta==null?"—":fmtEur(p.pvp_carta,"€")} <span style="color:#9C5A2E">(${p.pvp_carta==null?"sin PVP en carta":(p.precio_real>p.pvp_carta?"+":"")+fmtEur((p.precio_real-p.pvp_carta),"€")})</span></div>`).join("")}<div class="card-meta" style="font-size:10px;margin-top:6px;color:#888070;">El precio cobrado sale de Ágora (importe÷unidades). Si la carta está desactualizada, ajústala en su ficha.</div></div>`
+        :`<div class="card"><div class="card-meta">✔ Todos los precios cobrados coinciden con la carta.</div></div>`}
+      <details style="margin-top:8px;"><summary style="cursor:pointer;color:var(--muted);font-size:12px;">Ver los ${(c.por_producto||[]).length} productos</summary>
+        <div class="card" style="margin-top:6px;">${(c.por_producto||[]).map(p=>`<div class="card-meta">· ${esc(p.nombre)} — ${p.unidades} ud · ${fmtEur(p.bruto,"€")} · ${p.precio_real==null?"":fmtEur(p.precio_real,"€")+"/ud"} ${p.coincide===false?'<span style="color:#9C5A2E">≠ carta</span>':(p.coincide===true?'<span style="color:var(--olive)">✓</span>':'')}</div>`).join("")}</div>
+      </details>`;
+
+    const porTipo = (c.por_tipo||[]).map(t=>`<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 8px;border:1px solid var(--line);border-radius:12px;font-size:11px;">${esc(t.tipo)}: <b>${fmtEur(t.bruto,"€")}</b> · ${t.tickets} tk</span>`).join("");
+
+    const tickets = `
+      <details style="margin-top:8px;"><summary style="cursor:pointer;color:var(--muted);font-size:12px;">Ver ${c.num_tickets} ticket(s) uno a uno</summary>
+        <div class="card" style="margin-top:6px;">${(c.tickets||[]).map(t=>`<div class="card-meta">· ${t.hora||""} · ${esc(t.tipo)} ${esc(t.ref)} — ${t.unidades} ud · <b>${fmtEur(t.importe,"€")}</b></div>`).join("")||'<div class="card-meta">Sin tickets hoy.</div>'}</div>
+      </details>`;
+
+    box.innerHTML=`
+      <div class="section-label">Conciliación con Ágora · hoy (${esc(c.dia)})</div>
+      <div class="card">
+        <div class="card-name">Control M cuenta hoy: ${fmtEur(c.bruto,"€")} <span style="font-size:11px;color:var(--muted)">(con IVA)</span></div>
+        <div class="card-meta">${c.num_tickets} ticket(s) · ${c.unidades} unidad(es)${c.neto_disponible?` · base sin IVA ${fmtEur(c.neto,"€")}`:""}</div>
+        <div class="card-meta" style="margin-top:6px;font-size:11px;">Compáralo con <b>VENTAS HOY</b> de Ágora (también con IVA). Si Ágora marca <b>menos</b>, el exceso está aquí abajo.</div>
+        <div style="margin-top:8px;">${porTipo}</div>
+      </div>
+      ${dupBloque}
+      ${escaneo}
+      ${tickets}`;
+  }catch(e){
+    box.innerHTML=`<div class="section-label">Conciliación con Ágora</div><div class="card"><div class="card-meta" style="color:var(--alert)">No se pudo calcular: ${esc(e.message)}</div></div>`;
+  }
+}
+
+async function conciliarQuitarDuplicados(btn){
+  const msg=el("conc-dup-msg"); const dia=(window._conc&&window._conc.dia)||"";
+  if(!confirm("Se quitará el documento duplicado (se queda la factura) y se repondrá el stock descontado de más. ¿Seguir?")) return;
+  btn.disabled=true; if(msg) msg.textContent="Quitando duplicados…";
+  try{
+    const r=await api("/ventas/conciliacion/limpiar-duplicados"+(dia?("?dia="+encodeURIComponent(dia)):""),{method:"POST"});
+    if(msg) msg.innerHTML=`✓ Quitadas <b>${r.eliminados}</b> línea(s) (${fmtEur(r.importe_quitado,"€")}) de ${r.tickets_quitados} documento(s). Stock repuesto: ${r.stock_repuesto}.`;
+    setTimeout(()=>conciliacionRender(dia),900);
+  }catch(e){ if(msg) msg.textContent="Error: "+e.message; btn.disabled=false; }
 }
 
 async function importarVentasCSV(input){

@@ -61,6 +61,15 @@ router.post("/tpv/revocar", async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/integraciones/tpv/verificar  — ¿la clave del agente (config.json del
+// PC) coincide con la de la app? Diagnóstico del caso "clave rotada" sin exponer
+// nada: compara en tiempo constante y devuelve solo sí/no.
+router.post("/tpv/verificar", (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  const clave = (req.body && (req.body.clave || req.body.token)) || "";
+  res.json({ coincide: tpv.verificar(store, String(clave).trim()), hay_clave: !!tpv.claveActual(store) });
+});
+
 // POST /api/integraciones/tpv/probar  — valida el FORMATO de un envío de ejemplo
 // sin escribir nada (dry-run): cuántos documentos se detectarían.
 router.post("/tpv/probar", (req, res) => {

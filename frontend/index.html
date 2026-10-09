@@ -9146,6 +9146,35 @@ function tpvRender(d, claveNueva){
   const syncLinea = sync
     ? `Última sincronización: <b>${fmt(sync.cuando)}</b> · ${sync.procesados||0} ticket(s), ${sync.unidades_vendidas||0} uds, ${labEur? labEur(sync.importe_total):((sync.importe_total||0)+" €")}`
     : `Todavía no ha entrado ninguna venta por el conector.`;
+  // ── Salud del conector (latido del agente) ──────────────────────────────────
+  const haceTxt = (min) => min == null ? "—" : (min < 60 ? `hace ${min} min` : (min < 1440 ? `hace ${Math.round(min/60)} h` : `hace ${Math.round(min/1440)} día(s)`));
+  const saludBanner = (() => {
+    if (!d.configurado) return "";
+    if (d.salud === "caido") {
+      const ref = d.ultimo_contacto_hace_min != null ? haceTxt(d.ultimo_contacto_hace_min) : (d.ultima_sync_hace_min != null ? haceTxt(d.ultima_sync_hace_min) : "hace mucho");
+      return `<div class="card" style="border:2px solid #D62A1C;background:#fdeceb;">
+        <div style="font-weight:700;color:#B4150B;">⚠ El conector está CAÍDO</div>
+        <div class="cc-mini" style="margin-top:4px;color:#7a1109;line-height:1.6;">Última señal del agente: <b>${ref}</b>. El agente enviaba cada 15 min y ha dejado de hacerlo → el PC del local o el programa está parado. Enciende el PC y revisa el agente (pasos abajo), o usa la <b>opción por email</b> para no depender de él.</div>
+      </div>`;
+    }
+    if (d.salud === "sin_contacto") {
+      return `<div class="card" style="border-color:#B45309;"><div class="cc-mini" style="color:#B45309;">Hay clave, pero el agente del PC aún no ha dado señal. Si acabas de configurarlo, espera unos minutos; si no, revisa que el PC esté encendido y el agente corriendo.</div></div>`;
+    }
+    if (d.salud === "ok") {
+      return `<div class="card" style="border-color:var(--olive);"><div class="cc-mini"><span class="cc-delta up">● Activo</span> — última señal del agente ${haceTxt(d.ultimo_contacto_hace_min != null ? d.ultimo_contacto_hace_min : d.ultima_sync_hace_min)}.</div></div>`;
+    }
+    return "";
+  })();
+  // Widget de diagnóstico: comprobar que la clave del PC coincide con la de la app.
+  const diag = !d.configurado ? "" : `<div class="section-label">Diagnóstico · ¿la clave del PC coincide?</div>
+    <div class="card">
+      <div class="cc-mini">Si el agente no entra, lo más común es que la clave del <code>config.json</code> del PC no sea la de ahora. Pégala y lo compruebo (no se guarda ni se muestra):</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <input id="tpv-verif" class="mat-q" placeholder="clave del PC (mdm_…)" style="flex:1;min-width:200px;">
+        <button class="btn-ghost" onclick="tpvVerificar()">Comprobar</button>
+      </div>
+      <div id="tpv-verif-res" class="cc-mini" style="margin-top:8px;"></div>
+    </div>`;
   // Bloque de la clave: al generar, se muestra COMPLETA una vez; si no, enmascarada.
   const claveBloque = claveNueva
     ? `<div class="card" style="border-color:var(--olive);">
@@ -9215,9 +9244,11 @@ function tpvRender(d, claveNueva){
       <div class="cc-label">Conector TPV · Ágora ${estadoTxt}</div>
       <div class="cc-mini" style="margin-top:6px;">${syncLinea}</div>
     </div>
+    ${saludBanner}
     ${emailBloque}
     ${claveBloque}
     ${config}
+    ${diag}
     ${bloq}
     ${ayuda}`;
 }
@@ -9230,6 +9261,19 @@ async function tpvGenerar(){
     setInner(tpvRender(d, r.clave));
     pbtToast("Clave generada ✓",1200);
   }catch(e){ alert(e.message); }
+}
+// Comprueba si la clave del PC (config.json) coincide con la de la app. Diagnóstico
+// seguro: el servidor solo responde sí/no (no guarda ni expone la clave).
+async function tpvVerificar(){
+  const i=el("tpv-verif"), out=el("tpv-verif-res"); if(!i||!out) return;
+  const v=(i.value||"").trim(); if(!v){ out.textContent="Pega la clave del config.json del PC."; return; }
+  out.textContent="Comprobando…";
+  try{
+    const r=await api("/integraciones/tpv/verificar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clave:v})});
+    out.innerHTML = r.coincide
+      ? `<span class="cc-delta up">✓ Coincide</span> — la clave del PC es la correcta. Si aun así no entran ventas, el problema es el PC/agente parado o Ágora, no la clave.`
+      : `<span class="cc-delta down">✗ No coincide</span> — por eso Control M rechaza los datos. Genera una clave nueva aquí arriba y pégala en el <code>config.json</code> del PC (campo <code>conector_token</code>).`;
+  }catch(e){ out.textContent=e.message; }
 }
 async function tpvRevocar(){
   if(!confirm("Al revocar, el conector dejará de aceptar ventas hasta que generes una clave nueva. ¿Seguro?")) return;

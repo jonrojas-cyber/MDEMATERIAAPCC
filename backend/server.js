@@ -241,8 +241,9 @@ function tpvAutoriza(req, res) {
 async function tpvIngesta(req, res) {
   if (!tpvAutoriza(req, res)) return;
   try {
+    tpvConn.marcarContacto(store); // latido: el agente ha contactado (haya o no ventas)
     const r = tpvConn.ingerir(store, req.body, { usuario: { nombre: "Conector TPV" } });
-    await store.flush(); // stock + ventas + docs confirmados antes de responder
+    await store.flush(); // stock + ventas + docs + latido confirmados antes de responder
     res.json(r); // incluye procesados_ref → el agente confirma a Ágora
   } catch (e) {
     res.status(e.code === "SIN_DOCS" ? 400 : 500).json({ error: "No se pudo ingerir del TPV: " + e.message });

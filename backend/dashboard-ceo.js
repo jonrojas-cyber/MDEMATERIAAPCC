@@ -226,7 +226,10 @@ function calcular(opts = {}) {
   const ventasHoy = H.ventas || 0;
   const objetivoDia = H.objetivo_dia || null;
   const horaDec = d0.getHours() + d0.getMinutes() / 60;
-  const fracDia = Math.min(1, Math.max(0.08, (horaDec - 8) / 15)); // jornada 8–23 h
+  // Jornada REAL del local (del perfil operativo): m de materia abre ~8 y cierra 16.
+  // La previsión del día se proyecta sobre ESTA jornada, no sobre 8–23.
+  const aperH = perfil.hora_apertura, cierreH = perfil.hora_cierre, jornadaH = Math.max(1, cierreH - aperH);
+  const fracDia = Math.min(1, Math.max(0.08, (horaDec - aperH) / jornadaH));
   const mediaDiaSem = mediaMismoDiaSemana(now, idx, idxMat);
   const cierre = cierrePrevistoDe(ventasHoy, fracDia, mediaDiaSem);
 
@@ -295,7 +298,7 @@ function calcular(opts = {}) {
   // ── RENDIMIENTO COMERCIAL ────────────────────────────────────────────────────
   const udsBebida = (vDia.por_categoria || []).filter((c) => esBebida(c.categoria)).reduce((s, c) => s + (c.unidades || 0), 0);
   const bebidasPorTicket = vDia.tickets > 0 ? Math.round((udsBebida / vDia.tickets) * 10) / 10 : null;
-  const horasAbiertoHoy = Math.max(0, Math.min(15, horaDec - 8));
+  const horasAbiertoHoy = Math.max(0, Math.min(jornadaH, horaDec - aperH));
   const ventasPorHora = horasAbiertoHoy > 0 && hayVentasHoy ? eur(ventasHoy / horasAbiertoHoy) : null;
   // Comparativas: mismo día semana pasada (ventaDia) y objetivo de ticket medio.
   const ventas = store.readAll("ventas") || [];

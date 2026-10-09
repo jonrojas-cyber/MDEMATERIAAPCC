@@ -163,9 +163,12 @@ function construir(preset = "hoy", opts = {}) {
   const objetivoDia = diasAbiertosAnt > 0 ? eur((benMesAnt.ventas * OBJ) / diasAbiertosAnt) : eur(objetivoMes / diasEnMes);
   const ticketsHoy = financials.ticketsEnRango(rHoy);
   const ventasHoy = benHoy.ventas || 0;
-  // Previsión de cierre del día: proyección por fracción de jornada (8–23 h).
+  // Previsión de cierre del día: proyección por fracción de la JORNADA REAL del local
+  // (del perfil operativo: m de materia abre ~8 y cierra 16), no sobre 8–23.
+  const perfilOp = require("./operating-profile").leer();
   const horaDec = d0.getHours() + d0.getMinutes() / 60;
-  const fracDia = Math.min(1, Math.max(0.08, (horaDec - 8) / 15));
+  const jornadaH = Math.max(1, perfilOp.hora_cierre - perfilOp.hora_apertura);
+  const fracDia = Math.min(1, Math.max(0.08, (horaDec - perfilOp.hora_apertura) / jornadaH));
   const prevCierre = eur(ventasHoy / fracDia);
   const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : null);
   const panel_direccion = {

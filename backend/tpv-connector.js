@@ -81,15 +81,33 @@ function tokenDePeticion(req) {
 }
 
 const DOCS_KEYS = ["docs", "documents", "Documents", "ventas", "sales", "tickets", "data"];
+// Ágora NO devuelve un array: agrupa los documentos POR TIPO →
+//   { "Invoices":[...], "DeliveryNotes":[...], "SalesOrders":[...] }.
+// Además el agente envuelve esa respuesta en `documents` → { documents: { Invoices:[...] } }
+// (doble envoltura). Hay que aplanar ambas cosas o no se procesa nada.
+const TIPO_KEYS = ["Invoices", "DeliveryNotes", "SalesOrders", "PurchaseOrders", "IncomingDeliveryNotes", "PurchaseInvoices"];
 
-// Normaliza el cuerpo entrante a una lista de documentos de Ágora. Acepta array,
-// { docs|documents|ventas|sales|tickets|data: [...] } o un documento suelto.
+// Normaliza el cuerpo entrante a una lista PLANA de documentos. Admite:
+//   · array de documentos;
+//   · { docs|documents|...: array } y también { documents: { Invoices:[...] } }
+//     (doble envoltura del agente → se desenvuelve recursivamente);
+//   · { Invoices:[...], DeliveryNotes:[...] } (formato real de Ágora), etiquetando
+//     cada doc con su __type para la clave idempotente;
+//   · un documento suelto.
 function extraerDocs(body) {
   if (!body) return [];
   if (Array.isArray(body)) return body;
+  if (typeof body !== "object") return [];
   for (const k of DOCS_KEYS) {
-    if (Array.isArray(body[k])) return body[k];
+    const v = body[k];
+    if (Array.isArray(v)) return v;
+    if (v && typeof v === "object") { const inner = extraerDocs(v); if (inner.length) return inner; }
   }
+  let out = [];
+  for (const tipo of TIPO_KEYS) {
+    if (Array.isArray(body[tipo])) out = out.concat(body[tipo].map((d) => ({ ...d, __type: tipo.replace(/s$/, "") })));
+  }
+  if (out.length) return out;
   if (body.Lines || body.lines || body.GlobalId || body.globalId || body.Serie || body.Number) return [body];
   return [];
 }
@@ -100,6 +118,7 @@ function tieneCampoDocs(body) {
   if (Array.isArray(body)) return true;
   if (!body || typeof body !== "object") return false;
   if (DOCS_KEYS.some((k) => k in body)) return true;
+  if (TIPO_KEYS.some((k) => k in body)) return true;
   return !!(body.Lines || body.lines || body.GlobalId || body.globalId || body.Serie || body.Number);
 }
 

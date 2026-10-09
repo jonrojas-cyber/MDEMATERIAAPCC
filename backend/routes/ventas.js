@@ -83,4 +83,32 @@ router.get("/agora-estado", (req, res) => {
   });
 });
 
+// GET /api/ventas/conciliacion?dia=YYYY-MM-DD — cuadre con Ágora al céntimo (solo
+// admin: total bruto/neto, desglose por tipo de documento, duplicados sospechosos,
+// ticket a ticket y precio real por producto vs PVP de carta). Sin ?dia = hoy.
+router.get("/conciliacion", (req, res) => {
+  const { soloAdmin } = require("./_guard");
+  if (!soloAdmin(req, res)) return;
+  res.json(require("../conciliacion-ventas").conciliacionDia(req.query.dia));
+});
+
+// POST /api/ventas/conciliacion/limpiar-duplicados?dia= — quita el doble conteo
+// estructural (albarán/pedido ya facturado) y repone su stock. Solo admin.
+router.post("/conciliacion/limpiar-duplicados", express.json(), async (req, res) => {
+  const { soloAdmin } = require("./_guard");
+  if (!soloAdmin(req, res)) return;
+  try {
+    const dia = (req.query.dia || (req.body && req.body.dia));
+    const r = await require("../conciliacion-ventas").limpiarDuplicados(dia, req.user);
+    require("../auditoria").registrar(req, {
+      accion: "conciliacion_limpiar", entidad: "ventas",
+      resumen: `Conciliación ${r.dia}: ${r.eliminados} línea(s) duplicada(s) quitada(s), ${r.importe_quitado} € · stock repuesto ${r.stock_repuesto}`,
+      meta: r,
+    });
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: "No se pudo limpiar: " + e.message });
+  }
+});
+
 module.exports = router;

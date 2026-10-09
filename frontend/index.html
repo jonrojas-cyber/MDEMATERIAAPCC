@@ -1089,12 +1089,18 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
     position: fixed; left: 0; top: 0; bottom: 0; width: 150px; z-index: 30;
     background: #17160F; border-right: 1px solid rgba(0,0,0,.4);
     padding: 22px 0 18px; font-family: var(--font); }
-  .rail-mark { background: none; border: 0; cursor: pointer; display: flex; gap: 5px; justify-content: flex-start; padding: 2px 0 30px 22px; }
-  .rail-mark i { width: 3px; height: 24px; background: #d7d6cc; display: block; }
+  .rail-mark { background: none; border: 0; cursor: pointer; display: flex; justify-content: flex-start; padding: 2px 0 30px 22px; }
+  /* Glifo de marca por máscara (mismas proporciones finas y alargadas que a la
+     derecha / dentro de cada categoría), no barras gruesas dibujadas a mano. */
+  .rail-mark::before { content: ""; display: block; width: 13px; height: 31px; background: #d7d6cc;
+    -webkit-mask: var(--ig-mask) center/contain no-repeat; mask: var(--ig-mask) center/contain no-repeat; }
+  .rail-mark i { display: none; }
   .rail-items { display: flex; flex-direction: column; gap: 2px; flex: 1; }
   .rail-bottom { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
-  .rail-item { position: relative; display: flex; align-items: center; gap: 12px; background: none; border: 0;
+  .rail-item { position: relative; display: flex; align-items: center; gap: 12px; background: none; border: 0; overflow: hidden;
     color: #8c8b80; font-family: var(--font); font-size: 12.5px; text-align: left; padding: 11px 20px; cursor: pointer; letter-spacing: .02em; }
+  /* La etiqueta nunca desborda el rail hacia el contenido blanco: se recorta con elipsis. */
+  .rail-lb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rail-ic { width: 17px; height: 17px; display: inline-flex; align-items: center; justify-content: center; color: #76756b; flex: 0 0 auto; }
   .rail-ic svg { width: 17px; height: 17px; }
   .rail-item:hover { color: #e9e8df; } .rail-item:hover .rail-ic { color: #c3c2b6; }
@@ -1103,8 +1109,6 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
   .rail-item.on .rail-ic { color: #e9e8df; }
   .rail-item:focus-visible { outline: 1.5px solid #6f6e64; outline-offset: -2px; }
   .rail-badge { position:absolute; left:28px; top:7px; min-width:15px; height:15px; border-radius:8px; background:#B5321F; color:#fff; font-size:9px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
-  .rail-sign { color: #6a695f; font-size: 15px; font-weight: 700; line-height: 1; padding: 6px 20px 0; }
-  .rail-sign span { font-size: 9.5px; font-weight: 400; letter-spacing: .06em; }
   body { padding-left: 150px; }
   #tabbar { display: none; }
   /* Barra superior fina en carbón. */
@@ -2147,10 +2151,8 @@ body.tpv .btn-primary, body.tpv .btn-ghost { padding: 13px 20px; font-size: 12px
     <button class="rail-item" data-tab="equipo" onclick="irDominio('equipo', () => irA_equipoHub())"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="9" r="2.2"/><path d="M15 15c2.5 0 5 1.6 5 4.5"/></svg></span><span class="rail-lb">Equipo</span></button>
   </div>
   <div class="rail-bottom">
-    <button class="rail-item" onclick="(typeof irA_avisos==='function'?irA_avisos:goHome)()"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8a6 6 0 0 0-12 0c0 7-2.5 7-2.5 9h17c0-2-2.5-2-2.5-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span><span class="rail-lb">Notificaciones</span></button>
-    <button class="rail-item" onclick="irA_categoria('informes')"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span><span class="rail-lb">Ajustes</span></button>
+    <button class="rail-item" onclick="(typeof irA_avisos==='function'?irA_avisos:goHome)()"><span class="rail-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8a6 6 0 0 0-12 0c0 7-2.5 7-2.5 9h17c0-2-2.5-2-2.5-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span><span class="rail-lb">Avisos</span></button>
   </div>
-  <div class="rail-sign">M<br><span>de materia</span></div>
 </nav>
 <header class="topbar">
   <div class="topbar-left">
@@ -3969,10 +3971,10 @@ async function irA_lab(){
   try { const d = await api("/inicio"); pend = (d.preparar || []).length; } catch (e) {}
   const pendTxt = pend ? ` · ${pend}` : "";
   setInner(`
-    <div class="lab-eyebrow" style="margin:0 0 15px">control m · producción</div>
-    <div class="lab-wrap">
-      ${labPanel("bebidas", "limonadas · latas fit · cold brew · spritz", "irA_labBebidas()")}
-      ${labPanel("comida", "salsas · sándwiches · tostas", "irA_labComida()")}
+    <div class="lab-eyebrow" style="margin:0 0 10px">control m · producción</div>
+    <div class="lab-rows">
+      ${labRow("bebidas", "limonadas · latas fit · cold brew · spritz", "irA_labBebidas()")}
+      ${labRow("comida", "salsas · sándwiches · tostas", "irA_labComida()")}
     </div>
     <div class="lab-foot">
       <span class="lab-foot-lb">otras herramientas</span>

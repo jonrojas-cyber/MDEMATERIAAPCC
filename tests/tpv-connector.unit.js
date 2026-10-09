@@ -100,8 +100,59 @@ test("estado: forma esperada para el panel", () => {
   const s = fakeStore();
   tpv.generarClave(s);
   const e = tpv.estado(s);
-  ["configurado", "origen_clave", "clave_mascara", "procesados", "bloqueados", "no_vinculados", "ventas_totales"].forEach((k) => assert.ok(k in e, "tiene " + k));
+  ["configurado", "origen_clave", "clave_mascara", "procesados", "bloqueados", "no_vinculados", "ventas_totales", "salud", "ultimo_contacto", "ultima_sync_hace_min"].forEach((k) => assert.ok(k in e, "tiene " + k));
   assert.strictEqual(e.configurado, true);
+});
+
+test("tieneCampoDocs: distingue 'ciclo vacío' de 'cuerpo malformado'", () => {
+  assert.strictEqual(tpv.tieneCampoDocs({ docs: [] }), true, "{docs:[]} es un ciclo sin novedades");
+  assert.strictEqual(tpv.tieneCampoDocs({ documents: [] }), true);
+  assert.strictEqual(tpv.tieneCampoDocs([]), true);
+  assert.strictEqual(tpv.tieneCampoDocs({}), false, "{} no trae sitio para documentos");
+  assert.strictEqual(tpv.tieneCampoDocs(null), false);
+});
+
+test("ingerir: ciclo vacío {docs:[]} es LATIDO (no error); {} sigue siendo SIN_DOCS", () => {
+  const s = fakeStore();
+  const r = tpv.ingerir(s, { docs: [] }, {});
+  assert.strictEqual(r.heartbeat, true, "ciclo vacío → latido");
+  assert.strictEqual(r.procesados, 0);
+  let err = null;
+  try { tpv.ingerir(s, {}, {}); } catch (e) { err = e; }
+  assert.ok(err && err.code === "SIN_DOCS", "cuerpo sin campo de documentos → SIN_DOCS");
+});
+
+test("saludConector: sin clave → 'sin_clave'", () => {
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+  assert.strictEqual(tpv.saludConector(fakeStore()).salud, "sin_clave");
+});
+
+test("saludConector: clave pero sin contacto ni ventas → 'sin_contacto'", () => {
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+  const s = fakeStore();
+  tpv.generarClave(s);
+  assert.strictEqual(tpv.saludConector(s).salud, "sin_contacto");
+});
+
+test("saludConector: latido reciente → 'ok'; latido viejo → 'caido'", () => {
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+  const now = Date.now();
+  const s = fakeStore();
+  tpv.generarClave(s);
+  tpv.marcarContacto(s); // justo ahora
+  assert.strictEqual(tpv.saludConector(s, now).salud, "ok");
+  // Latido de hace 2 h (> umbral 90 min) → caído.
+  s.update("config", tpv.CFG_ID, { ultimo_contacto: new Date(now - 120 * 60000).toISOString() });
+  assert.strictEqual(tpv.saludConector(s, now).salud, "caido");
+});
+
+test("saludConector: sin latido aún, pero última venta reciente → 'ok' (no falsa alarma)", () => {
+  delete process.env.AGORA_CONNECTOR_TOKEN;
+  const now = Date.now();
+  const s = fakeStore();
+  tpv.generarClave(s);
+  s.insert("sincronizaciones", { id: "syn-1", cuando: new Date(now - 10 * 60000).toISOString() });
+  assert.strictEqual(tpv.saludConector(s, now).salud, "ok");
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en conector TPV`); process.exit(1); }

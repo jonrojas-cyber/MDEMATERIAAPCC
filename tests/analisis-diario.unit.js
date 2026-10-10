@@ -54,9 +54,9 @@ test("margen del día SOLO sobre lo que tiene coste real (honesto)", () => {
   const r = A.computar(datos, "2026-09-05");
   // Coste = espresso 0,30×3 + tosta 0,99×1 = 0,90 + 0,99 = 1,89. Agua no tiene coste.
   assert.strictEqual(r.ventas.coste_materia, 1.89);
-  // Venta con coste conocido = 5,4 + 3,5 = 8,9 → margen = 8,9 − 1,89 = 7,01.
-  assert.strictEqual(r.ventas.margen_eur, 7.01);
-  // Cobertura de coste = 8,9 / 10,9 = 81,65% → 82%.
+  // Venta con coste conocido, SIN IVA = (5,4 + 3,5)/1,10 = 8,09 → margen = 8,09 − 1,89 = 6,20.
+  assert.strictEqual(r.ventas.margen_eur, 6.2);
+  // Cobertura de coste = 8,09 / 9,91 = 81,65% → 82% (igual en neto que en bruto).
   assert.strictEqual(r.ventas.cobertura_coste_pct, 82);
   assert.strictEqual(r.ventas.importe_sin_coste, 2.0);   // el agua
   assert.ok(r.ventas.sin_coste.some((x) => x.producto === "Agua"));

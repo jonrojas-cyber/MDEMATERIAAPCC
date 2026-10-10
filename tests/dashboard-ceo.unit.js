@@ -30,13 +30,13 @@ test("estado: sin objetivo → ok; menor-mejor y mayor-mejor con banda", () => {
 });
 
 // ── resultado del día ──
-test("resultadoDiaDe: ventas − materia − personal − variables (sin fijos)", () => {
-  const r = dc.resultadoDiaDe({ ventas: 500, coste_materia: 130, coste_laboral: 160, gastos_variables: 10, gastos_fijos: 50 });
-  assert.ok(near(r.valor, 200), "500−130−160−10 = 200 (NO resta los 50 de fijos)");
+test("resultadoDiaDe: ventas NETAS − materia − personal − variables − fijos del día", () => {
+  const r = dc.resultadoDiaDe({ ventas_netas: 500, coste_materia: 130, coste_laboral: 160, gastos_variables: 10, gastos_fijos: 50 });
+  assert.ok(near(r.valor, 150), "500−130−160−10−50 = 150 (resultado operativo real, con fijos)");
   assert.strictEqual(r.parcial, false);
-  const sinMateria = dc.resultadoDiaDe({ ventas: 500, coste_materia: null, coste_laboral: 160, gastos_variables: 0 });
+  const sinMateria = dc.resultadoDiaDe({ ventas_netas: 500, coste_materia: null, coste_laboral: 160, gastos_variables: 0 });
   assert.strictEqual(sinMateria.parcial, true, "sin escandallos → parcial");
-  const sinVentas = dc.resultadoDiaDe({ ventas: 0, coste_materia: 0, coste_laboral: 0, gastos_variables: 0 });
+  const sinVentas = dc.resultadoDiaDe({ ventas_netas: 0, coste_materia: 0, coste_laboral: 0, gastos_variables: 0 });
   assert.strictEqual(sinVentas.sin_datos, true);
 });
 

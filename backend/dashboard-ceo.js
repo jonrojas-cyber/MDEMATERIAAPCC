@@ -57,26 +57,29 @@ function comparar(actual, ref) {
 }
 
 // ── RESULTADO ESTIMADO DEL DÍA (puro) ────────────────────────────────────────
-// ventas − coste de materia − coste de personal − variables. NO resta costes fijos
-// (eso es EBITDA, no "lo que deja el día"). Declara qué incluye y si es parcial.
+// Lo que de verdad deja el día: ventas NETAS (sin IVA) − materia − personal −
+// variables − fijos prorrateados del día. Es el resultado operativo real del día
+// (= beneficio_operativo del rango de hoy), no la venta con IVA menos un par de costes.
 function resultadoDiaDe(ben) {
   if (!ben) return { valor: null, sin_datos: true, incluye: [], parcial: true };
-  const ventas = Number(ben.ventas) || 0;
+  const ventasNetas = Number(ben.ventas_netas) || 0;
   const tieneMateria = ben.coste_materia != null;
   const materia = tieneMateria ? Number(ben.coste_materia) || 0 : 0;
   const personal = Number(ben.coste_laboral) || 0;
   const variables = Number(ben.gastos_variables) || 0;
-  const incluye = ["ventas"];
+  const fijos = Number(ben.gastos_fijos) || 0;
+  const incluye = ["ventas (netas, sin IVA)"];
   if (tieneMateria) incluye.push("coste de materia");
   if (personal) incluye.push("personal (prorrateado)");
   if (variables) incluye.push("variables/mermas");
+  if (fijos) incluye.push("fijos del día (prorrateados)");
   return {
-    valor: eur(ventas - materia - personal - variables),
-    sin_datos: ventas <= 0,
+    valor: eur(ventasNetas - materia - personal - variables - fijos),
+    sin_datos: ventasNetas <= 0,
     parcial: !tieneMateria,                 // sin escandallos → resultado incompleto
     incluye,
-    ventas: eur(ventas), coste_materia: tieneMateria ? eur(materia) : null,
-    personal: eur(personal), variables: eur(variables),
+    ventas: eur(ventasNetas), coste_materia: tieneMateria ? eur(materia) : null,
+    personal: eur(personal), variables: eur(variables), fijos: eur(fijos),
   };
 }
 
@@ -249,7 +252,7 @@ function calcular(opts = {}) {
     resultado_dia: {
       valor: resultado.valor, parcial: resultado.parcial, incluye: resultado.incluye,
       estado: resultado.sin_datos ? "sin_datos" : (resultado.valor >= 0 ? "ok" : "critico"),
-      nota: resultado.parcial ? "Sin escandallos completos: resultado parcial (no resta todos los costes)" : "Ventas − materia − personal − variables (sin costes fijos)",
+      nota: resultado.parcial ? "Sin escandallos completos: resultado parcial (no resta todos los costes)" : "Ventas netas − materia − personal − variables − fijos del día (resultado operativo)",
     },
     productividad: {
       valor: prod.valor, objetivo: prod.objetivo, horas: prod.horas,

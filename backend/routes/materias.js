@@ -160,12 +160,18 @@ const NUMERICOS = [
   "vida_util_horas",
 ];
 
-function recogerCampos(body) {
+// Campos de COSTE que solo un admin puede fijar (regla nº2): el equipo puede tocar
+// stock/ubicación, nunca el precio de compra/pactado.
+const CAMPOS_COSTE = ["precio_compra", "precio_pactado"];
+
+function recogerCampos(body, user) {
   const out = {};
   for (const k of CAMPOS) if (body[k] !== undefined) out[k] = body[k];
   for (const k of NUMERICOS) if (out[k] !== undefined && out[k] !== "") out[k] = Number(out[k]) || 0;
   // Unidad de consumo es el "unidad" canónico del sistema.
   if (out.unidad_consumo && !out.unidad) out.unidad = out.unidad_consumo;
+  // El equipo no puede escribir precios de coste aunque los mande en el cuerpo.
+  if (!user || user.rol !== "admin") CAMPOS_COSTE.forEach((k) => { delete out[k]; });
   return out;
 }
 
@@ -195,7 +201,7 @@ function validarCategoria(out, res) {
 
 // Crear producto (nivel 3). Obligatorios: nombre, macro y subcategoría.
 router.post("/", (req, res) => {
-  const out = recogerCampos(req.body || {});
+  const out = recogerCampos(req.body || {}, req.user);
   if (!out.nombre || !String(out.nombre).trim()) {
     return res.status(400).json({ error: "Indica el nombre del producto." });
   }
@@ -222,7 +228,7 @@ router.post("/", (req, res) => {
 router.patch("/:id", (req, res) => {
   const existe = store.findById("materias", req.params.id);
   if (!existe) return res.status(404).json({ error: "Materia no encontrada" });
-  const out = recogerCampos(req.body || {});
+  const out = recogerCampos(req.body || {}, req.user);
   if (!validarCategoria(out, res)) return;
   const updated = store.update("materias", req.params.id, out);
   res.json(decorate(updated, store.readAll("proveedores"), consumoDiarioPorMateria(store)));

@@ -8694,8 +8694,8 @@ async function verMateria(id){
       num(m.precio_compra)!=null?{ k:"Precio compra", v:`${Number(m.precio_compra).toFixed(4)} €` }:null,
       num(m.precio_pactado)!=null?{ k:"Precio pactado", v:`${Number(m.precio_pactado).toFixed(4)} €` }:null,
       num(m.iva)!=null?{ k:"IVA", v:`${m.iva} %` }:null,
-      { k:"Coste medio", v:`${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"")}` },
-      { k:"Valor stock", v:`${(m.valor_stock_actual||0).toFixed(2)} €` },
+      mbdsEsAdmin()?{ k:"Coste medio", v:`${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"")}` }:null,
+      mbdsEsAdmin()?{ k:"Valor stock", v:`${(m.valor_stock_actual||0).toFixed(2)} €` }:null,
       (m.unidad_compra||m.conversion)?{ k:"Compra · consumo", v:`${esc(m.unidad_compra||"—")}${m.conversion?` (×${m.conversion})`:""} → ${esc(m.unidad_consumo||m.unidad||"—")}` }:null,
       m.vida_util_horas?{ k:"Vida útil", v:`${m.vida_util_horas} h` }:null,
       { k:"Ubicación", v:m.ubicacion||"— sin ubicar —" },
@@ -8974,10 +8974,10 @@ async function formProducto(id, macroEnc, subEnc){
           ${f("Unidad de consumo", inp("prod-uconsumo", m.unidad_consumo||m.unidad, "Ej. g"))}
         </div>
         ${f("Conversión (uds de consumo por unidad de compra)", inp("prod-conv", m.conversion, "Ej. 1000", "number"))}
-        <div class="pf-2">
+        ${mbdsEsAdmin()?`<div class="pf-2">
           ${f("Precio compra (€)", inp("prod-pcompra", m.precio_compra, "0.00", "number"))}
           ${f("Precio pactado (€)", inp("prod-ppactado", m.precio_pactado, "0.00", "number"))}
-        </div>
+        </div>`:""}
         ${f("IVA (%)", inp("prod-iva", m.iva, "Ej. 10", "number"))}
         <div class="pf-2">
           ${f("Stock actual", inp("prod-stock", m.disponibilidad_actual, "0", "number"))}
@@ -11276,7 +11276,7 @@ function buscarArticuloGlobal(q){
   // Usa materias si están cacheadas; si no, pide al vuelo una vez.
   const render=(arr)=>{ out.innerHTML=arr.length?arr.map(m=>`<div class="card">
       <div class="card-name">${esc(m.nombre)}</div>
-      <div class="card-meta">Proveedor: <b>${esc(m.proveedor_nombre||"— sin asignar —")}</b> · ${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"ud")} · stock ${m.disponibilidad_actual} ${esc(m.unidad||"")}</div>
+      <div class="card-meta">Proveedor: <b>${esc(m.proveedor_nombre||"— sin asignar —")}</b>${mbdsEsAdmin()?` · ${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"ud")}`:""} · stock ${m.disponibilidad_actual} ${esc(m.unidad||"")}</div>
       ${m.proveedor_id?`<div class="card-actions"><button class="btn-ghost" onclick="irA_pedidoProveedor('${m.proveedor_id}')">Pedir a este proveedor</button></div>`:""}
     </div>`).join(""):`<div class="empty">Ningún artículo coincide.</div>`; };
   if(window._matPed){ render(window._matPed.filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40)); }

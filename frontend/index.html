@@ -3560,9 +3560,13 @@ function dashHomeHTML(dsh){
 
   // ── 5 KPIs ──
   const objDiaTxt = K.ventas_hoy && K.ventas_hoy.objetivo!=null ? `obj ${vizEur(K.ventas_hoy.objetivo)}` : "";
+  const ventasSub = `${objDiaTxt}${objDiaTxt?" · ":""}<span class='dk-mut'>con IVA</span>`;
+  const resSub = (K.resultado_dia&&K.resultado_dia.incompleto)
+    ? "<span class='dk-mut'>estimado · datos incompletos</span>"
+    : "<span class='dk-mut'>sin IVA</span>";
   const kpis=`<section class="dk-kpis">
-    ${dashKpi(K.ventas_hoy||{}, "ventas hoy", vizEur, objDiaTxt)}
-    ${dashKpi(K.resultado_dia||{}, "resultado del día", vizEur, (K.resultado_dia&&K.resultado_dia.parcial)?"<span class='dk-mut'>parcial</span>":"")}
+    ${dashKpi(K.ventas_hoy||{}, "ventas hoy", vizEur, ventasSub)}
+    ${dashKpi(K.resultado_dia||{}, "resultado del día", vizEur, resSub)}
     ${dashKpi(K.productividad||{}, "productividad", (v)=>vizEur(v)+"/h", (K.productividad&&K.productividad.objetivo!=null)?`obj ${vizEur(K.productividad.objetivo)}/h`:"")}
     ${dashKpi(K.objetivo_dia||{}, "% del objetivo", (v)=>vizFmt(v)+" %", (K.objetivo_dia&&K.objetivo_dia.referencia!=null)?`meta ${vizEur(K.objetivo_dia.referencia)}`:"")}
     ${dashKpi(K.cierre_previsto||{}, "cierre previsto", vizEur, (K.cierre_previsto&&K.cierre_previsto.metodo&&K.cierre_previsto.metodo!=="sin_datos")?`<span class='dk-mut'>${K.cierre_previsto.metodo==="fraccion_jornada"?"ritmo de hoy":"media histórica"}</span>`:"")}
@@ -9927,12 +9931,12 @@ function adRender(d){
     </div>`).join("");
   // KPIs de venta.
   const kpis=`<div class="ad-kpis">
-    <div class="ad-kpi"><b>${adEur(v.total)}</b><span>venta del día</span></div>
+    <div class="ad-kpi"><b>${adEur(v.total)}</b><span>venta · con IVA</span></div>
     <div class="ad-kpi"><b>${adNum(v.tickets)}</b><span>tickets</span></div>
     <div class="ad-kpi"><b>${adEur(v.ticket_medio)}</b><span>ticket medio</span></div>
     <div class="ad-kpi"><b>${adNum(v.unidades)}</b><span>unidades</span></div>
     <div class="ad-kpi"><b>${adNum(v.unidades_por_ticket)}</b><span>uds/ticket</span></div>
-    <div class="ad-kpi"><b>${v.margen_pct!=null?v.margen_pct+"%":"—"}</b><span>margen*</span></div>
+    <div class="ad-kpi"><b>${v.margen_pct!=null?v.margen_pct+"%":"—"}</b><span>margen* · sin IVA</span></div>
   </div>`;
   // Comparativas.
   const cmpBlock=`<div class="section-label" style="margin-top:16px;">Comparativa</div>
@@ -10001,7 +10005,7 @@ function adRender(d){
     ${alertas?`<div class="section-label">Lo que importa hoy</div>${alertas}`:""}
     <div class="section-label" style="margin-top:16px;">Venta del día</div>
     ${kpis}
-    ${v.cobertura_coste_pct!=null&&v.cobertura_coste_pct<100?`<div class="ad-foot">*Margen calculado solo sobre el ${v.cobertura_coste_pct}% de la venta con coste real cargado (${adEur(v.importe_sin_coste)} € sin coste no se pueden evaluar).</div>`:""}
+    <div class="ad-foot">*El margen y el food cost se calculan sobre la venta <b>sin IVA</b>${v.cobertura_coste_pct!=null&&v.cobertura_coste_pct<100?`, y solo sobre el ${v.cobertura_coste_pct}% de la venta con coste real cargado (${adEur(v.importe_sin_coste)} € sin coste no se pueden evaluar)`:""}.</div>
     ${rentBlock}
     ${cmpBlock}
     ${cat?`<div class="section-label" style="margin-top:16px;">Mix por categoría</div><table class="lim-tab"><thead><tr><th>categoría</th><th>uds</th><th>importe</th><th>%</th></tr></thead><tbody>${cat}</tbody></table>`:""}

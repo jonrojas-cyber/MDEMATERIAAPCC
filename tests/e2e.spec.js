@@ -1596,7 +1596,7 @@ test("análisis diario: la pantalla se abre sin errores de JS y navega entre dí
   await page.evaluate(() => irA_analisisDiario("2026-06-30"));
   await expect(page.locator(".screen-head")).toContainText(/an[áa]lisis diario/i);
   await expect(page.locator(".ad-kpis")).toBeVisible();
-  await expect(page.locator(".ad-kpi", { hasText: /venta del d[íi]a/i })).toBeVisible();
+  await expect(page.locator(".ad-kpi", { hasText: /venta.*con iva/i })).toBeVisible();
   // Navegar al día anterior recarga la fecha en el selector.
   await page.evaluate(() => adNavDia(-1));
   await expect(page.locator("#ad-fecha")).toHaveValue("2026-06-29");

@@ -241,18 +241,30 @@ function calcular(opts = {}) {
   const objHora = (objetivoDia && equipoHoy.horas_plan > 0) ? objetivoDia / equipoHoy.horas_plan : null;
   const prod = productividadDe(ventasHoy, equipoHoy.horas, objHora);
   const resultado = resultadoDiaDe(benHoy);
+  // ¿Tenemos todo para que el resultado del día sea fiable? Faltan escandallos si no
+  // todas las ventas tienen coste conocido; faltan gastos si no hay fijos o personal.
+  const faltanDatos = [];
+  if (hayVentasHoy && (vDia.cobertura_coste_pct == null || vDia.cobertura_coste_pct < 100)) faltanDatos.push("escandallos");
+  if (!((benHoy.gastos_fijos || 0) > 0)) faltanDatos.push("gastos fijos");
+  if (!((benHoy.coste_laboral || 0) > 0)) faltanDatos.push("personal");
+  const resultadoIncompleto = hayVentasHoy && faltanDatos.length > 0;
 
   const kpis = {
     ventas_hoy: {
       valor: eur(ventasHoy), objetivo: objetivoDia,
       delta_pct: H.vs_anterior_pct != null ? pct1(H.vs_anterior_pct) : null,
       estado: hayVentasHoy ? estado(ventasHoy, { objetivo: objetivoDia }) : (freshness.estado === "pendiente" ? "pendiente" : "sin_datos"),
-      nota: hayVentasHoy ? "Ventas netas registradas hoy" : "Aún sin ventas registradas hoy",
+      con_iva: true,
+      nota: hayVentasHoy ? "Ventas de hoy con IVA (cuadra con Ágora)" : "Aún sin ventas registradas hoy",
     },
     resultado_dia: {
       valor: resultado.valor, parcial: resultado.parcial, incluye: resultado.incluye,
+      incompleto: resultadoIncompleto, faltan: faltanDatos,
       estado: resultado.sin_datos ? "sin_datos" : (resultado.valor >= 0 ? "ok" : "critico"),
-      nota: resultado.parcial ? "Sin escandallos completos: resultado parcial (no resta todos los costes)" : "Ventas netas − materia − personal − variables − fijos del día (resultado operativo)",
+      etiqueta: resultadoIncompleto ? "resultado estimado · datos incompletos" : "resultado operativo del día",
+      nota: resultadoIncompleto
+        ? `Resultado estimado: faltan ${faltanDatos.join(" y ")}. Es orientativo hasta completarlos.`
+        : "Ventas netas − materia − personal − variables − fijos del día (resultado operativo)",
     },
     productividad: {
       valor: prod.valor, objetivo: prod.objetivo, horas: prod.horas,

@@ -13,6 +13,7 @@
 
 const store = require("./data-store");
 const costing = require("./costing");
+const financials = require("./financials"); // calculadora común (neto de venta compartido)
 
 const DAY = 86400000;
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
@@ -36,7 +37,11 @@ function ventaDia(dia, ventas, prodById, prodByName, idxMat) {
     return ymd(v.fecha) === dia;
   });
 
-  let importe = 0, unidades = 0, coste = 0, importeConCoste = 0, importeSinCoste = 0;
+  // El titular "total" va en BRUTO (con IVA, cuadra con Ágora); el margen y el food
+  // cost se calculan sobre la venta SIN IVA (misma base que el P&L), usando el MISMO
+  // helper que financials (financials.netoDeVenta) para no tener dos criterios.
+  let importe = 0, importeNeto = 0, unidades = 0, coste = 0;
+  let netoConCoste = 0, importeSinCoste = 0;
   const tickets = new Set();
   const porProducto = {};
   const porCategoria = {};
@@ -44,11 +49,12 @@ function ventaDia(dia, ventas, prodById, prodByName, idxMat) {
 
   lineas.forEach((v) => {
     const cant = Number(v.cantidad) || 0;
-    const imp = Number(v.importe) || 0;
+    const imp = Number(v.importe) || 0;        // bruto (con IVA)
+    const net = financials.netoDeVenta(v);     // sin IVA (importe_neto o importe/1,10)
     const p = prodById[v.producto_id] || prodByName[String(v.producto || "").toLowerCase()];
-    const cu = p ? costing.costeProducto(p, idxMat) : 0;   // coste unitario real (0 si no se conoce)
+    const cu = p ? costing.costeProducto(p, idxMat) : 0;   // coste unitario real NETO (0 si no se conoce)
     const cLinea = cu * cant;
-    importe += imp; unidades += cant;
+    importe += imp; importeNeto += net; unidades += cant;
     if (v.doc_clave) tickets.add(v.doc_clave);
 
     const cat = (p && p.categoria) || "otros";
@@ -56,11 +62,11 @@ function ventaDia(dia, ventas, prodById, prodByName, idxMat) {
     porCategoria[cat].importe += imp; porCategoria[cat].unidades += cant;
 
     const key = v.producto || (p && p.nombre) || v.producto_id || "—";
-    if (!porProducto[key]) porProducto[key] = { producto: key, unidades: 0, importe: 0, coste: 0, coste_conocido: cu > 0, categoria: cat };
-    porProducto[key].unidades += cant; porProducto[key].importe += imp; porProducto[key].coste += cLinea;
+    if (!porProducto[key]) porProducto[key] = { producto: key, unidades: 0, importe: 0, neto: 0, coste: 0, coste_conocido: cu > 0, categoria: cat };
+    porProducto[key].unidades += cant; porProducto[key].importe += imp; porProducto[key].neto += net; porProducto[key].coste += cLinea;
     if (cu > 0) porProducto[key].coste_conocido = true;
 
-    if (cu > 0) { coste += cLinea; importeConCoste += imp; }
+    if (cu > 0) { coste += cLinea; netoConCoste += net; }
     else {
       importeSinCoste += imp;
       if (!sinCoste[key]) sinCoste[key] = { producto: key, unidades: 0, importe: 0 };
@@ -73,23 +79,28 @@ function ventaDia(dia, ventas, prodById, prodByName, idxMat) {
     producto: x.producto, categoria: x.categoria,
     unidades: Math.round(x.unidades * 10) / 10, importe: eur(x.importe),
     coste: x.coste_conocido ? eur(x.coste) : null,
-    beneficio: x.coste_conocido ? eur(x.importe - x.coste) : null,
-    margen_pct: x.coste_conocido && x.importe > 0 ? Math.round((1 - x.coste / x.importe) * 100) : null,
+    // Beneficio y margen por producto sobre venta NETA (coherente con el P&L).
+    beneficio: x.coste_conocido ? eur(x.neto - x.coste) : null,
+    margen_pct: x.coste_conocido && x.neto > 0 ? Math.round((1 - x.coste / x.neto) * 100) : null,
   }));
 
   return {
     fecha: dia,
-    total: eur(importe),
+    total: eur(importe),             // con IVA (titular, cuadra con Ágora)
+    total_neto: eur(importeNeto),    // sin IVA (base del margen y el P&L)
     tickets: nTickets,
-    ticket_medio: nTickets ? eur(importe / nTickets) : 0,
+    ticket_medio: nTickets ? eur(importe / nTickets) : 0,        // con IVA
+    ticket_medio_neto: nTickets ? eur(importeNeto / nTickets) : 0, // sin IVA
     unidades: Math.round(unidades * 10) / 10,
     unidades_por_ticket: nTickets ? Math.round((unidades / nTickets) * 10) / 10 : 0,
     lineas: lineas.length,
-    // Margen del día SOLO sobre lo que tiene coste real cargado (honesto).
+    // Margen y food cost del día SOLO sobre lo que tiene coste real cargado (honesto),
+    // y sobre la venta SIN IVA.
     coste_materia: eur(coste),
-    margen_eur: eur(importeConCoste - coste),
-    margen_pct: importeConCoste > 0 ? Math.round((1 - coste / importeConCoste) * 100) : null,
-    cobertura_coste_pct: importe > 0 ? Math.round((importeConCoste / importe) * 100) : null,
+    margen_eur: eur(netoConCoste - coste),
+    margen_pct: netoConCoste > 0 ? Math.round((1 - coste / netoConCoste) * 100) : null,
+    food_cost_pct: netoConCoste > 0 ? Math.round((coste / netoConCoste) * 100) : null,
+    cobertura_coste_pct: importeNeto > 0 ? Math.round((netoConCoste / importeNeto) * 100) : null,
     importe_sin_coste: eur(importeSinCoste),
     por_categoria: Object.values(porCategoria).map((c) => ({
       categoria: c.categoria, importe: eur(c.importe), unidades: Math.round(c.unidades * 10) / 10,

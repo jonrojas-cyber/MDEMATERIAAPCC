@@ -200,6 +200,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const procesados = [];     // {clave, serie, number, type}
   const bloqueados = [];     // {clave, no_vinculados:[...]}
   const omitidos = [];
+  const omitidosPedido = []; // pedidos/comandas: no son venta cerrada, no se cuentan
   const deduplicados = [];   // {serie, number} ya existentes por otra vía (no se duplican)
   const noVinculados = new Set();
   const movimientos = [];
@@ -226,6 +227,17 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     const { serie, number } = serieNumero(doc);
     const type = tipoDoc(doc);
 
+    // Un PEDIDO/comanda (SalesOrder) NO es una venta cerrada: Ágora no lo cuenta en
+    // "VENTAS HOY" y aquí tampoco debe registrarse como venta (si la venta se cierra,
+    // llega además como albarán/factura). Evita contar de más sin riesgo de perder
+    // ventas reales. Se marca procesado para que el conector no lo reenvíe.
+    if (/salesorder|pedido|comanda/i.test(String(type || ""))) {
+      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true };
+      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+      omitidosPedido.push({ serie, number });
+      return;
+    }
+
     // ¿Esta venta ya existe por otra vía (mismo Serie+Número+día)? No duplicar: se
     // marca procesada (para confirmarla a Ágora y que no la reenvíe) y se omite.
     const bk = bizKey(serie, number, fecha);
@@ -243,15 +255,20 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       if (campoDoc(ln, ["Cancelled", "cancelled", "anulada", "voided"])) return; // línea anulada
       const nombre = campoDoc(ln, ["ProductName", "product", "productName", "Name", "name", "Reference", "reference", "referencia", "descripcion", "descripción", "nombre"]);
       const cantidad = numJSON(campoDoc(ln, ["Quantity", "quantity", "Units", "units", "cantidad", "uds", "qty"]));
-      const importe = numJSON(campoDoc(ln, ["TotalAmount", "Amount", "amount", "Total", "total", "importe", "GrossAmount", "UnitPrice", "ProductPrice", "price", "precio", "pvp"]));
+      const importeRaw = numJSON(campoDoc(ln, ["TotalAmount", "Amount", "amount", "Total", "total", "importe", "GrossAmount", "UnitPrice", "ProductPrice", "price", "precio", "pvp"]));
       // Neto (base sin IVA) si el documento lo trae; la cuenta de resultados va
       // sobre neto. Si no viene, queda null y el P&L cae al importe.
       const netoRaw = campoDoc(ln, ["Base", "base", "NetAmount", "net", "neto", "BaseAmount", "importe_neto"]);
-      const neto = (netoRaw != null && netoRaw !== "") ? numJSON(netoRaw) : null;
       if (!nombre) return;
-      // Cantidad no válida (0, vacía o negativa/devolución): no vendemos ni
-      // descontamos "1 por defecto" (evita ventas fantasma y descuentos erróneos).
-      if (!(cantidad > 0)) return;
+      // Cantidad 0 o no numérica: no es línea de venta. Las NEGATIVAS (devoluciones/
+      // abonos) SÍ entran, pero RESTANDO: se registran en negativo para netear igual
+      // que Ágora (antes se descartaban y Control M quedaba por encima de Ágora).
+      if (!Number.isFinite(cantidad) || cantidad === 0) return;
+      // El importe (y el neto) siguen el signo de la cantidad, mande Ágora el importe
+      // en positivo o en negativo: así una devolución siempre resta.
+      const signo = cantidad < 0 ? -1 : 1;
+      const importe = signo * Math.abs(importeRaw);
+      const neto = (netoRaw != null && netoRaw !== "") ? signo * Math.abs(numJSON(netoRaw)) : null;
       const producto = idxProd[normProd(nombre)];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
       resueltas.push({ producto, cantidad, importe, neto, nombre });
@@ -304,6 +321,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     procesados: procesados.length,
     bloqueados: bloqueados.length,
     omitidos_ya_procesados: omitidos.length,
+    pedidos_omitidos: omitidosPedido.length,
     duplicados_evitados: deduplicados.length,
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
@@ -316,7 +334,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   // confirman también los deduplicados (ya existían) para que Ágora no los reenvíe.
   return {
     ...resumen,
-    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number }))],
+    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number })), ...omitidosPedido.map((d) => ({ Serie: d.serie, Number: d.number }))],
     bloqueados_detalle: bloqueados,
   };
 }

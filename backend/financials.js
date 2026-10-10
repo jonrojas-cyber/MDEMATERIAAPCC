@@ -29,6 +29,22 @@ function ventasEnRango(r) {
     .reduce((s, v) => s + (Number(v.importe) || Number(v.total) || 0), 0);
 }
 
+// IVA de venta por defecto en hostelería (España): 10%. El titular de "ventas" se
+// muestra en BRUTO (cuadra con Ágora/TPV), pero el P&L (beneficio, food cost, margen)
+// se calcula sobre la base SIN IVA: el IVA repercutido no es ingreso.
+const IVA_VENTA_DEF = 0.10;
+function netoDeVenta(v) {
+  if (v.importe_neto != null && v.importe_neto !== "") return Number(v.importe_neto) || 0;
+  const bruto = Number(v.importe) || Number(v.total) || 0;
+  const iva = (v.iva != null && v.iva !== "" && Number(v.iva) >= 0 && Number(v.iva) < 1) ? Number(v.iva) : IVA_VENTA_DEF;
+  return bruto / (1 + iva);
+}
+function ventasNetasEnRango(r) {
+  return store.readAll("ventas")
+    .filter((v) => v.fecha && enRango(v.fecha, r))
+    .reduce((s, v) => s + netoDeVenta(v), 0);
+}
+
 function ticketsEnRango(r) {
   // Nº de tickets ≈ nº de líneas de venta distintas por documento; si no hay doc,
   // cuenta cada venta. Aproximación honesta con los datos disponibles.
@@ -116,15 +132,19 @@ function beneficio(r, now = Date.now()) {
   const materias = store.readAll("materias");
   const idxMat = costing.indiceMaterias(materias);
   const idxProd = indicesProducto();
-  const ventas = eur(ventasEnRango(r));
-  const costeMateria = eur(costeMateriaVendidaEnRango(r, idxMat, idxProd));
+  const ventas = eur(ventasEnRango(r));            // BRUTO (con IVA) → titular, cuadra con Ágora/TPV
+  const ventasNetas = eur(ventasNetasEnRango(r));  // SIN IVA → base real del P&L
+  const costeMateria = eur(costeMateriaVendidaEnRango(r, idxMat, idxProd)); // coste NETO (sin IVA)
   // Segmentación única: personal (categoría "Personal") vs otros fijos. El personal
   // deja de estar enterrado dentro de "gastos_fijos" y el ratio laboral deja de ser 0.
   const seg = fixedCosts.costeEnRangoSegmentado(r, now);
   const laboral = eur(seg.personal + staff.costeEnRango(r));
   const variables = eur(variablesEnRango(r) + mermaEnRango(r));
   const fijos = eur(seg.otros);
-  const operativo = eur(ventas - costeMateria - laboral - variables - fijos);
+  // El beneficio se calcula sobre ventas NETAS (el IVA repercutido no es ingreso) y
+  // coste neto: así deja de estar inflado y el food cost cuadra con el de la carta.
+  const base = ventasNetas;
+  const operativo = eur(base - costeMateria - laboral - variables - fijos);
   // Beneficio neto estimado: operativo menos intereses de deuda imputables al
   // periodo (proporción de la cuota mensual). Etiquetado como estimación.
   const cuotaMensual = debtsMod.resumen(now).cuota_mensual_total;
@@ -132,18 +152,18 @@ function beneficio(r, now = Date.now()) {
   const interesesPeriodo = eur(cuotaMensual * (dias / (365 / 12)) * 0.3); // ~30% de la cuota como interés estimado
   const neto = eur(operativo - interesesPeriodo);
   return {
-    ventas, coste_materia: costeMateria, coste_laboral: laboral,
+    ventas, ventas_netas: ventasNetas, coste_materia: costeMateria, coste_laboral: laboral,
     gastos_variables: variables, gastos_fijos: fijos,
     beneficio_operativo: operativo,
     intereses_estimados: interesesPeriodo,
     beneficio_neto_estimado: neto,
-    food_cost_pct: ventas > 0 ? Math.round((costeMateria / ventas) * 100) : null,
-    coste_laboral_pct: ventas > 0 ? Math.round((laboral / ventas) * 100) : null,
+    food_cost_pct: base > 0 ? Math.round((costeMateria / base) * 100) : null,
+    coste_laboral_pct: base > 0 ? Math.round((laboral / base) * 100) : null,
     // Prime cost = materia + personal (la cifra que los hosteleros vigilan; objetivo ~60-65%).
     prime_cost: eur(costeMateria + laboral),
-    prime_cost_pct: ventas > 0 ? Math.round(((costeMateria + laboral) / ventas) * 100) : null,
-    gastos_fijos_pct: ventas > 0 ? Math.round((fijos / ventas) * 100) : null,
-    margen_operativo_pct: ventas > 0 ? Math.round((operativo / ventas) * 100) : null,
+    prime_cost_pct: base > 0 ? Math.round(((costeMateria + laboral) / base) * 100) : null,
+    gastos_fijos_pct: base > 0 ? Math.round((fijos / base) * 100) : null,
+    margen_operativo_pct: base > 0 ? Math.round((operativo / base) * 100) : null,
   };
 }
 
@@ -182,6 +202,6 @@ function extrasFinancieros(now = Date.now()) {
 }
 
 module.exports = {
-  ventasEnRango, ticketsEnRango, costeMateriaVendidaEnRango, mermaEnRango, comprasEnRango, variablesEnRango,
+  ventasEnRango, ventasNetasEnRango, ticketsEnRango, costeMateriaVendidaEnRango, mermaEnRango, comprasEnRango, variablesEnRango,
   costeDeAbrir, patrimonioNeto, beneficio, costeMedioDiario, extrasFinancieros, indicesProducto, eur,
 };

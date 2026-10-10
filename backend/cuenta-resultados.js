@@ -109,9 +109,10 @@ function calcular(opts = {}) {
 
   const idxMat = costing.indiceMaterias();
   const idxProd = financials.indicesProducto();
-  const ventasProd = financials.ventasEnRango(rango);
-  const materiaProd = financials.costeMateriaVendidaEnRango(rango, idxMat, idxProd);
-  const foodCostProd = ventasProd > 0 ? materiaProd / ventasProd : null;
+  const ventasProd = financials.ventasEnRango(rango);            // bruto (con IVA)
+  const ventasNetasProd = financials.ventasNetasEnRango(rango);  // sin IVA → base real del P&L
+  const materiaProd = financials.costeMateriaVendidaEnRango(rango, idxMat, idxProd); // coste neto
+  const foodCostProd = ventasNetasProd > 0 ? materiaProd / ventasNetasProd : null;   // neto/neto (cuadra con la carta)
 
   const config = store.readAll("config") || [];
 
@@ -126,22 +127,26 @@ function calcular(opts = {}) {
   else if (Number.isFinite(fcManual) && fcManual > 0) { foodCost = fcManual / 100; food_cost_origen = "manual"; }
 
   // Override de ventas (cierre de Ágora): parámetro > cierre GUARDADO > ventas app.
-  let ventas = ventasProd, ventas_origen = "produccion";
+  // La cifra de Ágora/cierre viene en BRUTO (con IVA); el P&L va en NETO, así que
+  // se convierte. La vía "produccion" ya tiene su propio neto (ventasNetasProd).
+  const IVA_VENTA = 0.10; // hostelería
+  let ventasBruto = ventasProd, ventas_origen = "produccion";
   const ov = Number(opts.ventas);
   const guardado = config.find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);
   const ovGuardado = guardado ? Number(guardado.valor) : NaN;
-  if (Number.isFinite(ov) && ov > 0) { ventas = ov; ventas_origen = "manual_agora"; }
-  else if (Number.isFinite(ovGuardado) && ovGuardado > 0) { ventas = ovGuardado; ventas_origen = "cierre_guardado"; }
+  if (Number.isFinite(ov) && ov > 0) { ventasBruto = ov; ventas_origen = "manual_agora"; }
+  else if (Number.isFinite(ovGuardado) && ovGuardado > 0) { ventasBruto = ovGuardado; ventas_origen = "cierre_guardado"; }
+  const ventas = ventas_origen === "produccion" ? eur(ventasNetasProd) : eur(ventasBruto / (1 + IVA_VENTA));
 
-  // Coste de materia: con food cost manual = ventas × food cost (fijo). Si es
-  // calculado, usa el real de producción (o el ratio si las ventas son override).
+  // Coste de materia (contra ventas NETAS): con food cost manual = ventas × food cost.
+  // Si es calculado, usa el real de producción (o el ratio neto/neto si hay override).
   let coste_materia;
   if (food_cost_origen === "manual") {
     coste_materia = eur(ventas * foodCost);
   } else if (ventas_origen !== "produccion") {
     coste_materia = foodCostProd != null ? eur(ventas * foodCostProd) : null;
   } else {
-    coste_materia = ventasProd > 0 ? materiaProd : null;
+    coste_materia = ventasNetasProd > 0 ? materiaProd : null;
   }
 
   // Personal vs otros fijos, prorrateados al periodo transcurrido. El corte

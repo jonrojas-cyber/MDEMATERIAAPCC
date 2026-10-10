@@ -19,4 +19,17 @@ function partes(iso) {
   return o;
 }
 
-module.exports = { TZ, partes };
+// Hora del día en Málaga como decimal (p. ej. 14:30 → 14.5). Para proyecciones
+// del día (fracción de jornada) hay que usar ESTA, no getHours() (que da UTC en Render).
+function horaDecimal(iso) {
+  const p = partes(iso);
+  return p ? Number(p.hour) + Number(p.minute) / 60 : 0;
+}
+
+// Fecha "YYYY-MM-DD" del día en Málaga (para agrupar por día local, no por UTC).
+function fechaLocal(iso) {
+  const p = partes(iso);
+  return p ? `${p.year}-${p.month}-${p.day}` : null;
+}
+
+module.exports = { TZ, partes, horaDecimal, fechaLocal };

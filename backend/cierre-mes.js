@@ -247,7 +247,7 @@ function informe(mesStr, now = Date.now()) {
     // ── MACRO ──────────────────────────────────────────────────────────────
     macro: {
       pyl: actual,
-      tickets: { numero: tickets.numero != null ? tickets.numero : tickets.tickets, ticket_medio: tickets.ticket_medio },
+      tickets: { numero: tickets, ticket_medio: tickets > 0 ? eur(actual.ventas / tickets) : 0 },
       break_even: {
         equilibrio_mes: fcos.break_even.ingreso_equilibrio_dia != null ? eur(fcos.break_even.ingreso_equilibrio_dia * (fcos.break_even.dias_abiertos_mes || 30)) : null,
         margen_seguridad_pct: fcos.dashboard.margen_seguridad_pct,

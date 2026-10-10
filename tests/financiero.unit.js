@@ -110,12 +110,13 @@ test("acumuladoAnio suma el P&L real de los meses con ventas (no proyecta)", () 
   const now = new Date(2026, 9, 8, 12).getTime(); // 8 oct 2026 (octubre sin ventas)
   const ytd = financiero.acumuladoAnio(now);
   assert.strictEqual(ytd.meses, 3, "jul, ago, sep (octubre sin ventas no cuenta)");
-  assert.ok(near(ytd.base.ingresos, 31492.72, 1), "ventas año = 8000+11000+12492,72");
+  // Ingresos del P&L en NETO (cada mes ÷1,10): (8000+11000+12492,72)/1,10 ≈ 28.629,75.
+  assert.ok(near(ytd.base.ingresos, 28629.75, 1), "ventas año netas = (8000+11000+12492,72)/1,10");
   // El año es acumulado real, NO mes×12.
   const r = financiero.calcular({ now });
   assert.strictEqual(r.anio_info.acumulado, true);
   assert.strictEqual(r.anio_info.meses, 3);
-  assert.ok(near(r.escalas.anio.ventas, 31492.72, 1), "escala año = ventas acumuladas reales");
+  assert.ok(near(r.escalas.anio.ventas, 28629.75, 1), "escala año = ventas acumuladas reales (netas)");
   assert.ok(Math.abs(r.escalas.mes.ebitda * 12 - r.escalas.anio.ebitda) > 1000, "el año NO es mes×12");
   // Ratios del año son los reales acumulados (personal más alto que en septiembre solo).
   assert.ok(r.ratios_anio.personal_pct > r.ratios.personal_pct, "personal acumulado > personal del mes base");

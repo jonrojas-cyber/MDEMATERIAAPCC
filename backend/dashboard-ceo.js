@@ -209,7 +209,8 @@ function calcular(opts = {}) {
   let tpv = null; try { tpv = require("./tpv-connector").estado(store); } catch (e) { tpv = null; }
   const syncIso = (agoraSync && agoraSync.cuando) || (tpv && tpv.ultima_sync) || null;
   const haceMin = syncIso ? Math.round((now - new Date(syncIso).getTime()) / 60000) : null;
-  const horaAbre = d0.getHours() >= 8 && d0.getHours() < 23;
+  const horaMadrid = require("./tz").horaDecimal(now); // hora local de Málaga (no UTC)
+  const horaAbre = horaMadrid >= 8 && horaMadrid < 23;
   // Desactualizado: en horario de apertura y sin sync en >90 min (o nunca).
   const desactualizado = horaAbre && (syncIso == null || (haceMin != null && haceMin > 90));
   const freshness = {
@@ -225,7 +226,7 @@ function calcular(opts = {}) {
   // ── 5 KPIs ──────────────────────────────────────────────────────────────────
   const ventasHoy = H.ventas || 0;
   const objetivoDia = H.objetivo_dia || null;
-  const horaDec = d0.getHours() + d0.getMinutes() / 60;
+  const horaDec = require("./tz").horaDecimal(now); // hora de Málaga, no UTC del server
   // Jornada REAL del local (del perfil operativo): m de materia abre ~8 y cierra 16.
   // La previsión del día se proyecta sobre ESTA jornada, no sobre 8–23.
   const aperH = perfil.hora_apertura, cierreH = perfil.hora_cierre, jornadaH = Math.max(1, cierreH - aperH);

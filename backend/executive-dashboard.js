@@ -166,7 +166,7 @@ function construir(preset = "hoy", opts = {}) {
   // Previsión de cierre del día: proyección por fracción de la JORNADA REAL del local
   // (del perfil operativo: m de materia abre ~8 y cierra 16), no sobre 8–23.
   const perfilOp = require("./operating-profile").leer();
-  const horaDec = d0.getHours() + d0.getMinutes() / 60;
+  const horaDec = require("./tz").horaDecimal(now); // hora de Málaga, no UTC del server
   const jornadaH = Math.max(1, perfilOp.hora_cierre - perfilOp.hora_apertura);
   const fracDia = Math.min(1, Math.max(0.08, (horaDec - perfilOp.hora_apertura) / jornadaH));
   const prevCierre = eur(ventasHoy / fracDia);

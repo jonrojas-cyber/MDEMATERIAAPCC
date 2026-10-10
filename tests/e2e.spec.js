@@ -601,6 +601,28 @@ test("centro de control: el trabajador NO puede leer los datos financieros", asy
   }
 });
 
+test("regla nº2: el equipo NO recibe coste/precio/margen en las rutas que sí puede abrir", async ({ request }) => {
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const hLara = { Authorization: "Bearer " + lara.token };
+  // Cualquier CLAVE que empiece por un prefijo económico está prohibida para el equipo.
+  const PROHIBIDO = /"(coste|precio_compra|precio_pactado|precio_recomendado|margen|food_cost|valor_stock|beneficio|ebitda|prime_cost|rentabilidad|escenarios)[^"]*"\s*:/;
+  const RUTAS = ["/api/inicio", "/api/materias", "/api/carta", "/api/recetas", "/api/mbds/ingredientes", "/api/mbds/bebidas", "/api/mermas"];
+  let comprobadas = 0;
+  for (const path of RUTAS) {
+    const r = await request.get(path, { headers: hLara });
+    if (r.status() !== 200) continue; // si la ruta pide params y no responde 200, se omite
+    comprobadas++;
+    const txt = await r.text();
+    const m = txt.match(PROHIBIDO);
+    expect(m, `${path} filtra un campo económico al equipo: ${m && m[0]}`).toBeNull();
+  }
+  expect(comprobadas, "deben comprobarse las rutas clave del equipo").toBeGreaterThanOrEqual(4);
+  // Sanity: el admin SÍ ve el coste en materias (el filtro no rompe la vista de dirección).
+  const rm = await request.get("/api/materias", { headers: { Authorization: "Bearer " + moni.token } });
+  expect(/"coste_medio"\s*:/.test(await rm.text())).toBe(true);
+});
+
 test("centro de control: el filtro de tiempo cambia el periodo (semana empieza lunes)", async ({ page }) => {
   await login(page);
   await page.evaluate(() => irA_centroControl("semana"));

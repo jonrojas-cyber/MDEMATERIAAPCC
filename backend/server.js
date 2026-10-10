@@ -323,6 +323,10 @@ app.get("/carta/qr", (req, res) => {
 
 // ── A partir de aquí, todo /api/* exige sesión válida (y respeta el rol) ───────
 app.use("/api", auth.requerido);
+// Regla innegociable nº2 (defensa en profundidad): el rol `equipo` NUNCA ve coste,
+// precio de coste ni margen. Este middleware limpia TODA respuesta /api de campos
+// económicos para quien no es admin, pase por la ruta que pase (también las futuras).
+app.use("/api", require("./economia-guard").filtrarRespuestas);
 
 app.use("/api/inicio", require("./routes/inicio"));
 app.use("/api/decisiones", require("./routes/decisiones"));

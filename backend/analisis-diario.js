@@ -32,10 +32,10 @@ function nombreDia(fecha) { return DIAS_SEMANA[new Date(ymd(fecha) + "T12:00:00Z
 // real conocido). Un producto sin coste cargado NO inventa coste: se contabiliza
 // aparte para que el margen del día sea honesto (solo sobre lo que sí sabemos).
 function ventaDia(dia, ventas, prodById, prodByName, idxMat) {
-  const lineas = ventas.filter((v) => {
-    if (v.fuente && v.fuente !== "agora") return false;
-    return ymd(v.fecha) === dia;
-  });
+  // Cuenta TODAS las ventas del día, venga del conector o de un import manual/CSV,
+  // igual que la portada y el P&L (misma cifra de "ventas del día" en todas las
+  // pantallas). El anti-duplicados ya evita contar dos veces la misma venta.
+  const lineas = ventas.filter((v) => ymd(v.fecha) === dia);
 
   // El titular "total" va en BRUTO (con IVA, cuadra con Ágora); el margen y el food
   // cost se calculan sobre la venta SIN IVA (misma base que el P&L), usando el MISMO

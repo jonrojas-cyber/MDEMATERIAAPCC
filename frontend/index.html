@@ -10266,6 +10266,7 @@ function crRender(r){
   const avisoMateria = c.coste_materia==null ? `<div class="ad-note" style="margin-top:10px;">No puedo calcular el coste de materia: no hay ventas registradas con escandallo en este mes. Arranca el conector de Ágora (o escribe las ventas del mes abajo) y carga los escandallos que falten.</div>` : "";
   setInner(`
     <div class="section-label">Cuenta de resultados</div>
+    <div class="ad-note" style="margin-bottom:10px;">Todas las cifras aquí son <b>sin IVA</b> y del <b>mes completo</b>. La venta <b>con IVA</b> (la que cuadra con Ágora y el TPV) se ve en <b>Inicio</b> y en <b>Análisis diario</b>. No es un descuadre: es otra base (el IVA no es ingreso) y otro periodo.</div>
     <div class="card">
       <div class="field"><label>Mes</label><input id="cr-mes" type="month" value="${esc(r.mes)}" onchange="window._cr.mes=this.value;window._cr.ventas='';crCargar()" style="width:100%;"></div>
       <div class="field"><label>Ventas netas del mes (del cierre de Ágora · sin IVA)</label>
@@ -10451,6 +10452,7 @@ function finRender(){
   const origenTxt = r.ventas_origen==="cierre_guardado"?"cierre del mes guardado ✓":r.ventas_origen==="manual_agora"?"ventas escritas a mano (Ágora)":"ventas registradas en la app";
   setInner(`${style}
     <div class="section-label">Resumen financiero</div>
+    <div class="ad-note" style="margin-bottom:10px;">Cifras <b>sin IVA</b>. "Día" es la <b>media por día abierto del mes</b> (no la venta de hoy): la de hoy está en <b>Inicio</b>, con IVA.</div>
     <div class="field"><label>Mes base</label><input type="month" value="${esc(r.mes_base)}" onchange="window._fin.mes=this.value;finCargar()" style="width:100%;"></div>
     ${notaMes}
     ${toggle}

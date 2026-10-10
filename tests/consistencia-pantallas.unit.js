@@ -74,6 +74,19 @@ test("food cost se calcula igual (sin IVA) en P&L y Análisis diario", () => {
   assert.strictEqual(vd.cobertura_coste_pct, 100, "cobertura completa");
 });
 
+test("ventas del día coinciden aunque haya una venta MANUAL (no solo Ágora)", () => {
+  const s = seed();
+  // Una venta manual (fuente != agora) además de las de Ágora.
+  s.ventas.push({ id: "v3", producto: "Café", producto_id: "p-cafe", cantidad: 10, importe: 11, importe_neto: 10, fecha: `${DIA}T11:00:00Z`, doc_clave: "TicketExport:T:9", fuente: "manual" });
+  montar(s);
+  const r = { desde: Date.parse(`${DIA}T00:00:00Z`), hasta: Date.parse("2026-09-16T00:00:00Z") };
+  const ben = financials.beneficio(r, now);
+  const idx = financials.indicesProducto();
+  const vd = analisisDiario.ventaDia(DIA, store.readAll("ventas"), idx.byId, idx.byName, costing.indiceMaterias(store.readAll("materias")));
+  assert.strictEqual(ben.ventas, 66, "portada cuenta TODAS: 22 + 33 + 11");
+  assert.strictEqual(vd.total, 66, "Análisis diario cuenta TODAS igual (ya no excluye la manual)");
+});
+
 test("Cuenta de resultados usa la MISMA base neta que el P&L del mes", () => {
   montar(seed());
   const rMes = { desde: Date.parse("2026-09-01T00:00:00Z"), hasta: Date.parse("2026-10-01T00:00:00Z") };

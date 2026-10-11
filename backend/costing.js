@@ -71,9 +71,24 @@ function costePorUnidad(receta, idxMat) {
 // Si el producto trae un coste de materia DIRECTO (€/unidad) se usa ese —sirve
 // para productos cuyo escandallo no está mapeado a materias (p. ej. lo que se
 // vende en Ágora)—; si no, se calcula desde sus ingredientes.
+const _costeProductoMemo = new WeakMap(); // idxMat -> Map(prodId -> coste)
 function costeProducto(producto, idxMat) {
   const directo = Number(producto && producto.coste_materia);
   if (Number.isFinite(directo) && directo > 0) return Math.round(directo * 10000) / 10000;
+  // Memoización POR PASADA (rendimiento.5): costeProducto se llamaba de forma
+  // recursiva por cada línea de venta en cada escaneo. La caché va atada al objeto
+  // idxMat, que se reconstruye en cada cálculo (financials, cierre-mes, dashboard…),
+  // así que NO envejece entre pasadas y devuelve el MISMO valor. Al liberarse idxMat
+  // (fin de la pasada) la caché se recolecta sola (WeakMap).
+  const pid = producto && producto.id;
+  if (idxMat && pid) {
+    let cache = _costeProductoMemo.get(idxMat);
+    if (!cache) { cache = new Map(); _costeProductoMemo.set(idxMat, cache); }
+    if (cache.has(pid)) return cache.get(pid);
+    const v = Math.round(costeEscandallo(producto.ingredientes, idxMat) * 10000) / 10000;
+    cache.set(pid, v);
+    return v;
+  }
   return Math.round(costeEscandallo(producto.ingredientes, idxMat) * 10000) / 10000;
 }
 

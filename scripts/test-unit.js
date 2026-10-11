@@ -33,6 +33,7 @@ const FILES = [
   "conciliacion-ventas", "economia-guard", "pyl-neto", "consistencia-pantallas",
   "agora-cuadre", "backup-restore", "seguridad", "durabilidad",
   "agora-cron-idempotente", "motor-financiero", "sv-timers", "periodos-stock",
+  "rendimiento",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");

@@ -132,9 +132,22 @@ function isActive() {
   return pool != null;
 }
 
+// Comprueba que la BD responde (readiness). No lanza: devuelve true/false.
+async function ping() {
+  if (!pool) return false;
+  try { await pool.query("SELECT 1"); return true; } catch (e) { return false; }
+}
+
+// Cierra el pool ordenadamente (cierre del proceso).
+async function cerrar() {
+  if (!pool) return;
+  try { await pool.end(); } catch (e) { /* ya cerrado */ }
+  pool = null;
+}
+
 // Hook de test: inyecta un pool falso para validar el SQL sin un Postgres real.
 function __setPoolForTests(fake) {
   pool = fake;
 }
 
-module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, replaceAll, isActive, __setPoolForTests };
+module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, replaceAll, isActive, ping, cerrar, __setPoolForTests };

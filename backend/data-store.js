@@ -12,6 +12,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const db = require("./db");
 
 // SEED_DIR: semillas versionadas (fuente de verdad para sembrar). En modo
@@ -129,25 +130,47 @@ function readSeed(name) {
 }
 
 function readFile(name) {
+  let crudo;
   try {
-    return JSON.parse(fs.readFileSync(filePath(name), "utf-8"));
+    crudo = fs.readFileSync(filePath(name), "utf-8");
   } catch (e) {
+    if (e.code !== "ENOENT") throw e; // error de E/S real: no lo escondas
     // Fichero runtime ausente en modo aislado (CONTROL_M_DATA_DIR): siembra
     // transparente desde las semillas versionadas. Los tests ven los fixtures
     // de siempre, pero cualquier escritura cae en la copia temporal, nunca en
     // SEED_DIR. En producción (DATA_DIR === SEED_DIR) esto no aplica.
-    if (e.code === "ENOENT" && DATA_DIR !== SEED_DIR) {
+    if (DATA_DIR !== SEED_DIR) {
       const seed = readSeed(name);
       try { writeFile(name, seed); } catch (_) {}
       return seed;
     }
-    return [];
+    return []; // producción: entidad nueva aún sin fichero → colección vacía
+  }
+  try {
+    return JSON.parse(crudo);
+  } catch (e) {
+    // JSON corrupto: NO devolver [] en silencio (datos.4). Si lo hiciéramos, la
+    // siguiente escritura sobrescribiría el fichero y perdería la entidad entera.
+    // Mejor fallar de forma visible para restaurar desde copia (scripts/restore.js).
+    const err = new Error(
+      `Fichero de datos corrupto '${name}.json' (${e.message}). ` +
+      `Restaura desde copia con scripts/restore.js antes de continuar; no se sobrescribe.`
+    );
+    err.code = "DATOS_CORRUPTOS";
+    throw err;
   }
 }
 
 function writeFile(name, data) {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
-  fs.writeFileSync(filePath(name), JSON.stringify(data, null, 2), "utf-8");
+  // Escritura ATÓMICA: escribe en un temporal y renombra (rename es atómico en
+  // el mismo sistema de ficheros). Evita el fichero a medias si el proceso cae
+  // a mitad de la escritura (datos.4). El temporal lleva pid+aleatorio para no
+  // chocar entre escrituras concurrentes del mismo fichero.
+  const final = filePath(name);
+  const tmp = `${final}.tmp-${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, final);
 }
 
 // Se llama una vez al arrancar el servidor, antes de aceptar peticiones.
@@ -194,15 +217,29 @@ async function init() {
 // esperar la confirmación con flush(). En modo JSON la escritura es síncrona y
 // durable (fs.writeFileSync), así que la promesa resuelve ya confirmada.
 const colas = {};
+let ultimoErrorEscritura = null; // último fallo de escritura desde el último flush
 function encolar(name, op) {
   const prev = colas[name] || Promise.resolve();
-  const next = prev.then(op).catch((e) => console.error(`Error guardando '${name}':`, e.message));
+  // La cadena NO se envenena (cada op captura su error para no bloquear futuras
+  // escrituras), pero el fallo se REGISTRA para que flush() lo propague. Así una
+  // escritura fallida en Postgres no se reporta como éxito (datos.3 / tests.1).
+  const next = prev.then(op).then(
+    () => {},
+    (e) => { ultimoErrorEscritura = e instanceof Error ? e : new Error(String(e)); console.error(`Error guardando '${name}':`, e && e.message); }
+  );
   colas[name] = next;
   return next;
 }
-// Espera a que TODAS las escrituras pendientes estén confirmadas en disco/BD.
-function flush() {
-  return Promise.allSettled(Object.values(colas));
+// Espera a que TODAS las escrituras pendientes terminen y LANZA si alguna falló.
+// Las rutas que hacen `await store.flush()` antes de responder obtienen así un
+// error (→ 500) en vez de un falso 200 cuando la persistencia falla.
+async function flush() {
+  await Promise.allSettled(Object.values(colas));
+  if (ultimoErrorEscritura) {
+    const e = ultimoErrorEscritura;
+    ultimoErrorEscritura = null;
+    throw e;
+  }
 }
 
 // Persistencia por fila (no reescribe la tabla entera).
@@ -299,9 +336,13 @@ async function transaction(fn) {
 }
 
 function nextId(prefix, name) {
-  const items = readAll(name);
-  const n = items.length + 1;
-  return `${prefix}-${String(n).padStart(3, "0")}-${Date.now().toString().slice(-5)}`;
+  // Id único e INMUTABLE, sin depender de length (que reutilizaba ids tras un
+  // borrado y colisionaba al insertar por lote o en concurrencia · datos.1/2/10).
+  // Forma: prefijo-<tiempo base36>-<aleatorio>. El tiempo da orden aproximado de
+  // creación; el aleatorio garantiza unicidad aunque coincida el milisegundo.
+  const t = Date.now().toString(36);
+  const r = crypto.randomBytes(5).toString("hex"); // 40 bits aleatorios
+  return `${prefix}-${t}-${r}`;
 }
 
 // Estado de persistencia SIN secretos (para /api/salud, arranque y backup).
@@ -315,4 +356,7 @@ function persistenceInfo() {
   };
 }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo };
+// Hook SOLO para tests: fuerza el modo BD/JSON sin un Postgres real.
+function __setUsingDbForTests(v) { usingDb = !!v; }
+
+module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo, __setUsingDbForTests };

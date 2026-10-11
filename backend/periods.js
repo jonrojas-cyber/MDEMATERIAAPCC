@@ -89,23 +89,37 @@ function rango(preset, now = Date.now(), custom = {}) {
 function comparativoAnterior(preset, now = Date.now(), custom = {}) {
   const r = rango(preset, now, custom);
   const len = r.hasta - r.desde;
-  let desde;
+  let desde, hasta;
   switch (preset) {
-    case "hoy": case "ayer": desde = r.desde - DAY; break;
-    case "semana": case "semana_anterior": desde = r.desde - 7 * DAY; break;
-    case "mes": case "mes_anterior": desde = addMonths(r.desde, -1); break;
-    case "anio": case "anio_anterior": desde = new Date(new Date(r.desde).getFullYear() - 1, 0, 1).getTime(); break;
-    default: desde = r.desde - len; // personalizado: desplaza la misma longitud
+    case "hoy": case "ayer": desde = r.desde - DAY; hasta = desde + len; break;
+    case "semana": case "semana_anterior": desde = r.desde - 7 * DAY; hasta = desde + len; break;
+    case "mes": case "mes_anterior": {
+      desde = addMonths(r.desde, -1);
+      // No desbordar al mes siguiente cuando el mes anterior es más corto que el
+      // tramo transcurrido (p. ej. 31 de marzo comparado con febrero · motor-fechas.4).
+      hasta = Math.min(desde + len, addMonths(desde, 1));
+      break;
+    }
+    case "anio": case "anio_anterior": {
+      desde = new Date(new Date(r.desde).getFullYear() - 1, 0, 1).getTime();
+      hasta = Math.min(desde + len, startOfYear(new Date(r.desde).getFullYear() === new Date(now).getFullYear() ? now : r.hasta));
+      break;
+    }
+    default: desde = r.desde - len; hasta = desde + len; // personalizado: misma longitud
   }
-  return { desde, hasta: desde + len, label: "Periodo anterior" };
+  return { desde, hasta, label: "Periodo anterior" };
 }
 
 // Mismo periodo del año anterior (donde haya datos).
 function comparativoAnioAnterior(preset, now = Date.now(), custom = {}) {
   const r = rango(preset, now, custom);
+  // Alineado al DÍA (sin la hora): así no hay deriva de 1 h en los cambios de
+  // horario de verano/invierno (29-mar / 25-oct) · motor-fechas.5. Las ventas son
+  // a nivel de día, de modo que el día entero es la unidad correcta de comparación.
+  const dd = new Date(r.desde), dh = new Date(r.hasta);
   return {
-    desde: new Date(new Date(r.desde).getFullYear() - 1, new Date(r.desde).getMonth(), new Date(r.desde).getDate(), new Date(r.desde).getHours()).getTime(),
-    hasta: new Date(new Date(r.hasta).getFullYear() - 1, new Date(r.hasta).getMonth(), new Date(r.hasta).getDate(), new Date(r.hasta).getHours()).getTime(),
+    desde: new Date(dd.getFullYear() - 1, dd.getMonth(), dd.getDate()).getTime(),
+    hasta: new Date(dh.getFullYear() - 1, dh.getMonth(), dh.getDate()).getTime(),
     label: "Año anterior",
   };
 }

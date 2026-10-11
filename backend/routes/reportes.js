@@ -1,6 +1,6 @@
 const express = require("express");
 const store = require("../data-store");
-const { costePorUnidad } = require("../costing");
+const { costePorUnidad, valorStockMateria } = require("../costing");
 
 const router = express.Router();
 
@@ -116,7 +116,7 @@ router.get("/stock", (req, res) => {
       disponibilidad_actual: m.disponibilidad_actual,
       unidad: m.unidad,
       stock_minimo: m.stock_minimo,
-      valor_stock: r2(m.disponibilidad_actual * m.coste_medio),
+      valor_stock: valorStockMateria(m), // fuente única (dinero.10)
       uso_diario_estimado: r2(usoDiario),
       dias_restantes: diasRestantes,
       bajo_minimo: m.disponibilidad_actual <= m.stock_minimo,

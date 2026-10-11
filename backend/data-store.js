@@ -12,9 +12,25 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const db = require("./db");
 
-const DATA_DIR = path.join(__dirname, "data");
+// SEED_DIR: semillas versionadas (fuente de verdad para sembrar). En modo
+// aislado NUNCA se escribe aquí, así los fixtures del repo no se mutan.
+const SEED_DIR = path.join(__dirname, "data");
+// DATA_DIR: almacén runtime escribible. En producción coincide con SEED_DIR
+// (comportamiento idéntico de siempre). Los tests y cualquier entorno aislado
+// definen CONTROL_M_DATA_DIR para NO tocar los ficheros versionados ni los
+// datos reales. Así la suite deja de depender de `git checkout` para limpiar.
+const DATA_DIR = resolveDataDir();
+
+function resolveDataDir() {
+  const env = (process.env.CONTROL_M_DATA_DIR || "").trim();
+  if (!env) return SEED_DIR;
+  const dir = path.resolve(env);
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {}
+  return dir;
+}
 
 // Todas las entidades del sistema (incluye las nuevas: productos, ventas, impresiones).
 const ENTITIES = [
@@ -94,36 +110,97 @@ const ENTITIES = [
 
 const cache = {};
 let usingDb = false;
+let dbConnectFailed = false; // DATABASE_URL presente pero la conexión falló
 
 function filePath(name) {
   return path.join(DATA_DIR, `${name}.json`);
 }
 
-function readFile(name) {
+function seedPath(name) {
+  return path.join(SEED_DIR, `${name}.json`);
+}
+
+// Lee la semilla versionada de una entidad (solo lectura, desde SEED_DIR).
+function readSeed(name) {
   try {
-    return JSON.parse(fs.readFileSync(filePath(name), "utf-8"));
+    return JSON.parse(fs.readFileSync(seedPath(name), "utf-8"));
   } catch (e) {
     return [];
   }
 }
 
+function readFile(name) {
+  let crudo;
+  try {
+    crudo = fs.readFileSync(filePath(name), "utf-8");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e; // error de E/S real: no lo escondas
+    // Fichero runtime ausente en modo aislado (CONTROL_M_DATA_DIR): siembra
+    // transparente desde las semillas versionadas. Los tests ven los fixtures
+    // de siempre, pero cualquier escritura cae en la copia temporal, nunca en
+    // SEED_DIR. En producción (DATA_DIR === SEED_DIR) esto no aplica.
+    if (DATA_DIR !== SEED_DIR) {
+      const seed = readSeed(name);
+      try { writeFile(name, seed); } catch (_) {}
+      return seed;
+    }
+    return []; // producción: entidad nueva aún sin fichero → colección vacía
+  }
+  try {
+    return JSON.parse(crudo);
+  } catch (e) {
+    // JSON corrupto: NO devolver [] en silencio (datos.4). Si lo hiciéramos, la
+    // siguiente escritura sobrescribiría el fichero y perdería la entidad entera.
+    // Mejor fallar de forma visible para restaurar desde copia (scripts/restore.js).
+    const err = new Error(
+      `Fichero de datos corrupto '${name}.json' (${e.message}). ` +
+      `Restaura desde copia con scripts/restore.js antes de continuar; no se sobrescribe.`
+    );
+    err.code = "DATOS_CORRUPTOS";
+    throw err;
+  }
+}
+
 function writeFile(name, data) {
-  fs.writeFileSync(filePath(name), JSON.stringify(data, null, 2), "utf-8");
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
+  // Escritura ATÓMICA: escribe en un temporal y renombra (rename es atómico en
+  // el mismo sistema de ficheros). Evita el fichero a medias si el proceso cae
+  // a mitad de la escritura (datos.4). El temporal lleva pid+aleatorio para no
+  // chocar entre escrituras concurrentes del mismo fichero.
+  const final = filePath(name);
+  const tmp = `${final}.tmp-${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, final);
 }
 
 // Se llama una vez al arrancar el servidor, antes de aceptar peticiones.
 async function init() {
-  usingDb = await db.connect().catch((e) => {
-    console.error("No se pudo conectar a PostgreSQL, uso ficheros JSON:", e.message);
-    return false;
-  });
+  // BLINDAJE DE TESTS: en modo AISLADO (CONTROL_M_DATA_DIR definido) NUNCA se
+  // conecta a la DATABASE_URL del entorno, aunque esté definida — así una prueba
+  // no puede escribir en la base REAL (un DATA_DIR temporal no protege Postgres).
+  // Para probar contra una BD de test de verdad, usa CONTROL_M_ALLOW_DB=1 con una
+  // DATABASE_URL de test; nunca la de producción.
+  const aislado = DATA_DIR !== SEED_DIR;
+  const permitirDb = !aislado || process.env.CONTROL_M_ALLOW_DB === "1";
+  if (process.env.DATABASE_URL && permitirDb) {
+    usingDb = await db.connect().catch((e) => {
+      dbConnectFailed = true;
+      console.error("No se pudo conectar a PostgreSQL:", e.message);
+      return false;
+    });
+  } else {
+    if (process.env.DATABASE_URL && aislado) {
+      console.warn("data-store: modo aislado (test) → se IGNORA DATABASE_URL para no tocar la base real.");
+    }
+    usingDb = false;
+  }
 
   for (const name of ENTITIES) {
     if (usingDb) {
       await db.ensureTable(name);
       let rows = await db.loadAll(name);
       if (rows.length === 0) {
-        const seed = readFile(name); // siembra inicial desde el JSON
+        const seed = readSeed(name); // siembra inicial desde las semillas versionadas
         if (seed.length) {
           await db.replaceAll(name, seed);
           rows = seed;
@@ -147,32 +224,62 @@ async function init() {
 // esperar la confirmación con flush(). En modo JSON la escritura es síncrona y
 // durable (fs.writeFileSync), así que la promesa resuelve ya confirmada.
 const colas = {};
+let ultimoErrorEscritura = null; // último fallo de escritura desde el último flush
+// Entidades cuya CACHÉ quedó por delante del almacén durable (una escritura
+// modificó la caché pero el guardado falló). Reads sobre ellas podrían "mentir"
+// hasta que se reconcilie. Se limpia al confirmarse una escritura o al reconciliar.
+const divergentes = new Set();
 function encolar(name, op) {
   const prev = colas[name] || Promise.resolve();
-  const next = prev.then(op).catch((e) => console.error(`Error guardando '${name}':`, e.message));
+  // La cadena NO se envenena (cada op captura su error para no bloquear futuras
+  // escrituras), pero el fallo se REGISTRA para que flush() lo propague. Así una
+  // escritura fallida en Postgres no se reporta como éxito (datos.3 / tests.1).
+  const next = prev.then(op).then(
+    () => { divergentes.delete(name); }, // confirmada: caché y BD coinciden
+    (e) => {
+      ultimoErrorEscritura = e instanceof Error ? e : new Error(String(e));
+      divergentes.add(name); // la caché quedó por delante de la BD: divergencia (persistencia)
+      console.error(`Error guardando '${name}':`, e && e.message);
+    }
+  );
   colas[name] = next;
   return next;
 }
-// Espera a que TODAS las escrituras pendientes estén confirmadas en disco/BD.
-function flush() {
-  return Promise.allSettled(Object.values(colas));
+
+// Escritura JSON síncrona y DURABLE (writeFileSync + rename atómico). Si falla, la
+// caché quedó por delante del fichero (que sigue intacto por el rename atómico):
+// se marca divergencia y se relanza para que NADIE lo tome por éxito.
+function escribirJSON(name) {
+  try { writeFile(name, cache[name]); divergentes.delete(name); }
+  catch (e) { divergentes.add(name); throw e; }
+}
+// Espera a que TODAS las escrituras pendientes terminen y LANZA si alguna falló.
+// Las rutas que hacen `await store.flush()` antes de responder obtienen así un
+// error (→ 500) en vez de un falso 200 cuando la persistencia falla.
+async function flush() {
+  await Promise.allSettled(Object.values(colas));
+  if (ultimoErrorEscritura) {
+    const e = ultimoErrorEscritura;
+    ultimoErrorEscritura = null;
+    throw e;
+  }
 }
 
 // Persistencia por fila (no reescribe la tabla entera).
 function persistUpsert(name, row) {
   if (usingDb) return encolar(name, () => db.upsert(name, row));
-  writeFile(name, cache[name]); // JSON: durable y síncrono
+  escribirJSON(name); // JSON: durable y síncrono (lanza si falla)
   return Promise.resolve();
 }
 function persistDelete(name, id) {
   if (usingDb) return encolar(name, () => db.del(name, id));
-  writeFile(name, cache[name]);
+  escribirJSON(name);
   return Promise.resolve();
 }
 // Reemplazo masivo (writeAll): solo cuando de verdad cambia toda la colección.
 function persistAll(name) {
   if (usingDb) return encolar(name, () => db.replaceAll(name, cache[name]));
-  writeFile(name, cache[name]);
+  escribirJSON(name);
   return Promise.resolve();
 }
 
@@ -205,6 +312,20 @@ function insert(name, item) {
   items.push(item);
   persistUpsert(name, item); // CRUD real: una sola fila
   return item;
+}
+
+// Inserción incremental por LOTE: añade N filas nuevas sin reescribir toda la
+// tabla (datos.5/rendimiento.1). En JSON = una sola escritura de fichero; en
+// PostgreSQL = una transacción de upserts (NO borra el histórico, a diferencia de
+// writeAll→replaceAll). Devuelve las filas insertadas.
+function insertMany(name, rows) {
+  const lista = Array.isArray(rows) ? rows.filter((r) => r && r.id != null) : [];
+  if (!lista.length) return lista;
+  const items = readAll(name);
+  for (const r of lista) items.push(r);
+  if (usingDb) encolar(name, () => db.insertMany(name, lista));
+  else escribirJSON(name); // JSON: una única escritura para todo el lote (lanza si falla)
+  return lista;
 }
 
 // Borra una fila por id (CRUD completo). Devuelve la fila borrada o null.
@@ -248,13 +369,50 @@ async function transaction(fn) {
     else if (i !== -1) arr.splice(i, 1);
     tocadas.add(o.name);
   }
-  if (!usingDb) tocadas.forEach((name) => writeFile(name, cache[name]));
+  if (!usingDb) tocadas.forEach((name) => escribirJSON(name));
 }
 
 function nextId(prefix, name) {
-  const items = readAll(name);
-  const n = items.length + 1;
-  return `${prefix}-${String(n).padStart(3, "0")}-${Date.now().toString().slice(-5)}`;
+  // Id único e INMUTABLE, sin depender de length (que reutilizaba ids tras un
+  // borrado y colisionaba al insertar por lote o en concurrencia · datos.1/2/10).
+  // Forma: prefijo-<tiempo base36>-<aleatorio>. El tiempo da orden aproximado de
+  // creación; el aleatorio garantiza unicidad aunque coincida el milisegundo.
+  const t = Date.now().toString(36);
+  const r = crypto.randomBytes(5).toString("hex"); // 40 bits aleatorios
+  return `${prefix}-${t}-${r}`;
 }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, DATA_DIR, ENTITIES, isUsingDb: () => usingDb };
+// Entidades cuya caché divergió del almacén durable por un guardado fallido.
+function divergencias() { return [...divergentes]; }
+
+// RECONCILIACIÓN (persistencia): re-hidrata la caché desde el almacén DURABLE
+// (PostgreSQL o el fichero JSON), descartando los cambios en memoria que NO se
+// llegaron a guardar. Es la salida tras un guardado fallido: en vez de dejar la
+// caché "mintiendo" por delante del disco/BD, se vuelve a la última verdad durable.
+// Nota: el cambio que falló se PIERDE a propósito (falló su guardado); hay que
+// reintentarlo. Sin argumento reconcilia todas las entidades divergentes.
+async function reconciliar(name) {
+  const nombres = name ? [name] : [...divergentes];
+  for (const n of nombres) {
+    cache[n] = usingDb ? await db.loadAll(n) : readFile(n);
+    divergentes.delete(n);
+  }
+  return nombres;
+}
+
+// Estado de persistencia SIN secretos (para /api/salud, arranque y backup).
+function persistenceInfo() {
+  return {
+    modo: usingDb ? "postgres" : "json",
+    aislado: DATA_DIR !== SEED_DIR, // true en tests / entorno de pruebas
+    data_dir: path.basename(DATA_DIR), // solo el nombre, nunca la ruta completa
+    db_configurada: !!process.env.DATABASE_URL,
+    db_conexion_fallida: dbConnectFailed,
+    divergencias: [...divergentes], // entidades con caché por delante del almacén durable
+  };
+}
+
+// Hook SOLO para tests: fuerza el modo BD/JSON sin un Postgres real.
+function __setUsingDbForTests(v) { usingDb = !!v; }
+
+module.exports = { init, readAll, writeAll, findById, update, insert, insertMany, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo, reconciliar, divergencias, __setUsingDbForTests };

@@ -66,18 +66,26 @@ function borrarSub(endpoint) {
 }
 
 // Envía una notificación a todos los dispositivos suscritos. Limpia los muertos.
-async function enviarATodos(payload) {
+// `opciones`: { ttl (segundos de vida del push), urgency ("very-low"|"low"|
+// "normal"|"high"), topic (colapsa avisos del mismo tema) }. Por defecto el push
+// vive 4 semanas: para un "retira" eso haría que un aviso llegara caduco días
+// después (pwa.2); por eso sv-timers pasa un TTL corto y urgencia alta.
+async function enviarATodos(payload, opciones = {}) {
   loadKeys();
   const subs = store.readAll("push_subs");
   if (!subs.length) return { enviados: 0, fallidos: 0, total: 0, eliminados: 0 };
   const data = JSON.stringify(payload);
+  const opts = {};
+  if (opciones.ttl != null) opts.TTL = Number(opciones.ttl);
+  if (opciones.urgency) opts.urgency = opciones.urgency;
+  if (opciones.topic) opts.topic = String(opciones.topic).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32);
   let enviados = 0;
   let fallidos = 0;
   const muertos = [];
   await Promise.all(
     subs.map(async (s) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, data);
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, data, opts);
         enviados++;
       } catch (e) {
         fallidos++;

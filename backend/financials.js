@@ -12,7 +12,7 @@ const debtsMod = require("./debts");
 const assetsMod = require("./assets");
 const treasury = require("./treasury");
 
-function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+const { eur, pctDe } = require("./fmt"); // formato único (dinero.9): % a 1 decimal
 function enRango(fecha, r) { const t = new Date(fecha).getTime(); return Number.isFinite(t) && t >= r.desde && t < r.hasta; }
 
 // Índices de producto para valorar el coste de lo vendido (reutiliza costing).
@@ -32,7 +32,7 @@ function ventasEnRango(r) {
 // IVA de venta por defecto en hostelería (España): 10%. El titular de "ventas" se
 // muestra en BRUTO (cuadra con Ágora/TPV), pero el P&L (beneficio, food cost, margen)
 // se calcula sobre la base SIN IVA: el IVA repercutido no es ingreso.
-const IVA_VENTA_DEF = 0.10;
+const IVA_VENTA_DEF = require("./iva").IVA_VENTA; // fuente única (dinero.8)
 function netoDeVenta(v) {
   if (v.importe_neto != null && v.importe_neto !== "") return Number(v.importe_neto) || 0;
   const bruto = Number(v.importe) || Number(v.total) || 0;
@@ -146,10 +146,12 @@ function beneficio(r, now = Date.now()) {
   const base = ventasNetas;
   const operativo = eur(base - costeMateria - laboral - variables - fijos);
   // Beneficio neto estimado: operativo menos intereses de deuda imputables al
-  // periodo (proporción de la cuota mensual). Etiquetado como estimación.
-  const cuotaMensual = debtsMod.resumen(now).cuota_mensual_total;
+  // periodo. El interés mensual se deriva de los DATOS de cada deuda (tipo real o
+  // amortización), no de un 30% plano de la cuota (dinero.6). Sigue etiquetado como
+  // estimación (intereses_estimados).
+  const interesMes = debtsMod.interesMensualTotal(now);
   const dias = (r.hasta - r.desde) / 86400000;
-  const interesesPeriodo = eur(cuotaMensual * (dias / (365 / 12)) * 0.3); // ~30% de la cuota como interés estimado
+  const interesesPeriodo = eur(interesMes * (dias / (365 / 12)));
   const neto = eur(operativo - interesesPeriodo);
   return {
     ventas, ventas_netas: ventasNetas, coste_materia: costeMateria, coste_laboral: laboral,
@@ -157,13 +159,13 @@ function beneficio(r, now = Date.now()) {
     beneficio_operativo: operativo,
     intereses_estimados: interesesPeriodo,
     beneficio_neto_estimado: neto,
-    food_cost_pct: base > 0 ? Math.round((costeMateria / base) * 100) : null,
-    coste_laboral_pct: base > 0 ? Math.round((laboral / base) * 100) : null,
+    food_cost_pct: pctDe(costeMateria, base),
+    coste_laboral_pct: pctDe(laboral, base),
     // Prime cost = materia + personal (la cifra que los hosteleros vigilan; objetivo ~60-65%).
     prime_cost: eur(costeMateria + laboral),
-    prime_cost_pct: base > 0 ? Math.round(((costeMateria + laboral) / base) * 100) : null,
-    gastos_fijos_pct: base > 0 ? Math.round((fijos / base) * 100) : null,
-    margen_operativo_pct: base > 0 ? Math.round((operativo / base) * 100) : null,
+    prime_cost_pct: pctDe(costeMateria + laboral, base),
+    gastos_fijos_pct: pctDe(fijos, base),
+    margen_operativo_pct: pctDe(operativo, base),
   };
 }
 

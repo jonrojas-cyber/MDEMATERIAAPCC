@@ -53,8 +53,7 @@ function valorAlmacenPorCategoria() {
   const g = {};
   store.readAll("materias").forEach((m) => {
     const cat = categoriaDe(m).macro;
-    const v = (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0);
-    g[cat] = (g[cat] || 0) + v;
+    g[cat] = (g[cat] || 0) + costing.valorStockRaw(m); // fuente única (dinero.10)
   });
   return Object.entries(g).map(([label, value]) => ({ label, value: eur(value) })).sort((a, b) => b.value - a.value);
 }

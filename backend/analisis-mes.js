@@ -14,7 +14,7 @@ const store = require("./data-store");
 
 const WD = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const ORDEN_WD = [1, 2, 3, 4, 5, 6, 0]; // lunes→domingo
-const IVA_HOSTELERIA = 0.10;
+const IVA_HOSTELERIA = require("./iva").IVA_VENTA; // fuente única (dinero.8)
 
 function r2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 function num(x) {

@@ -75,6 +75,10 @@ function escandallar(producto, materias) {
       fc30: coste > 0 ? redondearPrecio(coste / 0.30) : 0,
     },
     coste_estimado: costeEstimado || producto.cantidades_estimadas === true,
+    // datos.7 · escandallo incompleto: hay materias sin coste; el coste/margen
+    // mostrados son PARCIALES (coste infravalorado), no un margen cerrado.
+    coste_incompleto: mm.incompleto === true,
+    materias_sin_coste: mm.materias_sin_coste || [],
     alergenos: producto.alergenos || [],
     version: producto.version || "",
     foto_url: producto.foto_url || null,

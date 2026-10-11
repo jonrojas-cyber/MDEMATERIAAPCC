@@ -10,10 +10,9 @@
 // `componer(datos)` es puro (test). `calcular(opts)` reúne del store + motores.
 
 const store = require("./data-store");
-
-function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-function pct1(n) { return n == null ? null : Math.round(n * 1000) / 10; }
+const { eur, pct1 } = require("./fmt"); // formato único (dinero.9)
 const MES = 365 / 12;
+const MIN_DIAS_PROYECCION = 3; // por debajo, la proyección lineal del mes es muy volátil (motor-fechas.6)
 
 // Rango de un mes "YYYY-MM" (o el mes en curso). hasta = min(fin de mes, ahora).
 function rangoMes(mes, now = Date.now()) {
@@ -46,14 +45,14 @@ function componer(d) {
   const cuenta = {
     ingresos: eur(ventas),
     coste_materia: tieneMateria ? eur(coste_materia) : null,
-    food_cost_pct: food_cost_pct != null ? Math.round(food_cost_pct * 100) : null,
+    food_cost_pct: pct1(food_cost_pct), // 1 decimal, como el resto de pantallas (dinero.9)
     food_cost_origen,
     margen_bruto,
     personal: eur(personal),
     otros_fijos: eur(otros_fijos),
     variables: eur(variables),
     ebitda,
-    margen_ebitda_pct: ebitda != null && ventas > 0 ? Math.round((ebitda / ventas) * 100) : null,
+    margen_ebitda_pct: ebitda != null && ventas > 0 ? pct1(ebitda / ventas) : null,
     cuota_creditos: eur(cuota_creditos),
     resultado_caja,
     ventas_origen,
@@ -61,6 +60,11 @@ function componer(d) {
 
   // Proyección a mes completo (lineal por días transcurridos), solo si el mes
   // está en curso. Escala ventas/materia/variables; fijos y créditos a mes entero.
+  // motor-fechas.6: la proyección lineal es muy VOLÁTIL los primeros días (el factor
+  // diasMes/diasTranscurridos es ~30× en el día 1). Se añade (a) un mínimo de días
+  // para marcarla FIABLE, y (b) una banda de confianza orientativa que se estrecha
+  // con los días observados (~1/√días). No se oculta el número —sigue siendo útil—
+  // pero deja de presentarse como cerrado cuando aún no lo es.
   let proyeccion = null;
   if (enCurso && diasTranscurridos > 0 && diasTranscurridos < diasMes) {
     const factor = diasMes / diasTranscurridos;
@@ -73,6 +77,8 @@ function componer(d) {
     const creditoMes = cuota_creditos * (diasMes / diasTranscurridos);
     const mbP = materiaP != null ? ventasP - materiaP : null;
     const ebitdaP = mbP != null ? mbP - personalMes - otrosMes - variablesP : null;
+    const fiable = diasTranscurridos >= MIN_DIAS_PROYECCION;
+    const bandaPct = Math.round((100 / Math.sqrt(diasTranscurridos)) * 10) / 10; // ± orientativo
     proyeccion = {
       ingresos: eur(ventasP),
       coste_materia: materiaP != null ? eur(materiaP) : null,
@@ -81,6 +87,13 @@ function componer(d) {
       ebitda: ebitdaP != null ? eur(ebitdaP) : null,
       cuota_creditos: eur(creditoMes),
       resultado_caja: ebitdaP != null ? eur(ebitdaP - creditoMes) : null,
+      // Fiabilidad de la proyección (motor-fechas.6):
+      fiable,
+      dias_observados: diasTranscurridos,
+      dias_min_fiable: MIN_DIAS_PROYECCION,
+      banda_pct: bandaPct,
+      ingresos_min: eur(ventasP * (1 - bandaPct / 100)),
+      ingresos_max: eur(ventasP * (1 + bandaPct / 100)),
     };
   }
 
@@ -129,7 +142,7 @@ function calcular(opts = {}) {
   // Override de ventas (cierre de Ágora): parámetro > cierre GUARDADO > ventas app.
   // La cifra de Ágora/cierre viene en BRUTO (con IVA); el P&L va en NETO, así que
   // se convierte. La vía "produccion" ya tiene su propio neto (ventasNetasProd).
-  const IVA_VENTA = 0.10; // hostelería
+  const IVA_VENTA = require("./iva").IVA_VENTA; // fuente única (dinero.8)
   let ventasBruto = ventasProd, ventas_origen = "produccion";
   const ov = Number(opts.ventas);
   const guardado = config.find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);

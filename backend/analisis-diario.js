@@ -16,8 +16,7 @@ const costing = require("./costing");
 const financials = require("./financials"); // calculadora común (neto de venta compartido)
 
 const DAY = 86400000;
-function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-function pct1(n) { return Math.round((Number(n) || 0) * 1000) / 10; }
+const { eur, pctDe } = require("./fmt"); // formato único (dinero.9)
 function ymd(f) { return String(f || "").slice(0, 10); }
 function restarDias(fecha, n) {
   const d = new Date(ymd(fecha) + "T12:00:00Z");
@@ -99,7 +98,7 @@ function ventaDia(dia, ventas, prodById, prodByName, idxMat) {
     coste_materia: eur(coste),
     margen_eur: eur(netoConCoste - coste),
     margen_pct: netoConCoste > 0 ? Math.round((1 - coste / netoConCoste) * 100) : null,
-    food_cost_pct: netoConCoste > 0 ? Math.round((coste / netoConCoste) * 100) : null,
+    food_cost_pct: pctDe(coste, netoConCoste),
     cobertura_coste_pct: importeNeto > 0 ? Math.round((netoConCoste / importeNeto) * 100) : null,
     importe_sin_coste: eur(importeSinCoste),
     por_categoria: Object.values(porCategoria).map((c) => ({

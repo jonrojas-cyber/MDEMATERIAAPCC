@@ -6,6 +6,7 @@
 // materias según el escandallo de cada producto.
 
 const fs = require("fs");
+const crypto = require("crypto");
 const store = require("./data-store");
 
 // Detecta el delimitador (; típico en Excel español, o ,) y parsea el CSV.
@@ -48,7 +49,8 @@ function importarVentas(texto, fuente = "csv") {
   const filas = parseCSV(texto);
   const productos = store.readAll("productos");
   const materias = store.readAll("materias");
-  const ventas = store.readAll("ventas");
+  const ventasPrevias = store.readAll("ventas");
+  const nowISO = new Date().toISOString();
 
   const idxProd = {};
   productos.forEach((p) => {
@@ -56,53 +58,56 @@ function importarVentas(texto, fuente = "csv") {
   });
   const idxMat = {};
   materias.forEach((m) => (idxMat[m.id] = m));
+  const prodById = {};
+  productos.forEach((p) => { prodById[p.id] = p; });
+
+  const dia = (f) => String(f || "").slice(0, 10);
+  const ajustarStock = (producto, cantidad, signo) => {
+    (producto && producto.ingredientes || []).forEach((ing) => {
+      const m = idxMat[ing.materia_id];
+      if (m) m.disponibilidad_actual = Math.max(0, Math.round(((Number(m.disponibilidad_actual) || 0) + signo * ing.cantidad * cantidad) * 100) / 100);
+    });
+  };
 
   let importadas = 0;
   const noReconocidos = [];
+  const nuevas = [];
+  const dias = new Set();
 
   filas.forEach((fila) => {
     const nombre = buscarCampo(fila, ["producto", "articulo", "artículo", "nombre", "descripcion", "descripción"]);
     const cantidad = num(buscarCampo(fila, ["cantidad", "uds", "unidades", "qty"])) || 1;
     const importe = num(buscarCampo(fila, ["importe", "total", "precio", "pvp"]));
-    const fecha = buscarCampo(fila, ["fecha", "hora", "fechahora", "fecha_hora"]) || new Date().toISOString();
+    const fecha = buscarCampo(fila, ["fecha", "hora", "fechahora", "fecha_hora"]) || nowISO;
     if (!nombre) return;
-
     const producto = idxProd[normProd(nombre)];
-    if (!producto) {
-      noReconocidos.push(nombre);
-      return;
-    }
-
-    // Descontar stock de materias según el escandallo.
-    (producto.ingredientes || []).forEach((ing) => {
-      const m = idxMat[ing.materia_id];
-      if (m) {
-        m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual - ing.cantidad * cantidad) * 100) / 100);
-      }
-    });
-
-    ventas.push({
-      id: store.nextId("ven", "ventas"),
-      producto_id: producto.id,
-      producto: producto.nombre,
-      cantidad,
-      importe,
-      fecha,
-      fuente,
-      importado_en: new Date().toISOString(),
-    });
+    if (!producto) { noReconocidos.push(nombre); return; }
+    dias.add(dia(fecha));
+    nuevas.push({ id: store.nextId("ven", "ventas"), producto_id: producto.id, producto: producto.nombre, cantidad, importe, fecha, fuente, importado_en: nowISO });
     importadas += cantidad;
   });
 
+  // IDEMPOTENCIA (agora.3): reemplaza por FUENTE + DÍA. Reimportar el mismo periodo
+  // NO duplica; un solapamiento parcial solo reemplaza los días comunes. NO toca
+  // ventas de otra fuente (p. ej. del conector) ni deduplica por contenido.
+  const reemplazadas = ventasPrevias.filter((v) => v.fuente === fuente && dias.has(dia(v.fecha)));
+  const quedan = ventasPrevias.filter((v) => !(v.fuente === fuente && dias.has(dia(v.fecha))));
+  // Stock NEUTRO al reimportar: revierte el consumo de las filas reemplazadas y
+  // aplica el de las nuevas (si el CSV es el mismo, el neto es cero).
+  reemplazadas.forEach((v) => ajustarStock(prodById[v.producto_id], Number(v.cantidad) || 0, +1));
+  nuevas.forEach((v) => ajustarStock(prodById[v.producto_id], Number(v.cantidad) || 0, -1));
+
   store.writeAll("materias", materias);
-  store.writeAll("ventas", ventas);
+  store.writeAll("ventas", quedan.concat(nuevas));
 
   const resumen = {
     fuente,
     lineas: filas.length,
     ventas_importadas: importadas,
+    reemplazadas: reemplazadas.length, // filas de la MISMA fuente+día sustituidas (no duplicadas)
+    dias: [...dias],
     productos_no_reconocidos: [...new Set(noReconocidos)],
-    cuando: new Date().toISOString(),
+    cuando: nowISO,
   };
   registrarSync(resumen);
   return resumen;
@@ -157,6 +162,33 @@ function claveIdem(doc) {
   const id = campoDoc(doc, ["id", "docId", "documentId", "code", "codigo"]);
   return id ? "id:" + String(id) : "";
 }
+// Referencias documentales de ORIGEN de un documento (p. ej. una factura que
+// consolida varios albaranes). Se guardan para que la conciliación pueda
+// deduplicar SOLO con vínculo explícito (agora.1). Si Ágora no las trae, null.
+function referenciasOrigen(doc) {
+  const campos = ["DeliveryNotes", "deliveryNotes", "Albaranes", "albaranes", "SourceDocuments", "sourceDocuments", "DocumentosOrigen", "References", "referencias"];
+  for (const c of campos) {
+    const v = doc && doc[c];
+    if (Array.isArray(v) && v.length) {
+      const out = v.map((x) => {
+        if (x == null) return null;
+        if (typeof x === "object") return { serie: x.Serie != null ? x.Serie : x.serie, number: x.Number != null ? x.Number : x.number };
+        return x;
+      }).filter(Boolean);
+      if (out.length) return out;
+    }
+  }
+  return null;
+}
+// ¿Documento ANULADO/cancelado? (agora.5). Admite banderas booleanas y estados
+// de texto habituales. Si Ágora usa otro nombre de campo, se añade aquí (ver nota
+// en el cuadre: hace falta una muestra para fijar el nombre exacto).
+function esAnulado(doc) {
+  if (!doc || typeof doc !== "object") return false;
+  if (doc.Cancelled === true || doc.Voided === true || doc.IsVoid === true || doc.Anulado === true || doc.anulado === true || doc.Annulled === true) return true;
+  const s = String(doc.Status || doc.status || doc.State || doc.estado || "").toLowerCase();
+  return /anulad|cancelad|cancel|void|anulada/.test(s);
+}
 // Número robusto (no el parser CSV español): number nativo, "8.5", "1.234,56", "1,234.56".
 function numJSON(v) {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -164,6 +196,28 @@ function numJSON(v) {
   const s = String(v).trim();
   if (/,\d{1,2}$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
   return parseFloat(s.replace(/,/g, "")) || 0;
+}
+// Descuento GLOBAL del documento (a nivel de ticket, NO de línea). Ágora puede
+// aplicar un descuento al total sin repartirlo por línea. Se detecta con los
+// nombres de campo habituales, pero el nombre EXACTO y, sobre todo, si las líneas
+// vienen ANTES o DESPUÉS de aplicarlo, dependen de la versión de Ágora. Hasta
+// contrastarlo con una MUESTRA real NO se reparte por línea (repartir a ciegas
+// podría infravalorar o inflar el neto). Por eso agora.5 queda PARCIAL: el
+// descuento global se SEÑALA para que no pase en silencio, pero su reparto exacto
+// está pendiente de una muestra de Ágora. (Las anulaciones, invitaciones y
+// devoluciones SÍ se resuelven en local; ver clasificación de líneas más abajo.)
+function descuentoGlobal(doc) {
+  if (!doc || typeof doc !== "object") return 0;
+  const campos = ["GlobalDiscount", "globalDiscount", "DocumentDiscount", "documentDiscount",
+    "TotalDiscount", "totalDiscount", "DiscountAmount", "DescuentoGlobal", "DescuentoTotal",
+    "descuento_global", "descuento_total"];
+  for (const c of campos) {
+    if (doc[c] != null && doc[c] !== "") {
+      const v = Math.abs(numJSON(doc[c]));
+      if (v > 0) return v;
+    }
+  }
+  return 0;
 }
 
 // Normaliza el payload de Ágora a un array plano de docs con su tipo.
@@ -203,7 +257,14 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const omitidosPedido = []; // pedidos/comandas: no son venta cerrada, no se cuentan
   const deduplicados = [];   // {serie, number} ya existentes por otra vía (no se duplican)
   const noVinculados = new Set();
+  const materiasFaltantes = new Set(); // escandallos que apuntan a una materia inexistente (datos.7)
+  const anulados = []; // documentos anulados/cancelados: no son venta (agora.5)
+  const invitaciones = []; // líneas servidas a 0 € (comp/invitación): se registran y se CUENTAN aparte (agora.5)
+  const devoluciones = []; // líneas negativas (devolución/abono): restan y se cuentan aparte (agora.5)
+  const descuentosGlobales = []; // descuento a nivel de documento: se SEÑALA, reparto pendiente de muestra (agora.5 PARCIAL)
+  const posiblesDuplicados = []; // mismo Serie+Número+día que una venta existente: se marca, NO se descarta (agora.4)
   const movimientos = [];
+  const nuevasVentas = []; // se insertan en LOTE al final, sin reescribir la tabla (datos.5)
   let unidades = 0, importeTotal = 0;
   const nowISO = new Date().toISOString();
 
@@ -238,15 +299,25 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       return;
     }
 
-    // ¿Esta venta ya existe por otra vía (mismo Serie+Número+día)? No duplicar: se
-    // marca procesada (para confirmarla a Ágora y que no la reenvíe) y se omite.
-    const bk = bizKey(serie, number, fecha);
-    if (serie != null && number != null && ventasBiz.has(bk)) {
-      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, dedup: true };
+    // Documento ANULADO/cancelado: no es venta (agora.5). No se cuenta y se marca
+    // procesado para que el conector no lo reenvíe. (Las INVITACIONES llegan como
+    // líneas con importe 0 → ya suman 0; las DEVOLUCIONES, con cantidad negativa
+    // → ya restan.)
+    if (esAnulado(doc)) {
+      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true, anulado: true };
       if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
-      deduplicados.push({ serie, number });
+      anulados.push({ serie, number });
       return;
     }
+
+    // ¿Coincide por Serie+Número+día con una venta ya existente (otra vía/tipo)?
+    // NO se descarta (podría ser un documento DISTINTO · agora.4): se importa igual
+    // y se MARCA como posible duplicado, conservando trazabilidad del origen. La
+    // conciliación lo revisa con vínculo documental; nunca se pierde una venta en
+    // silencio. El documento idéntico re-enviado (misma clave) ya se omitió antes.
+    const bk = bizKey(serie, number, fecha);
+    const posibleDup = (serie != null && number != null && ventasBiz.has(bk));
+    if (posibleDup) posiblesDuplicados.push({ serie, number, type });
 
     // 1) Resolver TODAS las líneas primero (no descontamos nada aún).
     const resueltas = [];
@@ -271,7 +342,12 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       const neto = (netoRaw != null && netoRaw !== "") ? signo * Math.abs(numJSON(netoRaw)) : null;
       const producto = idxProd[normProd(nombre)];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
-      resueltas.push({ producto, cantidad, importe, neto, nombre });
+      // Clasificación EXPLÍCITA (agora.5): devolución (cantidad negativa → resta),
+      // invitación (servido a 0 € → suma 0 pero descuenta stock), o venta normal.
+      // Antes solo "neteaban" sin dejar rastro; ahora cada una queda etiquetada y
+      // se cuenta aparte para que el cierre pueda separarlas.
+      const naturaleza = cantidad < 0 ? "devolucion" : (Math.abs(importe) < 1e-9 ? "invitacion" : "venta");
+      resueltas.push({ producto, cantidad, importe, neto, nombre, naturaleza });
     });
 
     // 2) Si falta algún producto por vincular → BLOQUEAR (no descontar, no marcar).
@@ -283,10 +359,10 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     }
 
     // 3) Descontar stock + libro de movimientos + registrar venta.
-    resueltas.forEach(({ producto, cantidad, importe, neto }) => {
+    resueltas.forEach(({ producto, cantidad, importe, neto, naturaleza }) => {
       (producto.ingredientes || []).forEach((ing) => {
         const m = idxMat[ing.materia_id];
-        if (!m) return;
+        if (!m) { materiasFaltantes.add(`${producto.nombre || producto.id} → ${ing.materia_id}`); return; } // integridad (datos.7): no se descuenta un ingrediente inexistente, pero se SEÑALA
         const delta = -Math.round(ing.cantidad * cantidad * 100) / 100;
         m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual + delta) * 100) / 100);
         movimientos.push({
@@ -296,24 +372,41 @@ function importarDocs(docs, { registrar, usuario } = {}) {
           producto: producto.nombre, created_at: nowISO, created_by: (usuario && usuario.nombre) || "Ágora",
         });
       });
-      ventas.push({
+      nuevasVentas.push({
         id: store.nextId("ven", "ventas"),
         producto_id: producto.id, producto: producto.nombre,
         cantidad, importe, importe_neto: (neto != null ? neto : null), fecha, fuente: "agora",
         doc_clave: clave, doc_serie: serie, doc_number: number, importado_en: nowISO,
+        // Naturaleza explícita (agora.5): "venta" | "invitacion" | "devolucion".
+        naturaleza: naturaleza || "venta",
+        // Trazabilidad: si coincide con una venta previa por Serie+Número+día, se
+        // marca (no se descarta) para que la conciliación la revise (agora.4).
+        posible_duplicado: posibleDup ? bk : undefined,
       });
       unidades += cantidad; importeTotal += importe;
+      if (naturaleza === "invitacion") invitaciones.push({ serie, number, producto: producto.nombre, unidades: cantidad });
+      else if (naturaleza === "devolucion") devoluciones.push({ serie, number, producto: producto.nombre, importe });
     });
 
+    // Descuento GLOBAL del documento (agora.5 · PARCIAL): se SEÑALA para que no
+    // pase en silencio; el reparto exacto por línea queda pendiente de muestra.
+    const descG = descuentoGlobal(doc);
+    if (descG > 0) descuentosGlobales.push({ serie, number, importe: Math.round(descG * 100) / 100 });
+
+    const origen = referenciasOrigen(doc);
     const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO };
+    if (origen) rec.origen = origen; // vínculo documental para la conciliación (agora.1)
     if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
     procesados.push({ clave, serie, number, type });
     ventasBiz.add(bk); // ya presente: evita duplicar la misma venta dentro del lote
   });
 
-  movimientos.forEach((mv) => store.insert("stock_movements", mv));
+  // Escrituras INCREMENTALES: añade solo lo nuevo, sin reescribir la tabla de
+  // ventas entera en cada sync (datos.5/rendimiento.1). Materias es pequeña (se
+  // actualizan saldos de las tocadas), así que su writeAll es barato.
+  store.insertMany("stock_movements", movimientos);
   store.writeAll("materias", materias);
-  store.writeAll("ventas", ventas);
+  store.insertMany("ventas", nuevasVentas);
 
   const resumen = {
     fuente: "agora",
@@ -322,19 +415,34 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     bloqueados: bloqueados.length,
     omitidos_ya_procesados: omitidos.length,
     pedidos_omitidos: omitidosPedido.length,
+    anulados_omitidos: anulados.length,
+    // agora.5 · separadas y contadas aparte (no solo "neteadas" en silencio):
+    invitaciones: invitaciones.length,
+    unidades_invitadas: Math.round(invitaciones.reduce((s, x) => s + (Number(x.unidades) || 0), 0) * 100) / 100,
+    devoluciones: devoluciones.length,
+    importe_devuelto: Math.round(devoluciones.reduce((s, x) => s + (Number(x.importe) || 0), 0) * 100) / 100,
+    // Descuento GLOBAL de documento: se señala; su reparto por línea queda PENDIENTE
+    // de muestra real de Ágora (por eso agora.5 no puede figurar como corregido del todo).
+    descuentos_globales: descuentosGlobales.length,
+    importe_descuento_global: Math.round(descuentosGlobales.reduce((s, x) => s + (Number(x.importe) || 0), 0) * 100) / 100,
+    descuento_global_pendiente: descuentosGlobales.length > 0,
     duplicados_evitados: deduplicados.length,
+    posibles_duplicados: posiblesDuplicados.length, // importados y marcados, NO descartados (agora.4)
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
     productos_no_vinculados: [...noVinculados],
+    materias_faltantes: [...materiasFaltantes], // escandallos rotos (datos.7): el coste/stock de esos ingredientes NO se contó
     cuando: nowISO,
   };
+  if (materiasFaltantes.size) console.warn("Ágora: escandallos con materia inexistente (no se descontó stock):", [...materiasFaltantes].join(", "));
+  if (descuentosGlobales.length) console.warn("Ágora: descuento GLOBAL de documento detectado (reparto por línea PENDIENTE de muestra real · agora.5):", descuentosGlobales.length, "doc(s)");
   registrarSync(resumen);
   if (typeof registrar === "function") registrar(resumen);
   // procesados_ref: lo que hay que confirmar a Ágora (POST /api/doc/processed). Se
   // confirman también los deduplicados (ya existían) para que Ágora no los reenvíe.
   return {
     ...resumen,
-    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number })), ...omitidosPedido.map((d) => ({ Serie: d.serie, Number: d.number }))],
+    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number })), ...omitidosPedido.map((d) => ({ Serie: d.serie, Number: d.number })), ...anulados.map((d) => ({ Serie: d.serie, Number: d.number }))],
     bloqueados_detalle: bloqueados,
   };
 }
@@ -356,7 +464,16 @@ function cronImport() {
   try {
     if (!fs.existsSync(path)) return;
     const texto = fs.readFileSync(path, "utf-8");
+    // Idempotencia del CRON (agora.3): la vía heredada por CSV no deduplica, así
+    // que reimportar el MISMO fichero cada hora duplicaba las ventas. Solo se
+    // importa si el contenido cambió desde la última vez (marca persistida).
+    const hash = crypto.createHash("sha1").update(texto).digest("hex");
+    const marca = (store.readAll("config").find((c) => c && c.id === "agora_cron_csv_hash") || {}).valor;
+    if (marca === hash) return; // fichero sin cambios → no reimportar
     const r = importarVentas(texto, "cron");
+    const row = { id: "agora_cron_csv_hash", valor: hash, cuando: new Date().toISOString() };
+    if (store.findById("config", "agora_cron_csv_hash")) store.update("config", "agora_cron_csv_hash", row);
+    else store.insert("config", row);
     console.log(`Ágora cron: ${r.ventas_importadas} ventas importadas desde ${path}`);
   } catch (e) {
     console.error("Ágora cron error:", e.message);

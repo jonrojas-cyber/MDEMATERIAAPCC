@@ -55,6 +55,48 @@ function firmaTicket(lineas, importe) {
 const PRIO_TIPO = { "Factura": 4, "Ticket (CSV)": 3, "Albarán": 2, "Pedido": 1 };
 function prioTipo(t) { return PRIO_TIPO[t] || 0; }
 
+// ¿La factura `facturaDoc` REFERENCIA explícitamente al albarán `inf`? (agora.1).
+// La relación se lee del documento de Ágora (campo `origen`/`origen_claves`/
+// `albaranes`, capturado en la ingesta cuando la factura lista los albaranes que
+// consolida). La coincidencia de CONTENIDO NO basta: dos ventas idénticas pueden
+// ser legítimas. Sin vínculo documental explícito, NO se deduplica.
+function tieneVinculo(facturaDoc, inf) {
+  if (!facturaDoc) return false;
+  const origen = facturaDoc.origen || facturaDoc.origen_claves || facturaDoc.albaranes;
+  if (!Array.isArray(origen) || !origen.length) return false;
+  return origen.some((o) => {
+    if (o == null) return false;
+    if (typeof o === "string") return o === inf.clave || o === `${inf.serie}/${inf.number}` || o === String(inf.number);
+    if (typeof o === "object") {
+      const s = o.Serie != null ? o.Serie : o.serie;
+      const n = o.Number != null ? o.Number : o.number;
+      return String(s) === String(inf.serie) && String(n) === String(inf.number);
+    }
+    return false;
+  });
+}
+
+// Clasifica un grupo con la MISMA firma de contenido (agora.1):
+//   · survivors: TODOS los documentos del tipo de mayor prioridad (nunca se borran;
+//     dos facturas idénticas son dos ventas reales).
+//   · vinculados: documentos de tipo inferior que una factura superviviente
+//     REFERENCIA explícitamente → se pueden quitar (sustitución documentada).
+//   · candidatos: inferiores que coinciden en contenido pero SIN vínculo documental
+//     → NO se tocan, solo se señalan para revisión (pueden ser ventas legítimas).
+function clasificarGrupo(grupo, docsById) {
+  const tipos = new Set(grupo.map((t) => t.tipo));
+  if (grupo.length < 2 || tipos.size < 2) return { survivors: grupo.slice(), vinculados: [], candidatos: [] };
+  const maxPrio = Math.max.apply(null, grupo.map((t) => prioTipo(t.tipo)));
+  const survivors = grupo.filter((t) => prioTipo(t.tipo) === maxPrio);
+  const inferiores = grupo.filter((t) => prioTipo(t.tipo) < maxPrio);
+  const vinculados = [], candidatos = [];
+  for (const inf of inferiores) {
+    if (survivors.some((s) => tieneVinculo((docsById || {})[s.clave], inf))) vinculados.push(inf);
+    else candidatos.push(inf);
+  }
+  return { survivors, vinculados, candidatos };
+}
+
 function conciliacionDia(dia, now = Date.now()) {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(String(dia || "")) ? String(dia) : ymdLocal(now);
 
@@ -100,7 +142,7 @@ function conciliacionDia(dia, now = Date.now()) {
     const tkey = v.doc_clave || `(sin doc) ${v.id}`;
     if (!tk[tkey]) {
       tk[tkey] = {
-        clave: tkey,
+        clave: tkey, serie: v.doc_serie, number: v.doc_number,
         ref: (v.doc_serie != null || v.doc_number != null) ? `${v.doc_serie || ""}${v.doc_number != null ? "/" + v.doc_number : ""}` : tkey,
         tipo: etiquetaTipo(v, docsById),
         hora: hhmm(v.fecha),
@@ -128,17 +170,19 @@ function conciliacionDia(dia, now = Date.now()) {
   });
   const duplicados = [];
   Object.values(porFirma).forEach((grupo) => {
-    const tipos = new Set(grupo.map((t) => t.tipo));
-    if (grupo.length < 2 || tipos.size < 2) return; // mismo tipo o único → no es doble conteo
-    // Se queda el de mayor prioridad (Factura); el resto es el importe duplicado.
-    const ordenado = grupo.slice().sort((a, b) => prioTipo(b.tipo) - prioTipo(a.tipo) || (a.hora || "").localeCompare(b.hora || ""));
-    const sobran = ordenado.slice(1);
+    const { survivors, vinculados, candidatos } = clasificarGrupo(grupo, docsById);
+    if (!vinculados.length && !candidatos.length) return; // mismo tipo o único → ventas reales
+    const se_queda = survivors[0];
     duplicados.push({
-      importe_unitario: eur(ordenado[0].importe),
+      importe_unitario: eur(se_queda.importe),
       veces: grupo.length,
-      importe_duplicado: eur(sobran.reduce((s, t) => s + t.importe, 0)),
-      se_queda: { ref: ordenado[0].ref, tipo: ordenado[0].tipo, hora: ordenado[0].hora },
-      tickets: ordenado.map((t) => ({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) })),
+      // Doble conteo REAL = solo lo que tiene vínculo documental (factura→albarán).
+      importe_duplicado: eur(vinculados.reduce((s, t) => s + t.importe, 0)),
+      // CANDIDATOS: coinciden en contenido pero SIN vínculo documental. NO se tocan
+      // (pueden ser ventas legítimas idénticas); se señalan para revisión manual.
+      candidatos: candidatos.map((t) => ({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) })),
+      se_queda: { ref: se_queda.ref, tipo: se_queda.tipo, hora: se_queda.hora },
+      tickets: survivors.concat(vinculados).concat(candidatos).map((t) => ({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) })),
     });
   });
   duplicados.sort((a, b) => b.importe_duplicado - a.importe_duplicado);
@@ -197,27 +241,34 @@ async function limpiarDuplicados(dia, usuario, now = Date.now()) {
   const tk = {};
   todas.forEach((v) => {
     if (String(v.fecha || "").slice(0, 10) !== d) return;
-    const key = v.doc_clave;
-    if (!key) return; // sin documento no se concilia (no se toca)
-    if (!tk[key]) tk[key] = { clave: key, tipo: etiquetaTipo(v, docsById), hora: hhmm(v.fecha), importe: 0, lineas: [], ventaIds: [] };
+    // agora.7: las ventas HEREDADAS sin doc_clave también entran en la conciliación,
+    // cada una como su propio ticket. NUNCA se borran solas (sin doc no pueden tener
+    // vínculo documental → caen siempre en 'candidatos'), pero así quedan dentro del
+    // cuadre fino y se SEÑALAN si coinciden en contenido con un documento real.
+    const key = v.doc_clave || `(sin doc) ${v.id}`;
+    if (!tk[key]) tk[key] = { clave: key, serie: v.doc_serie, number: v.doc_number, tipo: etiquetaTipo(v, docsById), hora: hhmm(v.fecha), importe: 0, lineas: [], ventaIds: [], sin_doc: !v.doc_clave };
     tk[key].importe += Number(v.importe) || 0;
     tk[key].lineas.push({ producto: v.producto, producto_id: v.producto_id, cantidad: Number(v.cantidad) || 0 });
     tk[key].ventaIds.push(v.id);
   });
 
-  // Firma por ticket → grupos; en cada grupo cruzado, se queda el de mayor prioridad.
+  // Firma por ticket → grupos. SOLO se elimina un inferior (albarán/pedido) cuando
+  // una factura superviviente lo REFERENCIA explícitamente (vínculo documental ·
+  // agora.1). Los que solo coinciden en contenido quedan como CANDIDATOS y NO se
+  // tocan: dos ventas idénticas pueden ser legítimas.
   const porFirma = {};
   Object.values(tk).forEach((t) => { const f = firmaTicket(t.lineas, t.importe); (porFirma[f] = porFirma[f] || []).push(t); });
   const clavesAEliminar = [];
+  const candidatosSinVinculo = [];
   Object.values(porFirma).forEach((grupo) => {
-    const tipos = new Set(grupo.map((t) => t.tipo));
-    if (grupo.length < 2 || tipos.size < 2) return;
-    const ordenado = grupo.slice().sort((a, b) => prioTipo(b.tipo) - prioTipo(a.tipo) || (a.hora || "").localeCompare(b.hora || ""));
-    ordenado.slice(1).forEach((t) => clavesAEliminar.push(t.clave));
+    const { vinculados, candidatos } = clasificarGrupo(grupo, docsById);
+    vinculados.forEach((t) => clavesAEliminar.push(t.clave));
+    candidatos.forEach((t) => candidatosSinVinculo.push({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) }));
   });
 
   if (!clavesAEliminar.length) {
-    return { dia: d, eliminados: 0, importe_quitado: 0, unidades_quitadas: 0, tickets_quitados: 0, stock_repuesto: 0 };
+    // Nada con vínculo documental → no se borra nada; se devuelven los candidatos.
+    return { dia: d, eliminados: 0, importe_quitado: 0, unidades_quitadas: 0, tickets_quitados: 0, stock_repuesto: 0, candidatos: candidatosSinVinculo, nota: candidatosSinVinculo.length ? "Hay documentos con el mismo contenido pero SIN vínculo documental: no se eliminan (pueden ser ventas legítimas). Revísalos manualmente." : undefined };
   }
   const setElim = new Set(clavesAEliminar);
 
@@ -271,7 +322,8 @@ async function limpiarDuplicados(dia, usuario, now = Date.now()) {
     importe_quitado: eur(importeQuitado),
     unidades_quitadas: Math.round(unidadesQuitadas * 100) / 100,
     stock_repuesto: Math.round(stockRepuesto * 100) / 100,
+    candidatos: candidatosSinVinculo, // coinciden en contenido pero sin vínculo: NO se tocaron
   };
 }
 
-module.exports = { conciliacionDia, limpiarDuplicados };
+module.exports = { conciliacionDia, limpiarDuplicados, clasificarGrupo, tieneVinculo };

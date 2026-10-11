@@ -45,8 +45,10 @@ test("crea los artículos del catálogo con nombre exacto y sin escandallo", () 
 test("el motor de coste usa el coste directo cuando existe (costing)", () => {
   const { margenProducto } = require("../backend/costing");
   const m = margenProducto({ precio_venta: 3.50, coste_materia: 0.99, iva: 0.10 }, {});
-  assert.ok(Math.abs(m.coste - 1.089) < 1e-6, "coste con IVA = 0,99 × 1,10");
-  assert.ok(m.margen_bruto > 0.6 && m.margen_bruto < 0.72, "margen ≈ 69 %");
+  assert.ok(Math.abs(m.coste - 0.99) < 1e-6, "coste NETO = 0,99 (igual que el P&L)");
+  assert.ok(Math.abs(m.precio_neto - 3.1818) < 1e-3, "precio neto = 3,50 / 1,10");
+  assert.ok(m.margen_bruto > 0.6 && m.margen_bruto < 0.72, "margen ≈ 69 % (ratio invariante)");
+  assert.ok(Math.abs(m.margen_euros - 2.19) < 0.02, "margen NETO en € = 3,1818 − 0,99 ≈ 2,19");
 });
 
 test("Matcha latte del catálogo (id 25) no se recrea desde CATALOGO", () => {

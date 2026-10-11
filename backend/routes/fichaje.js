@@ -43,12 +43,18 @@ router.get("/", (req, res) => {
 
 // ── FICHAR (verifica el PIN de la persona) ───────────────────────────────────
 router.post("/fichar", express.json(), async (req, res) => {
+  const { limitadorAuth } = require("../seguridad");
+  // Mismo freno de fuerza bruta que el login: el reloj de fichaje era un oráculo
+  // de PIN sin límite (seguridad.2). Solo cuentan los fallos.
+  const espera = limitadorAuth.bloqueado(req);
+  if (espera) return res.status(429).json({ error: "Demasiados intentos. Espera unos minutos.", segundos: espera });
   const { usuario, pin, tipo } = req.body || {};
   const persona = auth.verificarPin(usuario, pin);
   // 422 (no 401): un PIN de fichaje equivocado NO es una sesión caducada. Con 401
   // el front cerraría la sesión de la tablet y volvería al inicio; con 422 solo
   // avisa en el propio reloj y se puede reintentar.
-  if (!persona) return res.status(422).json({ error: "PIN incorrecto. Inténtalo de nuevo." });
+  if (!persona) { limitadorAuth.registraFallo(req); return res.status(422).json({ error: "PIN incorrecto. Inténtalo de nuevo." }); }
+  limitadorAuth.registraExito(req);
   const fecha = hoyYmd();
   const now = Date.now();
   const evs = fichaje.eventosDe(store.readAll("fichajes"), persona.nombre, fecha);

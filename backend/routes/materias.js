@@ -2,6 +2,7 @@ const express = require("express");
 const store = require("../data-store");
 const { consumoDiarioPorMateria, autonomiaDe } = require("../autonomia");
 const { TAXONOMIA, MACROS, DEFECTO, clasificar, categoriaDe } = require("../clasificador");
+const { valorStockMateria } = require("../costing"); // valor de stock por ítem, fuente única (dinero.10)
 
 const router = express.Router();
 
@@ -51,7 +52,7 @@ function decorate(m, proveedores, mapaConsumo) {
     consumo_diario: aut.consumo_diario,
     autonomia_dias: aut.autonomia_dias,
     autonomia_fuente: aut.fuente,
-    valor_stock_actual: Math.round((Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0) * 100) / 100,
+    valor_stock_actual: valorStockMateria(m),
     proveedor_nombre: proveedor ? proveedor.nombre : "Sin proveedor asignado",
     proveedor_whatsapp: proveedor ? proveedor.whatsapp : null,
   };

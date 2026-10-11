@@ -22,7 +22,7 @@ function cajonDe(m) {
 }
 
 function valorMateria(m) {
-  return (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0);
+  return costing.valorStockRaw(m); // fuente única (dinero.10)
 }
 
 // Materias que llevan >= `dias` sin salida de stock (sin venta/consumo/merma).

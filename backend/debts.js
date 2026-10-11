@@ -64,6 +64,39 @@ function interesesEstimados(d, now = Date.now()) {
   return Math.max(0, eur(cuota * n - pend));
 }
 
+// Tipo de interés ANUAL de una deuda, si está dado (interest_rate / tin / tae).
+// Admite 7 (→ 0,07) o 0,07. null si no hay dato válido.
+function tipoAnual(d) {
+  const v = d.interest_rate != null ? d.interest_rate : (d.tin != null ? d.tin : d.tae);
+  if (v == null || v === "") return null;
+  let r = Number(v);
+  if (!Number.isFinite(r) || r < 0) return null;
+  if (r > 1) r = r / 100;
+  return r;
+}
+
+// Interés MENSUAL estimado de UNA deuda, SIN porcentajes fijos arbitrarios (dinero.6):
+//   · si trae tipo de interés anual → pendiente × tipo / 12 (lo más preciso);
+//   · si no → se deriva de la amortización real: intereses totales restantes ÷
+//     cuotas restantes (del propio calendario de la deuda).
+// Sustituye el antiguo "30 % de la cuota" plano. Es una estimación, pero basada en
+// los datos reales de cada deuda, no en una constante inventada.
+function interesMensual(d, now = Date.now()) {
+  if (!activa(d)) return 0;
+  const pend = Number(d.outstanding_amount) || 0;
+  const tasa = tipoAnual(d);
+  if (tasa != null && pend > 0) return eur((pend * tasa) / 12);
+  const n = cuotasRestantes(d, now);
+  const tot = interesesEstimados(d, now);
+  if (n && n > 0 && tot > 0) return eur(tot / n);
+  return 0;
+}
+
+// Interés mensual estimado del conjunto de deudas activas.
+function interesMensualTotal(now = Date.now(), lista = null) {
+  return eur((lista || store.readAll("debts")).reduce((s, d) => s + interesMensual(d, now), 0));
+}
+
 function decorar(d, now = Date.now()) {
   return {
     ...d,
@@ -88,6 +121,8 @@ function resumen(now = Date.now(), lista = null) {
     deuda_total: total,
     cuota_mensual_total: cuotaMensual,
     intereses_estimados: intereses,
+    interes_mensual_estimado: interesMensualTotal(now, activas), // dinero.6: sin 30% plano
+
     proximo_vencimiento: vencimientos.length ? vencimientos[0] : null,
     fecha_final_estimada: finales.length ? finales[0] : null,
     num_deudas: activas.length,
@@ -95,4 +130,4 @@ function resumen(now = Date.now(), lista = null) {
   };
 }
 
-module.exports = { TIPOS, TIPO_LABEL, activa, cuotasRestantes, proximoVencimiento, interesesEstimados, decorar, resumen, eur };
+module.exports = { TIPOS, TIPO_LABEL, activa, cuotasRestantes, proximoVencimiento, interesesEstimados, tipoAnual, interesMensual, interesMensualTotal, decorar, resumen, eur };

@@ -59,9 +59,28 @@ router.post("/agora-import", express.json({ limit: "8mb" }), async (req, res) =>
   }
 });
 
-// GET /api/ventas  — ventas importadas (más recientes primero)
+// GET /api/ventas  — ventas importadas (más recientes primero).
+// Paginación OPCIONAL (rendimiento.6): ?limit&offset y filtro ?desde&hasta (YYYY-MM-DD).
+// Sin parámetros se mantiene el comportamiento de siempre (todas), para no romper el
+// front; con ?limit devuelve { total, offset, limit, ventas } sin cargar todo el array.
 router.get("/", (req, res) => {
-  res.json(store.readAll("ventas").slice().reverse());
+  const todas = store.readAll("ventas").slice().reverse();
+  const desde = req.query.desde ? String(req.query.desde).slice(0, 10) : null;
+  const hasta = req.query.hasta ? String(req.query.hasta).slice(0, 10) : null;
+  let lista = todas;
+  if (desde || hasta) {
+    lista = todas.filter((v) => {
+      const d = String(v.fecha || "").slice(0, 10);
+      if (desde && d < desde) return false;
+      if (hasta && d > hasta) return false;
+      return true;
+    });
+  }
+  const tieneLimite = req.query.limit != null;
+  if (!tieneLimite && !desde && !hasta) return res.json(lista); // compat: todas
+  const limit = tieneLimite ? Math.max(1, Math.min(2000, parseInt(req.query.limit, 10) || 100)) : lista.length;
+  const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+  res.json({ total: lista.length, offset, limit, ventas: lista.slice(offset, offset + limit) });
 });
 
 // GET /api/ventas/sincronizacion — estado de la última sync con Ágora

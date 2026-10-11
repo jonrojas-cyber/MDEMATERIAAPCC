@@ -352,9 +352,16 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .card-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
+/* Accesibilidad (frontend.2): foco visible SOLO por teclado y respeto a quien
+   pide menos movimiento. Aditivo: no cambia el aspecto con ratón. */
+:focus-visible { outline: 2px solid var(--olive); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+
 .btn-primary {
   background: var(--ink);
-  color: var(--ink);
+  color: var(--cream); /* antes var(--ink): texto del color del fondo = invisible (frontend.11) */
   border: none;
   padding: 10px 16px;
   font-size: 12px;
@@ -1018,13 +1025,17 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* Botón de inicio en el centro de la barra (antes iba el imagotipo). */
 .topbar-inicio { font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .12em;
   text-transform: lowercase; color: var(--oliveink); background: none; border: 1px solid var(--line);
-  border-radius: 100px; padding: 7px 18px; cursor: pointer; transition: border-color .15s, color .15s; }
+  border-radius: 100px; padding: 7px 18px; cursor: pointer; transition: border-color .15s, color .15s;
+  /* Objetivo táctil mínimo 44px (frontend.6): sin agrandar el aspecto, solo el área. */
+  min-height: 44px; display: inline-flex; align-items: center; }
 .topbar-inicio:hover { color: var(--ink); border-color: var(--oliveink); }
 .topbar-inicio:focus-visible { outline: 2px solid var(--sev-info); outline-offset: 2px; }
 /* Ajustes · arriba a la derecha, siempre visible (también en móvil). */
 .topbar-aj { font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .06em;
   text-transform: lowercase; color: var(--oliveink); background: none; border: 1px solid var(--line);
-  border-radius: 100px; padding: 7px 15px; cursor: pointer; transition: border-color .15s, color .15s; }
+  border-radius: 100px; padding: 7px 15px; cursor: pointer; transition: border-color .15s, color .15s;
+  /* Objetivo táctil mínimo 44px (frontend.6). */
+  min-height: 44px; display: inline-flex; align-items: center; }
 .topbar-aj:hover { color: var(--ink); border-color: var(--oliveink); }
 .topbar-aj:focus-visible { outline: 2px solid var(--sev-info); outline-offset: 2px; }
 
@@ -1042,8 +1053,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .topbar-section { font-family: var(--font); font-size: 12px;
   letter-spacing: .18em; text-transform: lowercase; color: var(--oliveink); flex: 0; }
 .topbar-back { background: none; border: none; color: var(--oliveink); font-size: 17px;
-  width: auto; padding: 0 4px 0 0; display: none; }
-.topbar-back.visible { display: block; }
+  /* Objetivo táctil mínimo 44x44px (frontend.6): el botón atrás era ~20px. */
+  min-width: 44px; min-height: 44px; padding: 0 8px; display: none; align-items: center; justify-content: center; }
+.topbar-back.visible { display: inline-flex; }
 .topbar-back:hover { opacity: .65; }
 .topbar .user-chip { border-color: #5b6149; color: var(--oliveink); }
 .topbar .user-chip:hover { background: #5b6149; }
@@ -1191,20 +1203,11 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* ── LAB · índice de producción (bebidas / comida) ───────────────────────────
    Lenguaje de marca: panel de keyline, Courier en minúsculas, imagotipo de tres
    barras como marca, notación de laboratorio. Sin iconos infantiles. Restraint. */
-.lab-wrap { display: flex; flex-direction: column; gap: 12px; }
-.lab-panel { position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 24px 22px;
-  transition: border-color .16s ease, background .16s ease; }
-.lab-panel:hover { border-color: var(--ink); background: var(--olive-light); }
+/* (frontend.8) .lab-wrap/.lab-panel/.lab-title/.lab-rule/.lab-list/.lab-arrow
+   retiradas: solo las usaba labPanel(), que era código muerto. */
 .lab-mark { display: inline-block; width: 15px; height: 26px; background: var(--olive);
   -webkit-mask: var(--ig-mask) center/contain no-repeat; mask: var(--ig-mask) center/contain no-repeat; }
 .lab-eyebrow { font-size: 9.5px; letter-spacing: .22em; text-transform: lowercase; color: var(--muted); margin-top: 12px; }
-.lab-title { font-family: var(--font); font-size: clamp(27px, 8.5vw, 34px); font-weight: 700; text-transform: lowercase;
-  letter-spacing: -.015em; line-height: 1; color: var(--ink); margin-top: 7px; }
-.lab-rule { border-top: 1px solid var(--line); margin: 15px 0 11px; }
-.lab-list { font-size: 12px; color: var(--muted); letter-spacing: .03em; line-height: 1.55; }
-.lab-arrow { position: absolute; top: 24px; right: 22px; color: var(--muted); font-size: 17px; line-height: 1; }
-.lab-panel:hover .lab-arrow { color: var(--ink); }
 /* Pie de utilidades: discreto, tipográfico, nunca cajas. */
 .lab-foot { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line);
   display: flex; flex-wrap: wrap; gap: 7px 18px; align-items: center; }
@@ -1366,7 +1369,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .apstep { display: flex; align-items: flex-start; gap: 12px; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
   padding: 14px 2px; background: none; cursor: pointer; font-family: var(--sans); color: var(--ink); }
 .apstep-check { flex: 0 0 auto; width: 21px; height: 21px; border: 1.5px solid var(--line); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-top: 1px; color: transparent; }
-.apstep.done .apstep-check { background: var(--ink); border-color: var(--ink); color: var(--ink); }
+.apstep.done .apstep-check { background: var(--ink); border-color: var(--ink); color: var(--cream); } /* el ✓ era --ink sobre --ink = invisible (frontend.10) */
 .apstep.done .apstep-t { text-decoration: line-through; color: var(--muted); }
 .apstep-ico { font-size: 17px; flex: 0 0 auto; filter: grayscale(1); opacity: .9; }
 .apstep-body { flex: 1; min-width: 0; }
@@ -1561,7 +1564,7 @@ button.cc-card:hover { border-color: var(--ink); }
 .btn-primary, .btn-warn {
   background: var(--olive) !important;
   border: 1px solid var(--olive) !important;
-  color: #23281E !important;
+  color: var(--cream) !important; /* antes #23281E sobre olive ≈ 1.5:1 (ilegible); crema sobre olive ≈ 7:1 (frontend.1) */
   text-shadow: none !important;
   box-shadow: none !important;
 }
@@ -1826,7 +1829,10 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-seg { display: flex; border: 1px solid var(--line); margin-bottom: 12px; }
 .lim-seg button { flex: 1; font-size: 10px; letter-spacing: .12em; text-transform: lowercase; padding: 9px; background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--muted); cursor: pointer; }
 /* LAB · cocina (sándwiches y tostas): pastilla de estado y barras de perfil sensorial. */
-.lab-estado { font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:#1a1f16; padding:5px 11px; border-radius:999px; align-self:flex-start; white-space:nowrap; }
+/* Texto BLANCO sobre fondos de estado suficientemente oscuros: contraste AA ≥4.5:1
+   en los cuatro estados (frontend.5). Antes era texto casi negro (#1a1f16) sobre
+   fondos medios/oscuros y 'Aprobado'/'En carta' bajaban de 2.5:1. */
+.lab-estado { font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:#fff; padding:5px 11px; border-radius:999px; align-self:flex-start; white-space:nowrap; }
 .lab-perf { display:flex; align-items:center; gap:10px; margin:5px 0; }
 .lab-perf span { font-size:10px; letter-spacing:.1em; text-transform:lowercase; color:var(--muted); width:76px; flex:0 0 auto; }
 .lab-perf i { flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
@@ -2568,7 +2574,18 @@ async function api(path, opts = {}) {
   // marcamos como application/json para que el servidor (express.json) lo lea.
   // Los cuerpos no-string (FormData/blob) se dejan intactos.
   if (opts.body && typeof opts.body === "string" && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
-  const r = await fetch(API + path, Object.assign({}, opts, { headers }));
+  let r;
+  try {
+    r = await fetch(API + path, Object.assign({}, opts, { headers }));
+  } catch (e) {
+    // fetch lanza en fallo de RED/offline (no es un error HTTP). Mensaje en
+    // español y claro: el cambio NO se guardó (no fingimos éxito). No se reintenta
+    // solo (la operación puede no ser idempotente · frontend.3).
+    const sinRed = (typeof navigator !== "undefined" && navigator.onLine === false);
+    throw new Error(sinRed
+      ? "Sin conexión a internet. Revisa el wifi o los datos; tu cambio NO se ha guardado."
+      : "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo (no se ha guardado).");
+  }
   if (r.status === 401) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Sesión expirada"); }
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
@@ -2882,7 +2899,7 @@ async function irA_tareas(){
     html+=decGruposHTML(dec);
     html+=kpiStripHTML(dec.kpis)+hoyHTML(dec.hoy);
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 // Compatibilidad con llamadas antiguas.
 function irA_decisiones(){ return irA_tareas(); }
@@ -2916,7 +2933,7 @@ async function irA_appcc(){
         <span class="lab-foot-lb">nota</span>
         <span style="font-size:11px;color:var(--muted);line-height:1.5">lotes, caducidades, trazabilidad por qr, temperaturas, recepciones, calendario y auditoría. limpieza e incidencias en la siguiente fase.</span>
       </div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 function almaccPronto(){ alert("Disponible en la siguiente fase de APPCC."); }
 
@@ -2936,7 +2953,7 @@ async function irA_calendario(){
 async function cargarCalendario(){
   setInner(`<div class="empty">Cargando calendario…</div>`);
   try{ window._cal=await api("/calendario?year="+window._calYear); renderCalendario(); }
-  catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function calYear(delta){ window._calYear+=delta; window._calDia=null; cargarCalendario(); }
 function calMes(m){ window._calMes=m; window._calDia=null; renderCalendario(); }
@@ -2997,7 +3014,7 @@ async function irA_auditoria(){
     const d = await api("/auditoria?limit=200");
     window._aud = { eventos: d.eventos || [], acciones: d.acciones || [], filtro: "" };
     renderAuditoria();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function renderAuditoria(){
   const s = window._aud; if(!s) return;
@@ -3039,7 +3056,7 @@ async function irA_etiquetas(){
         card(`${esc(x.lote_id||"—")}`, `${esc(x.usuario||"")}${x.fecha?` · ${fmt(x.fecha)}`:""}${x.impresora?` · ${esc(x.impresora)}`:""}`));
     }
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
@@ -3917,7 +3934,7 @@ async function loadHome() {
         </button>`:""}
       </div>`;
   } catch(e) {
-    el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
+    el("home-content").innerHTML = `<div class="err">${esc(e.message)}</div>`;
   }
 }
 
@@ -3943,16 +3960,8 @@ function mbdsNum(x,d){ return (x==null||x==="")?"—":(typeof x==="number"?(d!=n
 // Helper de tile reutilizable por los hubs de Lab.
 // Panel de categoría (bebidas/comida): imagotipo de tres barras + título en
 // minúsculas + notación del contenido. Lenguaje de laboratorio, sin iconos.
-function labPanel(titulo, lista, onclick){
-  return `<button class="lab-panel" onclick="${onclick}">
-    <span class="lab-arrow" aria-hidden="true">→</span>
-    <span class="lab-mark" aria-hidden="true"></span>
-    <div class="lab-eyebrow">producción</div>
-    <div class="lab-title">${titulo}</div>
-    <div class="lab-rule"></div>
-    <div class="lab-list">${lista}</div>
-  </button>`;
-}
+// (frontend.8) labPanel() se eliminó: era código muerto (definido y nunca invocado);
+// su CSS .lab-panel/.lab-wrap/.lab-title/.lab-rule/.lab-list/.lab-arrow también se retiró.
 // Fila de sub-hub (una línea de producción o una elaboración).
 function labRow(nombre, sub, onclick, pend){
   return `<button class="lab-row${pend?' pend':''}" onclick="${onclick}">
@@ -4049,7 +4058,7 @@ async function irA_mbds(){
       </div>
       <div class="section-label">Bebidas</div>
       ${bebidas.length?cards:`<div class="empty">Aún no hay bebidas. ${admin?"Crea la primera.":""}</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function verBebidaMBDS(id){
@@ -4099,7 +4108,7 @@ async function verBebidaMBDS(id){
       <div class="section-label">Validación Materia</div><div class="cc-card">${chk}${corr?`<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px;"><div class="cc-label">Corrección propuesta</div>${corr}</div>`:""}</div>
       ${receta}${proceso}${eco}${catas}${lotes}
       ${admin?`<div class="card-actions" style="margin-top:12px;"><button class="btn-ghost" onclick="formBebidaMBDS('${b.id}')">Editar bebida</button></div>`:""}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function mbdsIngNombre(id){ const l=window._mbdsIng||[]; const i=l.find(x=>x.id===id); return i?i.nombre:id; }
 
@@ -4898,11 +4907,19 @@ function svtStart(min, label){
   // AUNQUE la app esté cerrada o en segundo plano. Requiere avisos activados.
   svtEnsurePush();
   api("/avisos/temporizador",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({label,minutos:min})})
-    .then(r=>{ t.pushId = r.id; }).catch(()=>{});
+    .then(r=>{
+      t.pushId = r.id;
+      // pwa.6: si se PARÓ antes de recibir el id del servidor, cancelamos ahora
+      // (si no, el aviso 'retira' quedaría vivo en el backend y dispararía su push).
+      if(t.cancelado && t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+    }).catch(()=>{});
 }
 function svtStop(id){
   const t = (window._svt||[]).find(x=>x.id===id);
-  if(t && t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+  if(t){
+    t.cancelado = true; // marca la cancelación aunque el id aún no haya llegado (pwa.6)
+    if(t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+  }
   window._svt = (window._svt||[]).filter(c=>c.id!==id); svtRender();
 }
 // Asegura la suscripción push del dispositivo (para el aviso con la app cerrada).
@@ -5312,11 +5329,14 @@ const LAB_EXTRAS_TOSTA = [
   { n:"Extra jamón braseado", q:"40 g", c:0.39, pvp:1.50 },
   { n:"Extra aguacate",       q:"50 g", c:0.21, pvp:1.00 },
 ];
+// Colores de estado con texto BLANCO encima: todos ≥4.5:1 (AA) · frontend.5.
+// prueba y archivado se oscurecieron (antes #c79a3a y var(--muted) no daban AA con
+// texto blanco); aprobado (olivo 9.8:1) y carta (azul 6.6:1) ya cumplían.
 const LAB_ESTADOS = {
-  prueba:    { t:"Prueba",    c:"#c79a3a" },
+  prueba:    { t:"Prueba",    c:"#8a5a12" },
   aprobado:  { t:"Aprobado",  c:"var(--olive)" },
   carta:     { t:"En carta",  c:"#3f6079" },
-  archivado: { t:"Archivado", c:"var(--muted)" },
+  archivado: { t:"Archivado", c:"#5c5a52" },
 };
 const LAB_DATA = {
   sandwich: {
@@ -6790,7 +6810,7 @@ async function irA_mbdsCordiales(){
       <div class="card-meta" style="margin-top:4px;">${esc(c.descripcion||"")}</div>
       ${admin?`<div class="card-actions"><button class="btn-ghost" onclick="formCordialMBDS('${c.id}')">Editar</button></div>`:""}</div>`; }).join("");
     setInner(`${admin?`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formCordialMBDS()">+ Nuevo cordial</button></div>`:""}${cors.length?cards:`<div class="empty">Aún no hay cordiales.</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function irA_mbdsBiblioteca(){
@@ -6801,7 +6821,7 @@ async function irA_mbdsBiblioteca(){
     ings.forEach(i=>{ const f=i.funcion_sensorial||"Otros"; (grupos[f]=grupos[f]||[]).push(i); });
     const html=Object.keys(grupos).sort().map(f=>`<div class="section-label">${esc(f)}</div><div class="cc-card">${grupos[f].map(i=>`<div class="cc-line"><span><b>${esc(i.nombre)}</b> <span style="color:var(--muted)">${esc(i.categoria||"")}</span><br><span class="cc-mini">${esc(i.notas_sensoriales||"")}</span></span><span class="cc-mini" style="text-align:right;">${i.abv?`${i.abv}% · `:""}${i.brix?`${i.brix}°Bx · `:""}${i.ph?`pH ${i.ph}`:""}${admin&&i.coste?`<br>${eur4(i.coste)} €/kg`:""}</span></div>`).join("")}</div>`).join("");
     setInner(`${admin?`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formIngredienteMBDS()">+ Nuevo ingrediente</button></div>`:""}<div class="cc-mini" style="margin-bottom:10px;">Cada ingrediente tiene una FUNCIÓN sensorial, no solo un nombre.</div>${html||`<div class="empty">Biblioteca vacía.</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── Cata ─────────────────────────────────────────────────────────────────────
@@ -6876,7 +6896,7 @@ async function formIngredienteMBDS(id){
     </div>
     <div class="card-actions"><button class="btn-primary" onclick="guardarIngredienteMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbdsBiblioteca()">Cancelar</button></div>
     <div id="ig-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function guardarIngredienteMBDS(btn){
   const body={nombre:el("ig-nombre").value.trim(),categoria:el("ig-cat").value,funcion_sensorial:el("ig-fun").value,coste:el("ig-coste").value,abv:el("ig-abv").value,brix:el("ig-brix").value,ph:el("ig-ph").value,notas_sensoriales:el("ig-notas").value,proveedor:el("ig-prov").value};
@@ -6913,7 +6933,7 @@ async function formCordialMBDS(id){
     </div>
     <div class="card-actions"><button class="btn-primary" onclick="guardarCordialMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbdsCordiales()">Cancelar</button></div>
     <div id="cor-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function mbdsRecogerIngs(cls){ return [...document.querySelectorAll("."+cls+"-ing")].map(sel=>{ const row=sel.parentNode; const cant=Number(row.querySelector("."+cls+"-cant").value)||0; return {ingrediente_id:sel.value,cantidad:cant}; }).filter(x=>x.ingrediente_id&&x.cantidad>0); }
 async function guardarCordialMBDS(btn){
@@ -6956,7 +6976,7 @@ async function formBebidaMBDS(id){
     <div id="beb-calc"></div>
     <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="guardarBebidaMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbds()">Cancelar</button></div>
     <div id="beb-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function mbdsBebBody(){
   return {nombre:el("beb-nombre").value.trim(),familia:el("beb-fam").value.trim(),version:el("beb-ver").value,cordial_id:el("beb-cor").value,cordial_ml:el("beb-corml").value,volumen_total:el("beb-vol").value,co2:el("beb-co2").value,pvp:el("beb-pvp").value,componentes:[...document.querySelectorAll(".comp-ing")].map(s=>({ingrediente_id:s.value,ml:Number(s.parentNode.querySelector(".comp-cant").value)||0})).filter(x=>x.ingrediente_id&&x.ml>0)};
@@ -6971,7 +6991,7 @@ async function calcularBebidaMBDS(){
     out.innerHTML=`<div class="cc-card" style="margin-top:8px;"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="cc-label">Resultado</div>${mbdsAptaBadge(v)}</div>
       <div class="cc-mini">ABV ${mbdsNum(c.abv,1)}% · °Brix ${mbdsNum(c.brix,1)} · pH ${mbdsNum(c.ph,2)} · sal ${mbdsNum(c.salinidad,2)}% · coste/serv ${ccEur(c.coste_por_servicio)} · margen ${c.margen_pct!=null?c.margen_pct+"%":"—"}</div>
       <div style="margin-top:6px;">${chk}</div>${corr?`<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px;">${corr}</div>`:""}</div>`;
-  }catch(e){ if(out) out.innerHTML=`<div class="err">${e.message}</div>`; }
+  }catch(e){ if(out) out.innerHTML=`<div class="err">${esc(e.message)}</div>`; }
 }
 async function guardarBebidaMBDS(btn){
   const body=mbdsBebBody();
@@ -6992,7 +7012,7 @@ async function irA_rutina(rutina){
     window._aperPasos=(d&&d.pasos)||{};
     window._aperResp=(d&&d.responsables)||[];
     renderRutina();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function irA_apertura(){ return irA_rutina("apertura"); }
 function irA_cierre(){ return irA_rutina("cierre"); }
@@ -7066,7 +7086,7 @@ async function irA_recetarioCafe(){
     }).join("") : `<div class="empty">Aún no hay cafés en el recetario.</div>`;
     if(esAdmin) html+=`<div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="formCafe()">Añadir café</button></div>`;
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function formCafe(id){
   let c={nombre:"",origen:"",lado:"",tiempo_extraccion_seg:"",dosis_g:"",salida_g:"",molienda:"",temperatura:"",notas:""};
@@ -7137,7 +7157,7 @@ async function irA_temperaturas(){
       </div>`;
     }).join("");
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function guardarTemp(i){
   const t=(window._tempTipos||[])[i]; if(!t) return;
@@ -7199,7 +7219,7 @@ async function irA_appccRegistro(dias){
           <div>Firma: ____________________&nbsp;&nbsp;&nbsp;Fecha: ______ / ______ / __________</div>
         </div>
       </div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── INVENTARIO FÍSICO vs TEÓRICO ──────────────────────────────────────────
@@ -7347,7 +7367,7 @@ async function irA_inventario(){
       </div>
       <div id="inv-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>
       ${hist}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function recalcInvFila(input){
   const row=input.closest(".inv-row");
@@ -7413,7 +7433,7 @@ async function irA_categoria(cat) {
       return labRow(esc(m.name), sub, `irA_${id}()`);
     }).join("");
     setInner(`<div class="lab-eyebrow" style="margin:0 0 4px">${esc((c.name||"").toLowerCase())}</div><div class="lab-rows">${rows}</div>`);
-  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+  } catch(e) { setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── PREPARACIONES ─────────────────────────────────────
@@ -7466,7 +7486,7 @@ async function irA_preparaciones() {
       <button class="btn-ghost" onclick="irA_prevision()">Previsión · qué producir por día →</button>
       <button class="btn-ghost" onclick="irA_calendario()">Calendario anual →</button></div>`;
     setInner(html);
-  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+  } catch(e) { setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── PANEL DEL PROPIETARIO · dónde está mi dinero ───────────────────────────
@@ -7556,7 +7576,7 @@ async function irA_panel(){
     html+=`<div class="section-label">Compras por proveedor (30 días)</div>`+
       (p.compras_proveedor.length? svgBarsH(p.compras_proveedor,{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Sin recepciones registradas.</div>`);
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -7588,7 +7608,7 @@ async function irA_centroControl(preset, custom){
     window._ccData=d;
     setInner(ccRender(d));
     ccCargarMermas();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 // Análisis de mermas DENTRO del financiero (no es un apartado aparte): coste del
 // periodo, % evitable, serie diaria, productos más mermados y "cosas extrañas".
@@ -7926,7 +7946,7 @@ async function irA_saludPesos(){
       <div class="card-actions"><button class="btn-primary" onclick="guardarSaludPesos(this)">Guardar pesos</button><button class="btn-ghost" onclick="irA_salud()">Cancelar</button></div>
       <div id="pw-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
     window._pwKeys=Object.keys(d.default);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function guardarSaludPesos(btn){
   const pesos={}; (window._pwKeys||[]).forEach(k=>{ const el2=el("pw-"+k); if(el2) pesos[k]=Number(el2.value)||0; });
@@ -8003,7 +8023,7 @@ async function irA_costesFijos(){
       <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="ccFcForm()">Añadir coste fijo</button> <button class="btn-ghost" onclick="ccPerfilForm()">Perfil operativo</button></div>
       ${d.costes.length?filas:`<div class="empty">Añade tus costes fijos para calcular cuánto cuesta abrir cada día.</div>`}`);
     ccObjetivo();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // Calculadora de objetivo de beneficio: cuánto facturar para ganar X limpio al
@@ -8115,7 +8135,7 @@ async function irA_deuda(){
         <div class="cc-mini">Cuota mensual ${ccEur(d.cuota_mensual_total)} · intereses estimados ${ccEur(d.intereses_estimados)} · ${d.num_deudas} deuda(s)</div></div>
       <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccDebtForm()">Añadir deuda</button></div>
       ${(d.deudas&&d.deudas.length)?filas:`<div class="empty">Aún no hay deudas registradas.</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccDebtForm(id){
   const meta=window._ccDebtMeta||{tipos:[]};
@@ -8172,7 +8192,7 @@ async function irA_activos(){
         <div class="cc-mini">${d.num_activos} activos · ${d.garantias_por_vencer} garantía(s) por vencer</div></div>
       <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccAssetForm()">Añadir activo</button></div>
       ${(d.activos&&d.activos.length)?filas:`<div class="empty">Aún no hay activos registrados. Añade cafetera, neveras, TPV, mobiliario…</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccAssetForm(id){
   const meta=window._ccAssetMeta||{categorias:[]};
@@ -8221,7 +8241,7 @@ async function irA_objetivos(){
     setInner(`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="ccTgtForm()">Añadir objetivo</button></div>
       ${(d.objetivos&&d.objetivos.length)?`<div class="cc-card">${filas}</div>`:`<div class="empty">Añade objetivos para medir el avance real del negocio.</div>`}
       <div class="section-label">Configurar</div><div class="cc-card">${admin||'<div class="cc-mini">Sin objetivos.</div>'}</div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccTgtForm(id){
   const TIPOS=[["ventas","Ventas","eur"],["beneficio","Beneficio","eur"],["ebitda","EBITDA (%)","pct"],["food_cost","Food cost","pct"],["coste_laboral","Coste de personal","pct"],["prime_cost","Prime cost (materia+personal)","pct"],["gastos_fijos","Costes fijos","pct"],["merma","Merma","pct"],["ticket_medio","Ticket medio","eur"],["clientes","Clientes","num"],["reserva_caja","Reserva de caja","eur"]];
@@ -8296,7 +8316,7 @@ async function irA_tesoreria(){
       <div class="cc-card">${cuentas}</div>
       <div class="section-label">Próximos pagos</div><div class="cc-card">${pagos}</div>
       <div class="section-label">Próximos cobros</div><div class="cc-card">${cobros}</div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccAccForm(id){
   let reg={name:"",type:"banco",balance:""};
@@ -8359,7 +8379,7 @@ async function irA_calendarioEmpresa(off){
         <span>${d.inicio} → ${d.fin}</span>
         <button class="btn-ghost" onclick="irA_calendarioEmpresa(${window._ccCalOff+1})">Semana siguiente →</button></div>
       <div class="cc-cal">${dias}</div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── MÁQUINA DEL TIEMPO · ¿cómo estaba mi empresa? ──────────────────────────
@@ -8386,7 +8406,7 @@ async function ccTmConsultar(btn){
       ${linea("Empleados activos",d.empleados_activos)}
       ${linea("Beneficio estimado del año",ccEur(d.beneficio_estimado_anio))}</div>
       <div class="cc-mini" style="margin-top:8px;">${esc(d.nota||'')}</div>`;
-  }catch(e){ el("tm-out").innerHTML=`<div class="err">${e.message}</div>`; }
+  }catch(e){ el("tm-out").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
   finally{ if(btn) btn.disabled=false; }
 }
 
@@ -8404,7 +8424,7 @@ async function irA_timeline(metric, horizon){
     const d=await api(`/executive-dashboard/timeline?metric=${encodeURIComponent(window._tlMetric)}&horizon=${window._tlHorizon}`);
     window._tlData=d;
     setInner(tlRender(d));
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function tlRender(d){
   const chips=(d.metricas||[]).map(m=>`<button class="cc-chip${m.key===d.metric?' on':''}" onclick="irA_timeline('${m.key}',${window._tlHorizon})">${esc(m.label)}</button>`).join("");
@@ -8476,7 +8496,7 @@ async function irA_prevision(wd){
     const p=await api("/prevision?weekday="+wd);
     window._prev=p;
     renderPrevision();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function prevDia(wd){ irA_prevision(wd); }
 function renderPrevision(){
@@ -8770,7 +8790,7 @@ async function irA_lotes(){
         <div class="card-name">${l.codigo} — ${l.nombre||""}${l.caducado?'<span class="badge-low">Caducado</span>':''}</div>
         <div class="card-meta">${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}</div>
       </div>`,"No hay lotes registrados."));
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 async function darDeBaja(id,cb){
@@ -8848,7 +8868,7 @@ async function irA_materias(){
         <div class="alm-grid">${cards}</div>
         <div class="alm-actions"><button class="btn-ghost" onclick="formProducto()">+ Nuevo producto</button></div>
       </div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Búsqueda global instantánea (nombre, código, ubicación o proveedor).
@@ -8864,7 +8884,7 @@ async function almBuscarGlobal(q){
       const items=await api("/materias?q="+encodeURIComponent(q.trim()));
       out.innerHTML=`<div class="section-label">Resultados · ${items.length}</div>`+
         (items.length?items.map(almFila).join(""):'<div class="empty">Nada coincide. Prueba otro nombre o ubicación.</div>');
-    }catch(e){ out.innerHTML=`<div class="err">${e.message}</div>`; }
+    }catch(e){ out.innerHTML=`<div class="err">${esc(e.message)}</div>`; }
   },160);
 }
 
@@ -8884,7 +8904,7 @@ async function irA_almMacro(macroEnc, fromBack){
     setInner(`<button class="btn-ghost" onclick="irA_materias()">← Almacén</button>
       <div class="section-label">${esc(macro)}</div>
       <div class="alm-sublist">${subs}</div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // NIVEL 3 — productos de una subcategoría: buscador + filtros + semáforo.
@@ -8896,7 +8916,7 @@ async function irA_almSub(macroEnc, subEnc, fromBack){
     const items=await api(`/materias?macro=${encodeURIComponent(macro)}&sub=${encodeURIComponent(sub)}`);
     window._almSub={macro,sub,items,filtro:"todos",q:""};
     renderAlmSub();
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 function renderAlmSub(){
   const s=window._almSub; if(!s) return;
@@ -9004,7 +9024,7 @@ async function formProducto(id, macroEnc, subEnc){
         ${f("Observaciones", `<textarea id="prod-obs" rows="2" placeholder="Notas, alérgenos, conservación…">${m.observaciones?esc(m.observaciones):""}</textarea>`)}
         <div class="card-actions"><button class="btn-primary" onclick="guardarProducto(${id?`'${id}'`:"null"})">${id?"Guardar cambios":"Crear producto"}</button></div>
       </div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 async function elegirFotoProdForm(input){
@@ -9070,7 +9090,7 @@ async function irA_revisiones(){
       return card(t.tipo,"",`<button class="btn-ghost" onclick="regRev('${t.tipo}','Realizada')">Marcar realizada</button>`);
     }).join("");
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 async function regRev(tipo,valor){
@@ -9134,7 +9154,7 @@ async function irA_ajustes(){
       `${a.motivo} · ${a.coste_estimado.toFixed(2)} € · ${a.responsable} · ${fmt(a.fecha)}`
     ),"Sin ajustes.");
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 function ajTipo(t){
@@ -9388,7 +9408,7 @@ async function irA_proveedores(){
       </div>`;
     }).join("")+`</div>`;
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Filtra en vivo las tarjetas de proveedor por nombre, CIF, categoría o contacto.
@@ -9643,7 +9663,7 @@ async function irA_productosProveedor(provId,mes){
     }).join("");
 
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 function calcPrecioProd(){
@@ -9801,7 +9821,7 @@ async function irA_precioProducto(prodId,provId){
       </div>
       <div class="section-label">Histórico de precios</div>
       ${histHtml}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function elegirDocPrecio(input){
@@ -9838,7 +9858,7 @@ async function irA_informeCompras(){
     const [provs]=await Promise.all([api("/proveedores").catch(()=>[])]);
     window._infcProvs=provs;
     infcRender();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function infcRender(){
   const s=window._infc, provs=window._infcProvs||[];
@@ -9880,7 +9900,7 @@ async function infcGenerar(btn){
   if(s.proveedor_id) qs.set("proveedor_id",s.proveedor_id); if(s.categoria) qs.set("categoria",s.categoria);
   if(btn) btn.disabled=true;
   try{ s.datos=await api("/compras-informe?"+qs.toString()); infcRender(); }
-  catch(e){ if(btn) btn.disabled=false; const scr=el("screen-inner"); if(scr) scr.insertAdjacentHTML("beforeend",`<div class="err">${e.message}</div>`); }
+  catch(e){ if(btn) btn.disabled=false; const scr=el("screen-inner"); if(scr) scr.insertAdjacentHTML("beforeend",`<div class="err">${esc(e.message)}</div>`); }
 }
 function infcExportarCSV(){
   const d=window._infc&&window._infc.datos; if(!d) return;
@@ -11411,7 +11431,7 @@ async function irA_recepcion(pre){
     }
     // Indicador claro de si el lector automático (OCR) está activado en el servidor.
     mostrarEstadoLector();
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 // Abre la recepción ya enfocada en un pedido concreto (proveedor preseleccionado).
 function recibirPedido(pedidoId, proveedorId, codigo){
@@ -11452,7 +11472,7 @@ async function irA_archivo(){
         </div>
       </div>`).join("");
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // Descarga el PDF del trimestre con la sesión (token), para enviar a la gestoría.
@@ -12030,7 +12050,7 @@ async function irA_ventas(){
       </div>`;
     setInner(html);
     if(mbdsEsAdmin()) conciliacionRender();
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // ── CONCILIACIÓN CON ÁGORA · cuadrar el total al céntimo (solo admin) ──
@@ -12043,11 +12063,11 @@ async function conciliacionRender(dia){
   try{
     const c=await api("/ventas/conciliacion"+(dia?("?dia="+encodeURIComponent(dia)):""));
     window._conc=c;
-    const dupBloque = (c.total_duplicado>0) ? `
+    const dupBloque = ((c.duplicados&&c.duplicados.length)||c.total_duplicado>0) ? `
       <div class="card" style="border-color:var(--alert);">
         <div class="card-name" style="color:var(--alert);">Doble conteo detectado: ${fmtEur(c.total_duplicado,"€")}</div>
-        <div class="card-meta">La misma venta aparece bajo varios tipos de documento (p. ej. un <b>albarán</b> que luego se <b>facturó</b>). Eso infla el total. Se queda la factura y se quita el resto.</div>
-        ${c.duplicados.slice(0,12).map(d=>`<div class="card-meta" style="margin-top:6px;">· ${fmtEur(d.importe_unitario,"€")} × ${d.veces}: ${d.tickets.map(t=>`${esc(t.tipo)} ${esc(t.ref)}${t.hora?" ("+t.hora+")":""}`).join(" = ")} <span style="color:var(--alert)">→ sobra ${fmtEur(d.importe_duplicado,"€")}</span></div>`).join("")}
+        <div class="card-meta">La misma venta aparece bajo varios tipos de documento. Solo se quita el albarán cuando la <b>factura lo referencia</b> (vínculo documental). Si solo coinciden en contenido pero sin vínculo, se marcan como <b>candidatos</b> y NO se tocan: pueden ser ventas legítimas idénticas.</div>
+        ${c.duplicados.slice(0,12).map(d=>`<div class="card-meta" style="margin-top:6px;">· ${fmtEur(d.importe_unitario,"€")} × ${d.veces}: ${d.tickets.map(t=>`${esc(t.tipo)} ${esc(t.ref)}${t.hora?" ("+t.hora+")":""}`).join(" = ")} <span style="color:var(--alert)">→ sobra ${fmtEur(d.importe_duplicado,"€")}</span>${(d.candidatos&&d.candidatos.length)?` <span style="color:#9C5A2E">· ${d.candidatos.length} candidato(s) sin vínculo, sin tocar</span>`:""}</div>`).join("")}
         <div class="card-actions"><button class="btn-primary" onclick="conciliarQuitarDuplicados(this)">Quitar duplicados y reponer stock (${fmtEur(c.total_duplicado,"€")})</button></div>
         <div id="conc-dup-msg" style="font-size:12px;color:var(--olive);margin-top:8px;"></div>
       </div>` : `
@@ -12183,7 +12203,7 @@ async function irA_avisos(){
         <div class="card-name">Lotes a punto de caducar (${r.caducando.length})</div>
         ${r.caducando.length?r.caducando.map(l=>`<div class="card-meta">· ${l.nombre} (${l.codigo}) — ${l.caducado?"CADUCADO":"caduca en "+l.horas_restantes+" h"}${l.ubicacion?" · "+l.ubicacion:""}</div>`).join(""):`<div class="card-meta">✔ Ningún lote caduca en el plazo vigilado.</div>`}
       </div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function activarPush(btn){
@@ -12676,7 +12696,7 @@ async function irA_pagos(){
       );
     },"Aún no se ha emitido ningún justificante.");
     setInner(sPagos+sJust);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 function toggleAlb(id){
@@ -12724,7 +12744,7 @@ async function verAlbaran(id){
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir el albarán: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir el albarán: ${esc(e.message)}</p>`;
     else alert(e.message);
   }
 }
@@ -12744,7 +12764,7 @@ async function verFacturaPDF(id){
     const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
     if(w){ w.location.href=url; } else { window.open(url,"_blank"); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir la factura: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir la factura: ${esc(e.message)}</p>`;
     else alert(e.message);
   }
 }
@@ -12820,7 +12840,7 @@ async function verJustificante(id){
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo generar el justificante: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo generar el justificante: ${esc(e.message)}</p>`;
     else alert(e.message);
   }
 }
@@ -12868,7 +12888,7 @@ async function irA_carta(){
       );
     }, "No hay productos en la carta.");
     setInner(cab+resumen+items);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Cambia el food-cost objetivo de un producto (lo guarda como margen y recalcula
@@ -12940,7 +12960,7 @@ async function irA_menu(){
     const carta = await api("/carta");
     window._menuCarta = carta.productos || [];
     menuNivel([]);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function menuRecargar(path){
   try{ const carta = await api("/carta"); window._menuCarta = carta.productos || []; }catch(_){ }
@@ -13035,7 +13055,7 @@ async function irA_cafes(){
     window._cafeLeches = mats.filter(m=>m.categoria==="Leche" && m.id!=="mat-leche-vegetal");
     window._cafeCarta = (carta.productos||[]).filter(p=>p.categoria==="café");
     renderCafeLista();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // Empareja una bebida con su producto en la carta (por clave/nombre exacto).
@@ -13419,7 +13439,7 @@ async function irA_analisis(){
       `<div class="card" style="font-size:11px;color:#888070;">Total semana — producción ${sem.totales.coste_produccion.toFixed(2)} € · mermas ${sem.totales.coste_mermas.toFixed(2)} € · ${sem.totales.preparaciones} preparaciones</div>`+
       masUsadas+barrasStock
     );
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // ── CIERRE DE MES ─────────────────────────────────────

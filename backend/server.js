@@ -1,14 +1,73 @@
+// Zona horaria del negocio (Málaga) · fuente única y FORZADA (motor-fechas.3).
+// Antes se usaba `process.env.TZ || "Europe/Madrid"`, que CONSERVABA el UTC
+// heredado de Render y dejaba las fronteras de día/mes en medianoche UTC. Ahora se
+// impone Madrid de forma incondicional (ver backend/tz-init.js para el contrato de
+// qué resuelve el TZ del proceso y qué resuelve tz.js). Debe ir ANTES de todo Date.
+require("./tz-init");
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const store = require("./data-store");
 const auth = require("./auth");
 const db = require("./db");
+const seguridad = require("./seguridad");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
 
-app.use(cors());
+// Red de seguridad a nivel de proceso (tests.2): registra promesas no
+// gestionadas y termina ordenadamente ante una excepción no capturada.
+require("./process-guards").instalar();
+
+// Detrás del proxy de Render: necesario para que req.ip y el rate-limit sean fiables.
+app.set("trust proxy", true);
+
+// Cabeceras de seguridad + CSP en TODA respuesta (antes de estáticos y rutas).
+app.use(seguridad.cabeceras);
+
+// Compresión gzip (rendimiento.4): envuelve la salida de TODO lo que venga después
+// (estáticos + API), así que va pronto. Sin dependencias (zlib del core).
+app.use(require("./compresion").middleware);
+
+// Identificador de petición (correlación en logs, sin secretos). Log de acceso
+// opcional con LOG_HTTP=1 (silencioso por defecto para no ensuciar los tests).
+app.use((req, res, next) => {
+  req.id = (crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString("hex")).slice(0, 8);
+  res.setHeader("X-Request-Id", req.id);
+  if (process.env.LOG_HTTP === "1") {
+    const t0 = Date.now();
+    res.on("finish", () => console.log(`[${req.id}] ${req.method} ${req.path} → ${res.statusCode} (${Date.now() - t0}ms)`));
+  }
+  next();
+});
+
+// CORS restringido. La PWA y la API comparten origen (no necesitan CORS) y el
+// conector empuja sin cabecera Origin (no-navegador). Solo un navegador en OTRO
+// origen necesita estar en la lista: por defecto, el propio origen de Render (si
+// lo expone) y localhost en desarrollo. Antes estaba totalmente abierto (seguridad.6).
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+if (process.env.RENDER_EXTERNAL_URL) CORS_ORIGINS.push(process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, ""));
+if (process.env.NODE_ENV !== "production") CORS_ORIGINS.push("http://localhost:" + PORT, "http://127.0.0.1:" + PORT);
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);              // no-navegador, same-origin o conector
+    return cb(null, CORS_ORIGINS.includes(origin));  // navegador cross-origin: solo lista
+  },
+}));
+
+// Antes de parsear el cuerpo: rechaza cargas grandes SIN autenticar en /api
+// (evita que un anónimo fuerce el buffer de 25MB · seguridad.5). Las fotos en
+// base64 viajan por rutas /api autenticadas, así que el uso legítimo no cambia.
+app.use("/api", (req, res, next) => {
+  const len = Number(req.headers["content-length"] || 0);
+  if (len > 256 * 1024 && !auth.verificar(auth.tokenDe(req))) {
+    return res.status(401).json({ error: "Autentícate antes de enviar una carga grande." });
+  }
+  next();
+});
+
 // Límite amplio: las peticiones con fotos (albaranes, productos, proveedores)
 // llevan imágenes en base64. Con el límite por defecto (100 KB) cualquier foto
 // algo grande daba error 413. Este parser global corre antes que los de cada
@@ -20,6 +79,10 @@ app.use("/api/auth", require("./routes/auth"));
 
 app.get("/api/salud", (req, res) => {
   const persistente = db.isActive();
+  const info = store.persistenceInfo();
+  const version = String(
+    process.env.RENDER_GIT_COMMIT || process.env.SOURCE_VERSION || process.env.GIT_SHA || "dev"
+  ).slice(0, 12);
   res.json({
     estado: "Control M · Producción en marcha",
     almacen: persistente ? "postgres" : "json",
@@ -27,6 +90,28 @@ app.get("/api/salud", (req, res) => {
     // "efimera": modo ficheros JSON; en Render el disco es efímero -> riesgo
     // de pérdida de datos al reiniciar. El frontend avisa si es efímera.
     persistencia: persistente ? "persistente" : "efimera",
+    // Identificador de versión NO sensible (sha corto del despliegue si lo
+    // expone el entorno). Útil para verificar qué versión está en vivo.
+    version,
+    modo_datos: info.aislado ? "aislado (pruebas)" : "real",
+    hora: new Date().toISOString(),
+  });
+});
+
+// Readiness: ¿está LISTO para servir? (liveness = responde; readiness = la BD
+// responde cuando se usa). Render puede usarlo como health check real (tests.11).
+app.get("/api/listo", async (req, res) => {
+  const info = store.persistenceInfo();
+  const db_ok = db.isActive() ? await db.ping() : true; // en modo JSON basta con responder
+  const version = String(
+    process.env.RENDER_GIT_COMMIT || process.env.SOURCE_VERSION || process.env.GIT_SHA || "dev"
+  ).slice(0, 12);
+  res.status(db_ok ? 200 : 503).json({
+    listo: db_ok,
+    liveness: true,
+    almacen: info.modo,
+    db_ok,
+    version,
     hora: new Date().toISOString(),
   });
 });
@@ -207,7 +292,7 @@ app.all("/avisos/cron", async (req, res) => {
   const token = process.env.AVISOS_CRON_TOKEN;
   if (!token) return res.status(503).json({ error: "AVISOS_CRON_TOKEN no configurado en el servidor" });
   const got = req.headers["x-cron-token"] || req.query.token;
-  if (got !== token) return res.status(401).json({ error: "Token inválido" });
+  if (!seguridad.tokenIgual(got, token)) return res.status(401).json({ error: "Token inválido" });
   try {
     const avisos = require("./avisos");
     const r = req.query.force === "1" ? await avisos.enviarAviso({ force: true }) : await avisos.cronTick();
@@ -271,7 +356,7 @@ app.post("/facturas/ingesta", express.json({ limit: "25mb" }), async (req, res) 
   const token = process.env.FACTURAS_INGESTA_TOKEN;
   if (!token) return res.status(503).json({ error: "FACTURAS_INGESTA_TOKEN no configurado en el servidor" });
   const got = req.headers["x-ingesta-token"] || (req.query && req.query.token);
-  if (got !== token) return res.status(401).json({ error: "Token de ingesta inválido" });
+  if (!seguridad.tokenIgual(got, token)) return res.status(401).json({ error: "Token de ingesta inválido" });
   try {
     // Resend Inbound manda solo metadatos: hay que descargar los adjuntos aparte.
     // Otros reenviadores (Zapier/Make) mandan el contenido en el propio cuerpo.
@@ -391,6 +476,11 @@ app.use("/api/limpieza-catalogo", require("./routes/limpieza-catalogo")); // arc
 app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)
 app.use("/api/integraciones", require("./routes/integraciones")); // conector TPV (Ágora): clave, estado, prueba (admin)
 
+// 404 homogéneo para rutas de API inexistentes (JSON, no el HTML del SPA · tests.4).
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "Ruta de API no encontrada", ruta: req.path });
+});
+
 // Sirve el frontend estático (single-file app).
 // El HTML va con "no-cache" para que el navegador SIEMPRE cargue la última
 // versión (evita que móviles como Samsung/Chrome sirvan una copia vieja).
@@ -414,6 +504,16 @@ app.use(
   })
 );
 
+// Manejador de errores global: respuesta JSON homogénea, sin fuga de stack al
+// cliente, con request-id para correlacionar en el log (tests.4).
+app.use((err, req, res, next) => {
+  const rid = (req && req.id) || "-";
+  console.error(`[${rid}] error en ${req && req.method} ${req && req.originalUrl}:`, (err && err.stack) || err);
+  if (res.headersSent) return next(err);
+  const code = err && err.code === "DATOS_CORRUPTOS" ? 503 : (err && err.status) || 500;
+  res.status(code).json({ error: "Error interno del servidor.", request_id: rid });
+});
+
 // Arranca solo cuando el almacén está listo (hidratado desde PostgreSQL o JSON).
 store
   .init()
@@ -423,53 +523,79 @@ store
     // disco efímero (Render) y se PIERDEN al reiniciar. Avisamos fuerte; y con
     // REQUIRE_DB=1 el arranque se aborta para impedir la pérdida silenciosa.
     if (!db.isActive()) {
-      const enProd = process.env.NODE_ENV === "production";
-      console.warn(
-        "\n⚠️  PERSISTENCIA EFÍMERA: sin DATABASE_URL, los datos se guardan en\n" +
-        "   ficheros JSON locales. En un disco efímero (Render) se PERDERÁN al\n" +
-        "   reiniciar. Configura DATABASE_URL (PostgreSQL) para conservarlos.\n"
-      );
-      if (enProd && process.env.REQUIRE_DB === "1") {
-        console.error("REQUIRE_DB=1 y sin DATABASE_URL en producción: arranque abortado.");
+      const info = store.persistenceInfo();
+      const enProd = process.env.NODE_ENV === "production" || !!process.env.RENDER;
+      const exigeDb = process.env.REQUIRE_DB === "1" || process.env.PERSISTENCE === "postgres";
+
+      // Caso grave: había DATABASE_URL pero la conexión falló. Antes se caía en
+      // silencio a disco efímero (pérdida de datos · AUDITORIA datos.8). Ahora
+      // se aborta salvo que se pida el fallback explícitamente.
+      if (info.db_conexion_fallida && process.env.ALLOW_JSON_FALLBACK !== "1") {
+        console.error(
+          "\n⛔ DATABASE_URL configurada pero la conexión a PostgreSQL FALLÓ.\n" +
+          "   Para no escribir en disco efímero sin querer, el arranque se aborta.\n" +
+          "   Revisa la BD. Si de verdad quieres ficheros JSON: ALLOW_JSON_FALLBACK=1.\n"
+        );
         process.exit(1);
+      }
+
+      // Persistencia de BD EXIGIDA explícitamente pero sin BD activa → abortar.
+      if (exigeDb) {
+        console.error(
+          "\n⛔ Persistencia PostgreSQL EXIGIDA (REQUIRE_DB=1 / PERSISTENCE=postgres)\n" +
+          "   pero no hay BD activa: arranque abortado para no perder datos.\n"
+        );
+        process.exit(1);
+      }
+
+      // Por defecto: avisar fuerte (salvo que el operador declare PERSISTENCE=json
+      // a conciencia). No se aborta, para no romper un arranque que hoy funciona.
+      if (process.env.PERSISTENCE !== "json") {
+        console.warn(
+          "\n⚠️  PERSISTENCIA EFÍMERA: sin DATABASE_URL, los datos se guardan en\n" +
+          "   ficheros JSON locales. En un disco efímero (Render) se PERDERÁN al\n" +
+          "   reiniciar. Configura DATABASE_URL (PostgreSQL) para conservarlos, o\n" +
+          "   declara PERSISTENCE=json si es intencionado (silencia este aviso).\n" +
+          (enProd ? "   ⚠ ESTÁS EN PRODUCCIÓN.\n" : "")
+        );
       }
     }
     // Siembra idempotente de la carta de café (cafés Inefable + leches). Inserta
     // en el almacén real (Postgres o JSON) si faltan; se ejecuta una sola vez.
-    require("./seed-cafe").seedCafe().catch(() => {});
+    require("./seed-cafe").seedCafe().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Siembra idempotente del negocio: gastos fijos + préstamos (Costes fijos / Deuda).
-    require("./seed-negocio").seedNegocio().catch(() => {});
+    require("./seed-negocio").seedNegocio().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Objetivos de referencia (food cost, personal, prime cost, fijos, EBITDA) para
     // el semáforo del resumen financiero. Idempotente por tipo (no pisa los tuyos).
-    require("./seed-objetivos").seedObjetivos().catch(() => {});
-    require("./seed-turnos").seedTurnos().catch(() => {}); // rotación de turnos (7 sep–15 nov 2026)
-    require("./seed-fit").seedFit().catch(() => {}); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
-    require("./seed-analisis-mes").seedAnalisisMes().catch(() => {}); // snapshot de análisis del mes (sept 2026)
-    require("./seed-etiquetas").seedEtiquetas().catch(() => {}); // catálogo de etiquetas de producción (buscador)
+    require("./seed-objetivos").seedObjetivos().catch((e) => console.error("seed/migración falló:", e && e.message));
+    require("./seed-turnos").seedTurnos().catch((e) => console.error("seed/migración falló:", e && e.message)); // rotación de turnos (7 sep–15 nov 2026)
+    require("./seed-fit").seedFit().catch((e) => console.error("seed/migración falló:", e && e.message)); // línea fit: Ice Latte proteico + Matcha colágeno (lata)
+    require("./seed-analisis-mes").seedAnalisisMes().catch((e) => console.error("seed/migración falló:", e && e.message)); // snapshot de análisis del mes (sept 2026)
+    require("./seed-etiquetas").seedEtiquetas().catch((e) => console.error("seed/migración falló:", e && e.message)); // catálogo de etiquetas de producción (buscador)
     // Siembra idempotente de proveedores reales (Frutería y siguientes) y, después,
     // los productos por proveedor extraídos de las facturas del 3T 2026 (catálogo de
     // compra para el buscador de Pedidos). El segundo depende de que existan los
     // proveedores, por eso se encadena.
     require("./seed-proveedores").seedProveedores()
       .then(() => { try { require("./seed-productos-facturas").aplicar(store); } catch (e) {} })
-      .catch(() => {});
+      .catch((e) => console.error("seed/migración falló:", e && e.message));
     // Siembra idempotente de los productos de venta de Ágora que Control M no
     // tenía (para que el conector deje de bloquear tickets por "no vinculado").
-    require("./seed-productos-agora").seedProductosAgora().catch(() => {});
+    require("./seed-productos-agora").seedProductosAgora().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Siembra idempotente de usuarios (cambios de PIN / altas pedidos por la fundadora).
-    require("./seed-usuarios").seedUsuarios().catch(() => {});
+    require("./seed-usuarios").seedUsuarios().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Siembra idempotente de la carta de cocina (Crunch, Tostas, Croissants + elaboraciones).
-    require("./seed-cocina").seedCocina().catch(() => {});
+    require("./seed-cocina").seedCocina().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Rellena las recetas del TPV (café 17 g + leche/té/iced matcha) para que la
     // venta descuente stock. Idempotente; nunca pisa una receta ya puesta.
-    require("./seed-escandallos-tpv").seedEscandallosTpv().catch(() => {});
+    require("./seed-escandallos-tpv").seedEscandallosTpv().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Limonadas (Burbujas) + Zumo materia: escandallo por vaso (200 ml) enlazado.
-    require("./seed-escandallos-limonadas").seedEscandallosLimonadas().catch(() => {});
+    require("./seed-escandallos-limonadas").seedEscandallosLimonadas().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Limpia ventas duplicadas heredadas (import antiguo por CSV sin doc_clave) que
     // inflaban los ingresos del mes en el P&L. Conservadora e idempotente.
-    require("./migracion-ventas-dup").migrarVentasDup(store).catch(() => {});
+    require("./migracion-ventas-dup").migrarVentasDup(store).catch((e) => console.error("seed/migración falló:", e && e.message));
     // Vuelca el precio de Compras al coste de cada materia pendiente (food cost vivo).
-    require("./coste-desde-compras").seedCosteDesdeCompras().catch(() => {});
+    require("./coste-desde-compras").seedCosteDesdeCompras().catch((e) => console.error("seed/migración falló:", e && e.message));
     // Limpieza ÚNICA de los datos de PRUEBA de la semilla original (proveedores,
     // materias, recetas, lotes y productos de ejemplo). Solo en producción
     // (Postgres) y una sola vez (flag en config); en dev/tests (JSON) no corre,
@@ -497,9 +623,30 @@ store
     // Reprograma los temporizadores de producción pendientes (avisos push).
     try { require("./sv-timers").init(); } catch (e) {}
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Control M · Producción escuchando en http://localhost:${PORT}`);
     });
+
+    // Cierre ordenado: deja de aceptar peticiones, vacía la cola de escritura y
+    // cierra la BD, con límite de tiempo. En Render el redeploy manda SIGTERM;
+    // antes se perdían las escrituras encoladas (datos.6).
+    let cerrando = false;
+    async function cierreOrdenado(sig) {
+      if (cerrando) return;
+      cerrando = true;
+      console.log(`\n${sig} recibido: cierre ordenado…`);
+      const forzar = setTimeout(() => { console.error("Cierre forzado (timeout)."); process.exit(1); }, 10000);
+      forzar.unref();
+      try {
+        await new Promise((r) => server.close(r)); // no acepta nuevas peticiones
+        await store.flush();                         // confirma escrituras pendientes
+        if (db.isActive() && db.cerrar) await db.cerrar();
+      } catch (e) { console.error("Error durante el cierre:", e && e.message); }
+      clearTimeout(forzar);
+      process.exit(0);
+    }
+    process.on("SIGTERM", () => cierreOrdenado("SIGTERM"));
+    process.on("SIGINT", () => cierreOrdenado("SIGINT"));
     // Cron horario de importación de ventas de Ágora (si AGORA_CSV_PATH está configurado).
     const agora = require("./agora");
     setInterval(() => agora.cronImport(), 60 * 60 * 1000).unref();

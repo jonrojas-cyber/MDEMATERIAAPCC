@@ -78,9 +78,10 @@ try {
     assert.strictEqual(totalClasificados, 2, "cada producto vendido cae en un cuadrante");
   });
 
-  test("el food cost por producto se calcula con el escandallo (coste con IVA)", () => {
+  test("el food cost por producto se calcula en base NETA (coste neto / ingreso neto)", () => {
     const b = inf.micro.por_ingreso.find((x) => x.producto_id === "p1");
-    // coste unit Brasa = 2×0,5 = 1,0 neto → ×1,10 IVA = 1,10 €; ingreso unit 8,5.
+    // coste unit Brasa = 2×0,5 = 1,0 neto; ingreso unit 8,5 bruto → 7,727 neto.
+    // food cost = 1,0 / 7,727 = 12,9 % (igual que el ratio del P&L; ya no mezcla bases).
     assert.ok(b.food_cost_pct > 12 && b.food_cost_pct < 14, `food cost Brasa ~13%, fue ${b.food_cost_pct}`);
   });
 

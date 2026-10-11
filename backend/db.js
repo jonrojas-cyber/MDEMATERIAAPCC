@@ -108,6 +108,52 @@ async function tx(fn) {
   }
 }
 
+// Inserta/actualiza MUCHAS filas en una sola transacción (append incremental),
+// SIN borrar las existentes. Para la ingesta de ventas: añade solo lo nuevo en
+// vez de reescribir toda la tabla (replaceAll hacía DELETE+INSERT de todo · datos.5).
+async function insertMany(name, rows) {
+  const t = ident(name);
+  if (!rows || !rows.length) return;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const row of rows) {
+      if (!row || row.id == null) continue;
+      await client.query(SQL_UPSERT(t), [String(row.id), row]);
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+// Snapshot CONSISTENTE de varias entidades en UNA sola transacción
+// REPEATABLE READ: todas las tablas se leen en el mismo instante lógico, de modo
+// que una copia de seguridad no mezcla estados de distintos momentos aunque el
+// servidor esté escribiendo a la vez. Devuelve { entidad: [filas...] }.
+async function snapshotAll(names) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
+    const out = {};
+    for (const name of names) {
+      const t = ident(name);
+      const r = await client.query(`SELECT data FROM ${t} ORDER BY seq ASC`);
+      out[name] = r.rows.map((row) => row.data);
+    }
+    await client.query("COMMIT");
+    return out;
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // Reemplazo masivo: SOLO para siembra/migración inicial, no en el flujo normal.
 async function replaceAll(name, items) {
   const t = ident(name);
@@ -132,9 +178,22 @@ function isActive() {
   return pool != null;
 }
 
+// Comprueba que la BD responde (readiness). No lanza: devuelve true/false.
+async function ping() {
+  if (!pool) return false;
+  try { await pool.query("SELECT 1"); return true; } catch (e) { return false; }
+}
+
+// Cierra el pool ordenadamente (cierre del proceso).
+async function cerrar() {
+  if (!pool) return;
+  try { await pool.end(); } catch (e) { /* ya cerrado */ }
+  pool = null;
+}
+
 // Hook de test: inyecta un pool falso para validar el SQL sin un Postgres real.
 function __setPoolForTests(fake) {
   pool = fake;
 }
 
-module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, replaceAll, isActive, __setPoolForTests };
+module.exports = { connect, ensureTable, count, loadAll, upsert, del, insertMany, tx, snapshotAll, replaceAll, isActive, ping, cerrar, __setPoolForTests };

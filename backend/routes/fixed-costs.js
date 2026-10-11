@@ -21,6 +21,11 @@ function camposDe(body) {
   if (body.category != null) c.category = String(body.category).trim();
   if (body.amount != null && body.amount !== "") c.amount = Number(body.amount) || 0;
   if (body.vat != null && body.vat !== "") c.vat = Number(body.vat) || 0;
+  // Base del importe para el P&L (dinero.1): "con_iva" (bruto, se netea el IVA
+  // deducible) o "sin_iva" (ya neto, por defecto). iva_deducible: si el IVA de
+  // este coste es recuperable (por defecto sí). Permite netear sin suponer nada.
+  if (body.base != null) c.base = (body.base === "con_iva" || body.base === "sin_iva") ? body.base : c.base;
+  if (body.iva_deducible != null) c.iva_deducible = !!body.iva_deducible;
   if (body.periodicity != null) c.periodicity = fixedCosts.PERIODICIDADES.includes(body.periodicity) ? body.periodicity : "monthly";
   if (body.custom_days != null && body.custom_days !== "") c.custom_days = Number(body.custom_days) || null;
   if (body.inflation_pct != null && body.inflation_pct !== "") c.inflation_pct = Number(body.inflation_pct);

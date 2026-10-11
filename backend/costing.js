@@ -78,29 +78,35 @@ function costeProducto(producto, idxMat) {
 }
 
 // IVA de venta por defecto en hostelería (España): 10%. Editable por producto.
-const IVA_DEF = 0.10;
+const IVA_DEF = require("./iva").IVA_VENTA; // fuente única (dinero.8)
 function ivaDe(producto) {
   const v = producto && producto.iva != null ? Number(producto.iva) : IVA_DEF;
   return v >= 0 && v < 1 ? v : IVA_DEF;
 }
 
-// Margen de un producto de carta. El COSTE se muestra CON IVA (lo que pagas de
-// verdad al comprar la materia: neto + IVA de compra). El precio, el margen y el
-// food cost se calculan contra ese coste con IVA.
+// Margen de un producto de carta, en base NETA (sin IVA), igual que el P&L
+// (dinero.3/4/5). El coste de materia ya es neto; el PVP se lleva a su base
+// imponible (precio_neto = PVP / (1+IVA de venta)). Así el coste € y el margen €
+// por producto cuadran con la cuenta de resultados (antes el coste se "engrosaba"
+// con el IVA de VENTA, lo que inflaba el margen y no casaba con el P&L neto).
+// NOTA: los RATIOS (margen_bruto y food_cost) son idénticos en ambas convenciones
+// —(P − c(1+i))/P = (P/(1+i) − c)/(P/(1+i))—, así que los % no cambian; solo se
+// corrigen los importes en €.
 function margenProducto(producto, idxMat) {
   const costeNeto = costeProducto(producto, idxMat);
   const iva = ivaDe(producto);
-  const coste = Math.round(costeNeto * (1 + iva) * 10000) / 10000; // coste CON IVA
-  const precio = Number(producto.precio_venta) || 0;
-  const margenBruto = precio > 0 ? (precio - coste) / precio : 0;
-  const foodCost = precio > 0 ? coste / precio : 0;
+  const precio = Number(producto.precio_venta) || 0; // PVP, BRUTO (con IVA)
+  const precioNeto = precio / (1 + iva);              // base imponible del PVP
+  const margenBruto = precioNeto > 0 ? (precioNeto - costeNeto) / precioNeto : 0;
+  const foodCost = precioNeto > 0 ? costeNeto / precioNeto : 0;
   return {
-    coste,
+    coste: Math.round(costeNeto * 10000) / 10000,     // coste NETO (fuente única, como el P&L)
     coste_neto: Math.round(costeNeto * 10000) / 10000,
     iva,
-    precio,
+    precio,                                           // PVP bruto (titular)
+    precio_neto: Math.round(precioNeto * 10000) / 10000,
     margen_bruto: Math.round(margenBruto * 1000) / 1000,
-    margen_euros: Math.round((precio - coste) * 100) / 100,
+    margen_euros: Math.round((precioNeto - costeNeto) * 100) / 100, // margen NETO en €
     food_cost: Math.round(foodCost * 1000) / 1000,
   };
 }

@@ -32,7 +32,7 @@ function ventasEnRango(r) {
 // IVA de venta por defecto en hostelería (España): 10%. El titular de "ventas" se
 // muestra en BRUTO (cuadra con Ágora/TPV), pero el P&L (beneficio, food cost, margen)
 // se calcula sobre la base SIN IVA: el IVA repercutido no es ingreso.
-const IVA_VENTA_DEF = 0.10;
+const IVA_VENTA_DEF = require("./iva").IVA_VENTA; // fuente única (dinero.8)
 function netoDeVenta(v) {
   if (v.importe_neto != null && v.importe_neto !== "") return Number(v.importe_neto) || 0;
   const bruto = Number(v.importe) || Number(v.total) || 0;

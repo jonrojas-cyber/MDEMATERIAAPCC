@@ -9,6 +9,7 @@
 
 const store = require("./data-store");
 const periods = require("./periods");
+const { neto: ivaNeto } = require("./iva");
 const costing = require("./costing");
 const financials = require("./financials");
 const fixedCostsOS = require("./fixed-costs-os");
@@ -68,10 +69,12 @@ function porProducto(r, idxMat, productos) {
         escandallo_estimado: p ? p.cantidades_estimadas === true : null,
       };
     }
-    // Coste teórico (con IVA de compra) × unidades reales vendidas.
+    // Coste teórico NETO × unidades reales vendidas (base única del P&L).
     const costeUnit = p ? costing.margenProducto(p, idxMat).coste : 0;
+    const neto = (v.importe_neto != null && v.importe_neto !== "") ? Number(v.importe_neto) : ivaNeto(importe, p && p.iva);
     acc[key].unidades += cant;
-    acc[key].ingreso += importe;
+    acc[key].ingreso += importe;             // BRUTO (titular)
+    acc[key]._ingresoNeto = (acc[key]._ingresoNeto || 0) + neto; // base para margen/food cost
     acc[key]._coste = (acc[key]._coste || 0) + costeUnit * cant;
   });
   return Object.values(acc);
@@ -218,14 +221,15 @@ function informe(mesStr, now = Date.now()) {
 
   // Micro por producto + ingeniería de menú.
   const items = porProducto(r, idxMat, productos).map((x) => {
-    const coste = eur(x._coste);
-    const beneficio = eur(x.ingreso - coste);
+    const coste = eur(x._coste);                 // coste NETO
+    const ingresoNeto = eur(x._ingresoNeto || 0);  // ingreso SIN IVA (base del margen)
+    const beneficio = eur(ingresoNeto - coste);    // margen económico (neto − neto)
     return {
       producto_id: x.producto_id, nombre: x.nombre, categoria: x.categoria,
       unidades: Math.round(x.unidades * 10) / 10,
-      ingreso: eur(x.ingreso), coste, beneficio,
-      margen_pct: x.ingreso > 0 ? pct((1 - coste / x.ingreso) * 100) : null,
-      food_cost_pct: x.ingreso > 0 ? pct((coste / x.ingreso) * 100) : null,
+      ingreso: eur(x.ingreso), coste, beneficio,   // ingreso BRUTO (titular) · coste/beneficio netos
+      margen_pct: ingresoNeto > 0 ? pct((1 - coste / ingresoNeto) * 100) : null,
+      food_cost_pct: ingresoNeto > 0 ? pct((coste / ingresoNeto) * 100) : null,
       margen_euros_unit: x.unidades > 0 ? eur(beneficio / x.unidades) : 0,
       vinculado: x.vinculado, escandallo_estimado: x.escandallo_estimado,
     };

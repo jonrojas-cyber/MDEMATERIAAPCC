@@ -129,7 +129,7 @@ function calcular(opts = {}) {
   // Override de ventas (cierre de Ágora): parámetro > cierre GUARDADO > ventas app.
   // La cifra de Ágora/cierre viene en BRUTO (con IVA); el P&L va en NETO, así que
   // se convierte. La vía "produccion" ya tiene su propio neto (ventasNetasProd).
-  const IVA_VENTA = 0.10; // hostelería
+  const IVA_VENTA = require("./iva").IVA_VENTA; // fuente única (dinero.8)
   let ventasBruto = ventasProd, ventas_origen = "produccion";
   const ov = Number(opts.ventas);
   const guardado = config.find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);

@@ -30,9 +30,26 @@ function diasDe(fc) {
   return DIAS[fc.periodicity];
 }
 
+// Importe NETO del coste para el P&L (dinero.1). El P&L va en base sin IVA, así
+// que un coste fijo con IVA DEDUCIBLE no debe restar el IVA (el IVA soportado
+// deducible se recupera, no es gasto). Reglas, SIN migración ciega:
+//   · base "con_iva" + vat>0 + deducible (por defecto sí) → se netea: amount/(1+vat).
+//   · base "sin_iva" (DEFECTO) o IVA no deducible → el amount ya es el coste real.
+// Por defecto base es "sin_iva" → los números actuales NO cambian hasta que cada
+// coste se clasifique como "con_iva" (evita reinterpretar datos a ciegas).
+function importeNeto(fc) {
+  const amount = Number(fc.amount) || 0;
+  const base = fc.base || fc.iva_base; // "con_iva" | "sin_iva" | undefined
+  const vat = Number(fc.vat) || 0;
+  if (base === "con_iva" && vat > 0 && fc.iva_deducible !== false) {
+    return amount / (1 + vat);
+  }
+  return amount;
+}
+
 // Coste diario prorrateado de un coste fijo. one_time no aporta coste diario.
 function costeDiario(fc) {
-  const amount = Number(fc.amount) || 0;
+  const amount = importeNeto(fc);
   const d = diasDe(fc);
   if (!d || d <= 0) return 0;
   return amount / d;
@@ -204,7 +221,7 @@ function mayorGasto(now = Date.now(), lista = null) {
 }
 
 module.exports = {
-  DIAS, PERIODICIDADES, diasDe, costeDiario, activoEn, prorrateo, totales, costeEnRango,
+  DIAS, PERIODICIDADES, diasDe, importeNeto, costeDiario, activoEn, prorrateo, totales, costeEnRango,
   esPersonal, costeEnRangoSegmentado, totalesSegmentado, lineasMensuales,
   porCategoria, costePorHora, costeAnualProyectado, mayorGasto, eur,
 };

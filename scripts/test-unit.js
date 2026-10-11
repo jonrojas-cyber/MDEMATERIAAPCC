@@ -33,10 +33,21 @@ const FILES = [
   "conciliacion-ventas", "economia-guard", "pyl-neto", "consistencia-pantallas",
   "agora-cuadre", "backup-restore", "seguridad", "durabilidad",
   "agora-cron-idempotente", "motor-financiero", "sv-timers", "periodos-stock",
-  "rendimiento",
+  "rendimiento", "roles-regla2",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");
+
+// Red de seguridad (tests.5): ningún tests/*.unit.js debe quedarse fuera de la
+// lista por descuido. Si aparece uno nuevo sin registrar, fallamos ruidosamente.
+const registrados = new Set(FILES.map((f) => path.basename(f)));
+const enDisco = fs.readdirSync(path.join(ROOT, "tests")).filter((f) => f.endsWith(".unit.js"));
+const sinRegistrar = enDisco.filter((f) => !registrados.has(f));
+if (sinRegistrar.length) {
+  console.error("✗ Tests sin registrar en scripts/test-unit.js:\n  " + sinRegistrar.join("\n  "));
+  process.exit(1);
+}
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cm-unit-"));
 // Misma zona horaria que producción (Málaga): los tests de periodos/fechas
 // representan el comportamiento real, no la UTC del CI (motor-fechas.3).

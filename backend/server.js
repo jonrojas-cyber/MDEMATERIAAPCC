@@ -1,3 +1,8 @@
+// Zona horaria del negocio (Málaga). Render corre en UTC; sin esto, las fronteras
+// de día/semana/mes caían en medianoche UTC y no en la de Madrid (motor-fechas.3).
+// Se fija ANTES de cualquier uso de Date. La BD de zonas horaria gestiona el DST.
+process.env.TZ = process.env.TZ || "Europe/Madrid";
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");

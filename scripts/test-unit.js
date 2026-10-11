@@ -32,12 +32,14 @@ const FILES = [
   "dashboard-ceo", "limpieza-catalogo", "comparativa-mtd", "ventas-email",
   "conciliacion-ventas", "economia-guard", "pyl-neto", "consistencia-pantallas",
   "agora-cuadre", "backup-restore", "seguridad", "durabilidad",
-  "agora-cron-idempotente", "motor-financiero", "sv-timers",
+  "agora-cron-idempotente", "motor-financiero", "sv-timers", "periodos-stock",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cm-unit-"));
-const env = { ...process.env, CONTROL_M_DATA_DIR: dataDir };
+// Misma zona horaria que producción (Málaga): los tests de periodos/fechas
+// representan el comportamiento real, no la UTC del CI (motor-fechas.3).
+const env = { ...process.env, CONTROL_M_DATA_DIR: dataDir, TZ: process.env.TZ || "Europe/Madrid" };
 
 let failed = null;
 try {

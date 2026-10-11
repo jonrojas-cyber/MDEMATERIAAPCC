@@ -204,6 +204,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const omitidosPedido = []; // pedidos/comandas: no son venta cerrada, no se cuentan
   const deduplicados = [];   // {serie, number} ya existentes por otra vía (no se duplican)
   const noVinculados = new Set();
+  const materiasFaltantes = new Set(); // escandallos que apuntan a una materia inexistente (datos.7)
   const movimientos = [];
   let unidades = 0, importeTotal = 0;
   const nowISO = new Date().toISOString();
@@ -287,7 +288,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     resueltas.forEach(({ producto, cantidad, importe, neto }) => {
       (producto.ingredientes || []).forEach((ing) => {
         const m = idxMat[ing.materia_id];
-        if (!m) return;
+        if (!m) { materiasFaltantes.add(`${producto.nombre || producto.id} → ${ing.materia_id}`); return; } // integridad (datos.7): no se descuenta un ingrediente inexistente, pero se SEÑALA
         const delta = -Math.round(ing.cantidad * cantidad * 100) / 100;
         m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual + delta) * 100) / 100);
         movimientos.push({
@@ -327,8 +328,10 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
     productos_no_vinculados: [...noVinculados],
+    materias_faltantes: [...materiasFaltantes], // escandallos rotos (datos.7): el coste/stock de esos ingredientes NO se contó
     cuando: nowISO,
   };
+  if (materiasFaltantes.size) console.warn("Ágora: escandallos con materia inexistente (no se descontó stock):", [...materiasFaltantes].join(", "));
   registrarSync(resumen);
   if (typeof registrar === "function") registrar(resumen);
   // procesados_ref: lo que hay que confirmar a Ágora (POST /api/doc/processed). Se

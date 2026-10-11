@@ -20,6 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 const store = require("./data-store");
+const db = require("./db");
 
 // Identificador de versión NO sensible (sha corto del despliegue si lo expone
 // el entorno; "dev" en local). Nunca incluye credenciales.
@@ -70,12 +71,23 @@ function resumen(datos) {
   };
 }
 
-// Toma un snapshot coherente del estado actual. Requiere store.init() previo.
+// Toma un snapshot COHERENTE del estado actual. Requiere store.init() previo.
+// Coherencia según el modo:
+//   · PostgreSQL → una sola transacción REPEATABLE READ (db.snapshotAll): todas
+//     las entidades en el mismo instante lógico, aunque el servidor escriba a la vez.
+//   · JSON → las escrituras son síncronas (writeFileSync), así que el disco ya es
+//     un estado consistente al leerlo. OJO: si lo lanza un proceso SEPARADO del
+//     servidor, el flush() de aquí solo vacía la cola de ESTE proceso; en JSON no
+//     hace falta (disco al día) y en PostgreSQL la transacción da la foto estable.
 async function exportar() {
-  await store.flush(); // confirma escrituras pendientes antes de copiar
+  await store.flush(); // vacía la cola de ESTE proceso (no la de otro servidor)
   const datos = {};
-  for (const name of store.ENTITIES) {
-    datos[name] = (store.readAll(name) || []).slice();
+  const usandoDb = store.isUsingDb && store.isUsingDb();
+  if (usandoDb && typeof db.snapshotAll === "function") {
+    const snap = await db.snapshotAll(store.ENTITIES);
+    for (const name of store.ENTITIES) datos[name] = (snap[name] || []).slice();
+  } else {
+    for (const name of store.ENTITIES) datos[name] = (store.readAll(name) || []).slice();
   }
   const info = store.persistenceInfo();
   return {

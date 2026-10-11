@@ -175,16 +175,23 @@ function writeFile(name, data) {
 
 // Se llama una vez al arrancar el servidor, antes de aceptar peticiones.
 async function init() {
-  // Solo intentamos Postgres si hay DATABASE_URL. Si la hay y falla, lo
-  // recordamos (dbConnectFailed) para que el arranque pueda abortar en
-  // producción en vez de caer en silencio a disco efímero (ver server.js).
-  if (process.env.DATABASE_URL) {
+  // BLINDAJE DE TESTS: en modo AISLADO (CONTROL_M_DATA_DIR definido) NUNCA se
+  // conecta a la DATABASE_URL del entorno, aunque esté definida — así una prueba
+  // no puede escribir en la base REAL (un DATA_DIR temporal no protege Postgres).
+  // Para probar contra una BD de test de verdad, usa CONTROL_M_ALLOW_DB=1 con una
+  // DATABASE_URL de test; nunca la de producción.
+  const aislado = DATA_DIR !== SEED_DIR;
+  const permitirDb = !aislado || process.env.CONTROL_M_ALLOW_DB === "1";
+  if (process.env.DATABASE_URL && permitirDb) {
     usingDb = await db.connect().catch((e) => {
       dbConnectFailed = true;
       console.error("No se pudo conectar a PostgreSQL:", e.message);
       return false;
     });
   } else {
+    if (process.env.DATABASE_URL && aislado) {
+      console.warn("data-store: modo aislado (test) → se IGNORA DATABASE_URL para no tocar la base real.");
+    }
     usingDb = false;
   }
 

@@ -33,7 +33,7 @@ const FILES = [
   "conciliacion-ventas", "economia-guard", "pyl-neto", "consistencia-pantallas",
   "agora-cuadre", "backup-restore", "seguridad", "durabilidad",
   "agora-cron-idempotente", "motor-financiero", "sv-timers", "periodos-stock",
-  "rendimiento", "roles-regla2", "cuadre-agora",
+  "rendimiento", "roles-regla2", "cuadre-agora", "aislamiento-db", "backup-consistente",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");
@@ -51,7 +51,9 @@ if (sinRegistrar.length) {
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cm-unit-"));
 // Misma zona horaria que producción (Málaga): los tests de periodos/fechas
 // representan el comportamiento real, no la UTC del CI (motor-fechas.3).
-const env = { ...process.env, CONTROL_M_DATA_DIR: dataDir, TZ: process.env.TZ || "Europe/Madrid" };
+// DATABASE_URL vacía: ninguna prueba toca una base PostgreSQL real (defensa en
+// profundidad; el data-store además ignora la BD en modo aislado).
+const env = { ...process.env, CONTROL_M_DATA_DIR: dataDir, TZ: process.env.TZ || "Europe/Madrid", DATABASE_URL: "" };
 
 let failed = null;
 try {

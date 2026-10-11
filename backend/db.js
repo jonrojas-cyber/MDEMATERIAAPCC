@@ -108,6 +108,30 @@ async function tx(fn) {
   }
 }
 
+// Snapshot CONSISTENTE de varias entidades en UNA sola transacción
+// REPEATABLE READ: todas las tablas se leen en el mismo instante lógico, de modo
+// que una copia de seguridad no mezcla estados de distintos momentos aunque el
+// servidor esté escribiendo a la vez. Devuelve { entidad: [filas...] }.
+async function snapshotAll(names) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
+    const out = {};
+    for (const name of names) {
+      const t = ident(name);
+      const r = await client.query(`SELECT data FROM ${t} ORDER BY seq ASC`);
+      out[name] = r.rows.map((row) => row.data);
+    }
+    await client.query("COMMIT");
+    return out;
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // Reemplazo masivo: SOLO para siembra/migración inicial, no en el flujo normal.
 async function replaceAll(name, items) {
   const t = ident(name);
@@ -150,4 +174,4 @@ function __setPoolForTests(fake) {
   pool = fake;
 }
 
-module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, replaceAll, isActive, ping, cerrar, __setPoolForTests };
+module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, snapshotAll, replaceAll, isActive, ping, cerrar, __setPoolForTests };

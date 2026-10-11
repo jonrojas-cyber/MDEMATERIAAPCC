@@ -32,6 +32,6 @@ module.exports = defineConfig({
     url: `${BASE}/api/salud`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { PORT: String(PORT), CONTROL_M_DATA_DIR: E2E_DATA_DIR, TZ: process.env.TZ || "Europe/Madrid" },
+    env: { PORT: String(PORT), CONTROL_M_DATA_DIR: E2E_DATA_DIR, TZ: process.env.TZ || "Europe/Madrid", DATABASE_URL: "" },
   },
 });

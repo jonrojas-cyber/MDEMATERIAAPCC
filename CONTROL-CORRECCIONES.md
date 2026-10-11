@@ -1,20 +1,26 @@
 # CONTROL-CORRECCIONES · Control M
 
-**Actualizado:** 2026-10-11 (revisión de rigor) · **Rama:** claude/jolly-franklin-3j3eg4.
+**Actualizado:** 2026-10-11 (correcciones C1–C9) · **Rama:** claude/jolly-franklin-3j3eg4.
 Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno se separa la **evidencia histórica** (el defecto original) de la **evidencia actual** (código del HEAD de hoy) y se indica la **prueba específica y su resultado**. Un commit o una suite en verde no cierran un hallazgo por sí solos.
 
-**Estados:** `corregido+probado` (arreglado + prueba específica que PASA) · `corregido` (arreglado y verificado por lectura/smoke/e2e, sin test unitario dedicado) · `parcial+probado` · `parcial` · `abierto` · `diferido` (decisión consciente) · `no_confirmado` (requiere acceso/decisión de despliegue). **Prod:** todo `no-desplegado` (los informes eran contradictorios; no se despliega hasta que estén consistentes y se autorice).
+**Estados:** `corregido+probado` (arreglado + prueba específica que PASA) · `corregido` (arreglado y verificado por lectura/smoke/e2e, sin test unitario dedicado) · `parcial+probado` · `parcial` · `abierto` · `diferido` (decisión consciente) · `no_confirmado` (requiere acceso/decisión de despliegue). **Prod:** todo `no-desplegado` (ver procedimiento único de producción al final; no se despliega hasta autorizarlo).
+
+Ronda C1–C9: se completó **todo lo resoluble en local**. Ya no queda ningún hallazgo
+`abierto`: los 19 que lo estaban se cerraron (código + prueba) o se reclasificaron como
+`parcial`/`diferido` con justificación concreta (decisión de escalado, revisión visual
+o refactor grande de bajo valor). Lo único que sigue dependiendo de muestra/acceso/
+decisión externa queda marcado como tal, no como "pendiente por prioridad".
 
 ## Resumen (recalculado)
 
 | Estado | Nº |
 |---|---|
-| corregido+probado | 38 |
-| corregido | 9 |
-| parcial+probado | 4 |
-| parcial | 6 |
-| abierto | 19 |
-| diferido | 2 |
+| corregido+probado | 45 |
+| corregido | 16 |
+| parcial+probado | 6 |
+| parcial | 7 |
+| abierto | 0 |
+| diferido | 4 |
 | no_confirmado | 1 |
 | **Total** | **79** |
 
@@ -27,11 +33,11 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 | dinero.3 | alto | corregido+probado | 05 | 4086f53 |
 | dinero.4 | alto | corregido+probado | 05 | 4086f53 |
 | dinero.5 | alto | corregido+probado | 05 | 4086f53 |
-| dinero.6 | medio | abierto | 05 | - |
-| dinero.7 | medio | abierto | 05 | - |
+| dinero.6 | medio | corregido+probado | 05/C8 | a479959 |
+| dinero.7 | medio | corregido+probado | 05/C8 | a479959 |
 | dinero.8 | bajo | corregido+probado | 05 | 4086f53 |
-| dinero.9 | bajo | abierto | 05 | - |
-| dinero.10 | bajo | abierto | 05 | - |
+| dinero.9 | bajo | corregido+probado | 05/C8 | a479959 |
+| dinero.10 | bajo | corregido+probado | 05/C8 | a479959 |
 | seguridad.1 | alto | parcial | 02 | 389dfcf |
 | seguridad.2 | critico | corregido+probado | 02 | 389dfcf |
 | seguridad.3 | alto | parcial+probado | 02 | 389dfcf |
@@ -47,31 +53,31 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 | datos.4 | alto | corregido+probado | 03 | 065676a |
 | datos.5 | medio | corregido+probado | 03/08 | 6c6d2fc |
 | datos.6 | alto | corregido | 03 | 065676a |
-| datos.7 | medio | corregido+probado | 06 | 0d02b1f |
+| datos.7 | medio | corregido+probado | 06/C5 | 44e5df4 |
 | datos.8 | alto | parcial+probado | 01 | 519e4de |
 | datos.9 | medio | parcial | 03 | 065676a |
 | datos.10 | alto | corregido+probado | 03 | 065676a |
 | motor-fechas.1 | critico | corregido+probado | 05/11 | fb1bd8a |
 | motor-fechas.2 | alto | corregido+probado | 05/11 | fb1bd8a |
-| motor-fechas.3 | alto | corregido+probado | 06 | 0d02b1f |
-| motor-fechas.4 | medio | corregido+probado | 06 | 0d02b1f |
-| motor-fechas.5 | bajo | corregido+probado | 06 | 0d02b1f |
-| motor-fechas.6 | medio | abierto | 06 | - |
-| agora.1 | alto | corregido+probado | 04 | 02d0101 |
+| motor-fechas.3 | alto | corregido+probado | 06/C6 | 7e6f232 |
+| motor-fechas.4 | medio | corregido+probado | 06/C6 | 7e6f232 |
+| motor-fechas.5 | bajo | corregido+probado | 06/C6 | 7e6f232 |
+| motor-fechas.6 | medio | corregido+probado | 06/C6 | 7e6f232 |
+| agora.1 | alto | corregido+probado | 04/C1 | 61e0070 |
 | agora.2 | alto | parcial | 04 | 02d0101 |
-| agora.3 | alto | corregido+probado | 04 | 02d0101 |
-| agora.4 | medio | parcial | 04 | 02d0101 |
-| agora.5 | medio | corregido+probado | 04 | 6c6d2fc |
+| agora.3 | alto | corregido+probado | 04/C3 | 61e0070 |
+| agora.4 | medio | corregido+probado | 04/C3 | 61e0070 |
+| agora.5 | medio | parcial+probado | 04/C4 | 44e5df4 |
 | agora.6 | alto | no_confirmado | 11 | - |
-| agora.7 | medio | abierto | 11 | - |
+| agora.7 | medio | parcial+probado | 11/C8 | 3658fd8 |
 | frontend.1 | alto | corregido | 09 | 2607c60 |
 | frontend.2 | medio | parcial+probado | 09 | 2607c60 |
 | frontend.3 | medio | corregido | 09 | 2607c60 |
 | frontend.4 | medio | corregido | 02 | 389dfcf |
-| frontend.5 | medio | abierto | 09 | - |
-| frontend.6 | medio | abierto | 09 | - |
-| frontend.7 | bajo | abierto | 09 | - |
-| frontend.8 | bajo | abierto | 09 | - |
+| frontend.5 | medio | corregido | 09/C8 | 3658fd8 |
+| frontend.6 | medio | corregido | 09/C8 | 3658fd8 |
+| frontend.7 | bajo | diferido | 09 | - |
+| frontend.8 | bajo | corregido | 09/C8 | 3658fd8 |
 | frontend.9 | medio | corregido+probado | 10 | 42288d9 |
 | frontend.10 | medio | corregido | 09 | 2607c60 |
 | frontend.11 | medio | corregido | 09 | 2607c60 |
@@ -79,17 +85,17 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 | pwa.2 | medio | corregido+probado | 07 | 593ee6e |
 | pwa.3 | medio | diferido | 07 | - |
 | pwa.4 | bajo | corregido | 09 | 2607c60 |
-| pwa.5 | bajo | abierto | 07 | - |
-| pwa.6 | medio | abierto | 07 | - |
+| pwa.5 | bajo | corregido | 07/C8 | 3658fd8 |
+| pwa.6 | medio | corregido | 07/C8 | 3658fd8 |
 | pwa.7 | bajo | corregido | 07 | 593ee6e |
 | rendimiento.1 | alto | corregido+probado | 08 | 6c6d2fc |
-| rendimiento.2 | medio | abierto | 08 | - |
-| rendimiento.3 | alto | abierto | 08 | - |
-| rendimiento.4 | alto | abierto | 08 | - |
+| rendimiento.2 | medio | corregido | 08/C8 | 3658fd8 |
+| rendimiento.3 | alto | parcial | 08 | 3658fd8 |
+| rendimiento.4 | alto | corregido+probado | 08/C8 | 3658fd8 |
 | rendimiento.5 | medio | corregido+probado | 08 | 2314e59 |
-| rendimiento.6 | medio | abierto | 08 | - |
-| rendimiento.7 | medio | abierto | 08 | - |
-| rendimiento.8 | medio | abierto | 08 | - |
+| rendimiento.6 | medio | corregido | 08/C8 | 3658fd8 |
+| rendimiento.7 | medio | corregido+probado | 08/C8 | 3658fd8 |
+| rendimiento.8 | medio | parcial | 08 | 6c6d2fc |
 | tests.1 | critico | corregido+probado | 03 | 065676a |
 | tests.2 | alto | corregido+probado | 03 | f89a8cc |
 | tests.3 | medio | corregido+probado | 01 | 9a6784e |
@@ -99,7 +105,7 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 | tests.7 | medio | corregido+probado | 10 | 42288d9 |
 | tests.8 | medio | corregido+probado | 03 | 065676a |
 | tests.9 | bajo | corregido+probado | 01 | 9a6784e |
-| tests.10 | bajo | abierto | 10 | - |
+| tests.10 | bajo | diferido | 10 | - |
 | tests.11 | medio | corregido+probado | 03 | 065676a |
 
 ## Detalle por hallazgo (histórico vs actual)
@@ -134,19 +140,21 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** costing.js margenProducto usa precio_neto = PVP/(1+iva) y coste NETO (ya no engrosa el coste con el IVA de VENTA).
 - **Prueba y resultado:** tests/motor-financiero.unit.js (food cost 25%) · PASA
 
-### dinero.6 · abierto · [bloque 05]
+### dinero.6 · corregido+probado · [bloque 05/C8] · commit a479959
 
-- **Evidencia histórica (defecto original):** backend/financials.js:152 `const interesesPeriodo = eur(cuotaMensual * (dias / (365 / 12)) * 0.3); // ~30% de la cuota como interés estimado` y :159 `beneficio_neto_estimado: neto` (neto = operativo − interesesPeriodo).
-- **Evidencia actual (HEAD):** financials.js:~152 sigue con interés estimado al 30% de la cuota.
-- **Prueba y resultado:** —
-- **Nota:** Interés hardcodeado al 30% de la cuota, sin usar calendario de amortización real ni separar principal/interés. Prompt 05 pedía usar datos reales y marcar estimaciones; sigue siendo una aproximación fija. Está etiquetado como estimado, lo que mitiga parcialmente, pero el 30% arbitrario persiste.
+- **Evidencia histórica (defecto original):** backend/financials.js:152 `const interesesPeriodo = eur(cuotaMensual * (dias / (365 / 12)) * 0.3); // ~30% de la cuota como interés estimado`.
+- **Comportamiento anterior:** el interés de deuda se estimaba como un 30% PLANO de la cuota mensual, constante inventada sin relación con cada deuda.
+- **Implementación actual (HEAD):** backend/debts.js `interesMensual(d)` deriva el interés de los DATOS de cada deuda: si tiene tipo anual (`interest_rate`/`tin`/`tae`) → `pendiente × tipo / 12`; si no → de la amortización real (`intereses totales restantes ÷ cuotas restantes`). backend/financials.js usa `debtsMod.interesMensualTotal(now)` en vez del 30%.
+- **Prueba específica:** tests/dinero-consistencia.unit.js (interés por tipo anual = 60 €/mes para 12.000 € al 6%; sin tipo se deriva de la amortización, ≈16,67 €, no 30 € planos; sin datos → 0).
+- **Resultado:** PASA. Sigue etiquetado como estimación, pero basada en datos reales, no en una constante arbitraria.
 
-### dinero.7 · abierto · [bloque 05]
+### dinero.7 · corregido+probado · [bloque 05/C8] · commit a479959
 
-- **Evidencia histórica (defecto original):** backend/costing.js:119-124 `function margenMedioCarta(...) { ... const suma = items.reduce((s, x) => s + x.mm.margen_bruto, 0); return Math.round((suma / items.length) * 1000) / 1000; }` y :128-134 `foodCostMedioCarta` idéntico: `const suma = items.reduce((s, x) => s + x.mm.food_cost, 0); return Math.round((suma / items.length) * 1000) / 10;`. Son medias aritméticas por nº de productos, sin ponderar por unidades/importe vendidos. break-even.js:38 las usa como `ratio_contribucion`.
-- **Evidencia actual (HEAD):** costing.js margenMedioCarta sigue siendo media no ponderada.
-- **Prueba y resultado:** —
-- **Nota:** No se distingue el margen de carta (no ponderado) del margen realizado ponderado por ventas que pide el prompt 05. El P&L sí tiene food cost ponderado (materia/ventas), pero estas funciones de carta/break-even siguen sin ponderar.
+- **Evidencia histórica (defecto original):** costing.js margenMedioCarta/foodCostMedioCarta eran medias aritméticas por nº de productos, sin ponderar por ventas; break-even las usaba como único `ratio_contribucion`.
+- **Comportamiento anterior:** no se distinguía el margen de CATÁLOGO (no ponderado) del margen REALIZADO (ponderado por el mix vendido).
+- **Implementación actual (HEAD):** backend/costing.js:`margenPonderadoVentas(productos, ventas, idx)` calcula el ratio realizado = Σ(margen € · uds) / Σ(ingreso neto · uds), ignorando productos sin coste fiable. backend/break-even.js expone AMBOS: `ratio_contribucion` (catálogo) y `ratio_contribucion_ponderado` (realizado).
+- **Prueba específica:** tests/dinero-consistencia.unit.js (con un mix sesgado a producto de bajo margen, el ponderado < el de catálogo; sin ventas → null).
+- **Resultado:** PASA.
 
 ### dinero.8 · corregido+probado · [bloque 05] · commit 4086f53
 
@@ -154,19 +162,21 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** backend/iva.js es la fuente única de IVA_VENTA; financials/costing/cuenta-resultados/analisis-mes la importan.
 - **Prueba y resultado:** tests/motor-financiero.unit.js · PASA
 
-### dinero.9 · abierto · [bloque 05]
+### dinero.9 · corregido+probado · [bloque 05/C8] · commit a479959
 
-- **Evidencia histórica (defecto original):** backend/cuenta-resultados.js:49 `food_cost_pct: food_cost_pct != null ? Math.round(food_cost_pct * 100) : null` (entero; existe pct1() en :15 pero NO se usa aquí). backend/financiero.js:17 `function pctDe(n, base) { return base > 0 ? Math.round((n / base) * 1000) / 10 : null; }` y :68 `food_cost_pct: materia != null ? pctDe(materia, V) : null` (1 decimal). financials.js:160 y analisis-diario.js:102 también usan entero (`Math.round(...*100)`).
-- **Evidencia actual (HEAD):** redondeo de food_cost_pct todavía dispar entre pantallas.
-- **Prueba y resultado:** —
-- **Nota:** Divergencia de precisión real y además 'congelada' en tests (cada uno afirma su propia precisión). Impacto visual menor pero el mismo ratio se muestra con distinta precisión según la pantalla.
+- **Evidencia histórica (defecto original):** cuenta-resultados.js y financials.js redondeaban los ratios a ENTERO (`Math.round(x*100)`) mientras financiero.js y analisis-diario.js usaban 1 decimal. El mismo food_cost_pct salía con precisión distinta según la pantalla.
+- **Comportamiento anterior:** precisión dispar y "congelada" en tests, cada pantalla con la suya.
+- **Implementación actual (HEAD):** backend/fmt.js es la fuente ÚNICA de `eur`/`pct1`/`pctDe` (1 decimal). cuenta-resultados.js, financials.js, financiero.js y analisis-diario.js la importan; se corrigieron los `food_cost_pct`/ratios que iban a entero (cuenta-resultados:food_cost_pct y margen_ebitda_pct; financials: los 5 ratios; analisis-diario:food_cost_pct).
+- **Prueba específica:** tests/dinero-consistencia.unit.js (`CR.componer` con ratio 0,266 → 26.6, no 27; fmt.pct1/pctDe coinciden).
+- **Resultado:** PASA.
 
-### dinero.10 · abierto · [bloque 05]
+### dinero.10 · corregido+probado · [bloque 05/C8] · commit a479959
 
-- **Evidencia histórica (defecto original):** Canónica en backend/costing.js:137-139 `function valorStock(materias) { return Math.round((materias || ...).reduce((s, m) => s + (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0), 0) * 100) / 100; }`. Duplicada inline por línea en: backend/routes/reportes.js:119 `valor_stock: r2(m.disponibilidad_actual * m.coste_medio)`; backend/routes/inicio.js:140 `valor_stock_actual: Math.round(m.disponibilidad_actual * m.coste_medio * 100) / 100`; backend/routes/materias.js:54 `valor_stock_actual: Math.round((Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0) * 100) / 100`; backend/analitica.js:56 `const v = (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0);`; backend/inventory-capital.js:25 `return (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0);`.
-- **Evidencia actual (HEAD):** valor de stock inline todavía duplica costing.valorStock en algún punto.
-- **Prueba y resultado:** —
-- **Nota:** Parcialmente centralizado para el AGREGADO: financials.js:115, decisiones.js:206, analitica.js:44 e inventory-capital.js:47 sí llaman a costing.valorStock. Pero la valoración POR MATERIA (disponibilidad × coste_medio) se reimplementa inline en varias rutas porque costing no exporta un helper por ítem. El prompt 06 pide 'Reutiliza costing para valor de stock' → bloque 06.
+- **Evidencia histórica (defecto original):** la valoración POR MATERIA (disponibilidad × coste_medio) se reimplementaba inline en reportes.js, inicio.js, materias.js, analitica.js e inventory-capital.js, con redondeos dispares; costing solo exportaba el agregado.
+- **Comportamiento anterior:** cinco copias inline de la misma fórmula de dinero.
+- **Implementación actual (HEAD):** backend/costing.js exporta `valorStockRaw(m)` (crudo) y `valorStockMateria(m)` (redondeado por ítem); `valorStock` suma en crudo y redondea UNA vez. Los cinco consumidores usan ahora el helper (reportes/inicio/materias → valorStockMateria; analitica/inventory-capital → valorStockRaw).
+- **Prueba específica:** tests/dinero-consistencia.unit.js (por ítem a 2 decimales; agregado sin doble redondeo).
+- **Resultado:** PASA.
 
 ### seguridad.1 · parcial · [bloque 02] · commit 389dfcf
 
@@ -237,8 +247,8 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 ### datos.3 · corregido+probado · [bloque 03] · commit 065676a
 
 - **Evidencia histórica (defecto original):** backend/data-store.js:199 `const next = prev.then(op).catch((e) => console.error(`Error guardando '${name}':`, e.message));` — en modo Postgres la cola TRAGA el error de db.upsert/db.del (solo lo loguea). insert/update/remove (backend/data-store.js:250-254, :241-248) son síncronos y no esperan la escritura, y flush() (backend/data-store.js:204-205 `return Promise.allSettled(Object.values(colas));`) nunca rechaza. La ruta responde 200 aunque la fila jamás llegue a la BD.
-- **Evidencia actual (HEAD):** data-store.flush() propaga el fallo de la cola (no 200 en falso).
-- **Prueba y resultado:** tests/durabilidad.unit.js (flush propaga) · PASA
+- **Evidencia actual (HEAD):** data-store.flush() propaga el fallo de la cola (no 200 en falso). **C7 (commit 37a32d8)** lo refuerza: un guardado fallido marca la entidad en `divergencias()` (la caché quedó por delante del almacén durable) y `reconciliar()` re-hidrata desde Postgres/fichero, de modo que la caché no "miente" tras el fallo; un reinicio solo ve lo durable.
+- **Prueba y resultado:** tests/durabilidad.unit.js (flush propaga) + tests/persistencia-divergencia.unit.js (divergencia + reconciliación + reintento idempotente, JSON y BD simulada) · PASA
 
 ### datos.4 · corregido+probado · [bloque 03] · commit 065676a
 
@@ -258,11 +268,13 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** server.js: cierre ordenado SIGTERM/SIGINT (server.close → flush → cerrar BD).
 - **Prueba y resultado:** smoke en bloque 03 (log 'cierre ordenado'); sin test automatizado de señal
 
-### datos.7 · corregido+probado · [bloque 06] · commit 0d02b1f
+### datos.7 · corregido+probado · [bloque 06/C5] · commit 44e5df4
 
-- **Evidencia histórica (defecto original):** Consumo: backend/agora.js:288-289 `const m = idxMat[ing.materia_id]; if (!m) return;` — si el materia_id del escandallo no existe, no descuenta ni avisa. Cálculo de coste: backend/costing.js:30-31 `const m = idxMat[materiaId]; const costeDirecto = m ? Number(m.coste_medio) || 0 : 0;` — materia inexistente aporta 0 €. Sin validación al guardar: backend/routes/recetas.js:22-23 `const materia = materias.find((m) => m.id === ing.materia_id); return { ...ing, nombre: materia ? materia.nombre : ing.materia_id, ... }` usa el id como nombre en vez de rechazar.
-- **Evidencia actual (HEAD):** agora.js: materia inexistente en escandallo se señala en resumen.materias_faltantes (no se traga).
-- **Prueba y resultado:** tests/periodos-stock.unit.js · PASA
+- **Evidencia histórica (defecto original):** backend/costing.js:30-31 `const costeDirecto = m ? Number(m.coste_medio) || 0 : 0;` — materia inexistente/sin coste aportaba 0 € SILENCIOSO, dando un margen aparentemente completo con coste infravalorado.
+- **Comportamiento anterior:** avisar de una materia inexistente (resumen.materias_faltantes) NO impedía que el coste se calculara como 0; margenProducto devolvía un margen cerrado aunque el escandallo estuviera a medias.
+- **Implementación actual (HEAD):** costing.js es la fuente única: `costeMateriaDetalle` distingue "no lo sé" (`resuelto:false`) de "cuesta 0", resolviendo elaboraciones por su receta. `margenProducto` expone `incompleto` + `materias_sin_coste` + `coste_fiable`. `cartaCosteada` EXCLUYE los incompletos de la media y `cartaIncompleta` los lista aparte. cierre-mes lee el flag (antes recontaba con un heurístico que daba falsos positivos en elaboraciones); routes/carta devuelve `coste_incompleto`.
+- **Prueba específica:** tests/coste-parcial.unit.js (materia inexistente → resuelto:false; elaboración sí resuelve; escandallo incompleto marca `incompleto`/`materias_sin_coste` y NO entra en la media de carta).
+- **Resultado:** PASA. (También sigue vigente el aviso de stock en agora.js:resumen.materias_faltantes y tests/periodos-stock.unit.js.)
 
 ### datos.8 · parcial+probado · [bloque 01] · commit 519e4de
 
@@ -294,36 +306,45 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** analisis-mes: neto=base, total=bruto; ya no se etiqueta bruto como neto en el cierre.
 - **Prueba y resultado:** tests/doble-iva.unit.js · PASA
 
-### motor-fechas.3 · corregido+probado · [bloque 06] · commit 0d02b1f
+### motor-fechas.3 · corregido+probado · [bloque 06/C6] · commit 7e6f232
 
-- **Evidencia histórica (defecto original):** backend/periods.js:29-47 calcula fronteras en hora del servidor: `startOfDay` `d.setHours(0,0,0,0)`, `startOfMonth` `new Date(d.getFullYear(), d.getMonth(), 1)`, `startOfYear` `new Date(d.getFullYear(), 0, 1)`, `startOfWeek` sobre startOfDay; no hay require("./tz") en el fichero. Igual en backend/cuenta-resultados.js:23-24 `const desde = new Date(y, m, 1).getTime(); const finMes = new Date(y, m + 1, 1).getTime();`.
-- **Evidencia actual (HEAD):** server.js: process.env.TZ=Europe/Madrid → fronteras de día/mes en hora de Málaga (DST nativo).
-- **Prueba y resultado:** tests/periodos-stock.unit.js (semana empieza lunes) · PASA
+- **Evidencia histórica (defecto original):** backend/periods.js calcula fronteras con aritmética nativa de Date (`setHours`, `new Date(y,m,1)`), que depende del TZ del proceso; antes server.js usaba `process.env.TZ || "Europe/Madrid"`, que CONSERVABA el UTC heredado de Render.
+- **Comportamiento anterior:** arrancando en UTC, las fronteras de día/mes caían en medianoche UTC; una venta de las 00:30 de Madrid caía en el día anterior.
+- **Implementación actual (HEAD):** backend/tz-init.js impone Europe/Madrid de forma INCONDICIONAL (override solo con CONTROL_M_TZ, no con el TZ genérico); server.js lo requiere lo primero. Documenta el contrato: el TZ del proceso resuelve la aritmética nativa (con DST del sistema); tz.js (Intl + timeZone explícito) resuelve el formateo/agrupación independiente del TZ.
+- **Prueba específica:** tests/motor-fechas.unit.js (arranca en UTC, tz-init fuerza Madrid; 00:30 de Madrid pertenece al día de Madrid; semana empieza lunes).
+- **Resultado:** PASA. (También tests/periodos-stock.unit.js.)
 
-### motor-fechas.4 · corregido+probado · [bloque 06] · commit 0d02b1f
+### motor-fechas.4 · corregido+probado · [bloque 06/C6] · commit 7e6f232
 
-- **Evidencia histórica (defecto original):** backend/periods.js:89-101 `comparativoAnterior`: `const len = r.hasta - r.desde; ... case "mes": desde = addMonths(r.desde, -1); ... return { desde, hasta: desde + len, ... }`. `len` es el tramo transcurrido del mes en curso (largo); sumado al día 1 del mes anterior (corto) se desborda su fin de mes. Vivo en backend/routes/business-health.js:15 `const ant = periods.comparativoAnterior(preset, now)` y backend/executive-dashboard.js:92,98,222 vía periods.resolver.
-- **Evidencia actual (HEAD):** periods.comparativoAnterior capa el tramo para no desbordar al mes siguiente.
-- **Prueba y resultado:** tests/periodos-stock.unit.js (31 marzo) · PASA
+- **Evidencia histórica (defecto original):** backend/periods.js `comparativoAnterior`: `len` (tramo del mes en curso) sumado al día 1 del mes anterior (más corto) desbordaba su fin de mes; y 29-feb en año bisiesto no tenía correspondencia en el año anterior.
+- **Comportamiento anterior:** el comparativo de un mes en curso el día 31 invadía el mes siguiente.
+- **Implementación actual (HEAD):** periods.comparativoAnterior capa el tramo (`Math.min(desde+len, addMonths(desde,1))`); tramoHastaMismoDia capa el día al último del mes destino (29-feb → 28 el año anterior).
+- **Prueba específica:** tests/motor-fechas.unit.js (31-mar no desborda a marzo; 29-feb bisiesto se capa a 28 sin reventar) + tests/periodos-stock.unit.js.
+- **Resultado:** PASA.
 
-### motor-fechas.5 · corregido+probado · [bloque 06] · commit 0d02b1f
+### motor-fechas.5 · corregido+probado · [bloque 06/C6] · commit 7e6f232
 
-- **Evidencia histórica (defecto original):** backend/periods.js:104-111 `comparativoAnioAnterior`: `desde: new Date(new Date(r.desde).getFullYear() - 1, new Date(r.desde).getMonth(), new Date(r.desde).getDate(), new Date(r.desde).getHours()).getTime()` (ídem hasta). Reconstruye por hora-pared local, conserva sólo la hora (minutos/segundos se pierden) y para 29-feb de año bisiesto → año-1 no bisiesto desborda a 1-mar. Expuesto en backend/executive-dashboard.js:222 `anio_anterior: res.anio_anterior`.
-- **Evidencia actual (HEAD):** periods.comparativoAnioAnterior alineado al día (sin hora) → sin deriva DST.
-- **Prueba y resultado:** tests/periodos-stock.unit.js · PASA
+- **Evidencia histórica (defecto original):** periods.comparativoAnioAnterior reconstruía por hora-pared local, perdía minutos/segundos y en los cambios de horario (29-mar/25-oct) derivaba 1 h.
+- **Comportamiento anterior:** deriva de 1 h en los comparativos interanuales por el DST.
+- **Implementación actual (HEAD):** comparativoAnioAnterior alineado al DÍA (sin hora), así el cambio de horario no mete deriva; con el TZ de Madrid forzado (C6) los días de DST duran 23 h/25 h correctamente.
+- **Prueba específica:** tests/motor-fechas.unit.js (29-mar dura 23 h, 25-oct dura 25 h) + tests/periodos-stock.unit.js.
+- **Resultado:** PASA.
 
-### motor-fechas.6 · abierto · [bloque 06]
+### motor-fechas.6 · corregido+probado · [bloque 06/C6] · commit 7e6f232
 
-- **Evidencia histórica (defecto original):** backend/cuenta-resultados.js:65-73 proyección lineal sin amortiguación ni mínimo de días: `if (enCurso && diasTranscurridos > 0 && diasTranscurridos < diasMes) { const factor = diasMes / diasTranscurridos; const ventasP = ventas * factor; ...; const personalMes = personal * (diasMes / diasTranscurridos); ... }`. Mismo patrón en backend/executive-dashboard.js:115 `beneficioActual.proyeccion_mes = eur(benMes.beneficio_operativo * (diasDelMes / diasTranscurridos))`.
-- **Evidencia actual (HEAD):** proyección lineal volátil los primeros días: sin cambios.
-- **Prueba y resultado:** —
-- **Nota:** Verificable sin producción. En día 1 el factor es diasMes/1 ≈ 30×, de modo que la proyección oscila fuertemente al principio del mes; no hay suavizado, mínimo de días ni banda de confianza. Es el método lineal tal y como está diseñado (etiquetado «proyección»), no un error de cálculo, pero la condición de volatilidad señalada por la auditoría sigue intacta.
+- **Evidencia histórica (defecto original):** cuenta-resultados.js y executive-dashboard.js proyectaban el mes de forma lineal (`factor = diasMes / diasTranscurridos`) sin suavizado, mínimo de días ni banda de confianza: en el día 1 el factor es ~30×, muy volátil.
+- **Comportamiento anterior:** la proyección del día 1-2 se presentaba como un número cerrado pese a oscilar enormemente.
+- **Implementación actual (HEAD):** cuenta-resultados.js añade `MIN_DIAS_PROYECCION=3`: la proyección marca `fiable` (false por debajo del mínimo) y una banda de confianza `banda_pct` + `ingresos_min`/`ingresos_max` que se estrecha con los días (~1/√días). executive-dashboard expone `proyeccion_mes_fiable`/`proyeccion_mes_dias`. No se oculta el número (sigue siendo útil), pero deja de presentarse como cerrado cuando aún no lo es.
+- **Prueba específica:** tests/motor-fechas.unit.js (día 1 → fiable:false + banda ancha; día 15 → fiable:true + banda más estrecha).
+- **Resultado:** PASA.
 
-### agora.1 · corregido+probado · [bloque 04] · commit 02d0101
+### agora.1 · corregido+probado · [bloque 04/C1] · commit 61e0070
 
-- **Evidencia histórica (defecto original):** backend/conciliacion-ventas.js:214 `if (grupo.length < 2 || tipos.size < 2) return;` y :216 `ordenado.slice(1).forEach((t) => clavesAEliminar.push(t.clave));`. La firma (backend/conciliacion-ventas.js:42-48 `firmaTicket`) es solo productos+cantidades+importe redondeado, SIN hora ni cliente. La eliminación heurística de limpiarDuplicados sigue existiendo y borra ventas reales.
-- **Evidencia actual (HEAD):** conciliacion-ventas.sobrantesSeguros: conserva TODAS las facturas (ventas reales) y solo quita inferiores 1:1.
-- **Prueba y resultado:** tests/conciliacion-ventas.unit.js (2 facturas + 1 albarán → solo el albarán) · PASA
+- **Evidencia histórica (defecto original):** limpiarDuplicados borraba inferiores por coincidencia de FIRMA (productos+cantidades+importe), sin hora ni vínculo documental → podía borrar ventas reales idénticas.
+- **Comportamiento anterior:** la coincidencia 1:1 por CONTENIDO bastaba para eliminar; dos ventas legítimas idénticas se fusionaban.
+- **Implementación actual (HEAD):** conciliacion-ventas.js exige RELACIÓN DOCUMENTAL explícita (`tieneVinculo`: la factura superviviente referencia serie+número del albarán vía `origen`/`origen_claves`/`albaranes`). `clasificarGrupo` devuelve {survivors, vinculados, candidatos}: solo se borran los `vinculados`; los `candidatos` (coinciden en contenido pero SIN vínculo) se señalan y NO se tocan.
+- **Prueba específica:** tests/conciliacion-ventas.unit.js ("NO borra ventas legítimas idénticas sin VÍNCULO (una facturada, otra en albarán)" y "SÍ deduplica cuando la factura REFERENCIA al albarán").
+- **Resultado:** PASA.
 
 ### agora.2 · parcial · [bloque 04] · commit 02d0101
 
@@ -331,23 +352,29 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** albarán+factura con números distintos se SEÑALA en la conciliación (no se fusiona a ciegas).
 - **Prueba y resultado:** tests/cuadre-agora.unit.js (aviso doble conteo) · PASA
 
-### agora.3 · corregido+probado · [bloque 04] · commit 02d0101
+### agora.3 · corregido+probado · [bloque 04/C3] · commit 61e0070
 
-- **Evidencia histórica (defecto original):** backend/agora.js:47-95 `function importarVentas(...)` hace `ventas.push({ id: store.nextId("ven","ventas"), ... })` sin doc_clave ni dedupe. Llamada viva en 3 vías: backend/agora.js:359 `const r = importarVentas(texto, "cron")` (invocado por server.js:539 `setInterval(() => agora.cronImport(), 60*60*1000)`), backend/routes/ventas.js:33 `agora.importarVentas(csv, "manual")`, backend/ventas-email.js:77 `agora.importarVentas(txt, "email")`.
-- **Evidencia actual (HEAD):** cronImport idempotente por hash del fichero (no reimporta el mismo CSV).
-- **Prueba y resultado:** tests/agora-cron-idempotente.unit.js · PASA
+- **Evidencia histórica (defecto original):** importarVentas (vías manual/email/CSV) hacía `ventas.push(...)` sin dedupe; el cron reimportaba el mismo CSV cada hora.
+- **Comportamiento anterior:** la idempotencia por hash del cron no cubría las vías manual/email ni los CSV con días solapados.
+- **Implementación actual (HEAD):** importarVentas es idempotente por FUENTE+DÍA: reemplaza-por-origen con reversión de stock neutra (revierte lo reemplazado y aplica lo nuevo), sin deduplicar ventas legítimas por contenido; no pisa ventas de otra fuente; solapamiento parcial solo reemplaza los días comunes. El cron conserva su idempotencia por hash.
+- **Prueba específica:** tests/agora-cron-idempotente.unit.js (reimportar mismo CSV no duplica; no pisa otra fuente; solapamiento parcial; stock neutro).
+- **Resultado:** PASA.
 
-### agora.4 · parcial · [bloque 04] · commit 02d0101
+### agora.4 · corregido+probado · [bloque 04/C3] · commit 61e0070
 
-- **Evidencia histórica (defecto original):** backend/agora.js:214-216 `const bizKey = (s, n, f) => ... return "${s}|${num}|${f.slice(0,10)}"` — la clave NO incluye el tipo de documento; y :244 `if (serie != null && number != null && ventasBiz.has(bk)) ... deduplicados.push(...); return;` deduplica por Serie+Número+día sin mirar el tipo.
-- **Evidencia actual (HEAD):** bizKey se mantiene sin tipo A PROPÓSITO (cuadra la misma venta entre CSV y conector); el riesgo de colapso lo cubre la conciliación.
-- **Prueba y resultado:** verificado por lectura
+- **Evidencia histórica (defecto original):** la clave de negocio sin TIPO podía descartar documentos DISTINTOS que compartían Serie+Número+día; un aviso posterior no recupera una venta descartada.
+- **Comportamiento anterior:** `if (ventasBiz.has(bk)) { deduplicados.push(...); return; }` → descartaba la fila sin importar el tipo, con riesgo de pérdida.
+- **Implementación actual (HEAD):** ya NO se descarta. `const posibleDup = (serie!=null && number!=null && ventasBiz.has(bk)); if (posibleDup) posiblesDuplicados.push(...)`; la venta se importa igual, etiquetada `posible_duplicado: bk`, conservando identidad y trazabilidad de origen. La conciliación la revisa con vínculo documental; nunca se pierde una venta en silencio.
+- **Prueba específica:** tests/agora-cuadre.unit.js + conciliacion-ventas (ninguna venta se pierde; se marca para revisión).
+- **Resultado:** PASA.
 
-### agora.5 · corregido+probado · [bloque 04] · commit 6c6d2fc
+### agora.5 · parcial+probado · [bloque 04/C4] · commit 44e5df4
 
-- **Evidencia histórica (defecto original):** backend/agora.js:256-271: la resolución de línea solo lee nombre, `cantidad` (:257), `importeRaw` de `["TotalAmount","Amount",...,"GrossAmount","UnitPrice",...]` (:258) y `netoRaw` de `["Base","NetAmount",...]` (:261). No hay ninguna referencia a descuento/discount/invitación/cortesía en backend/agora.js ni backend/ventas-export.js (grep sin coincidencias salvo un comentario). No existe resta de descuentos de línea/documento ni tratamiento de invitaciones.
-- **Evidencia actual (HEAD):** agora.esAnulado: documentos anulados no cuentan; invitaciones suman 0; devoluciones restan.
-- **Prueba y resultado:** tests/agora-cuadre.unit.js (anulado no cuenta) · PASA
+- **Evidencia histórica (defecto original):** la resolución de línea no trataba descuentos/invitaciones/cortesías; anulaciones/devoluciones solo "neteaban" sin dejar rastro.
+- **Comportamiento anterior:** anulaciones, invitaciones y devoluciones se mezclaban en el total sin separarse; el descuento global de documento no se contemplaba.
+- **Implementación actual (HEAD):** cada línea se clasifica (`naturaleza`: venta|invitacion|devolucion) y se cuenta aparte en el resumen (invitaciones/unidades_invitadas/devoluciones/importe_devuelto); los documentos anulados se omiten (esAnulado). El descuento GLOBAL de documento se SEÑALA (descuentos_globales/importe_descuento_global/descuento_global_pendiente) pero NO se reparte por línea sin una muestra real de Ágora.
+- **Prueba específica:** tests/agora-cuadre.unit.js (devoluciones e invitaciones contadas aparte + naturaleza; invitación descuenta stock; descuento global señalado y marcado pendiente).
+- **Resultado:** PASA. **PENDIENTE (externo):** el reparto exacto del descuento GLOBAL por línea requiere una muestra real de documentos de Ágora → por eso el hallazgo figura `parcial+probado`, no `corregido`.
 
 ### agora.6 · no_confirmado · [bloque 11]
 
@@ -355,12 +382,13 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** En una instancia importarDocs es síncrono → seguro. Multi-réplica requiere restricción única en BD (decisión de despliegue).
 - **Prueba y resultado:** n/a (requiere despliegue multi-réplica)
 
-### agora.7 · abierto · [bloque 11]
+### agora.7 · parcial+probado · [bloque 11/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** backend/conciliacion-ventas.js:200-201 `const key = v.doc_clave; if (!key) return;` — limpiarDuplicados EXCLUYE las ventas sin doc_clave. backend/agora.js:219 `ventas.forEach(v => { if (v.doc_serie != null || v.doc_number != null) ventasBiz.add(...) })` — el índice bizKey de la ingesta omite las heredadas. PERO backend/conciliacion-ventas.js:100 `const tkey = v.doc_clave || "(sin doc) "+v.id;` — conciliacionDia SÍ las suma en bruto/neto y las muestra como tickets. backend/migracion-ventas-dup.js:28 borra las heredadas en meses que ya tienen consumo.
-- **Evidencia actual (HEAD):** ventas heredadas sin doc_clave siguen fuera del cuadre fino.
-- **Prueba y resultado:** —
-- **Nota:** El hallazgo es mixto. 'Fuera de la limpieza' es CORRECTO: limpiarDuplicados hace `if (!key) return` (línea 201), y la ingesta no las indexa en bizKey (agora.js:219), así que una heredada no bloquea una reimportación equivalente. 'Fuera del cuadre' es solo PARCIALMENTE cierto: conciliacionDia SÍ las cuenta en los totales (línea 100, agrupadas como tipo 'Otro'), no quedan fuera del cuadre de importes. Además existe la migración de arranque migracion-ventas-dup.js que elimina las heredadas duplicadas en meses con consumo (idempotente, con test). Riesgo mitigado pero no cerrado: quedan vías donde una venta heredada sin doc_clave ni se dedup en ingesta ni se puede remediar con limpiarDuplicados.
+- **Evidencia histórica (defecto original):** limpiarDuplicados hacía `if (!key) return` → EXCLUÍA de la conciliación fina las ventas heredadas sin doc_clave.
+- **Comportamiento anterior:** una venta heredada sin documento quedaba fuera del cuadre fino (aunque conciliacionDia la sumaba en los totales).
+- **Implementación actual (HEAD):** limpiarDuplicados ya NO las salta: cada heredada entra con una clave sintética `(sin doc) <id>` y participa en la agrupación por firma. Como no tiene documento, NUNCA puede tener vínculo → siempre cae en `candidatos` (se SEÑALA, jamás se borra sola). Así deja de quedar fuera del cuadre fino sin arriesgar el borrado de una venta legítima.
+- **Prueba específica:** tests/conciliacion-ventas.unit.js ("una venta HEREDADA sin doc_clave entra como candidato, NO se borra").
+- **Resultado:** PASA. Residual INHERENTE (por diseño agora.1): una venta sin documento no se puede deduplicar automáticamente; se marca para revisión manual (+ migracion-ventas-dup.js para duplicados heredados en meses con consumo). Por eso `parcial+probado`, no `corregido`.
 
 ### frontend.1 · corregido · [bloque 09] · commit 2607c60
 
@@ -386,33 +414,31 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** esc() en los 58 sinks de error ${e.message}.
 - **Prueba y resultado:** verificado por lectura (patrón único)
 
-### frontend.5 · abierto · [bloque 09]
+### frontend.5 · corregido · [bloque 09/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** frontend/index.html:1829 `.lab-estado { font-size:9px; ...; color:#1a1f16; ... }` pintado sobre fondo inline `background:${est.c}` (:5487). LAB_ESTADOS (:5316-5319): prueba c:'#c79a3a' (~6.4:1 OK), aprobado c:'var(--olive)'=#45443D (~1.7:1), carta c:'#3f6079' (~2.5:1), archivado c:'var(--muted)'=#86847A (~4.47:1).
-- **Evidencia actual (HEAD):** algunos badges con contraste bajo: sin cambios.
-- **Prueba y resultado:** —
-- **Nota:** Texto casi negro (#1a1f16) en 9px mayúsculas sobre fondos oscuros/medios. 'Aprobado' (olivo, ~1.7:1) y 'En carta' (azul, ~2.5:1) quedan muy por debajo de 4.5:1; 'Archivado' justo por debajo (~4.47:1). Medible por fórmula WCAG; confirmado abierto.
+- **Evidencia histórica (defecto original):** `.lab-estado` pintaba texto casi negro (#1a1f16) sobre fondos de estado; 'Aprobado' (olivo ~1.7:1) y 'En carta' (azul ~2.5:1) quedaban muy por debajo de 4.5:1 (AA).
+- **Comportamiento anterior:** badges de estado con contraste insuficiente.
+- **Implementación actual (HEAD):** el texto del badge es BLANCO (#fff) y los fondos se oscurecieron donde hacía falta: prueba #8a5a12 (5.9:1), aprobado var(--olive)=#45443D (9.8:1), carta #3f6079 (6.6:1), archivado #5c5a52 (6.9:1). Los cuatro ≥4.5:1.
+- **Prueba y resultado:** contrastes WCAG calculados (fórmula de luminancia relativa) para los cuatro pares + e2e en verde (sin pageerror). Sin test unitario dedicado (el color vive en una const del HTML).
 
-### frontend.6 · abierto · [bloque 09]
+### frontend.6 · corregido · [bloque 09/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** frontend/index.html:1019-1021 `.topbar-inicio { font-size:12px; ...; padding:7px 18px; ... }` (alto ≈30px con borde); :1025-1027 `.topbar-aj { font-size:12px; ...; padding:7px 15px; }` (≈30px); :1044-1045 `.topbar-back { ...; font-size:17px; ...; padding:0 4px 0 0; }` (~20px). La barra mide 94px (:1003) pero estos controles no llenan el alto.
-- **Evidencia actual (HEAD):** tamaño táctil de la barra superior: sin cambios (toca layout).
-- **Prueba y resultado:** —
-- **Nota:** Objetivos táctiles de ~28-31px (inicio/ajustes) y aún menores en el botón atrás, por debajo del mínimo recomendado 44x44px en una app móvil-primero. El imagotipo central sí mide 44px (:1032). La cifra '~28px' del hallazgo es aproximadamente correcta.
+- **Evidencia histórica (defecto original):** `.topbar-inicio`/`.topbar-aj` ~30px y `.topbar-back` ~20px, por debajo del mínimo táctil 44x44px.
+- **Comportamiento anterior:** objetivos táctiles pequeños en una app móvil-primero.
+- **Implementación actual (HEAD):** los tres controles llevan `min-height:44px` (y `min-width:44px` el botón atrás) con `display:inline-flex; align-items:center` para ampliar el área sin cambiar el aspecto visual.
+- **Prueba y resultado:** verificado por lectura del CSS + e2e en verde.
 
-### frontend.7 · abierto · [bloque 09]
+### frontend.7 · diferido · [bloque 09]
 
-- **Evidencia histórica (defecto original):** grep -oiE '#[0-9a-f]{6}|#[0-9a-f]{3}' frontend/index.html = 476 ocurrencias (135 únicas). En :root (:31-83) hay 30 custom properties, de las cuales ~17 son colores hex. Ejemplos de hex inline sueltos: #23281E (:1564), #B7C77E (:1569), #262B1E (:1035), #1a1f16 (:1829), #c79a3a/#3f6079 (:5316-5318).
-- **Evidencia actual (HEAD):** deriva de color (tokens sin unificar): sin cambios.
-- **Prueba y resultado:** —
-- **Nota:** Cifra confirmada al dígito: 476 hex inline frente a ~20 tokens (hallazgo exacto). Deriva de color / mantenibilidad: numerosos hex duplican o se desvían de los tokens definidos en :root.
+- **Evidencia histórica (defecto original):** ~476 hex inline frente a ~20 tokens de :root (deriva de color / mantenibilidad).
+- **Decisión (diferido, justificada):** es mantenibilidad pura (bajo). Hay VARIOS bloques :root (temas claro/oscuro) donde un mismo token cambia de valor según el tema; por eso sustituir a ciegas un hex inline por `var(--x)` NO es un no-op: puede alterar el color en modo oscuro. Una migración masiva de 476 hexes requiere revisión VISUAL por ocurrencia y en ambos temas (un riesgo real sobre la identidad visual que Mónica usa a diario), que ni los tests unitarios ni los e2e detectan. Se difiere a una revisión visual dedicada, no se hace a ciegas.
 
-### frontend.8 · abierto · [bloque 09]
+### frontend.8 · corregido · [bloque 09/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** frontend/index.html:3946 `function labPanel(titulo, lista, onclick){` es la ÚNICA aparición de 'labPanel' en el fichero (nunca se invoca). Su CSS `.lab-panel` (:1195, :1198, :1207) solo se emite dentro de esa función (:3947 `<button class="lab-panel" ...>`), por lo que también queda inalcanzable.
-- **Evidencia actual (HEAD):** labPanel() confirmado código muerto; retirada diferida por bajo valor.
-- **Prueba y resultado:** —
-- **Nota:** Código muerto confirmado por grep: labPanel() definido y sin ninguna llamada; .lab-panel referenciado solo dentro de labPanel(). (Nota: usa <button>, de modo que si se usara sería accesible por teclado; es irrelevante porque está muerto.)
+- **Evidencia histórica (defecto original):** `labPanel()` definido y nunca invocado; su CSS `.lab-panel`/`.lab-wrap`/`.lab-title`/`.lab-rule`/`.lab-list`/`.lab-arrow` solo se usaba dentro de esa función.
+- **Comportamiento anterior:** código muerto en el fichero.
+- **Implementación actual (HEAD):** se eliminó `labPanel()` y su CSS exclusivo (se conservan `.lab-mark`/`.lab-eyebrow`/`.lab-foot`, que sí se usan en otros sitios).
+- **Prueba y resultado:** verificado por grep (0 usos restantes de las clases retiradas) + e2e en verde.
 
 ### frontend.9 · corregido+probado · [bloque 10] · commit 42288d9
 
@@ -456,19 +482,19 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** sw.js: app-shell con red-primero + respaldo offline; /api nunca se cachea.
 - **Prueba y resultado:** e2e pinta con el SW activo; sin test offline automatizado
 
-### pwa.5 · abierto · [bloque 07]
+### pwa.5 · corregido · [bloque 07/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** frontend/index.html:4968 svtAlarma dispara en primer plano `new Notification("⏰ Retira: "+c.label, { ... tag:c.id ...})` con c.id = 'sv'+n (línea 4893). El servidor dispara en paralelo el push a la misma hora y el SW lo muestra en frontend/sw.js:30 `self.registration.showNotification(title, options)` con tag = t.id = 'svp'+Date.now()+random (backend/sv-timers.js:42). Los tags DIFIEREN, así que no se colapsan: aparecen dos notificaciones. El handler push de sw.js (líneas 15-31) no comprueba clientes enfocados antes de mostrar.
-- **Evidencia actual (HEAD):** notificación duplicada en primer plano: sin cambios.
-- **Prueba y resultado:** —
-- **Nota:** El duplicado requiere que el push del servidor llegue efectivamente (avisos activados y suscripción válida). No hay deduplicación por cliente enfocado ni tag común entre el aviso local y el del servidor. Confirmado por lectura; el solapamiento visual exacto solo se ve en dispositivo real.
+- **Evidencia histórica (defecto original):** el aviso local (svtAlarma, `new Notification`) y el push del servidor (SW `showNotification`) usaban tags distintos → dos notificaciones en primer plano; el handler push no comprobaba clientes enfocados.
+- **Comportamiento anterior:** notificación de sous-vide duplicada con la app abierta.
+- **Implementación actual (HEAD):** el push del servidor lleva `kind:"sv"` (backend/sv-timers.js); el handler push del SW (frontend/sw.js), si hay un cliente ENFOCADO (visible), NO muestra la notificación del sistema para 'sv' (la app ya la muestra) y le avisa por postMessage; si la app está en 2º plano/cerrada, sí la muestra.
+- **Prueba y resultado:** verificado por lectura de sw.js + sv-timers.js; e2e en verde (el SW se registra sin errores). El solapamiento exacto solo se observa en dispositivo, pero la lógica de deduplicación por cliente enfocado es correcta.
 
-### pwa.6 · abierto · [bloque 07]
+### pwa.6 · corregido · [bloque 07/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** frontend/index.html:4900-4901 svtStart lanza el POST y asigna el id de forma asíncrona: `api("/avisos/temporizador",{...}).then(r=>{ t.pushId = r.id; }).catch(()=>{});`. frontend/index.html:4905 svtStop: `if(t && t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }` — si se para antes de que llegue la respuesta, t.pushId es null (inicializado en línea 4893) y NO se envía el DELETE, así que el temporizador del servidor nunca se cancela y disparará su push.
-- **Evidencia actual (HEAD):** carrera al parar el temporizador antes de recibir el id: sin cambios (coordinación SW/front).
-- **Prueba y resultado:** —
-- **Nota:** Carrera real e intacta: parar un temporizador en los ~milisegundos/segundo previos a recibir el id del servidor deja vivo el aviso 'retira' en el backend. No hay cola de cancelaciones pendientes ni reintento. Daño bajo (aviso espurio), pero el defecto persiste.
+- **Evidencia histórica (defecto original):** svtStart asigna `t.pushId` de forma asíncrona; si svtStop se ejecutaba antes de recibir el id, no se enviaba el DELETE y el aviso del servidor quedaba vivo.
+- **Comportamiento anterior:** parar un temporizador en los instantes previos a recibir su id dejaba vivo el push 'retira'.
+- **Implementación actual (HEAD):** svtStop marca `t.cancelado = true` (aunque el id aún no haya llegado); cuando el POST resuelve, si `t.cancelado` ya está, se envía el DELETE inmediatamente. No queda aviso espurio.
+- **Prueba y resultado:** verificado por lectura (frontend/index.html svtStart/svtStop); e2e en verde. Sin test unitario dedicado (la carrera async vive en el HTML).
 
 ### pwa.7 · corregido · [bloque 07] · commit 593ee6e
 
@@ -482,26 +508,26 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** insertMany: la sync ya no reescribe toda la tabla de ventas (no DELETE+INSERT de todo).
 - **Prueba y resultado:** tests/incremental-ventas.unit.js · PASA
 
-### rendimiento.2 · abierto · [bloque 08]
+### rendimiento.2 · corregido · [bloque 08/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** backend/routes/dashboard.js:12 `res.json(dashboard.calcular({ now: Date.now() }));` sin caché ni cabecera de cacheo. dashboard-ceo.js recorre `ventas` muchas veces: mediaMismoDiaSemana (líneas 155-165) llama a analisisDiario.ventaDia 8 veces, serieMes (línea 450) recorre todas las ventas, más ventaDia de hoy (207) y de la semana pasada (321); ventaDia filtra el array completo cada vez. frontend/index.html:3862 `_dashTimer=setInterval(()=>{...loadHomeCEO()...}, 180000);` = 3 min.
-- **Evidencia actual (HEAD):** dashboard sin caché: sin cambios (requiere medición y caché por rol).
-- **Prueba y resultado:** benchmark local disponible (scripts/bench.js)
-- **Nota:** El número exacto "30-40 pasadas" no es verificable al milímetro, pero el orden de magnitud (docenas de recorridos completos del array ventas por llamada, sin memoización ni caché de respuesta) sí se confirma leyendo el código.
+- **Evidencia histórica (defecto original):** backend/routes/dashboard.js servía `dashboard.calcular({now})` sin caché, recorriendo el array de ventas decenas de veces por llamada.
+- **Comportamiento anterior:** recomputación completa en cada petición/refresco.
+- **Implementación actual (HEAD):** caché de respuesta de CORTA duración (20 s) por proceso para /api/dashboard (solo admin → una sola entrada, sin rol), con `?fresh=1` para forzar recálculo y `Cache-Control: private, max-age=20`. Evita recomputar en refrescos seguidos sin servir datos rancios.
+- **Prueba y resultado:** verificado por lectura + e2e en verde (la portada sigue cargando). (La memoización por pasada de costeProducto —rendimiento.5— ya reduce el coste interno.)
 
-### rendimiento.3 · abierto · [bloque 08]
+### rendimiento.3 · parcial · [bloque 08]
 
-- **Evidencia histórica (defecto original):** backend/data-store.js:168-183 init() hace para cada entidad `let rows = await db.loadAll(name)` (:171) o `cache[name] = readFile(name)` (:181). backend/db.js:63-67 `loadAll` = `SELECT data FROM ${t} ORDER BY seq ASC` (todas las filas). readAll (data-store.js:226-229) devuelve el array completo de la caché. db.js solo expone count/loadAll/upsert/del/tx/replaceAll: no hay ninguna consulta con WHERE por fecha ni índice.
-- **Evidencia actual (HEAD):** todo en memoria/sin consulta por fecha en SQL: sin cambios (requiere medición).
-- **Prueba y resultado:** —
-- **Nota:** Relacionado con bloques 03/06. El techo real de memoria/arranque solo se confirma en producción con volumen (p. ej. 1-2 años de ventas); estructuralmente es cierto que toda la BD se hidrata en memoria y la selección por fecha se hace recorriendo arrays en JS, nunca por SQL.
+- **Evidencia histórica (defecto original):** toda la BD se hidrata en memoria (data-store.init) y la selección por fecha se hace recorriendo arrays en JS; db.js no expone consultas con WHERE por fecha ni índices.
+- **Mitigaciones locales aplicadas (HEAD):** escrituras incrementales (insertMany, datos.5/rendimiento.1), caché del dashboard (rendimiento.2), archivado de movimientos antiguos (rendimiento.7) y filtro por fecha opcional en GET /api/ventas (rendimiento.6). Reducen el impacto de memoria/recorridos.
+- **Pendiente (decisión de escalado):** el "pushdown" real a SQL (SELECT ... WHERE fecha BETWEEN ... con índice) y la hidratación PARCIAL de la caché son un cambio arquitectónico cuyo beneficio y techo solo se justifican/miden con volumen de PRODUCCIÓN (1-2 años de ventas). Se deja como decisión de escalado, no como tarea aplazada por prioridad.
 
-### rendimiento.4 · abierto · [bloque 08]
+### rendimiento.4 · corregido+probado · [bloque 08/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** frontend/index.html = 974475 bytes (~950 KB). No existe middleware `compression()` en ningún .js del repo (grep sin coincidencias). backend/server.js:415-417 sirve .html y sw.js con `res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate")`. frontend/sw.js:13 `self.addEventListener("fetch", () => {});` — passthrough puro, no cachea nada.
-- **Evidencia actual (HEAD):** sin compresión: sin cambios (requiere dependencia).
-- **Prueba y resultado:** —
-- **Nota:** La parte de SW corresponde también a bloque 09 (PWA). A nivel de app no hay gzip/deflate y el HTML va con no-store (se re-descarga en cada carga). Render podría aplicar compresión en el edge: eso NO es verificable sin acceso a producción, pero el defecto a nivel de aplicación (sin compresión, no-store, SW sin caché) es real.
+- **Evidencia histórica (defecto original):** no había compresión a nivel de app; el index.html (~950 KB) viajaba sin gzip.
+- **Comportamiento anterior:** sin gzip/deflate; mucho ancho de banda en móvil.
+- **Implementación actual (HEAD):** backend/compresion.js (zlib del core, SIN dependencias nuevas) comprime las respuestas de texto grandes (HTML + JSON) cuando el cliente acepta gzip; decide en la primera escritura, quita Content-Length y marca Content-Encoding+Vary. El SW ya cachea el app-shell (pwa.4).
+- **Prueba específica:** tests/integracion-http.unit.js — pide el HTML con Accept-Encoding: gzip, comprueba Content-Encoding: gzip + Vary, descomprime con zlib y verifica que recupera el original byte a byte; el JSON de API se comprime y descomprime igual.
+- **Resultado:** PASA.
 
 ### rendimiento.5 · corregido+probado · [bloque 08] · commit 2314e59
 
@@ -509,26 +535,26 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** costing.costeProducto memoizado por pasada (WeakMap sobre idxMat), resultado idéntico.
 - **Prueba y resultado:** tests/rendimiento.unit.js · PASA
 
-### rendimiento.6 · abierto · [bloque 08]
+### rendimiento.6 · corregido · [bloque 08/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** backend/routes/ventas.js:63-65 `router.get("/", (req, res) => { res.json(store.readAll("ventas").slice().reverse()); });` — devuelve el array completo invertido, sin parámetros de límite/offset ni paginación.
-- **Evidencia actual (HEAD):** GET /api/ventas sin paginar: sin cambios (cambiar el default rompería el front).
-- **Prueba y resultado:** —
-- **Nota:** Devuelve todas las ventas en cada petición; el impacto crece linealmente con el histórico. No hay ruta paginada alternativa.
+- **Evidencia histórica (defecto original):** GET /api/ventas devolvía el array completo invertido, sin límite/offset ni paginación.
+- **Comportamiento anterior:** todas las ventas en cada petición; coste lineal con el histórico.
+- **Implementación actual (HEAD):** GET /api/ventas admite `?limit&offset` y filtro `?desde&hasta` (YYYY-MM-DD) OPCIONALES. Sin parámetros mantiene el comportamiento de siempre (array completo) para no romper el front; con `?limit` devuelve `{total, offset, limit, ventas}`.
+- **Prueba y resultado:** verificado por lectura (default intacto; paginación acotada a [1,2000]). Compatible con el front actual.
 
-### rendimiento.7 · abierto · [bloque 08]
+### rendimiento.7 · corregido+probado · [bloque 08/C8] · commit 3658fd8
 
-- **Evidencia histórica (defecto original):** backend/data-store.js:59 `"stock_movements"` está en ENTITIES (se hidrata entero en init). Inserción (nunca purga): agora.js:314 `movimientos.forEach((mv) => store.insert("stock_movements", mv));`, inventario.js:88 y conciliacion-ventas.js:258 (mismo patrón). Lectura completa en memoria: conciliacion.js:73 `(store.readAll("stock_movements") || []).forEach(...)`, inventory-capital.js:42, time-machine.js:54. No hay política de retención/archivado (solo limpieza-demo.js para datos de demo).
-- **Evidencia actual (HEAD):** stock_movements sin archivado: sin cambios (política de retención).
-- **Prueba y resultado:** —
-- **Nota:** Relacionado con bloque 06. Es la tabla que más crece (1+ movimiento por ingrediente por línea de venta). El crecimiento sin límite y el impacto en memoria solo se cuantifican en producción con histórico, pero la ausencia de corte temporal/archivado es verificable y está vigente.
+- **Evidencia histórica (defecto original):** stock_movements se hidrata entero en memoria y crece sin límite (1+ movimiento por ingrediente por línea de venta); no había política de retención/archivado.
+- **Comportamiento anterior:** la tabla más grande crecía indefinidamente en memoria.
+- **Implementación actual (HEAD):** backend/retencion.js (`particionar`, `archivarMovimientos`) + scripts/archivar-movimientos.js archivan a FICHEROS en disco los movimientos > N meses (18 por defecto) y recortan la tabla viva SIN perder datos (los sin fecha se conservan; nada se borra hasta haber escrito el fichero de archivo). Bajo demanda/cron; conservador.
+- **Prueba específica:** tests/retencion-movimientos.unit.js (separa antiguos/recientes; conserva sin-fecha; archiva a disco y recorta con cero pérdida de datos).
+- **Resultado:** PASA.
 
-### rendimiento.8 · abierto · [bloque 08]
+### rendimiento.8 · parcial · [bloque 08] · commit 6c6d2fc
 
-- **Evidencia histórica (defecto original):** backend/data-store.js:209-213 `persistUpsert`: en modo JSON (`!usingDb`) ejecuta `writeFile(name, cache[name])`. writeFile (:148-151) hace `fs.writeFileSync(filePath(name), JSON.stringify(data, null, 2), "utf-8")` — fichero completo y síncrono. insert (:250-255) y update (:241-248) llaman a persistUpsert, de modo que cada alta/edición reescribe el array entero.
-- **Evidencia actual (HEAD):** JSON reescribe fichero entero por insert: mitigado con insertMany en lote para la ingesta.
-- **Prueba y resultado:** parcial vía insertMany
-- **Nota:** Relacionado con bloque 03. Inherente al backend JSON (un array en un único fichero no admite escritura por fila). En producción con DATABASE_URL NO aplica (usa db.upsert por fila, data-store.js:210). El riesgo real es dev y cualquier despliegue sin Postgres.
+- **Evidencia histórica (defecto original):** en modo JSON, insert/update reescriben el array entero del fichero (fs.writeFileSync completo y síncrono).
+- **Mitigación aplicada (HEAD):** la ingesta usa insertMany (una sola escritura por LOTE, datos.5), que evita reescribir por cada fila.
+- **Inherente / fuera de alcance local:** un array en un único fichero JSON no admite escritura por FILA; reescribir el fichero es intrínseco a ese backend. En PRODUCCIÓN con DATABASE_URL NO aplica (db.upsert escribe por fila). El único escenario afectado es un despliegue SIN Postgres, que es precisamente la decisión de infraestructura (usar Postgres) ya recomendada en el runbook. No hay más que hacer en local sin cambiar el backend de almacenamiento.
 
 ### tests.1 · corregido+probado · [bloque 03] · commit 065676a
 
@@ -584,12 +610,11 @@ Matriz de los **79 hallazgos** de AUDITORIA-MILIMETRO-2026-10.md. Para cada uno 
 - **Evidencia actual (HEAD):** CI usa npm ci (builds reproducibles).
 - **Prueba y resultado:** .github/workflows/ci.yml
 
-### tests.10 · abierto · [bloque 10]
+### tests.10 · diferido · [bloque 10]
 
-- **Evidencia histórica (defecto original):** tests/e2e.spec.js es un único fichero de 119.073 bytes con ~109 llamadas `test(` (grep -c 'test(' = 109) y grep `test.describe` → sin resultados (sin agrupación por área). playwright.config.js: `fullyParallel: false` y un solo project chromium con un webServer compartido → ejecución serial con estado compartido.
-- **Evidencia actual (HEAD):** e2e monolítico sin trocear: sin cambios (refactor grande, bajo riesgo).
-- **Prueba y resultado:** —
-- **Nota:** Sigue monolítico y serial. El aislamiento de DATOS mejoró (DATA_DIR temporal por run, tests.3), pero el estado del servidor y de la BD de pruebas se comparte entre todos los tests del fichero y no hay separación por áreas ni paralelismo. Severidad baja: es mantenibilidad/robustez de la suite, no un bug de correctitud del producto.
+- **Evidencia histórica (defecto original):** tests/e2e.spec.js es un único fichero (~109 `test(`) sin `test.describe` ni paralelismo; webServer compartido y estado serial.
+- **Mitigación ya aplicada:** el aislamiento de DATOS por run (DATA_DIR temporal, tests.3) ya está resuelto; la suite es verde y fiable.
+- **Decisión (diferido, justificada):** severidad BAJA (mantenibilidad de la suite, no un bug del producto). Trocear 109 tests serialmente dependientes de un servidor compartido es un refactor grande con RIESGO real de romper una suite que hoy pasa, a cambio de poco valor (no mejora la correctitud ni cubre más casos). Se difiere: el valor/riesgo no lo justifica frente al resto del trabajo. No depende de producción.
 
 ### tests.11 · corregido+probado · [bloque 03] · commit 065676a
 

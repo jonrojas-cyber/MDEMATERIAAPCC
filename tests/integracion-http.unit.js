@@ -7,6 +7,21 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const http = require("http");
+const zlib = require("zlib");
+
+// GET crudo SIN auto-descompresión (fetch de Node descomprime solo): así podemos
+// comprobar Content-Encoding y descomprimir a mano (rendimiento.4).
+function rawGet(pathname, headers) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(`http://127.0.0.1:${PORT}${pathname}`, { headers }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on("error", reject);
+  });
+}
 
 const PORT = 4099;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -56,6 +71,27 @@ async function esperar() {
       const r = await fetch(BASE + "/api/salud");
       assert.ok(/default-src/.test(r.headers.get("content-security-policy") || ""), "CSP");
       assert.strictEqual(r.headers.get("x-content-type-options"), "nosniff", "nosniff");
+    });
+
+    await test("rendimiento.4 · el HTML se sirve COMPRIMIDO (gzip) e íntegro", async () => {
+      const comp = await rawGet("/index.html", { "Accept-Encoding": "gzip" });
+      assert.strictEqual(comp.headers["content-encoding"], "gzip", "Content-Encoding: gzip");
+      assert.ok(/accept-encoding/i.test(comp.headers["vary"] || ""), "Vary: Accept-Encoding");
+      const plano = await rawGet("/index.html", { "Accept-Encoding": "identity" });
+      assert.ok(!plano.headers["content-encoding"], "sin gzip si no se acepta");
+      assert.ok(comp.body.length < plano.body.length, "gzip ocupa bastante menos");
+      const descomprimido = zlib.gunzipSync(comp.body);
+      assert.strictEqual(descomprimido.length, plano.body.length, "al descomprimir recupera el original");
+      assert.ok(/<html|<!doctype/i.test(descomprimido.toString("utf8").slice(0, 200)), "HTML íntegro");
+    });
+
+    await test("rendimiento.4 · JSON de API también se comprime, y se descomprime igual", async () => {
+      const login = await (await fetch(BASE + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usuario: "Moni", pin: "3333" }) })).json();
+      const comp = await rawGet("/api/materias", { "Accept-Encoding": "gzip", Authorization: "Bearer " + login.token });
+      if (comp.headers["content-encoding"] === "gzip") {
+        const plano = await rawGet("/api/materias", { "Accept-Encoding": "identity", Authorization: "Bearer " + login.token });
+        assert.deepStrictEqual(zlib.gunzipSync(comp.body), plano.body, "mismo cuerpo tras descomprimir");
+      } // si el JSON es < umbral, no se comprime: es correcto, no se fuerza
     });
   } finally {
     srv.kill("SIGKILL");

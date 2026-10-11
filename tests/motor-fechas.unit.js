@@ -23,6 +23,7 @@ process.env.TZ = "UTC";
 const { BIZ_TZ } = require("../backend/tz-init"); // debe forzar Madrid
 const periods = require("../backend/periods");
 const tz = require("../backend/tz");
+const CR = require("../backend/cuenta-resultados");
 
 const H = 3600000;
 let fallos = 0;
@@ -88,6 +89,21 @@ test("la semana SIEMPRE empieza en lunes (regla innegociable), en hora de Madrid
   // 2026-10-28 es miércoles. El lunes de esa semana es el 26.
   const mié = Date.parse("2026-10-28T10:00:00Z");
   assert.strictEqual(tz.fechaLocal(periods.startOfWeek(mié)), "2026-10-26");
+});
+
+test("motor-fechas.6 · proyección NO fiable los primeros días, con banda de confianza", () => {
+  const base = { etiqueta: "2026-03", diasMes: 30, enCurso: true, ventas: 1000, coste_materia: 300,
+    personal: 0, otros_fijos: 0, variables: 0, cuota_creditos: 0, food_cost_pct: 0.30 };
+  // Día 1: el factor es 30× → proyección muy volátil → fiable:false, banda ancha.
+  const d1 = CR.componer({ ...base, diasTranscurridos: 1 });
+  assert.ok(d1.proyeccion, "hay proyección (no se oculta)");
+  assert.strictEqual(d1.proyeccion.fiable, false, "día 1: NO fiable");
+  assert.strictEqual(d1.proyeccion.dias_min_fiable, 3);
+  assert.ok(d1.proyeccion.ingresos_min < d1.proyeccion.ingresos && d1.proyeccion.ingresos < d1.proyeccion.ingresos_max, "banda rodea la estimación");
+  // Día 15: ya hay recorrido → fiable:true y banda MÁS ESTRECHA que en el día 1.
+  const d15 = CR.componer({ ...base, diasTranscurridos: 15 });
+  assert.strictEqual(d15.proyeccion.fiable, true, "día 15: fiable");
+  assert.ok(d15.proyeccion.banda_pct < d1.proyeccion.banda_pct, "la banda se estrecha con los días");
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s)`); process.exit(1); }

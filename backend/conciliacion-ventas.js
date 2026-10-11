@@ -241,9 +241,12 @@ async function limpiarDuplicados(dia, usuario, now = Date.now()) {
   const tk = {};
   todas.forEach((v) => {
     if (String(v.fecha || "").slice(0, 10) !== d) return;
-    const key = v.doc_clave;
-    if (!key) return; // sin documento no se concilia (no se toca)
-    if (!tk[key]) tk[key] = { clave: key, serie: v.doc_serie, number: v.doc_number, tipo: etiquetaTipo(v, docsById), hora: hhmm(v.fecha), importe: 0, lineas: [], ventaIds: [] };
+    // agora.7: las ventas HEREDADAS sin doc_clave también entran en la conciliación,
+    // cada una como su propio ticket. NUNCA se borran solas (sin doc no pueden tener
+    // vínculo documental → caen siempre en 'candidatos'), pero así quedan dentro del
+    // cuadre fino y se SEÑALAN si coinciden en contenido con un documento real.
+    const key = v.doc_clave || `(sin doc) ${v.id}`;
+    if (!tk[key]) tk[key] = { clave: key, serie: v.doc_serie, number: v.doc_number, tipo: etiquetaTipo(v, docsById), hora: hhmm(v.fecha), importe: 0, lineas: [], ventaIds: [], sin_doc: !v.doc_clave };
     tk[key].importe += Number(v.importe) || 0;
     tk[key].lineas.push({ producto: v.producto, producto_id: v.producto_id, cantidad: Number(v.cantidad) || 0 });
     tk[key].ventaIds.push(v.id);

@@ -12,6 +12,7 @@
 const store = require("./data-store");
 const { eur, pct1 } = require("./fmt"); // formato único (dinero.9)
 const MES = 365 / 12;
+const MIN_DIAS_PROYECCION = 3; // por debajo, la proyección lineal del mes es muy volátil (motor-fechas.6)
 
 // Rango de un mes "YYYY-MM" (o el mes en curso). hasta = min(fin de mes, ahora).
 function rangoMes(mes, now = Date.now()) {
@@ -59,6 +60,11 @@ function componer(d) {
 
   // Proyección a mes completo (lineal por días transcurridos), solo si el mes
   // está en curso. Escala ventas/materia/variables; fijos y créditos a mes entero.
+  // motor-fechas.6: la proyección lineal es muy VOLÁTIL los primeros días (el factor
+  // diasMes/diasTranscurridos es ~30× en el día 1). Se añade (a) un mínimo de días
+  // para marcarla FIABLE, y (b) una banda de confianza orientativa que se estrecha
+  // con los días observados (~1/√días). No se oculta el número —sigue siendo útil—
+  // pero deja de presentarse como cerrado cuando aún no lo es.
   let proyeccion = null;
   if (enCurso && diasTranscurridos > 0 && diasTranscurridos < diasMes) {
     const factor = diasMes / diasTranscurridos;
@@ -71,6 +77,8 @@ function componer(d) {
     const creditoMes = cuota_creditos * (diasMes / diasTranscurridos);
     const mbP = materiaP != null ? ventasP - materiaP : null;
     const ebitdaP = mbP != null ? mbP - personalMes - otrosMes - variablesP : null;
+    const fiable = diasTranscurridos >= MIN_DIAS_PROYECCION;
+    const bandaPct = Math.round((100 / Math.sqrt(diasTranscurridos)) * 10) / 10; // ± orientativo
     proyeccion = {
       ingresos: eur(ventasP),
       coste_materia: materiaP != null ? eur(materiaP) : null,
@@ -79,6 +87,13 @@ function componer(d) {
       ebitda: ebitdaP != null ? eur(ebitdaP) : null,
       cuota_creditos: eur(creditoMes),
       resultado_caja: ebitdaP != null ? eur(ebitdaP - creditoMes) : null,
+      // Fiabilidad de la proyección (motor-fechas.6):
+      fiable,
+      dias_observados: diasTranscurridos,
+      dias_min_fiable: MIN_DIAS_PROYECCION,
+      banda_pct: bandaPct,
+      ingresos_min: eur(ventasP * (1 - bandaPct / 100)),
+      ingresos_max: eur(ventasP * (1 + bandaPct / 100)),
     };
   }
 

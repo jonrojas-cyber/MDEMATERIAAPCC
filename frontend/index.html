@@ -1025,13 +1025,17 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* Botón de inicio en el centro de la barra (antes iba el imagotipo). */
 .topbar-inicio { font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .12em;
   text-transform: lowercase; color: var(--oliveink); background: none; border: 1px solid var(--line);
-  border-radius: 100px; padding: 7px 18px; cursor: pointer; transition: border-color .15s, color .15s; }
+  border-radius: 100px; padding: 7px 18px; cursor: pointer; transition: border-color .15s, color .15s;
+  /* Objetivo táctil mínimo 44px (frontend.6): sin agrandar el aspecto, solo el área. */
+  min-height: 44px; display: inline-flex; align-items: center; }
 .topbar-inicio:hover { color: var(--ink); border-color: var(--oliveink); }
 .topbar-inicio:focus-visible { outline: 2px solid var(--sev-info); outline-offset: 2px; }
 /* Ajustes · arriba a la derecha, siempre visible (también en móvil). */
 .topbar-aj { font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .06em;
   text-transform: lowercase; color: var(--oliveink); background: none; border: 1px solid var(--line);
-  border-radius: 100px; padding: 7px 15px; cursor: pointer; transition: border-color .15s, color .15s; }
+  border-radius: 100px; padding: 7px 15px; cursor: pointer; transition: border-color .15s, color .15s;
+  /* Objetivo táctil mínimo 44px (frontend.6). */
+  min-height: 44px; display: inline-flex; align-items: center; }
 .topbar-aj:hover { color: var(--ink); border-color: var(--oliveink); }
 .topbar-aj:focus-visible { outline: 2px solid var(--sev-info); outline-offset: 2px; }
 
@@ -1049,8 +1053,9 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .topbar-section { font-family: var(--font); font-size: 12px;
   letter-spacing: .18em; text-transform: lowercase; color: var(--oliveink); flex: 0; }
 .topbar-back { background: none; border: none; color: var(--oliveink); font-size: 17px;
-  width: auto; padding: 0 4px 0 0; display: none; }
-.topbar-back.visible { display: block; }
+  /* Objetivo táctil mínimo 44x44px (frontend.6): el botón atrás era ~20px. */
+  min-width: 44px; min-height: 44px; padding: 0 8px; display: none; align-items: center; justify-content: center; }
+.topbar-back.visible { display: inline-flex; }
 .topbar-back:hover { opacity: .65; }
 .topbar .user-chip { border-color: #5b6149; color: var(--oliveink); }
 .topbar .user-chip:hover { background: #5b6149; }
@@ -1198,20 +1203,11 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 /* ── LAB · índice de producción (bebidas / comida) ───────────────────────────
    Lenguaje de marca: panel de keyline, Courier en minúsculas, imagotipo de tres
    barras como marca, notación de laboratorio. Sin iconos infantiles. Restraint. */
-.lab-wrap { display: flex; flex-direction: column; gap: 12px; }
-.lab-panel { position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 24px 22px;
-  transition: border-color .16s ease, background .16s ease; }
-.lab-panel:hover { border-color: var(--ink); background: var(--olive-light); }
+/* (frontend.8) .lab-wrap/.lab-panel/.lab-title/.lab-rule/.lab-list/.lab-arrow
+   retiradas: solo las usaba labPanel(), que era código muerto. */
 .lab-mark { display: inline-block; width: 15px; height: 26px; background: var(--olive);
   -webkit-mask: var(--ig-mask) center/contain no-repeat; mask: var(--ig-mask) center/contain no-repeat; }
 .lab-eyebrow { font-size: 9.5px; letter-spacing: .22em; text-transform: lowercase; color: var(--muted); margin-top: 12px; }
-.lab-title { font-family: var(--font); font-size: clamp(27px, 8.5vw, 34px); font-weight: 700; text-transform: lowercase;
-  letter-spacing: -.015em; line-height: 1; color: var(--ink); margin-top: 7px; }
-.lab-rule { border-top: 1px solid var(--line); margin: 15px 0 11px; }
-.lab-list { font-size: 12px; color: var(--muted); letter-spacing: .03em; line-height: 1.55; }
-.lab-arrow { position: absolute; top: 24px; right: 22px; color: var(--muted); font-size: 17px; line-height: 1; }
-.lab-panel:hover .lab-arrow { color: var(--ink); }
 /* Pie de utilidades: discreto, tipográfico, nunca cajas. */
 .lab-foot { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line);
   display: flex; flex-wrap: wrap; gap: 7px 18px; align-items: center; }
@@ -1833,7 +1829,10 @@ button.cc-card:hover { border-color: var(--ink); }
 .lim-seg { display: flex; border: 1px solid var(--line); margin-bottom: 12px; }
 .lim-seg button { flex: 1; font-size: 10px; letter-spacing: .12em; text-transform: lowercase; padding: 9px; background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--muted); cursor: pointer; }
 /* LAB · cocina (sándwiches y tostas): pastilla de estado y barras de perfil sensorial. */
-.lab-estado { font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:#1a1f16; padding:5px 11px; border-radius:999px; align-self:flex-start; white-space:nowrap; }
+/* Texto BLANCO sobre fondos de estado suficientemente oscuros: contraste AA ≥4.5:1
+   en los cuatro estados (frontend.5). Antes era texto casi negro (#1a1f16) sobre
+   fondos medios/oscuros y 'Aprobado'/'En carta' bajaban de 2.5:1. */
+.lab-estado { font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:#fff; padding:5px 11px; border-radius:999px; align-self:flex-start; white-space:nowrap; }
 .lab-perf { display:flex; align-items:center; gap:10px; margin:5px 0; }
 .lab-perf span { font-size:10px; letter-spacing:.1em; text-transform:lowercase; color:var(--muted); width:76px; flex:0 0 auto; }
 .lab-perf i { flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden; }
@@ -3961,16 +3960,8 @@ function mbdsNum(x,d){ return (x==null||x==="")?"—":(typeof x==="number"?(d!=n
 // Helper de tile reutilizable por los hubs de Lab.
 // Panel de categoría (bebidas/comida): imagotipo de tres barras + título en
 // minúsculas + notación del contenido. Lenguaje de laboratorio, sin iconos.
-function labPanel(titulo, lista, onclick){
-  return `<button class="lab-panel" onclick="${onclick}">
-    <span class="lab-arrow" aria-hidden="true">→</span>
-    <span class="lab-mark" aria-hidden="true"></span>
-    <div class="lab-eyebrow">producción</div>
-    <div class="lab-title">${titulo}</div>
-    <div class="lab-rule"></div>
-    <div class="lab-list">${lista}</div>
-  </button>`;
-}
+// (frontend.8) labPanel() se eliminó: era código muerto (definido y nunca invocado);
+// su CSS .lab-panel/.lab-wrap/.lab-title/.lab-rule/.lab-list/.lab-arrow también se retiró.
 // Fila de sub-hub (una línea de producción o una elaboración).
 function labRow(nombre, sub, onclick, pend){
   return `<button class="lab-row${pend?' pend':''}" onclick="${onclick}">
@@ -4916,11 +4907,19 @@ function svtStart(min, label){
   // AUNQUE la app esté cerrada o en segundo plano. Requiere avisos activados.
   svtEnsurePush();
   api("/avisos/temporizador",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({label,minutos:min})})
-    .then(r=>{ t.pushId = r.id; }).catch(()=>{});
+    .then(r=>{
+      t.pushId = r.id;
+      // pwa.6: si se PARÓ antes de recibir el id del servidor, cancelamos ahora
+      // (si no, el aviso 'retira' quedaría vivo en el backend y dispararía su push).
+      if(t.cancelado && t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+    }).catch(()=>{});
 }
 function svtStop(id){
   const t = (window._svt||[]).find(x=>x.id===id);
-  if(t && t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+  if(t){
+    t.cancelado = true; // marca la cancelación aunque el id aún no haya llegado (pwa.6)
+    if(t.pushId){ api("/avisos/temporizador/"+t.pushId,{method:"DELETE"}).catch(()=>{}); }
+  }
   window._svt = (window._svt||[]).filter(c=>c.id!==id); svtRender();
 }
 // Asegura la suscripción push del dispositivo (para el aviso con la app cerrada).
@@ -5330,11 +5329,14 @@ const LAB_EXTRAS_TOSTA = [
   { n:"Extra jamón braseado", q:"40 g", c:0.39, pvp:1.50 },
   { n:"Extra aguacate",       q:"50 g", c:0.21, pvp:1.00 },
 ];
+// Colores de estado con texto BLANCO encima: todos ≥4.5:1 (AA) · frontend.5.
+// prueba y archivado se oscurecieron (antes #c79a3a y var(--muted) no daban AA con
+// texto blanco); aprobado (olivo 9.8:1) y carta (azul 6.6:1) ya cumplían.
 const LAB_ESTADOS = {
-  prueba:    { t:"Prueba",    c:"#c79a3a" },
+  prueba:    { t:"Prueba",    c:"#8a5a12" },
   aprobado:  { t:"Aprobado",  c:"var(--olive)" },
   carta:     { t:"En carta",  c:"#3f6079" },
-  archivado: { t:"Archivado", c:"var(--muted)" },
+  archivado: { t:"Archivado", c:"#5c5a52" },
 };
 const LAB_DATA = {
   sandwich: {

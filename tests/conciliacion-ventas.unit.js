@@ -169,6 +169,26 @@ test("SÍ deduplica cuando la factura REFERENCIA al albarán (vínculo documenta
   assert.ok(claves.includes("Invoice:T:500") && !claves.includes("DeliveryNote:T:70"), "queda la factura, se quita el albarán facturado");
 });
 
+test("agora.7 · una venta HEREDADA sin doc_clave entra en la conciliación como candidato, NO se borra", async () => {
+  // Venta heredada (sin doc_clave) con el mismo contenido que una factura real del
+  // mismo día. Antes quedaba FUERA de la limpieza ('if (!key) return'). Ahora entra,
+  // pero como no tiene documento no puede tener vínculo → NUNCA se borra sola; se
+  // señala para revisión manual. Así deja de quedar fuera del cuadre fino.
+  const db = montar({
+    ventas: [
+      { id: "fac", producto_id: "prod-001", producto: "Café", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:900", doc_serie: "T", doc_number: 900 },
+      { id: "her", producto_id: "prod-001", producto: "Café", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:20:00", fuente: "agora" }, // heredada: sin doc_clave
+    ],
+    docs_agora: [{ id: "Invoice:T:900", type: "Invoice" }], // sin origen → sin vínculo
+    productos: [{ id: "prod-001", nombre: "Café", ingredientes: [{ materia_id: "m1", cantidad: 2 }] }],
+    materias: [{ id: "m1", nombre: "Pan", disponibilidad_actual: 100, unidad: "ud" }],
+  });
+  const L = await C.limpiarDuplicados("2026-10-09", { nombre: "Moni" }, T);
+  assert.strictEqual(L.eliminados, 0, "la heredada sin vínculo NO se borra");
+  assert.ok((L.candidatos || []).length >= 1, "se SEÑALA como candidato a revisar (ya no queda fuera)");
+  assert.strictEqual(db.ventas.length, 2, "ambas ventas siguen ahí");
+});
+
 test("limpiar sin duplicados no toca nada", async () => {
   montar({
     ventas: [{ id: "x1", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:300", doc_serie: "T", doc_number: 300 }],

@@ -27,6 +27,10 @@ app.set("trust proxy", true);
 // Cabeceras de seguridad + CSP en TODA respuesta (antes de estáticos y rutas).
 app.use(seguridad.cabeceras);
 
+// Compresión gzip (rendimiento.4): envuelve la salida de TODO lo que venga después
+// (estáticos + API), así que va pronto. Sin dependencias (zlib del core).
+app.use(require("./compresion").middleware);
+
 // Identificador de petición (correlación en logs, sin secretos). Log de acceso
 // opcional con LOG_HTTP=1 (silencioso por defecto para no ensuciar los tests).
 app.use((req, res, next) => {

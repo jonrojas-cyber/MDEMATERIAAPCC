@@ -77,7 +77,20 @@ self.addEventListener("push", (event) => {
     requireInteraction: true,
     data: { url: data.url || "/" },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async () => {
+    // pwa.5: si la app está ABIERTA y a la vista, el aviso de sous-vide ya lo muestra
+    // la propia app (svtAlarma). No duplicamos la notificación del sistema para 'sv'
+    // cuando hay un cliente enfocado; sí la mostramos si la app está en 2º plano/cerrada.
+    if (data.kind === "sv") {
+      const clientes = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const enfocado = clientes.find((c) => c.visibilityState === "visible" || c.focused);
+      if (enfocado) {
+        try { enfocado.postMessage({ tipo: "sv-push", tag: data.tag }); } catch (e) {}
+        return; // evitar el duplicado en primer plano
+      }
+    }
+    return self.registration.showNotification(title, options);
+  })());
 });
 
 self.addEventListener("notificationclick", (event) => {

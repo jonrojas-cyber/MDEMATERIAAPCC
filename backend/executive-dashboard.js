@@ -113,6 +113,10 @@ function construir(preset = "hoy", opts = {}) {
   const diasTranscurridos = Math.max(1, (now - rMes.desde) / periods.DAY);
   const diasDelMes = 365 / 12;
   beneficioActual.proyeccion_mes = eur(benMes.beneficio_operativo * (diasDelMes / diasTranscurridos));
+  // Fiabilidad de la proyección lineal (motor-fechas.6): muy volátil los primeros
+  // días; se marca para que el dashboard no la muestre como cerrada en el día 1-2.
+  beneficioActual.proyeccion_mes_fiable = diasTranscurridos >= 3;
+  beneficioActual.proyeccion_mes_dias = Math.round(diasTranscurridos);
 
   // Objetivos con progreso (beneficio memoizado por periodo; "mes" ya calculado).
   const benCache = { mes: { r: rMes, ben: benMes } };

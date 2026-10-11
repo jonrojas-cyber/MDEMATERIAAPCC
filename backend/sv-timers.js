@@ -32,6 +32,7 @@ async function disparar(t) {
           ? `El tiempo se cumplió hace ${retrasoMin} min mientras el sistema estaba en pausa. Revisa y retira el producto del sous-vide.`
           : "Tiempo cumplido. Retira el producto del sous-vide.",
         tag: t.id, url: "/", atrasado: !!t.atrasado,
+        kind: "sv", // el SW usa esto para NO duplicar el aviso si la app está a la vista (pwa.5)
       },
       // TTL corto + urgencia alta: un "retira" no debe llegar caduco días después (pwa.2).
       { urgency: "high", ttl: 3600, topic: t.id }

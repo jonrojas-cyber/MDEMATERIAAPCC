@@ -15,17 +15,9 @@ const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 4001;
 
-// ── Red de seguridad a nivel de proceso (tests.2) ─────────────────────────────
-// Un throw async no capturado ya no tumba el servidor en silencio: se registra.
-process.on("unhandledRejection", (reason) => {
-  console.error("⚠️  Promesa no gestionada:", (reason && reason.stack) || reason);
-});
-// Una excepción no capturada deja el proceso en estado dudoso: registra y termina
-// ordenadamente (Render lo reinicia) en vez de seguir potencialmente corrupto.
-process.on("uncaughtException", (err) => {
-  console.error("⛔ Excepción no capturada:", (err && err.stack) || err);
-  process.exit(1);
-});
+// Red de seguridad a nivel de proceso (tests.2): registra promesas no
+// gestionadas y termina ordenadamente ante una excepción no capturada.
+require("./process-guards").instalar();
 
 // Detrás del proxy de Render: necesario para que req.ip y el rate-limit sean fiables.
 app.set("trust proxy", true);

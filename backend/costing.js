@@ -23,37 +23,63 @@ function indiceRecetasProduccion(recetas) {
   return idx;
 }
 
-// Coste EFECTIVO por unidad de una materia. Si la materia la produce una receta
-// y NO tiene coste_medio propio (>0), se calcula desde la receta (recursivo, con
-// guardia anti-ciclos). Si tiene coste_medio, manda ese (no cambia lo existente).
-function costeMateriaEfectivo(materiaId, idxMat, idxRecProd, visitando) {
+// Coste EFECTIVO por unidad de una materia + si se pudo RESOLVER (datos.7).
+// `resuelto=false` marca que el coste 0 proviene de FALTA DE DATO (materia
+// inexistente, o sin coste_medio y sin receta que la produzca), NO de un coste
+// real de 0. Es la diferencia clave: "no lo sé" ≠ "cuesta 0". Si la materia la
+// produce una receta sin coste_medio propio, se deriva de la receta (recursivo,
+// con guardia anti-ciclos) y hereda el `resuelto` de sus ingredientes.
+function costeMateriaDetalle(materiaId, idxMat, idxRecProd, visitando) {
   const m = idxMat[materiaId];
-  const costeDirecto = m ? Number(m.coste_medio) || 0 : 0;
-  if (costeDirecto > 0) return costeDirecto;
+  if (!m) return { coste: 0, resuelto: false };                 // materia inexistente → desconocido
+  const costeDirecto = Number(m.coste_medio) || 0;
+  if (costeDirecto > 0) return { coste: costeDirecto, resuelto: true };
   const rec = idxRecProd && idxRecProd[materiaId];
   if (rec && !(visitando && visitando.has(materiaId))) {
     const base = Number(rec.resultado_base) || 0;
     if (base > 0) {
       const vis = new Set(visitando || []);
       vis.add(materiaId);
-      const costeLote = (rec.ingredientes || []).reduce(
-        (s, ing) => s + costeMateriaEfectivo(ing.materia_id, idxMat, idxRecProd, vis) * (Number(ing.cantidad) || 0),
-        0
-      );
-      return costeLote / base; // €/unidad producida
+      let resuelto = true;
+      const costeLote = (rec.ingredientes || []).reduce((s, ing) => {
+        const d = costeMateriaDetalle(ing.materia_id, idxMat, idxRecProd, vis);
+        const cant = Number(ing.cantidad) || 0;
+        if (!d.resuelto && cant > 0) resuelto = false;          // una materia sin coste contamina la elaboración
+        return s + d.coste * cant;
+      }, 0);
+      return { coste: costeLote / base, resuelto };             // €/unidad producida
     }
   }
-  return costeDirecto;
+  return { coste: costeDirecto, resuelto: false };              // sin coste_medio ni receta → desconocido
 }
 
-// Coste de UN escandallo (lista de {materia_id, cantidad}). Encadena el coste de
-// las elaboraciones (materias producidas por receta) para que sea food cost vivo.
-function costeEscandallo(ingredientes, idxMat, idxRecProd) {
+// Compat: solo el número (lo que usaban los consumidores previos).
+function costeMateriaEfectivo(materiaId, idxMat, idxRecProd, visitando) {
+  return costeMateriaDetalle(materiaId, idxMat, idxRecProd, visitando).coste;
+}
+
+// Coste de UN escandallo + cobertura. Encadena el coste de las elaboraciones
+// (materias producidas por receta) para que sea food cost vivo, y además reporta
+// si quedó INCOMPLETO: `sin_coste` lista las materias cuyo coste no se pudo
+// determinar (y que por tanto entraron como 0). Un escandallo incompleto NO debe
+// presentarse como un margen cerrado (datos.7).
+function costeEscandalloDetalle(ingredientes, idxMat, idxRecProd) {
   const idx = idxMat || indiceMaterias();
   const idxRec = idxRecProd || indiceRecetasProduccion();
-  return (ingredientes || []).reduce((s, ing) => {
-    return s + costeMateriaEfectivo(ing.materia_id, idx, idxRec) * (Number(ing.cantidad) || 0);
-  }, 0);
+  let coste = 0;
+  const sin_coste = [];
+  (ingredientes || []).forEach((ing) => {
+    const cant = Number(ing.cantidad) || 0;
+    const d = costeMateriaDetalle(ing.materia_id, idx, idxRec);
+    coste += d.coste * cant;
+    if (!d.resuelto && cant > 0 && !sin_coste.includes(ing.materia_id)) sin_coste.push(ing.materia_id);
+  });
+  return { coste, incompleto: sin_coste.length > 0, sin_coste };
+}
+
+// Coste de UN escandallo (lista de {materia_id, cantidad}). Compat: solo el número.
+function costeEscandallo(ingredientes, idxMat, idxRecProd) {
+  return costeEscandalloDetalle(ingredientes, idxMat, idxRecProd).coste;
 }
 
 // Coste total de un lote de receta (para su resultado_base).
@@ -71,25 +97,39 @@ function costePorUnidad(receta, idxMat) {
 // Si el producto trae un coste de materia DIRECTO (€/unidad) se usa ese —sirve
 // para productos cuyo escandallo no está mapeado a materias (p. ej. lo que se
 // vende en Ágora)—; si no, se calcula desde sus ingredientes.
-const _costeProductoMemo = new WeakMap(); // idxMat -> Map(prodId -> coste)
-function costeProducto(producto, idxMat) {
+const _costeProductoMemo = new WeakMap(); // idxMat -> Map(prodId -> {coste,incompleto,sin_coste})
+function costeProductoDetalle(producto, idxMat, idxRecProd) {
+  // Coste DIRECTO (€/unidad) declarado en el producto (p. ej. lo que vende Ágora
+  // sin escandallo mapeado): se considera completo y fiable.
   const directo = Number(producto && producto.coste_materia);
-  if (Number.isFinite(directo) && directo > 0) return Math.round(directo * 10000) / 10000;
+  if (Number.isFinite(directo) && directo > 0) {
+    return { coste: Math.round(directo * 10000) / 10000, incompleto: false, sin_coste: [] };
+  }
   // Memoización POR PASADA (rendimiento.5): costeProducto se llamaba de forma
   // recursiva por cada línea de venta en cada escaneo. La caché va atada al objeto
   // idxMat, que se reconstruye en cada cálculo (financials, cierre-mes, dashboard…),
   // así que NO envejece entre pasadas y devuelve el MISMO valor. Al liberarse idxMat
   // (fin de la pasada) la caché se recolecta sola (WeakMap).
+  const idxRec = idxRecProd || indiceRecetasProduccion();
+  const calc = () => {
+    const d = costeEscandalloDetalle(producto && producto.ingredientes, idxMat, idxRec);
+    return { coste: Math.round(d.coste * 10000) / 10000, incompleto: d.incompleto, sin_coste: d.sin_coste };
+  };
   const pid = producto && producto.id;
   if (idxMat && pid) {
     let cache = _costeProductoMemo.get(idxMat);
     if (!cache) { cache = new Map(); _costeProductoMemo.set(idxMat, cache); }
     if (cache.has(pid)) return cache.get(pid);
-    const v = Math.round(costeEscandallo(producto.ingredientes, idxMat) * 10000) / 10000;
+    const v = calc();
     cache.set(pid, v);
     return v;
   }
-  return Math.round(costeEscandallo(producto.ingredientes, idxMat) * 10000) / 10000;
+  return calc();
+}
+
+// Compat: solo el número (consumidores que solo quieren el coste unitario).
+function costeProducto(producto, idxMat) {
+  return costeProductoDetalle(producto, idxMat).coste;
 }
 
 // IVA de venta por defecto en hostelería (España): 10%. Editable por producto.
@@ -108,7 +148,8 @@ function ivaDe(producto) {
 // —(P − c(1+i))/P = (P/(1+i) − c)/(P/(1+i))—, así que los % no cambian; solo se
 // corrigen los importes en €.
 function margenProducto(producto, idxMat) {
-  const costeNeto = costeProducto(producto, idxMat);
+  const det = costeProductoDetalle(producto, idxMat);
+  const costeNeto = det.coste;
   const iva = ivaDe(producto);
   const precio = Number(producto.precio_venta) || 0; // PVP, BRUTO (con IVA)
   const precioNeto = precio / (1 + iva);              // base imponible del PVP
@@ -123,18 +164,43 @@ function margenProducto(producto, idxMat) {
     margen_bruto: Math.round(margenBruto * 1000) / 1000,
     margen_euros: Math.round((precioNeto - costeNeto) * 100) / 100, // margen NETO en €
     food_cost: Math.round(foodCost * 1000) / 1000,
+    // datos.7 · un escandallo con materias sin coste da un coste INFRAVALORADO
+    // (las desconocidas entran como 0). Se marca explícito para que el margen NO
+    // se lea como cerrado: `incompleto` + las materias que faltan por costear.
+    incompleto: det.incompleto,
+    coste_fiable: !det.incompleto,
+    materias_sin_coste: det.sin_coste,
   };
 }
 
 // Margen bruto medio de la carta (productos activos con precio).
-// Solo se promedian productos con coste REAL (>0). Incluir los que aún no tienen
-// escandallo (coste 0) los cuenta como 0 % de food cost / 100 % de margen y
-// falsea la media (bajaba el food cost al 21 % en vez del 28 % real).
+// Solo se promedian productos con coste REAL (>0) y COMPLETO. Incluir los que aún
+// no tienen escandallo (coste 0) los cuenta como 0 % de food cost / 100 % de
+// margen y falsea la media (bajaba el food cost al 21 % en vez del 28 % real).
+// Y los INCOMPLETOS (datos.7: alguna materia sin coste → coste infravalorado)
+// también se excluyen: un margen basado en un coste a medias no es un margen
+// real, así que no debe arrastrar la media como si lo fuera. Se señalan aparte
+// con cartaIncompleta().
 function cartaCosteada(productos, idx) {
   return (productos || store.readAll("productos"))
     .filter((p) => p.activo !== false && Number(p.precio_venta) > 0)
     .map((p) => ({ p, mm: margenProducto(p, idx) }))
-    .filter((x) => x.mm.coste > 0);
+    .filter((x) => x.mm.coste > 0 && !x.mm.incompleto);
+}
+
+// Productos activos con precio cuyo escandallo está INCOMPLETO (alguna materia sin
+// coste). Son los que quedan fuera de la media de carta: su margen es parcial y
+// debe revisarse, no promediarse. (datos.7)
+function cartaIncompleta(productos, idx) {
+  const idxMat = idx || indiceMaterias();
+  return (productos || store.readAll("productos"))
+    .filter((p) => p.activo !== false && Number(p.precio_venta) > 0)
+    .map((p) => ({ p, mm: margenProducto(p, idxMat) }))
+    .filter((x) => x.mm.incompleto)
+    .map((x) => ({
+      producto_id: x.p.id, nombre: x.p.nombre, categoria: x.p.categoria || null,
+      coste_parcial: x.mm.coste, materias_sin_coste: x.mm.materias_sin_coste,
+    }));
 }
 
 function margenMedioCarta(productos, idxMat) {
@@ -189,8 +255,9 @@ function tamanosLote(receta) {
 }
 
 module.exports = {
-  indiceMaterias, indiceRecetasProduccion, costeMateriaEfectivo,
-  costeEscandallo, costeReceta, costePorUnidad, costeProducto,
-  margenProducto, margenMedioCarta, foodCostMedioCarta, valorStock, valorProduccion,
-  costeMermas, tamanosLote, ivaDe, IVA_DEF,
+  indiceMaterias, indiceRecetasProduccion, costeMateriaEfectivo, costeMateriaDetalle,
+  costeEscandallo, costeEscandalloDetalle, costeReceta, costePorUnidad,
+  costeProducto, costeProductoDetalle,
+  margenProducto, margenMedioCarta, foodCostMedioCarta, cartaCosteada, cartaIncompleta,
+  valorStock, valorProduccion, costeMermas, tamanosLote, ivaDe, IVA_DEF,
 };

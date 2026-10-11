@@ -197,6 +197,28 @@ function numJSON(v) {
   if (/,\d{1,2}$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
   return parseFloat(s.replace(/,/g, "")) || 0;
 }
+// Descuento GLOBAL del documento (a nivel de ticket, NO de línea). Ágora puede
+// aplicar un descuento al total sin repartirlo por línea. Se detecta con los
+// nombres de campo habituales, pero el nombre EXACTO y, sobre todo, si las líneas
+// vienen ANTES o DESPUÉS de aplicarlo, dependen de la versión de Ágora. Hasta
+// contrastarlo con una MUESTRA real NO se reparte por línea (repartir a ciegas
+// podría infravalorar o inflar el neto). Por eso agora.5 queda PARCIAL: el
+// descuento global se SEÑALA para que no pase en silencio, pero su reparto exacto
+// está pendiente de una muestra de Ágora. (Las anulaciones, invitaciones y
+// devoluciones SÍ se resuelven en local; ver clasificación de líneas más abajo.)
+function descuentoGlobal(doc) {
+  if (!doc || typeof doc !== "object") return 0;
+  const campos = ["GlobalDiscount", "globalDiscount", "DocumentDiscount", "documentDiscount",
+    "TotalDiscount", "totalDiscount", "DiscountAmount", "DescuentoGlobal", "DescuentoTotal",
+    "descuento_global", "descuento_total"];
+  for (const c of campos) {
+    if (doc[c] != null && doc[c] !== "") {
+      const v = Math.abs(numJSON(doc[c]));
+      if (v > 0) return v;
+    }
+  }
+  return 0;
+}
 
 // Normaliza el payload de Ágora a un array plano de docs con su tipo.
 // Admite: array de docs, {documents:[...]}, o {Invoices:[...],DeliveryNotes:[...]}.
@@ -237,6 +259,9 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const noVinculados = new Set();
   const materiasFaltantes = new Set(); // escandallos que apuntan a una materia inexistente (datos.7)
   const anulados = []; // documentos anulados/cancelados: no son venta (agora.5)
+  const invitaciones = []; // líneas servidas a 0 € (comp/invitación): se registran y se CUENTAN aparte (agora.5)
+  const devoluciones = []; // líneas negativas (devolución/abono): restan y se cuentan aparte (agora.5)
+  const descuentosGlobales = []; // descuento a nivel de documento: se SEÑALA, reparto pendiente de muestra (agora.5 PARCIAL)
   const posiblesDuplicados = []; // mismo Serie+Número+día que una venta existente: se marca, NO se descarta (agora.4)
   const movimientos = [];
   const nuevasVentas = []; // se insertan en LOTE al final, sin reescribir la tabla (datos.5)
@@ -317,7 +342,12 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       const neto = (netoRaw != null && netoRaw !== "") ? signo * Math.abs(numJSON(netoRaw)) : null;
       const producto = idxProd[normProd(nombre)];
       if (!producto) { faltan.push(String(nombre)); noVinculados.add(String(nombre)); return; }
-      resueltas.push({ producto, cantidad, importe, neto, nombre });
+      // Clasificación EXPLÍCITA (agora.5): devolución (cantidad negativa → resta),
+      // invitación (servido a 0 € → suma 0 pero descuenta stock), o venta normal.
+      // Antes solo "neteaban" sin dejar rastro; ahora cada una queda etiquetada y
+      // se cuenta aparte para que el cierre pueda separarlas.
+      const naturaleza = cantidad < 0 ? "devolucion" : (Math.abs(importe) < 1e-9 ? "invitacion" : "venta");
+      resueltas.push({ producto, cantidad, importe, neto, nombre, naturaleza });
     });
 
     // 2) Si falta algún producto por vincular → BLOQUEAR (no descontar, no marcar).
@@ -329,7 +359,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     }
 
     // 3) Descontar stock + libro de movimientos + registrar venta.
-    resueltas.forEach(({ producto, cantidad, importe, neto }) => {
+    resueltas.forEach(({ producto, cantidad, importe, neto, naturaleza }) => {
       (producto.ingredientes || []).forEach((ing) => {
         const m = idxMat[ing.materia_id];
         if (!m) { materiasFaltantes.add(`${producto.nombre || producto.id} → ${ing.materia_id}`); return; } // integridad (datos.7): no se descuenta un ingrediente inexistente, pero se SEÑALA
@@ -347,12 +377,21 @@ function importarDocs(docs, { registrar, usuario } = {}) {
         producto_id: producto.id, producto: producto.nombre,
         cantidad, importe, importe_neto: (neto != null ? neto : null), fecha, fuente: "agora",
         doc_clave: clave, doc_serie: serie, doc_number: number, importado_en: nowISO,
+        // Naturaleza explícita (agora.5): "venta" | "invitacion" | "devolucion".
+        naturaleza: naturaleza || "venta",
         // Trazabilidad: si coincide con una venta previa por Serie+Número+día, se
         // marca (no se descarta) para que la conciliación la revise (agora.4).
         posible_duplicado: posibleDup ? bk : undefined,
       });
       unidades += cantidad; importeTotal += importe;
+      if (naturaleza === "invitacion") invitaciones.push({ serie, number, producto: producto.nombre, unidades: cantidad });
+      else if (naturaleza === "devolucion") devoluciones.push({ serie, number, producto: producto.nombre, importe });
     });
+
+    // Descuento GLOBAL del documento (agora.5 · PARCIAL): se SEÑALA para que no
+    // pase en silencio; el reparto exacto por línea queda pendiente de muestra.
+    const descG = descuentoGlobal(doc);
+    if (descG > 0) descuentosGlobales.push({ serie, number, importe: Math.round(descG * 100) / 100 });
 
     const origen = referenciasOrigen(doc);
     const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO };
@@ -377,6 +416,16 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     omitidos_ya_procesados: omitidos.length,
     pedidos_omitidos: omitidosPedido.length,
     anulados_omitidos: anulados.length,
+    // agora.5 · separadas y contadas aparte (no solo "neteadas" en silencio):
+    invitaciones: invitaciones.length,
+    unidades_invitadas: Math.round(invitaciones.reduce((s, x) => s + (Number(x.unidades) || 0), 0) * 100) / 100,
+    devoluciones: devoluciones.length,
+    importe_devuelto: Math.round(devoluciones.reduce((s, x) => s + (Number(x.importe) || 0), 0) * 100) / 100,
+    // Descuento GLOBAL de documento: se señala; su reparto por línea queda PENDIENTE
+    // de muestra real de Ágora (por eso agora.5 no puede figurar como corregido del todo).
+    descuentos_globales: descuentosGlobales.length,
+    importe_descuento_global: Math.round(descuentosGlobales.reduce((s, x) => s + (Number(x.importe) || 0), 0) * 100) / 100,
+    descuento_global_pendiente: descuentosGlobales.length > 0,
     duplicados_evitados: deduplicados.length,
     posibles_duplicados: posiblesDuplicados.length, // importados y marcados, NO descartados (agora.4)
     unidades_vendidas: Math.round(unidades * 100) / 100,
@@ -386,6 +435,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     cuando: nowISO,
   };
   if (materiasFaltantes.size) console.warn("Ágora: escandallos con materia inexistente (no se descontó stock):", [...materiasFaltantes].join(", "));
+  if (descuentosGlobales.length) console.warn("Ágora: descuento GLOBAL de documento detectado (reparto por línea PENDIENTE de muestra real · agora.5):", descuentosGlobales.length, "doc(s)");
   registrarSync(resumen);
   if (typeof registrar === "function") registrar(resumen);
   // procesados_ref: lo que hay que confirmar a Ágora (POST /api/doc/processed). Se

@@ -147,19 +147,23 @@ function estadoEscandallos(idxMat, productos) {
     .filter((p) => p.activo !== false)
     .map((p) => {
       const ing = p.ingredientes || [];
-      const sinCoste = ing.filter((i) => {
-        const m = idxMat[i.materia_id];
-        return !m || !(Number(m.coste_medio) > 0);
-      }).length;
+      // Fuente única (datos.7): el motor de coste resuelve elaboraciones y marca
+      // qué materias NO se pudieron costear. Antes aquí se recontaba a mano con
+      // `coste_medio > 0`, que daba falsos positivos en elaboraciones (coste 0
+      // propio pero derivable de su receta).
       const mg = costing.margenProducto(p, idxMat);
+      const sinCoste = (mg.materias_sin_coste || []).length;
       let estado = "real";
       if (!ing.length) estado = "sin_escandallo";
       else if (p.cantidades_estimadas === true) estado = "estimado";
-      else if (sinCoste > 0) estado = "materias_sin_coste";
+      else if (mg.incompleto) estado = "materias_sin_coste";
       return {
         producto_id: p.id, nombre: p.nombre, categoria: p.categoria,
         estado, n_ingredientes: ing.length, materias_sin_coste: sinCoste,
-        food_cost_pct: pct(mg.food_cost * 100), coste: mg.coste, precio: mg.precio,
+        // El food cost de un escandallo incompleto es PARCIAL (coste infravalorado):
+        // se marca null para no mostrarlo como cerrado.
+        food_cost_pct: mg.incompleto ? null : pct(mg.food_cost * 100),
+        coste: mg.coste, precio: mg.precio, coste_fiable: !mg.incompleto,
       };
     });
   const pendientes = items.filter((x) => x.estado !== "real");

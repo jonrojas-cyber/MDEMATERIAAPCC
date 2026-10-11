@@ -35,7 +35,7 @@ const FILES = [
   "agora-cron-idempotente", "motor-financiero", "sv-timers", "periodos-stock",
   "rendimiento", "roles-regla2", "cuadre-agora", "aislamiento-db", "backup-consistente",
   "process-guards", "integracion-http", "doble-iva", "incremental-ventas",
-  "coste-parcial",
+  "coste-parcial", "motor-fechas",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");
@@ -55,7 +55,10 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cm-unit-"));
 // representan el comportamiento real, no la UTC del CI (motor-fechas.3).
 // DATABASE_URL vacía: ninguna prueba toca una base PostgreSQL real (defensa en
 // profundidad; el data-store además ignora la BD en modo aislado).
-const env = { ...process.env, CONTROL_M_DATA_DIR: dataDir, TZ: process.env.TZ || "Europe/Madrid", DATABASE_URL: "" };
+// TZ FORZADA a Madrid (como producción vía tz-init), ignorando el TZ heredado del
+// CI (que suele ser UTC): así los tests de periodos reflejan el comportamiento real
+// del negocio y no la UTC del runner (motor-fechas.3). Override solo con CONTROL_M_TZ.
+const env = { ...process.env, CONTROL_M_DATA_DIR: dataDir, TZ: process.env.CONTROL_M_TZ || "Europe/Madrid", DATABASE_URL: "" };
 
 let failed = null;
 try {

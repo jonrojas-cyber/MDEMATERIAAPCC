@@ -5,8 +5,9 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-// Zona horaria del negocio (Málaga) también en los tests (motor-fechas.3).
-process.env.TZ = process.env.TZ || "Europe/Madrid";
+// Zona horaria del negocio (Málaga) también en los tests, FORZADA como producción
+// (ignora el TZ heredado del CI; override solo con CONTROL_M_TZ) · motor-fechas.3.
+process.env.TZ = process.env.CONTROL_M_TZ || "Europe/Madrid";
 
 const PORT = process.env.PORT || 4001;
 const BASE = `http://localhost:${PORT}`;
@@ -32,6 +33,6 @@ module.exports = defineConfig({
     url: `${BASE}/api/salud`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { PORT: String(PORT), CONTROL_M_DATA_DIR: E2E_DATA_DIR, TZ: process.env.TZ || "Europe/Madrid", DATABASE_URL: "" },
+    env: { PORT: String(PORT), CONTROL_M_DATA_DIR: E2E_DATA_DIR, TZ: process.env.CONTROL_M_TZ || "Europe/Madrid", DATABASE_URL: "" },
   },
 });

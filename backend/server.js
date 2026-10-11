@@ -1,7 +1,9 @@
-// Zona horaria del negocio (Málaga). Render corre en UTC; sin esto, las fronteras
-// de día/semana/mes caían en medianoche UTC y no en la de Madrid (motor-fechas.3).
-// Se fija ANTES de cualquier uso de Date. La BD de zonas horaria gestiona el DST.
-process.env.TZ = process.env.TZ || "Europe/Madrid";
+// Zona horaria del negocio (Málaga) · fuente única y FORZADA (motor-fechas.3).
+// Antes se usaba `process.env.TZ || "Europe/Madrid"`, que CONSERVABA el UTC
+// heredado de Render y dejaba las fronteras de día/mes en medianoche UTC. Ahora se
+// impone Madrid de forma incondicional (ver backend/tz-init.js para el contrato de
+// qué resuelve el TZ del proceso y qué resuelve tz.js). Debe ir ANTES de todo Date.
+require("./tz-init");
 
 const express = require("express");
 const cors = require("cors");

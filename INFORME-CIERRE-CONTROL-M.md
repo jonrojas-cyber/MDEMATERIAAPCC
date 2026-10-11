@@ -1,81 +1,74 @@
 # INFORME DE CIERRE · Control M (plan "reloj suizo")
 
-**Fecha:** 2026-10-11 · **Rama:** `claude/jolly-franklin-3j3eg4` · **Base de código previa:** `main e686037`.
-Ejecución del plan de corrección (PROMPT 00 + bloques 01–11) sobre los 79 hallazgos de `AUDITORIA-MILIMETRO-2026-10.md`.
+**Fecha:** 2026-10-11 (revisión de rigor) · **Rama:** `claude/jolly-franklin-3j3eg4` · **Base previa:** `main e686037`.
 
-> **Honestidad primero:** no tengo acceso a producción (el proxy de salida bloquea `controlm-mdemateria.onrender.com`, 403, comprobado). Por eso **nada se declara "verificado en vivo"**, y el despliegue a producción **queda pendiente de tu autorización** (ver §5). Todo lo de abajo está **probado en local** (lint + unitarios + 102 e2e en verde) y **subido a la rama**, no desplegado.
+> **No se despliega.** Los informes anteriores eran contradictorios (estados "corregido" junto a evidencia que describía el defecto vigente). Esta revisión los hace consistentes: para cada hallazgo se separa la **evidencia histórica** de la **evidencia actual (HEAD)** y se indica la **prueba específica y su resultado** (ver CONTROL-CORRECCIONES.md). **Un commit o una suite en verde no cierran un hallazgo.** No hay acceso a producción (proxy 403), así que nada se declara "verificado en vivo".
 
-## 1. Estado de los 79 hallazgos (detalle en CONTROL-CORRECCIONES.md)
+## 1. Estado de los 79 hallazgos (recalculado)
 
-| Estado | Nº | Qué significa |
+| Estado | Nº | Significado |
 |---|---|---|
-| corregido + probado | 42 | Arreglado, con test, suite en verde en local |
-| parcial + probado | 4 | Mejora entregada con test; queda una parte mayor |
-| parcial | 6 | Mitigado; pendiente de completar |
-| diferido | 2 | Decisión consciente de NO hacerlo ahora (riesgo de hacerlo a medias) |
-| no confirmado | 2 | Necesita una muestra real de Ágora / producción |
-| abierto | 23 | Sobre todo rendimiento y UX de severidad media/baja, documentados |
+| corregido + probado | 38 | Arreglado + prueba específica que PASA (unit/integración/e2e) |
+| corregido | 9 | Arreglado y verificado por lectura/smoke/e2e, sin test unitario dedicado |
+| parcial + probado | 4 | Mejora entregada con test; queda una parte |
+| parcial | 6 | Mitigado; pendiente completar |
+| abierto | 19 | Sin cambios (en su mayoría media/baja: rendimiento, UX, pulido) |
+| diferido | 2 | Decisión consciente de NO hacerlo a medias |
+| no confirmado | 1 | Requiere decisión de despliegue (multi-réplica) |
 
-## 2. Qué se ha arreglado, por bloque (commits)
+Detalle hallazgo por hallazgo, con histórico vs actual y el test de cada uno: **CONTROL-CORRECCIONES.md**.
 
-| Bloque | Commit | Entregado |
+## 2. Qué se reforzó en la revisión de rigor (sobre los bloques 01–11)
+
+| Commit | Rigor |
+|---|---|
+| `519e4de` | **R2** · Ninguna prueba toca Postgres real (el modo aislado ignora DATABASE_URL; test). Backup con snapshot consistente (transacción REPEATABLE READ en Postgres; test con pool falso). |
+| `f89a8cc` | **R4** · Tests reales para arranque/durabilidad: process-guards (tests.2) e integración HTTP que ARRANCA el servidor y comprueba /api/listo, X-Request-Id, 404 JSON y CSP en vivo (tests.4/8/11). |
+| `fb1bd8a` | **R3** · Doble descuento de IVA REPRODUCIDO con fixtures (import→cierre→cuenta-resultados) y CORREGIDO: routes/analisis-mes.js guardaba el NETO en `ventas_mes_*` y la cuenta lo volvía a netear. Ahora guarda el BRUTO. No era dependiente de producción. |
+| `6c6d2fc` | **R5** · Escrituras incrementales de ventas (insertMany, sin reescribir la tabla); anulaciones de Ágora no cuentan; break-even comparado en base neta. |
+
+Bloques 01–11 originales: 00 matriz · 01 aislamiento+backup · 02 seguridad · 03 guardado durable · 04 Ágora sin borrar ventas · 05 motor financiero IVA neto/neto · 06 fechas en hora de Málaga · 07 sous-vide sin perder avisos · 08 memoización+medición · 09 UX/contraste/offline · 10 lint+tests · 11 cuadre+cierre.
+
+## 3. Mediciones locales de rendimiento (hardware LOCAL, no Render)
+
+`node scripts/bench.js <nVentas> <nProductos>` sobre `financials.beneficio` (un mes sintético):
+
+| Ventas/mes | p50 | p95 |
 |---|---|---|
-| 00 | `bb68a68` | Matriz de control de los 79 hallazgos |
-| 01 | `9a6784e` | Datos de test aislados (los fixtures ya no se tocan), backup/restore verificado, arranque que no cae en silencio a disco efímero, `npm ci` en CI |
-| 02 | `389dfcf` | Cabeceras+CSP, CORS cerrado, freno de fuerza bruta (login+fichaje), tokens en tiempo constante, 58 sinks de error escapados |
-| 03 | `065676a` | IDs únicos, escritura atómica, JSON corrupto no se traga, `flush` propaga fallos, cierre ordenado SIGTERM, 404/errores JSON, readiness |
-| 04 | `02d0101` | La "limpieza de duplicados" ya **no borra ventas reales** (regla 1:1); cron de CSV idempotente |
-| 05 | `4086f53` | **Una sola convención de IVA** (neto/neto); coste y margen € por producto cuadran con el P&L (los %, invariantes, no cambian); fijos pueden netear el IVA deducible sin migración ciega |
-| 06 | `0d02b1f` | Fronteras de fecha en **hora de Málaga** (DST nativo); comparativos sin desbordar; integridad referencial de stock |
-| 07 | `593ee6e` | Temporizador sous-vide: el "retira" **ya no se pierde** si el server duerme (aviso atrasado); push urgente con TTL corto |
-| 08 | `2314e59` | Memoización correcta del coste; arnés de medición local |
-| 09 | `2607c60` | Botones legibles (contraste), errores de red en español, Service Worker con app-shell offline (sin cachear /api), foco de teclado |
-| 10 | `42288d9` | Lint sin dependencias (sintaxis + funciones duplicadas), runner blindado, test de la regla nº2 sobre todas las rutas de dinero |
-| 11 | (este) | Cuadre de solo lectura Ágora⇄Control M + este informe |
+| 2.000 | 3,1 ms | 4,9 ms |
+| 10.000 | 24,4 ms | 35,3 ms |
+| 30.000 | 46,0 ms | 74,3 ms |
 
-## 3. Decisiones conscientes (lo que NO se ha tocado, a propósito)
+Escala de forma lineal y holgada en local. La medición **en Render** queda pendiente (sin acceso); no se infiere de estos números.
 
-- **Token en localStorage → cookies httpOnly (seguridad.9):** NO migrado. Hacerlo a medias (sin CSRF, flags y compatibilidad PWA/conector) es peor que no hacerlo. Diferido.
-- **Dedupe por contenido en Ágora (agora.1/importarVentas):** NO se añade. Colapsar ventas por firma borra ventas reales idénticas (el bug que arregla el Bloque 04). La conciliación lo SEÑALA y se resuelve con evidencia documental.
-- **Netear los costes fijos a ciegas (dinero.1):** NO. El motor ya SABE netear el IVA deducible, pero por defecto no cambia ningún número hasta que clasifiques cada coste como "con IVA / sin IVA" — así no reinterpreto datos que no puedo verificar.
-- **Cambios de rendimiento arquitectónicos (rendimiento.1-4,6-8):** NO a ciegas. Requieren medir en el hosting real (no invento benchmarks). Queda el arnés `scripts/bench.js` y la lista en CONTROL-CORRECCIONES.md.
+## 4. El descuadre 1055 (Control M) vs 1035 (Ágora)
 
-## 4. El descuadre 1055 (Control M) vs 1035 (Ágora) — cómo cerrarlo con datos reales
+No se limita a hipótesis: la herramienta `scripts/cuadre-agora.js <export.json> <día>` desglosa el día de Ágora **por documento** (facturas, albaranes, pedidos excluidos, devoluciones) y marca el posible doble conteo albarán+factura; se compara con `GET /api/ventas/conciliacion?dia=` (desglose `por_tipo`). La diferencia se explica **documento a documento**, sin ajustar importes. Falta tu export real del día (ver §6, punto 5).
 
-No puedo determinarlo desde aquí (sin acceso a producción ni a tu export de Ágora). Procedimiento **accionable, de solo lectura**:
+## 5. Despliegue
 
-1. En el PC del conector, exporta de Ágora **sin alterar nada**:
-   `GET http://SERVIDOR:8984/api/export/?filter=Invoices,DeliveryNotes,SalesOrders&include-processed=true` (cabecera `Api-Token`), **sin** llamar luego a `/api/doc/processed`. Guarda el JSON.
-2. Pásalo por la herramienta nueva: `node scripts/cuadre-agora.js <export.json> 2026-10-DD`.
-   Te dará, para ese día: facturas, albaranes, **pedidos excluidos**, **devoluciones**, ventas brutas y un aviso de **posible doble conteo albarán+factura**.
-3. Compáralo con Control M del mismo día: `GET /api/ventas/conciliacion?dia=2026-10-DD` (admin), que trae el desglose `por_tipo`.
-4. La diferencia se explicará por una de tres cosas, y el cuadre te dice cuál: (i) IVA (titular bruto vs base neta), (ii) pedidos/devoluciones, (iii) albarán+factura de la misma venta. **Ninguna cifra se ajusta a mano para forzar la igualdad.**
+**No ejecutado.** Está preparado (lint + unitarios + 102 e2e en verde; backup/restore probado en aislamiento; sin migración de datos reales; reversión por commit), pero: (a) los informes eran contradictorios y había que hacerlos consistentes —hecho—; (b) no puedo verificarlo en vivo; (c) es tu sistema de dinero en producción. Cuando lo autorices, el flujo es el del proyecto (cherry-pick a `main` → push → Render) y se marcará **publicado / no verificado en vivo** hasta que alguien con acceso compruebe `/api/salud` y `/api/listo`. Reversión: el código se revierte por commit; **no se ejecuta ninguna migración de datos** en esta entrega, así que no hay reversión de datos que gestionar.
 
-## 5. Despliegue — listo, pendiente de tu visto bueno
+## 6. Pendientes reales (solo lo que requiere acceso, datos o una decisión externa)
 
-**Preparado:** lint + unitarios + 102 e2e en verde; backup/restore probado en aislamiento (`scripts/backup.js` / `scripts/restore.js`); commits explícitos por bloque; el arranque valida la persistencia.
+Para cada uno: **qué falta · cómo obtenerlo · qué desbloquea.**
 
-**Por qué no lo he desplegado solo:** es un cambio amplio (11 bloques) sobre tu sistema **en vivo** de dinero, toca el motor financiero, y **no puedo verificarlo en producción desde aquí**. Desplegar algo así a tu negocio sin que puedas verlo antes y sin poder comprobarlo en vivo sería imprudente. Cuando digas, el despliegue sigue el flujo autorizado del proyecto (cherry-pick a `main` → push → Render), y **se marcará "publicado / no verificado en vivo"** hasta que alguien con acceso compruebe `GET /api/salud` (trae la versión) y `/api/listo`.
+1. **Verificación en vivo.** Falta: acceso a `controlm-mdemateria.onrender.com` (proxy 403 desde aquí). Cómo: tras desplegar, abrir `/api/salud` (da la versión) y `/api/listo`. Desbloquea: confirmar versión efectiva y readiness → pasar lo desplegado de "publicado/no verificado" a "verificado".
+2. **JWT_SECRET externo (seguridad.1).** Falta: la variable `JWT_SECRET`. Cómo: Render → Environment → `JWT_SECRET` = cadena larga aleatoria. Desbloquea: sesiones estables (no se cierran al reiniciar) y cierra seguridad.1.
+3. **Persistencia durable (datos.8, pwa.3).** Falta: `DATABASE_URL` (PostgreSQL). Cómo: crear Postgres en Render, definir `DATABASE_URL` y `REQUIRE_DB=1`. Desbloquea: que los datos, las claves VAPID y las suscripciones push sobrevivan a reinicios; y el backup con `pg_dump`.
+4. **Copia de producción real (item 6).** Falta: ejecutar `scripts/backup.js` contra producción y restaurarla en aislamiento. Cómo: con acceso a prod + un destino persistente (`BACKUP_DIR` fuera del contenedor o `pg_dump`). Desbloquea: red de seguridad verificada antes de cualquier migración futura.
+5. **Descuadre 1055 vs 1035.** Falta: tu export de Ágora del día (`include-processed=true`, sin llamar a `/processed`). Cómo: `scripts/cuadre-agora.js <export.json> <día>` + `/api/ventas/conciliacion?dia=`. Desbloquea: explicar la diferencia por documento.
+6. **Semántica de columnas del export "Análisis de Ventas" (motor-fechas col E/F).** Falta: una fila del CSV con cabeceras. Desbloquea: confirmar E=Base(neto)/F=Total(bruto). (El arreglo del doble IVA ya es correcto con independencia de esto.)
+7. **Idempotencia multi-réplica (agora.6).** Falta: la decisión de escalar a ≥2 instancias. Cómo: si se escala, añadir restricción única en BD y ventas keyed por documento. Desbloquea: idempotencia con réplicas. (En una sola instancia ya es seguro: `importarDocs` es síncrono.)
+8. **Descuento a nivel documento de Ágora (resto de agora.5).** Falta: una muestra con el campo de descuento global. Desbloquea: restar descuentos de documento (las invitaciones ya suman 0, las devoluciones ya restan, las anulaciones ya se omiten).
 
-**Reversión:** cada bloque es un commit aislado; se puede revertir individualmente. **El código se revierte con git; una migración de datos NO** — por eso esta entrega no ejecuta ninguna migración de datos reales (solo añade capacidades y validaciones). El backup previo al despliegue es la red de seguridad.
+## 7. Pendientes de CÓDIGO (resolubles en local, priorizables — no bloqueados)
 
-## 6. Copia de seguridad y recuperación
+No ocultos: quedan 19 `abierto` de severidad media/baja, trabajo de código que se puede hacer sin acceso externo pero se priorizó por debajo de lo crítico/alto ya resuelto:
+- **Dinero (medio/bajo):** dinero.6 (interés real con cuadro de amortización), dinero.7 (margen de carta ponderado por ventas), dinero.9 (redondeo uniforme del food cost), dinero.10 (valor de stock inline).
+- **Rendimiento (medio/bajo):** rendimiento.2 (caché del dashboard por rol), .3 (consulta por fecha en SQL), .4 (compresión), .6 (paginación de /api/ventas), .7 (archivado de stock_movements).
+- **UX (bajo):** frontend.5 (contraste de algunos badges), .6 (tamaño táctil de la barra), .7 (unificar tokens de color), .8 (retirar labPanel muerto).
+- **PWA (bajo):** pwa.5 (duplicado en primer plano), pwa.6 (carrera al parar el temporizador).
+- **Otros:** agora.7 (ventas heredadas sin doc_clave), tests.10 (trocear el e2e), motor-fechas.6 (proyección volátil los primeros días).
 
-- **Mecanismo entregado:** `scripts/backup.js` (snapshot coherente tras `flush`, fuera del disco efímero, acceso restringido) y `scripts/restore.js` (restaura en entorno aislado, verifica filas/claves/totales, cuadra con el snapshot). Funciona en modo JSON y PostgreSQL. **No hay endpoint HTTP público de export.**
-- **Pendiente de activar (requiere acceso al entorno):** destino persistente (p. ej. `BACKUP_DIR` fuera del contenedor o `pg_dump` del proveedor) + frecuencia/retención/responsable. Antes de cualquier migración futura de datos reales: backup + prueba de restauración en entorno independiente.
-
-## 7. Checklist breve de incidentes (operación diaria)
-
-- **No guarda / "no se ha guardado":** mira `GET /api/listo` (`db_ok`). En modo JSON sobre Render el disco es efímero → conecta PostgreSQL (`DATABASE_URL`) para no perder datos.
-- **Conector Ágora caído:** el latido y la alarma ya existen; revisa `GET /api/agora-estado`. Reenviar es seguro (idempotente por documento).
-- **Cuadre con Ágora:** §4.
-- **Stock raro:** `materias_faltantes` en el resumen de sincronización señala escandallos rotos; un ingrediente inexistente ya NO descuenta en silencio.
-- **Temporizador sous-vide:** si el server durmió, al volver dispara el "retira" **atrasado** (no se pierde). Requiere avisos push activos en el dispositivo.
-
-## 8. Riesgos que quedan fuera de esta entrega
-
-- Verificación **en vivo** (producción inaccesible desde aquí).
-- Rendimiento a escala real (medición en Render pendiente; `rendimiento.1-4,6-8` abiertos).
-- UX/accesibilidad completa (`frontend.2` total, `frontend.5/6/7`), e2e troceado (`tests.10`), semántica de columnas del export CSV de Ágora (`motor-fechas.1/2`), persistencia de VAPID/suscripciones (`pwa.3`, atada a PostgreSQL).
-
-> **No se proclama "reloj suizo" hasta que las verificaciones reales pendientes (cuadre con tu export + comprobación en vivo tras desplegar) estén cerradas.**
+> **No se proclama "reloj suizo"** hasta cerrar las verificaciones del §6 (cuadre con tu export + comprobación en vivo tras desplegar).

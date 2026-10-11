@@ -2,7 +2,13 @@
 
 **Fecha:** 2026-10-11 (correcciones C1–C9) · **Rama:** `claude/jolly-franklin-3j3eg4` · **Base previa:** `main e686037`.
 
-> **No se despliega todavía** (ver el procedimiento único en §5). Para cada hallazgo se separa la **evidencia histórica** del defecto de la **evidencia actual (HEAD)** y se indica la **prueba específica y su resultado** (ver CONTROL-CORRECCIONES.md). **Un commit o una suite en verde no cierran un hallazgo.** No hay acceso a producción desde aquí (proxy 403), así que nada se declara "verificado en vivo".
+> **No se despliega todavía** (ver el procedimiento único en §5 y el runbook `DEPLOY.md`). Para cada hallazgo se separa la **evidencia histórica** del defecto de la **evidencia actual (HEAD)** y se indica la **prueba específica y su resultado** (ver CONTROL-CORRECCIONES.md). **Un commit o una suite en verde no cierran un hallazgo.** No hay acceso a producción desde aquí (proxy 403), así que nada se declara "verificado en vivo".
+
+> ### "0 abiertos" NO significa "todo resuelto"
+> Hay que leerlo en tres cajones distintos:
+> - **CORREGIDO (67):** 45 `corregido+probado` + 16 `corregido` + 6 `parcial+probado`. Arreglado y verificado (prueba específica, o lectura/e2e). La parte "+probado" de los parciales es lo entregado; su resto cae en uno de los cajones de abajo.
+> - **DIFERIDO (4), decisión consciente:** `frontend.7` (unificar ~476 colores → necesita revisión visual por tema claro/oscuro, no se hace a ciegas), `tests.10` (trocear el e2e → refactor grande de bajo valor con riesgo), y 2 más. No es "pendiente por prioridad": es "no hacerlo a medias".
+> - **PENDIENTE DE DATOS / ACCESO / DECISIÓN EXTERNA (independientes, ver §6):** el **cuadre 1055 vs 1035** (necesita tu export de Ágora), la **muestra del descuento global** de documento (resto de `agora.5`), la **verificación en vivo** (sin acceso a Render desde aquí) y las **decisiones de escalado** (`rendimiento.3`, `agora.6`). **No se altera ningún histórico para forzar el cuadre.**
 
 ## 1. Estado de los 79 hallazgos (recalculado tras C1–C9)
 
@@ -51,13 +57,25 @@ No se limita a hipótesis: `scripts/cuadre-agora.js <export.json> <día>` desglo
 
 ## 5. Procedimiento ÚNICO de producción (ejecutar en este orden; no desplegar hasta completar 1–3)
 
+> El runbook detallado, con los comandos exactos y verificados, está en **`DEPLOY.md`**.
+> Aquí va el resumen.
+
+> **Topología de git (importante):** `main` (e686037) y la rama divergieron desde un
+> ancestro común; `main` tiene 113 commits que la rama no tiene **como SHA** (son
+> cherry-picks) y la rama tiene 140 que `main` no tiene. **`git cherry` confirma que la
+> rama CONTIENE los 113 de main (113 "-", 0 "+")**: es un superconjunto funcional. Por
+> eso el despliegue es un **merge** (no un `cherry-pick` suelto ni un `reset`/force): el
+> merge conserva el historial de `main` y publica un árbol **idéntico** al tip de la
+> rama. Ensayado en local (rama `deploy-preview`): merge de 2 padres, árbol == tip,
+> lint + 528 unit + 102 e2e en verde.
+
 > Regla de oro: **no se presupone el estado de la configuración.** `DATABASE_URL` y `JWT_SECRET` pueden ESTAR ya definidos en Render o no; su estado es **desconocido desde aquí**. Primero se **inspecciona la configuración real**; no se crea ni se conecta una base vacía sobre una instalación con datos sin antes identificarlos, copiarlos y preservarlos.
 
 1. **Inspección de configuración (sin cambiar nada).** En Render → el servicio → *Environment*: anotar si existen y con qué valor (sin exponerlo) `DATABASE_URL`, `JWT_SECRET`, `REQUIRE_DB`, `CORS_ORIGINS`, `RESEND_*`, VAPID (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`), `AVISOS_TOKEN`. Con el servicio arriba, `GET /api/salud` devuelve el modo de persistencia (`json`/`postgres`) y si hay BD configurada, **sin secretos** (persistenceInfo). → Decide el resto: si ya hay Postgres con datos, se CONSERVA; si no, se decide si introducirlo (paso 2) antes o después, pero nunca pisando datos.
 2. **Backup real recuperable (antes de tocar datos).** Si hay Postgres: `pg_dump` a un destino persistente fuera del contenedor. Si es JSON en disco: `node scripts/backup.js` con `BACKUP_DIR` persistente. **Verificar la restauración** en un entorno AISLADO (`node scripts/restore.js` con `CONTROL_M_DATA_DIR` temporal) y comprobar recuentos por entidad. Sin backup restaurable verificado, no se continúa.
 3. **Identidad de los datos.** Confirmar que el backup corresponde a la instalación real (recuentos de ventas/materias/cierres coherentes con lo esperado). No conectar una base nueva/vacía sobre la existente.
-4. **Despliegue del commit EXACTO.** Flujo del proyecto: `git checkout main && git pull && git cherry-pick -x <SHA>` del commit validado de esta rama → `git push origin main` (Render despliega al hacer push a main). Anotar el SHA desplegado.
-5. **Comprobación de versión.** `GET /api/salud` debe devolver la **versión** correspondiente al SHA desplegado (no una anterior). Si no coincide, el despliegue no tomó: revisar antes de seguir.
+4. **Despliegue del árbol EXACTO** (ver `DEPLOY.md §5` para los comandos). Primero el **GATE**: `git cherry HEAD origin/main | grep -c '^+'` debe dar **0** (la rama sigue conteniendo todo lo de main; si no, STOP y reconciliar). Luego `CI=true npm test`; merge de la rama en `main` resolviendo al **árbol de la rama** (`git merge --no-ff …` → `git checkout <rama> -- .` → `git commit`), verificar `git diff --quiet HEAD <rama>` y `git push origin main` (Render despliega). Anotar el SHA del merge desplegado.
+5. **Comprobación de versión.** `GET /api/salud` debe devolver la **versión** correspondiente al SHA desplegado (no una anterior). Si no coincide, el despliegue no tomó: revisar antes de seguir. Los pasos 5, 6, 8 y 9 (lectura) los automatiza `node scripts/post-deploy-check.js` (secretos por entorno, nunca por chat; ver `DEPLOY.md §6`).
 6. **Permisos / roles.** Login admin (Moni) y equipo (Lara): el equipo NO debe ver coste/precio de coste/margen (regla 2; filtrado en front con `mbdsEsAdmin()` y en rutas con `req.user.rol==="admin"`). Verificar con una pantalla de dinero que al equipo le sale filtrada.
 7. **Guardado durable.** Hacer un cambio pequeño y reversible (p. ej. una nota) y comprobar que PERSISTE tras un reinicio del servicio (en Postgres debe sobrevivir siempre; en JSON efímero, avisa de que es efímero). Revisar `persistenceInfo.divergencias` vacío.
 8. **Conector Ágora.** Latido/estado del conector (`/api/ventas/agora-estado`) y una importación de prueba: documentos procesados, bloqueados y `posibles_duplicados` coherentes; ninguna venta perdida.

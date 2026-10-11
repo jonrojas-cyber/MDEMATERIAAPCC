@@ -6,6 +6,7 @@
 // materias según el escandallo de cada producto.
 
 const fs = require("fs");
+const crypto = require("crypto");
 const store = require("./data-store");
 
 // Detecta el delimitador (; típico en Excel español, o ,) y parsea el CSV.
@@ -356,7 +357,16 @@ function cronImport() {
   try {
     if (!fs.existsSync(path)) return;
     const texto = fs.readFileSync(path, "utf-8");
+    // Idempotencia del CRON (agora.3): la vía heredada por CSV no deduplica, así
+    // que reimportar el MISMO fichero cada hora duplicaba las ventas. Solo se
+    // importa si el contenido cambió desde la última vez (marca persistida).
+    const hash = crypto.createHash("sha1").update(texto).digest("hex");
+    const marca = (store.readAll("config").find((c) => c && c.id === "agora_cron_csv_hash") || {}).valor;
+    if (marca === hash) return; // fichero sin cambios → no reimportar
     const r = importarVentas(texto, "cron");
+    const row = { id: "agora_cron_csv_hash", valor: hash, cuando: new Date().toISOString() };
+    if (store.findById("config", "agora_cron_csv_hash")) store.update("config", "agora_cron_csv_hash", row);
+    else store.insert("config", row);
     console.log(`Ágora cron: ${r.ventas_importadas} ventas importadas desde ${path}`);
   } catch (e) {
     console.error("Ágora cron error:", e.message);

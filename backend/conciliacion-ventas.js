@@ -55,6 +55,25 @@ function firmaTicket(lineas, importe) {
 const PRIO_TIPO = { "Factura": 4, "Ticket (CSV)": 3, "Albarán": 2, "Pedido": 1 };
 function prioTipo(t) { return PRIO_TIPO[t] || 0; }
 
+// Dado un grupo con la MISMA firma de contenido, decide qué se puede quitar SIN
+// borrar una venta real (agora.1). Reglas seguras:
+//   · Se conservan TODOS los documentos del tipo de mayor prioridad (p. ej. dos
+//     facturas idénticas son DOS ventas reales, no un duplicado: nunca se borra
+//     una factura porque otra tenga el mismo contenido).
+//   · De los tipos inferiores se quita como mucho uno por cada superviviente
+//     (sustitución 1:1 albarán→factura). El excedente queda como AMBIGUO y NO se
+//     toca (requiere confirmación/evidencia documental, nunca borrado a ciegas).
+// Solo hay algo que quitar cuando la firma cruza tipos distintos.
+function sobrantesSeguros(grupo) {
+  const tipos = new Set(grupo.map((t) => t.tipo));
+  if (grupo.length < 2 || tipos.size < 2) return { survivors: grupo.slice(), remove: [], ambiguos: [] };
+  const maxPrio = Math.max.apply(null, grupo.map((t) => prioTipo(t.tipo)));
+  const survivors = grupo.filter((t) => prioTipo(t.tipo) === maxPrio);
+  const inferiores = grupo.filter((t) => prioTipo(t.tipo) < maxPrio)
+    .sort((a, b) => prioTipo(b.tipo) - prioTipo(a.tipo) || (a.hora || "").localeCompare(b.hora || ""));
+  return { survivors, remove: inferiores.slice(0, survivors.length), ambiguos: inferiores.slice(survivors.length) };
+}
+
 function conciliacionDia(dia, now = Date.now()) {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(String(dia || "")) ? String(dia) : ymdLocal(now);
 
@@ -128,17 +147,18 @@ function conciliacionDia(dia, now = Date.now()) {
   });
   const duplicados = [];
   Object.values(porFirma).forEach((grupo) => {
-    const tipos = new Set(grupo.map((t) => t.tipo));
-    if (grupo.length < 2 || tipos.size < 2) return; // mismo tipo o único → no es doble conteo
-    // Se queda el de mayor prioridad (Factura); el resto es el importe duplicado.
-    const ordenado = grupo.slice().sort((a, b) => prioTipo(b.tipo) - prioTipo(a.tipo) || (a.hora || "").localeCompare(b.hora || ""));
-    const sobran = ordenado.slice(1);
+    const { survivors, remove, ambiguos } = sobrantesSeguros(grupo);
+    if (!remove.length && !ambiguos.length) return; // mismo tipo o único → ventas reales
+    const se_queda = survivors[0];
     duplicados.push({
-      importe_unitario: eur(ordenado[0].importe),
+      importe_unitario: eur(se_queda.importe),
       veces: grupo.length,
-      importe_duplicado: eur(sobran.reduce((s, t) => s + t.importe, 0)),
-      se_queda: { ref: ordenado[0].ref, tipo: ordenado[0].tipo, hora: ordenado[0].hora },
-      tickets: ordenado.map((t) => ({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) })),
+      // Solo cuenta como doble conteo lo que se puede quitar con seguridad (1:1).
+      importe_duplicado: eur(remove.reduce((s, t) => s + t.importe, 0)),
+      // Documentos inferiores sin pareja: NO se tocan, se señalan para revisión.
+      ambiguos: ambiguos.map((t) => ({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) })),
+      se_queda: { ref: se_queda.ref, tipo: se_queda.tipo, hora: se_queda.hora },
+      tickets: survivors.concat(remove).concat(ambiguos).map((t) => ({ ref: t.ref, tipo: t.tipo, hora: t.hora, importe: eur(t.importe) })),
     });
   });
   duplicados.sort((a, b) => b.importe_duplicado - a.importe_duplicado);
@@ -208,12 +228,12 @@ async function limpiarDuplicados(dia, usuario, now = Date.now()) {
   // Firma por ticket → grupos; en cada grupo cruzado, se queda el de mayor prioridad.
   const porFirma = {};
   Object.values(tk).forEach((t) => { const f = firmaTicket(t.lineas, t.importe); (porFirma[f] = porFirma[f] || []).push(t); });
+  // Solo se quitan los sobrantes SEGUROS (1:1 de tipo inferior); jamás un
+  // documento del tipo superior (dos facturas idénticas son dos ventas reales).
+  // Los ambiguos se dejan intactos (agora.1: no borrar ventas sin evidencia).
   const clavesAEliminar = [];
   Object.values(porFirma).forEach((grupo) => {
-    const tipos = new Set(grupo.map((t) => t.tipo));
-    if (grupo.length < 2 || tipos.size < 2) return;
-    const ordenado = grupo.slice().sort((a, b) => prioTipo(b.tipo) - prioTipo(a.tipo) || (a.hora || "").localeCompare(b.hora || ""));
-    ordenado.slice(1).forEach((t) => clavesAEliminar.push(t.clave));
+    sobrantesSeguros(grupo).remove.forEach((t) => clavesAEliminar.push(t.clave));
   });
 
   if (!clavesAEliminar.length) {

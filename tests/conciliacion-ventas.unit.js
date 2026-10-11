@@ -125,6 +125,27 @@ test("limpiar duplicados quita el albarán, baja el total y repone stock", async
   assert.strictEqual(r2.bruto, 14.4 + 8.5 + 8.5 + 18.0); // sin el albarán
 });
 
+test("NUNCA borra una venta real idéntica: 2 facturas iguales + 1 albarán → solo se quita el albarán", async () => {
+  const db = montar({
+    ventas: [
+      { id: "a", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:400", doc_serie: "T", doc_number: 400 },
+      { id: "b", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:05:00", doc_clave: "Invoice:T:401", doc_serie: "T", doc_number: 401 },
+      { id: "c", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:10:00", doc_clave: "DeliveryNote:T:60", doc_serie: "T", doc_number: 60 },
+    ],
+    docs_agora: [
+      { id: "Invoice:T:400", type: "Invoice" }, { id: "Invoice:T:401", type: "Invoice" }, { id: "DeliveryNote:T:60", type: "DeliveryNote" },
+    ],
+    productos: [{ id: "prod-001", nombre: "Brasa", ingredientes: [{ materia_id: "m1", cantidad: 2 }] }],
+    materias: [{ id: "m1", nombre: "Pan", disponibilidad_actual: 100, unidad: "ud" }],
+  });
+  const L = await C.limpiarDuplicados("2026-10-09", { nombre: "Moni" }, T);
+  assert.strictEqual(L.eliminados, 1, "solo se quita el albarán (1 línea)");
+  assert.strictEqual(L.importe_quitado, 8.5);
+  const claves = db.ventas.map((v) => v.doc_clave);
+  assert.ok(claves.includes("Invoice:T:400") && claves.includes("Invoice:T:401"), "las DOS facturas reales sobreviven");
+  assert.ok(!claves.includes("DeliveryNote:T:60"), "el albarán (sustituido 1:1) se quitó");
+});
+
 test("limpiar sin duplicados no toca nada", async () => {
   montar({
     ventas: [{ id: "x1", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:300", doc_serie: "T", doc_number: 300 }],

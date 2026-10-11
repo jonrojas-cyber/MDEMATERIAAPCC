@@ -220,10 +220,45 @@ function foodCostMedioCarta(productos, idxMat) {
   return Math.round((suma / items.length) * 1000) / 10;
 }
 
-// Valor en euros del stock de materias primas.
+// Margen de contribución PONDERADO POR VENTAS (dinero.7). margenMedioCarta trata
+// todos los productos de la carta por igual (margen de CATÁLOGO); esta pondera por
+// lo que de verdad se vendió: ratio = Σ(margen € · uds) / Σ(ingreso neto · uds).
+// Es el margen REALIZADO (el del mix real), distinto del teórico de carta. Ignora
+// productos sin coste fiable o con escandallo incompleto (datos.7). Devuelve un
+// ratio 0..1, o null si no hay ventas costeables.
+function margenPonderadoVentas(productos, ventas, idxMat) {
+  const idx = idxMat || indiceMaterias();
+  const prodById = {};
+  (productos || store.readAll("productos")).forEach((p) => { if (p && p.id != null) prodById[p.id] = p; });
+  let netoTotal = 0, margenTotal = 0;
+  (ventas || store.readAll("ventas")).forEach((v) => {
+    const p = prodById[v.producto_id];
+    if (!p) return;
+    const mm = margenProducto(p, idx);
+    if (!(mm.coste > 0) || mm.incompleto) return; // sin coste fiable no pondera
+    const cant = Number(v.cantidad) || 0;
+    if (cant <= 0) return; // devoluciones/invitaciones no definen el margen de carta
+    netoTotal += mm.precio_neto * cant;
+    margenTotal += mm.margen_euros * cant;
+  });
+  return netoTotal > 0 ? Math.round((margenTotal / netoTotal) * 10000) / 10000 : null;
+}
+
+// Valor en euros del stock (disponibilidad × coste_medio) · fuente ÚNICA
+// (dinero.10). El producto por ítem vive aquí una sola vez; las rutas y la
+// analítica NO deben recalcularlo inline (antes se duplicaba en reportes/inicio/
+// materias/analitica/inventory-capital con redondeos dispares).
+function valorStockRaw(m) {
+  return (Number(m && m.disponibilidad_actual) || 0) * (Number(m && m.coste_medio) || 0);
+}
+// Valor de UNA materia, redondeado a 2 decimales (para mostrar por ítem).
+function valorStockMateria(m) {
+  return Math.round(valorStockRaw(m) * 100) / 100;
+}
+// Valor total del stock. Suma en crudo y redondea UNA vez (no acumula el error de
+// redondear por ítem), así el agregado cuadra con el P&L.
 function valorStock(materias) {
-  return Math.round((materias || store.readAll("materias"))
-    .reduce((s, m) => s + (Number(m.disponibilidad_actual) || 0) * (Number(m.coste_medio) || 0), 0) * 100) / 100;
+  return Math.round((materias || store.readAll("materias")).reduce((s, m) => s + valorStockRaw(m), 0) * 100) / 100;
 }
 
 // Valor en euros de la producción terminada disponible (lotes vigentes con stock).
@@ -258,6 +293,6 @@ module.exports = {
   indiceMaterias, indiceRecetasProduccion, costeMateriaEfectivo, costeMateriaDetalle,
   costeEscandallo, costeEscandalloDetalle, costeReceta, costePorUnidad,
   costeProducto, costeProductoDetalle,
-  margenProducto, margenMedioCarta, foodCostMedioCarta, cartaCosteada, cartaIncompleta,
-  valorStock, valorProduccion, costeMermas, tamanosLote, ivaDe, IVA_DEF,
+  margenProducto, margenMedioCarta, foodCostMedioCarta, margenPonderadoVentas, cartaCosteada, cartaIncompleta,
+  valorStock, valorStockMateria, valorStockRaw, valorProduccion, costeMermas, tamanosLote, ivaDe, IVA_DEF,
 };

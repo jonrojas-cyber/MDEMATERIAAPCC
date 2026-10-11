@@ -137,7 +137,7 @@ router.get("/", (req, res) => {
         disponibilidad_actual: m.disponibilidad_actual,
         unidad: m.unidad,
         cantidad_sugerida: cantidadSugerida(m),
-        valor_stock_actual: Math.round(m.disponibilidad_actual * m.coste_medio * 100) / 100,
+        valor_stock_actual: costing.valorStockMateria(m), // fuente única (dinero.10)
         proveedor: proveedor ? proveedor.nombre : "Sin proveedor asignado",
         contacto: proveedor ? proveedor.contacto : "",
         whatsapp: proveedor ? proveedor.whatsapp.replace(/[^0-9+]/g, "") : null,

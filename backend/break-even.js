@@ -34,8 +34,12 @@ function contribucion(productos = null, idxMat = null) {
     };
   }).sort((a, b) => b.contribucion_eur - a.contribucion_eur);
 
-  // Contribución media de la carta (ratio 0..1). Base del punto de equilibrio.
+  // Contribución media de la carta (ratio 0..1), de CATÁLOGO (todos los productos
+  // por igual). Base del punto de equilibrio teórico.
   const ratio = costing.margenMedioCarta(items, idx);
+  // Margen REALIZADO: el mismo ratio pero PONDERADO por lo que de verdad se vende
+  // (dinero.7). Distinto del de catálogo; null si aún no hay ventas costeables.
+  const ratioPonderado = costing.margenPonderadoVentas(items, null, idx);
 
   // Agregado por categoría (contribución media de cada familia de producto).
   const g = {};
@@ -50,8 +54,12 @@ function contribucion(productos = null, idxMat = null) {
   })).sort((a, b) => b.contribucion_media_pct - a.contribucion_media_pct);
 
   return {
-    ratio_contribucion: ratio,                    // 0..1 (fracción de cada € que cubre lo fijo)
+    ratio_contribucion: ratio,                    // 0..1 de CATÁLOGO (no ponderado)
     ratio_contribucion_pct: Math.round(ratio * 1000) / 10, // %
+    // Margen REALIZADO ponderado por ventas (dinero.7): el del mix real. Se reporta
+    // aparte para no confundirlo con el de catálogo; null si no hay ventas costeables.
+    ratio_contribucion_ponderado: ratioPonderado,
+    ratio_contribucion_ponderado_pct: ratioPonderado != null ? Math.round(ratioPonderado * 1000) / 10 : null,
     food_cost_medio_pct: costing.foodCostMedioCarta(items, idx),
     por_producto: porProducto.slice(0, 30),
     top_contribuyentes: porProducto.slice(0, 5),

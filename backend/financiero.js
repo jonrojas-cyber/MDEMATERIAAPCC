@@ -12,9 +12,7 @@
 const cr = require("./cuenta-resultados");
 const operatingProfile = require("./operating-profile");
 
-function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-// Ratio en % con 1 decimal (sobre ventas). null si no hay base.
-function pctDe(n, base) { return base > 0 ? Math.round((n / base) * 1000) / 10 : null; }
+const { eur, pctDe } = require("./fmt"); // formato único (dinero.9): % a 1 decimal
 
 // Días ABIERTOS al mes = días de apertura/semana × (52/12). 6 días ≈ 26,1/mes.
 function diasAbiertos(perfil) {

@@ -10,9 +10,7 @@
 // `componer(datos)` es puro (test). `calcular(opts)` reúne del store + motores.
 
 const store = require("./data-store");
-
-function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-function pct1(n) { return n == null ? null : Math.round(n * 1000) / 10; }
+const { eur, pct1 } = require("./fmt"); // formato único (dinero.9)
 const MES = 365 / 12;
 
 // Rango de un mes "YYYY-MM" (o el mes en curso). hasta = min(fin de mes, ahora).
@@ -46,14 +44,14 @@ function componer(d) {
   const cuenta = {
     ingresos: eur(ventas),
     coste_materia: tieneMateria ? eur(coste_materia) : null,
-    food_cost_pct: food_cost_pct != null ? Math.round(food_cost_pct * 100) : null,
+    food_cost_pct: pct1(food_cost_pct), // 1 decimal, como el resto de pantallas (dinero.9)
     food_cost_origen,
     margen_bruto,
     personal: eur(personal),
     otros_fijos: eur(otros_fijos),
     variables: eur(variables),
     ebitda,
-    margen_ebitda_pct: ebitda != null && ventas > 0 ? Math.round((ebitda / ventas) * 100) : null,
+    margen_ebitda_pct: ebitda != null && ventas > 0 ? pct1(ebitda / ventas) : null,
     cuota_creditos: eur(cuota_creditos),
     resultado_caja,
     ventas_origen,

@@ -4,11 +4,42 @@ const path = require("path");
 const store = require("./data-store");
 const auth = require("./auth");
 const db = require("./db");
+const seguridad = require("./seguridad");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
 
-app.use(cors());
+// Detrás del proxy de Render: necesario para que req.ip y el rate-limit sean fiables.
+app.set("trust proxy", true);
+
+// Cabeceras de seguridad + CSP en TODA respuesta (antes de estáticos y rutas).
+app.use(seguridad.cabeceras);
+
+// CORS restringido. La PWA y la API comparten origen (no necesitan CORS) y el
+// conector empuja sin cabecera Origin (no-navegador). Solo un navegador en OTRO
+// origen necesita estar en la lista: por defecto, el propio origen de Render (si
+// lo expone) y localhost en desarrollo. Antes estaba totalmente abierto (seguridad.6).
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+if (process.env.RENDER_EXTERNAL_URL) CORS_ORIGINS.push(process.env.RENDER_EXTERNAL_URL.replace(/\/+$/, ""));
+if (process.env.NODE_ENV !== "production") CORS_ORIGINS.push("http://localhost:" + PORT, "http://127.0.0.1:" + PORT);
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);              // no-navegador, same-origin o conector
+    return cb(null, CORS_ORIGINS.includes(origin));  // navegador cross-origin: solo lista
+  },
+}));
+
+// Antes de parsear el cuerpo: rechaza cargas grandes SIN autenticar en /api
+// (evita que un anónimo fuerce el buffer de 25MB · seguridad.5). Las fotos en
+// base64 viajan por rutas /api autenticadas, así que el uso legítimo no cambia.
+app.use("/api", (req, res, next) => {
+  const len = Number(req.headers["content-length"] || 0);
+  if (len > 256 * 1024 && !auth.verificar(auth.tokenDe(req))) {
+    return res.status(401).json({ error: "Autentícate antes de enviar una carga grande." });
+  }
+  next();
+});
+
 // Límite amplio: las peticiones con fotos (albaranes, productos, proveedores)
 // llevan imágenes en base64. Con el límite por defecto (100 KB) cualquier foto
 // algo grande daba error 413. Este parser global corre antes que los de cada
@@ -215,7 +246,7 @@ app.all("/avisos/cron", async (req, res) => {
   const token = process.env.AVISOS_CRON_TOKEN;
   if (!token) return res.status(503).json({ error: "AVISOS_CRON_TOKEN no configurado en el servidor" });
   const got = req.headers["x-cron-token"] || req.query.token;
-  if (got !== token) return res.status(401).json({ error: "Token inválido" });
+  if (!seguridad.tokenIgual(got, token)) return res.status(401).json({ error: "Token inválido" });
   try {
     const avisos = require("./avisos");
     const r = req.query.force === "1" ? await avisos.enviarAviso({ force: true }) : await avisos.cronTick();
@@ -279,7 +310,7 @@ app.post("/facturas/ingesta", express.json({ limit: "25mb" }), async (req, res) 
   const token = process.env.FACTURAS_INGESTA_TOKEN;
   if (!token) return res.status(503).json({ error: "FACTURAS_INGESTA_TOKEN no configurado en el servidor" });
   const got = req.headers["x-ingesta-token"] || (req.query && req.query.token);
-  if (got !== token) return res.status(401).json({ error: "Token de ingesta inválido" });
+  if (!seguridad.tokenIgual(got, token)) return res.status(401).json({ error: "Token de ingesta inválido" });
   try {
     // Resend Inbound manda solo metadatos: hay que descargar los adjuntos aparte.
     // Otros reenviadores (Zapier/Make) mandan el contenido en el propio cuerpo.

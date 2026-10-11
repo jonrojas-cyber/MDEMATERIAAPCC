@@ -31,7 +31,7 @@ const FILES = [
   "fixed-costs-segmentado", "financiero", "catalogo-revision", "seed-objetivos",
   "dashboard-ceo", "limpieza-catalogo", "comparativa-mtd", "ventas-email",
   "conciliacion-ventas", "economia-guard", "pyl-neto", "consistencia-pantallas",
-  "agora-cuadre", "backup-restore",
+  "agora-cuadre", "backup-restore", "seguridad",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");

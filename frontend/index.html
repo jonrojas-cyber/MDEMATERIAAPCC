@@ -2882,7 +2882,7 @@ async function irA_tareas(){
     html+=decGruposHTML(dec);
     html+=kpiStripHTML(dec.kpis)+hoyHTML(dec.hoy);
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 // Compatibilidad con llamadas antiguas.
 function irA_decisiones(){ return irA_tareas(); }
@@ -2916,7 +2916,7 @@ async function irA_appcc(){
         <span class="lab-foot-lb">nota</span>
         <span style="font-size:11px;color:var(--muted);line-height:1.5">lotes, caducidades, trazabilidad por qr, temperaturas, recepciones, calendario y auditoría. limpieza e incidencias en la siguiente fase.</span>
       </div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 function almaccPronto(){ alert("Disponible en la siguiente fase de APPCC."); }
 
@@ -2936,7 +2936,7 @@ async function irA_calendario(){
 async function cargarCalendario(){
   setInner(`<div class="empty">Cargando calendario…</div>`);
   try{ window._cal=await api("/calendario?year="+window._calYear); renderCalendario(); }
-  catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function calYear(delta){ window._calYear+=delta; window._calDia=null; cargarCalendario(); }
 function calMes(m){ window._calMes=m; window._calDia=null; renderCalendario(); }
@@ -2997,7 +2997,7 @@ async function irA_auditoria(){
     const d = await api("/auditoria?limit=200");
     window._aud = { eventos: d.eventos || [], acciones: d.acciones || [], filtro: "" };
     renderAuditoria();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function renderAuditoria(){
   const s = window._aud; if(!s) return;
@@ -3039,7 +3039,7 @@ async function irA_etiquetas(){
         card(`${esc(x.lote_id||"—")}`, `${esc(x.usuario||"")}${x.fecha?` · ${fmt(x.fecha)}`:""}${x.impresora?` · ${esc(x.impresora)}`:""}`));
     }
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Dashboard (KPIs + qué hacer ahora) — vive ahora en "Resumen del día".
@@ -3917,7 +3917,7 @@ async function loadHome() {
         </button>`:""}
       </div>`;
   } catch(e) {
-    el("home-content").innerHTML = `<div class="err">${e.message}</div>`;
+    el("home-content").innerHTML = `<div class="err">${esc(e.message)}</div>`;
   }
 }
 
@@ -4049,7 +4049,7 @@ async function irA_mbds(){
       </div>
       <div class="section-label">Bebidas</div>
       ${bebidas.length?cards:`<div class="empty">Aún no hay bebidas. ${admin?"Crea la primera.":""}</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function verBebidaMBDS(id){
@@ -4099,7 +4099,7 @@ async function verBebidaMBDS(id){
       <div class="section-label">Validación Materia</div><div class="cc-card">${chk}${corr?`<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px;"><div class="cc-label">Corrección propuesta</div>${corr}</div>`:""}</div>
       ${receta}${proceso}${eco}${catas}${lotes}
       ${admin?`<div class="card-actions" style="margin-top:12px;"><button class="btn-ghost" onclick="formBebidaMBDS('${b.id}')">Editar bebida</button></div>`:""}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function mbdsIngNombre(id){ const l=window._mbdsIng||[]; const i=l.find(x=>x.id===id); return i?i.nombre:id; }
 
@@ -6790,7 +6790,7 @@ async function irA_mbdsCordiales(){
       <div class="card-meta" style="margin-top:4px;">${esc(c.descripcion||"")}</div>
       ${admin?`<div class="card-actions"><button class="btn-ghost" onclick="formCordialMBDS('${c.id}')">Editar</button></div>`:""}</div>`; }).join("");
     setInner(`${admin?`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formCordialMBDS()">+ Nuevo cordial</button></div>`:""}${cors.length?cards:`<div class="empty">Aún no hay cordiales.</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function irA_mbdsBiblioteca(){
@@ -6801,7 +6801,7 @@ async function irA_mbdsBiblioteca(){
     ings.forEach(i=>{ const f=i.funcion_sensorial||"Otros"; (grupos[f]=grupos[f]||[]).push(i); });
     const html=Object.keys(grupos).sort().map(f=>`<div class="section-label">${esc(f)}</div><div class="cc-card">${grupos[f].map(i=>`<div class="cc-line"><span><b>${esc(i.nombre)}</b> <span style="color:var(--muted)">${esc(i.categoria||"")}</span><br><span class="cc-mini">${esc(i.notas_sensoriales||"")}</span></span><span class="cc-mini" style="text-align:right;">${i.abv?`${i.abv}% · `:""}${i.brix?`${i.brix}°Bx · `:""}${i.ph?`pH ${i.ph}`:""}${admin&&i.coste?`<br>${eur4(i.coste)} €/kg`:""}</span></div>`).join("")}</div>`).join("");
     setInner(`${admin?`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="formIngredienteMBDS()">+ Nuevo ingrediente</button></div>`:""}<div class="cc-mini" style="margin-bottom:10px;">Cada ingrediente tiene una FUNCIÓN sensorial, no solo un nombre.</div>${html||`<div class="empty">Biblioteca vacía.</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── Cata ─────────────────────────────────────────────────────────────────────
@@ -6876,7 +6876,7 @@ async function formIngredienteMBDS(id){
     </div>
     <div class="card-actions"><button class="btn-primary" onclick="guardarIngredienteMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbdsBiblioteca()">Cancelar</button></div>
     <div id="ig-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function guardarIngredienteMBDS(btn){
   const body={nombre:el("ig-nombre").value.trim(),categoria:el("ig-cat").value,funcion_sensorial:el("ig-fun").value,coste:el("ig-coste").value,abv:el("ig-abv").value,brix:el("ig-brix").value,ph:el("ig-ph").value,notas_sensoriales:el("ig-notas").value,proveedor:el("ig-prov").value};
@@ -6913,7 +6913,7 @@ async function formCordialMBDS(id){
     </div>
     <div class="card-actions"><button class="btn-primary" onclick="guardarCordialMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbdsCordiales()">Cancelar</button></div>
     <div id="cor-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function mbdsRecogerIngs(cls){ return [...document.querySelectorAll("."+cls+"-ing")].map(sel=>{ const row=sel.parentNode; const cant=Number(row.querySelector("."+cls+"-cant").value)||0; return {ingrediente_id:sel.value,cantidad:cant}; }).filter(x=>x.ingrediente_id&&x.cantidad>0); }
 async function guardarCordialMBDS(btn){
@@ -6956,7 +6956,7 @@ async function formBebidaMBDS(id){
     <div id="beb-calc"></div>
     <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="guardarBebidaMBDS(this)">${id?"Guardar":"Crear"}</button><button class="btn-ghost" onclick="irA_mbds()">Cancelar</button></div>
     <div id="beb-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function mbdsBebBody(){
   return {nombre:el("beb-nombre").value.trim(),familia:el("beb-fam").value.trim(),version:el("beb-ver").value,cordial_id:el("beb-cor").value,cordial_ml:el("beb-corml").value,volumen_total:el("beb-vol").value,co2:el("beb-co2").value,pvp:el("beb-pvp").value,componentes:[...document.querySelectorAll(".comp-ing")].map(s=>({ingrediente_id:s.value,ml:Number(s.parentNode.querySelector(".comp-cant").value)||0})).filter(x=>x.ingrediente_id&&x.ml>0)};
@@ -6971,7 +6971,7 @@ async function calcularBebidaMBDS(){
     out.innerHTML=`<div class="cc-card" style="margin-top:8px;"><div style="display:flex;justify-content:space-between;align-items:center;"><div class="cc-label">Resultado</div>${mbdsAptaBadge(v)}</div>
       <div class="cc-mini">ABV ${mbdsNum(c.abv,1)}% · °Brix ${mbdsNum(c.brix,1)} · pH ${mbdsNum(c.ph,2)} · sal ${mbdsNum(c.salinidad,2)}% · coste/serv ${ccEur(c.coste_por_servicio)} · margen ${c.margen_pct!=null?c.margen_pct+"%":"—"}</div>
       <div style="margin-top:6px;">${chk}</div>${corr?`<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px;">${corr}</div>`:""}</div>`;
-  }catch(e){ if(out) out.innerHTML=`<div class="err">${e.message}</div>`; }
+  }catch(e){ if(out) out.innerHTML=`<div class="err">${esc(e.message)}</div>`; }
 }
 async function guardarBebidaMBDS(btn){
   const body=mbdsBebBody();
@@ -6992,7 +6992,7 @@ async function irA_rutina(rutina){
     window._aperPasos=(d&&d.pasos)||{};
     window._aperResp=(d&&d.responsables)||[];
     renderRutina();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function irA_apertura(){ return irA_rutina("apertura"); }
 function irA_cierre(){ return irA_rutina("cierre"); }
@@ -7066,7 +7066,7 @@ async function irA_recetarioCafe(){
     }).join("") : `<div class="empty">Aún no hay cafés en el recetario.</div>`;
     if(esAdmin) html+=`<div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="formCafe()">Añadir café</button></div>`;
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function formCafe(id){
   let c={nombre:"",origen:"",lado:"",tiempo_extraccion_seg:"",dosis_g:"",salida_g:"",molienda:"",temperatura:"",notas:""};
@@ -7137,7 +7137,7 @@ async function irA_temperaturas(){
       </div>`;
     }).join("");
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function guardarTemp(i){
   const t=(window._tempTipos||[])[i]; if(!t) return;
@@ -7199,7 +7199,7 @@ async function irA_appccRegistro(dias){
           <div>Firma: ____________________&nbsp;&nbsp;&nbsp;Fecha: ______ / ______ / __________</div>
         </div>
       </div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── INVENTARIO FÍSICO vs TEÓRICO ──────────────────────────────────────────
@@ -7347,7 +7347,7 @@ async function irA_inventario(){
       </div>
       <div id="inv-msg" style="font-size:12px;color:var(--alert);margin-top:8px;"></div>
       ${hist}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function recalcInvFila(input){
   const row=input.closest(".inv-row");
@@ -7413,7 +7413,7 @@ async function irA_categoria(cat) {
       return labRow(esc(m.name), sub, `irA_${id}()`);
     }).join("");
     setInner(`<div class="lab-eyebrow" style="margin:0 0 4px">${esc((c.name||"").toLowerCase())}</div><div class="lab-rows">${rows}</div>`);
-  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+  } catch(e) { setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── PREPARACIONES ─────────────────────────────────────
@@ -7466,7 +7466,7 @@ async function irA_preparaciones() {
       <button class="btn-ghost" onclick="irA_prevision()">Previsión · qué producir por día →</button>
       <button class="btn-ghost" onclick="irA_calendario()">Calendario anual →</button></div>`;
     setInner(html);
-  } catch(e) { setInner(`<div class="err">${e.message}</div>`); }
+  } catch(e) { setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── PANEL DEL PROPIETARIO · dónde está mi dinero ───────────────────────────
@@ -7556,7 +7556,7 @@ async function irA_panel(){
     html+=`<div class="section-label">Compras por proveedor (30 días)</div>`+
       (p.compras_proveedor.length? svgBarsH(p.compras_proveedor,{unit:"€"}) : `<div class="empty" style="padding:10px 0;">Sin recepciones registradas.</div>`);
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -7588,7 +7588,7 @@ async function irA_centroControl(preset, custom){
     window._ccData=d;
     setInner(ccRender(d));
     ccCargarMermas();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 // Análisis de mermas DENTRO del financiero (no es un apartado aparte): coste del
 // periodo, % evitable, serie diaria, productos más mermados y "cosas extrañas".
@@ -7926,7 +7926,7 @@ async function irA_saludPesos(){
       <div class="card-actions"><button class="btn-primary" onclick="guardarSaludPesos(this)">Guardar pesos</button><button class="btn-ghost" onclick="irA_salud()">Cancelar</button></div>
       <div id="pw-msg" style="color:var(--alert);font-size:12px;margin-top:8px;"></div>`);
     window._pwKeys=Object.keys(d.default);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function guardarSaludPesos(btn){
   const pesos={}; (window._pwKeys||[]).forEach(k=>{ const el2=el("pw-"+k); if(el2) pesos[k]=Number(el2.value)||0; });
@@ -8003,7 +8003,7 @@ async function irA_costesFijos(){
       <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="ccFcForm()">Añadir coste fijo</button> <button class="btn-ghost" onclick="ccPerfilForm()">Perfil operativo</button></div>
       ${d.costes.length?filas:`<div class="empty">Añade tus costes fijos para calcular cuánto cuesta abrir cada día.</div>`}`);
     ccObjetivo();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // Calculadora de objetivo de beneficio: cuánto facturar para ganar X limpio al
@@ -8115,7 +8115,7 @@ async function irA_deuda(){
         <div class="cc-mini">Cuota mensual ${ccEur(d.cuota_mensual_total)} · intereses estimados ${ccEur(d.intereses_estimados)} · ${d.num_deudas} deuda(s)</div></div>
       <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccDebtForm()">Añadir deuda</button></div>
       ${(d.deudas&&d.deudas.length)?filas:`<div class="empty">Aún no hay deudas registradas.</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccDebtForm(id){
   const meta=window._ccDebtMeta||{tipos:[]};
@@ -8172,7 +8172,7 @@ async function irA_activos(){
         <div class="cc-mini">${d.num_activos} activos · ${d.garantias_por_vencer} garantía(s) por vencer</div></div>
       <div class="card-actions" style="margin:10px 0;"><button class="btn-primary" onclick="ccAssetForm()">Añadir activo</button></div>
       ${(d.activos&&d.activos.length)?filas:`<div class="empty">Aún no hay activos registrados. Añade cafetera, neveras, TPV, mobiliario…</div>`}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccAssetForm(id){
   const meta=window._ccAssetMeta||{categorias:[]};
@@ -8221,7 +8221,7 @@ async function irA_objetivos(){
     setInner(`<div class="card-actions" style="margin-bottom:10px;"><button class="btn-primary" onclick="ccTgtForm()">Añadir objetivo</button></div>
       ${(d.objetivos&&d.objetivos.length)?`<div class="cc-card">${filas}</div>`:`<div class="empty">Añade objetivos para medir el avance real del negocio.</div>`}
       <div class="section-label">Configurar</div><div class="cc-card">${admin||'<div class="cc-mini">Sin objetivos.</div>'}</div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccTgtForm(id){
   const TIPOS=[["ventas","Ventas","eur"],["beneficio","Beneficio","eur"],["ebitda","EBITDA (%)","pct"],["food_cost","Food cost","pct"],["coste_laboral","Coste de personal","pct"],["prime_cost","Prime cost (materia+personal)","pct"],["gastos_fijos","Costes fijos","pct"],["merma","Merma","pct"],["ticket_medio","Ticket medio","eur"],["clientes","Clientes","num"],["reserva_caja","Reserva de caja","eur"]];
@@ -8296,7 +8296,7 @@ async function irA_tesoreria(){
       <div class="cc-card">${cuentas}</div>
       <div class="section-label">Próximos pagos</div><div class="cc-card">${pagos}</div>
       <div class="section-label">Próximos cobros</div><div class="cc-card">${cobros}</div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function ccAccForm(id){
   let reg={name:"",type:"banco",balance:""};
@@ -8359,7 +8359,7 @@ async function irA_calendarioEmpresa(off){
         <span>${d.inicio} → ${d.fin}</span>
         <button class="btn-ghost" onclick="irA_calendarioEmpresa(${window._ccCalOff+1})">Semana siguiente →</button></div>
       <div class="cc-cal">${dias}</div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // ── MÁQUINA DEL TIEMPO · ¿cómo estaba mi empresa? ──────────────────────────
@@ -8386,7 +8386,7 @@ async function ccTmConsultar(btn){
       ${linea("Empleados activos",d.empleados_activos)}
       ${linea("Beneficio estimado del año",ccEur(d.beneficio_estimado_anio))}</div>
       <div class="cc-mini" style="margin-top:8px;">${esc(d.nota||'')}</div>`;
-  }catch(e){ el("tm-out").innerHTML=`<div class="err">${e.message}</div>`; }
+  }catch(e){ el("tm-out").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
   finally{ if(btn) btn.disabled=false; }
 }
 
@@ -8404,7 +8404,7 @@ async function irA_timeline(metric, horizon){
     const d=await api(`/executive-dashboard/timeline?metric=${encodeURIComponent(window._tlMetric)}&horizon=${window._tlHorizon}`);
     window._tlData=d;
     setInner(tlRender(d));
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function tlRender(d){
   const chips=(d.metricas||[]).map(m=>`<button class="cc-chip${m.key===d.metric?' on':''}" onclick="irA_timeline('${m.key}',${window._tlHorizon})">${esc(m.label)}</button>`).join("");
@@ -8476,7 +8476,7 @@ async function irA_prevision(wd){
     const p=await api("/prevision?weekday="+wd);
     window._prev=p;
     renderPrevision();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function prevDia(wd){ irA_prevision(wd); }
 function renderPrevision(){
@@ -8770,7 +8770,7 @@ async function irA_lotes(){
         <div class="card-name">${l.codigo} — ${l.nombre||""}${l.caducado?'<span class="badge-low">Caducado</span>':''}</div>
         <div class="card-meta">${l.ubicacion} · ${l.cantidad_restante}/${l.cantidad_inicial} g · ${l.estado} · ${l.caducado?"Fuera de plazo":l.horas_restantes+" h restantes"}</div>
       </div>`,"No hay lotes registrados."));
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 async function darDeBaja(id,cb){
@@ -8848,7 +8848,7 @@ async function irA_materias(){
         <div class="alm-grid">${cards}</div>
         <div class="alm-actions"><button class="btn-ghost" onclick="formProducto()">+ Nuevo producto</button></div>
       </div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Búsqueda global instantánea (nombre, código, ubicación o proveedor).
@@ -8864,7 +8864,7 @@ async function almBuscarGlobal(q){
       const items=await api("/materias?q="+encodeURIComponent(q.trim()));
       out.innerHTML=`<div class="section-label">Resultados · ${items.length}</div>`+
         (items.length?items.map(almFila).join(""):'<div class="empty">Nada coincide. Prueba otro nombre o ubicación.</div>');
-    }catch(e){ out.innerHTML=`<div class="err">${e.message}</div>`; }
+    }catch(e){ out.innerHTML=`<div class="err">${esc(e.message)}</div>`; }
   },160);
 }
 
@@ -8884,7 +8884,7 @@ async function irA_almMacro(macroEnc, fromBack){
     setInner(`<button class="btn-ghost" onclick="irA_materias()">← Almacén</button>
       <div class="section-label">${esc(macro)}</div>
       <div class="alm-sublist">${subs}</div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // NIVEL 3 — productos de una subcategoría: buscador + filtros + semáforo.
@@ -8896,7 +8896,7 @@ async function irA_almSub(macroEnc, subEnc, fromBack){
     const items=await api(`/materias?macro=${encodeURIComponent(macro)}&sub=${encodeURIComponent(sub)}`);
     window._almSub={macro,sub,items,filtro:"todos",q:""};
     renderAlmSub();
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 function renderAlmSub(){
   const s=window._almSub; if(!s) return;
@@ -9004,7 +9004,7 @@ async function formProducto(id, macroEnc, subEnc){
         ${f("Observaciones", `<textarea id="prod-obs" rows="2" placeholder="Notas, alérgenos, conservación…">${m.observaciones?esc(m.observaciones):""}</textarea>`)}
         <div class="card-actions"><button class="btn-primary" onclick="guardarProducto(${id?`'${id}'`:"null"})">${id?"Guardar cambios":"Crear producto"}</button></div>
       </div>`);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 async function elegirFotoProdForm(input){
@@ -9070,7 +9070,7 @@ async function irA_revisiones(){
       return card(t.tipo,"",`<button class="btn-ghost" onclick="regRev('${t.tipo}','Realizada')">Marcar realizada</button>`);
     }).join("");
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 async function regRev(tipo,valor){
@@ -9134,7 +9134,7 @@ async function irA_ajustes(){
       `${a.motivo} · ${a.coste_estimado.toFixed(2)} € · ${a.responsable} · ${fmt(a.fecha)}`
     ),"Sin ajustes.");
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 function ajTipo(t){
@@ -9388,7 +9388,7 @@ async function irA_proveedores(){
       </div>`;
     }).join("")+`</div>`;
     setInner(html);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Filtra en vivo las tarjetas de proveedor por nombre, CIF, categoría o contacto.
@@ -9643,7 +9643,7 @@ async function irA_productosProveedor(provId,mes){
     }).join("");
 
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 function calcPrecioProd(){
@@ -9801,7 +9801,7 @@ async function irA_precioProducto(prodId,provId){
       </div>
       <div class="section-label">Histórico de precios</div>
       ${histHtml}`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function elegirDocPrecio(input){
@@ -9838,7 +9838,7 @@ async function irA_informeCompras(){
     const [provs]=await Promise.all([api("/proveedores").catch(()=>[])]);
     window._infcProvs=provs;
     infcRender();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 function infcRender(){
   const s=window._infc, provs=window._infcProvs||[];
@@ -9880,7 +9880,7 @@ async function infcGenerar(btn){
   if(s.proveedor_id) qs.set("proveedor_id",s.proveedor_id); if(s.categoria) qs.set("categoria",s.categoria);
   if(btn) btn.disabled=true;
   try{ s.datos=await api("/compras-informe?"+qs.toString()); infcRender(); }
-  catch(e){ if(btn) btn.disabled=false; const scr=el("screen-inner"); if(scr) scr.insertAdjacentHTML("beforeend",`<div class="err">${e.message}</div>`); }
+  catch(e){ if(btn) btn.disabled=false; const scr=el("screen-inner"); if(scr) scr.insertAdjacentHTML("beforeend",`<div class="err">${esc(e.message)}</div>`); }
 }
 function infcExportarCSV(){
   const d=window._infc&&window._infc.datos; if(!d) return;
@@ -11411,7 +11411,7 @@ async function irA_recepcion(pre){
     }
     // Indicador claro de si el lector automático (OCR) está activado en el servidor.
     mostrarEstadoLector();
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 // Abre la recepción ya enfocada en un pedido concreto (proveedor preseleccionado).
 function recibirPedido(pedidoId, proveedorId, codigo){
@@ -11452,7 +11452,7 @@ async function irA_archivo(){
         </div>
       </div>`).join("");
     setInner(html);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // Descarga el PDF del trimestre con la sesión (token), para enviar a la gestoría.
@@ -12030,7 +12030,7 @@ async function irA_ventas(){
       </div>`;
     setInner(html);
     if(mbdsEsAdmin()) conciliacionRender();
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // ── CONCILIACIÓN CON ÁGORA · cuadrar el total al céntimo (solo admin) ──
@@ -12183,7 +12183,7 @@ async function irA_avisos(){
         <div class="card-name">Lotes a punto de caducar (${r.caducando.length})</div>
         ${r.caducando.length?r.caducando.map(l=>`<div class="card-meta">· ${l.nombre} (${l.codigo}) — ${l.caducado?"CADUCADO":"caduca en "+l.horas_restantes+" h"}${l.ubicacion?" · "+l.ubicacion:""}</div>`).join(""):`<div class="card-meta">✔ Ningún lote caduca en el plazo vigilado.</div>`}
       </div>`);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 async function activarPush(btn){
@@ -12676,7 +12676,7 @@ async function irA_pagos(){
       );
     },"Aún no se ha emitido ningún justificante.");
     setInner(sPagos+sJust);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 function toggleAlb(id){
@@ -12724,7 +12724,7 @@ async function verAlbaran(id){
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir el albarán: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir el albarán: ${esc(e.message)}</p>`;
     else alert(e.message);
   }
 }
@@ -12744,7 +12744,7 @@ async function verFacturaPDF(id){
     const url=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
     if(w){ w.location.href=url; } else { window.open(url,"_blank"); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir la factura: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New',monospace;padding:20px;color:#9C5A2E;">No se pudo abrir la factura: ${esc(e.message)}</p>`;
     else alert(e.message);
   }
 }
@@ -12820,7 +12820,7 @@ async function verJustificante(id){
       </div></body></html>`;
     if(w){ w.document.open(); w.document.write(html); w.document.close(); }
   }catch(e){
-    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo generar el justificante: ${e.message}</p>`;
+    if(w) w.document.body.innerHTML=`<p style="font-family:'Courier New','Courier Prime',monospace;padding:20px;color:#9C5A2E;">No se pudo generar el justificante: ${esc(e.message)}</p>`;
     else alert(e.message);
   }
 }
@@ -12868,7 +12868,7 @@ async function irA_carta(){
       );
     }, "No hay productos en la carta.");
     setInner(cab+resumen+items);
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // Cambia el food-cost objetivo de un producto (lo guarda como margen y recalcula
@@ -12940,7 +12940,7 @@ async function irA_menu(){
     const carta = await api("/carta");
     window._menuCarta = carta.productos || [];
     menuNivel([]);
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 async function menuRecargar(path){
   try{ const carta = await api("/carta"); window._menuCarta = carta.productos || []; }catch(_){ }
@@ -13035,7 +13035,7 @@ async function irA_cafes(){
     window._cafeLeches = mats.filter(m=>m.categoria==="Leche" && m.id!=="mat-leche-vegetal");
     window._cafeCarta = (carta.productos||[]).filter(p=>p.categoria==="café");
     renderCafeLista();
-  }catch(e){ setInner(`<div class="err">${e.message}</div>`); }
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
 // Empareja una bebida con su producto en la carta (por clave/nombre exacto).
@@ -13419,7 +13419,7 @@ async function irA_analisis(){
       `<div class="card" style="font-size:11px;color:#888070;">Total semana — producción ${sem.totales.coste_produccion.toFixed(2)} € · mermas ${sem.totales.coste_mermas.toFixed(2)} € · ${sem.totales.preparaciones} preparaciones</div>`+
       masUsadas+barrasStock
     );
-  }catch(e){setInner(`<div class="err">${e.message}</div>`);}
+  }catch(e){setInner(`<div class="err">${esc(e.message)}</div>`);}
 }
 
 // ── CIERRE DE MES ─────────────────────────────────────

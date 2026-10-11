@@ -1,6 +1,7 @@
 const express = require("express");
 const auth = require("../auth");
 const store = require("../data-store");
+const { limitadorAuth } = require("../seguridad");
 
 const router = express.Router();
 
@@ -8,9 +9,13 @@ const router = express.Router();
 router.post("/login", async (req, res) => {
   const { usuario, pin } = req.body || {};
   if (!usuario || !pin) return res.status(400).json({ error: "Indica usuario y PIN" });
+  // Freno de fuerza bruta por IP (además del bloqueo por cuenta de auth.login).
+  const espera = limitadorAuth.bloqueado(req);
+  if (espera) return res.status(429).json({ error: "Demasiados intentos desde esta red. Espera unos minutos.", segundos: espera });
   const sesion = auth.login(usuario, pin);
   await store.flush(); // confirmar intentos/bloqueo antes de responder
-  if (sesion.token) return res.json(sesion);
+  if (sesion.token) { limitadorAuth.registraExito(req); return res.json(sesion); }
+  limitadorAuth.registraFallo(req); // solo los fallos cuentan para el freno
   // Bloqueo por intentos -> 429; credenciales incorrectas -> 401.
   const code = sesion.bloqueado ? 429 : 401;
   return res.status(code).json(sesion);

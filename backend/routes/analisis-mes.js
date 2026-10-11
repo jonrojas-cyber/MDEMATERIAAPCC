@@ -29,10 +29,14 @@ router.post("/importar", express.raw({ type: ["text/*", "application/csv", "appl
     // req.body es un Buffer: parseExportBuffer detecta xlsx (ZIP) o CSV.
     const snap = am.parseExportBuffer(req.body || Buffer.alloc(0), req.query.mes);
     am.guardar(snap);
-    // Además fija el cierre de ventas netas del mes para la Cuenta de Resultados.
+    // Fija el cierre de ventas del mes para la Cuenta de Resultados. OJO: la
+    // Cuenta de Resultados trata `ventas_mes_*` como BRUTO (con IVA) y lo netea
+    // dividiendo por (1+IVA). Antes aquí se guardaba snap.neto (NETO) → la cuenta
+    // lo volvía a dividir = DOBLE descuento de IVA (motor-fechas.1/2). Se guarda el
+    // BRUTO (snap.total) para respetar la convención y cuadrar con Ágora.
     const id = `ventas_mes_${snap.mes}`;
-    if (store.findById("config", id)) store.update("config", id, { valor: snap.neto });
-    else store.insert("config", { id, valor: snap.neto });
+    if (store.findById("config", id)) store.update("config", id, { valor: snap.total });
+    else store.insert("config", { id, valor: snap.total });
     try {
       require("../auditoria").registrar(req, {
         accion: "analisis_mes_import", entidad: "analisis_mes", entidad_id: snap.id,

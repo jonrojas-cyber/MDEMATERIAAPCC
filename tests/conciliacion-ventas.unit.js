@@ -51,7 +51,9 @@ function seedBase() {
       { id: "v6", producto_id: "prod-002", producto: "Sal", cantidad: 1, importe: 5.9, fecha: "2026-10-08T10:00:00", doc_clave: "Invoice:T:90" },
     ],
     docs_agora: [
-      { id: "Invoice:T:100", type: "Invoice" }, { id: "DeliveryNote:T:55", type: "DeliveryNote" },
+      // La factura T/100 REFERENCIA explícitamente al albarán T/55 (vínculo
+      // documental): es la misma venta facturada → se puede deduplicar.
+      { id: "Invoice:T:100", type: "Invoice", origen: [{ serie: "T", number: 55 }] }, { id: "DeliveryNote:T:55", type: "DeliveryNote" },
       { id: "Invoice:T:200", type: "Invoice" }, { id: "Invoice:T:201", type: "Invoice" }, { id: "Invoice:T:202", type: "Invoice" },
     ],
     productos: [
@@ -125,25 +127,46 @@ test("limpiar duplicados quita el albarán, baja el total y repone stock", async
   assert.strictEqual(r2.bruto, 14.4 + 8.5 + 8.5 + 18.0); // sin el albarán
 });
 
-test("NUNCA borra una venta real idéntica: 2 facturas iguales + 1 albarán → solo se quita el albarán", async () => {
+test("NO borra ventas legítimas idénticas sin VÍNCULO documental (una facturada, otra en albarán)", async () => {
+  // Dos ventas idénticas en contenido (Café 8,5): una como FACTURA y otra como
+  // ALBARÁN, SIN que la factura referencie al albarán. Son DOS ventas reales
+  // distintas → NO se deben fusionar ni borrar (agora.1). Solo se señalan.
   const db = montar({
     ventas: [
-      { id: "a", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:400", doc_serie: "T", doc_number: 400 },
-      { id: "b", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:05:00", doc_clave: "Invoice:T:401", doc_serie: "T", doc_number: 401 },
-      { id: "c", producto_id: "prod-001", producto: "Brasa", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:10:00", doc_clave: "DeliveryNote:T:60", doc_serie: "T", doc_number: 60 },
+      { id: "a", producto_id: "prod-001", producto: "Café", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:400", doc_serie: "T", doc_number: 400 },
+      { id: "c", producto_id: "prod-001", producto: "Café", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:10:00", doc_clave: "DeliveryNote:T:60", doc_serie: "T", doc_number: 60 },
     ],
     docs_agora: [
-      { id: "Invoice:T:400", type: "Invoice" }, { id: "Invoice:T:401", type: "Invoice" }, { id: "DeliveryNote:T:60", type: "DeliveryNote" },
+      { id: "Invoice:T:400", type: "Invoice" }, // SIN campo origen → sin vínculo
+      { id: "DeliveryNote:T:60", type: "DeliveryNote" },
     ],
-    productos: [{ id: "prod-001", nombre: "Brasa", ingredientes: [{ materia_id: "m1", cantidad: 2 }] }],
+    productos: [{ id: "prod-001", nombre: "Café", ingredientes: [{ materia_id: "m1", cantidad: 2 }] }],
     materias: [{ id: "m1", nombre: "Pan", disponibilidad_actual: 100, unidad: "ud" }],
   });
   const L = await C.limpiarDuplicados("2026-10-09", { nombre: "Moni" }, T);
-  assert.strictEqual(L.eliminados, 1, "solo se quita el albarán (1 línea)");
-  assert.strictEqual(L.importe_quitado, 8.5);
+  assert.strictEqual(L.eliminados, 0, "sin vínculo documental NO se borra nada");
+  assert.ok((L.candidatos || []).length >= 1, "el albarán se SEÑALA como candidato a revisar");
   const claves = db.ventas.map((v) => v.doc_clave);
-  assert.ok(claves.includes("Invoice:T:400") && claves.includes("Invoice:T:401"), "las DOS facturas reales sobreviven");
-  assert.ok(!claves.includes("DeliveryNote:T:60"), "el albarán (sustituido 1:1) se quitó");
+  assert.ok(claves.includes("Invoice:T:400") && claves.includes("DeliveryNote:T:60"), "AMBAS ventas sobreviven");
+});
+
+test("SÍ deduplica cuando la factura REFERENCIA al albarán (vínculo documental)", async () => {
+  const db = montar({
+    ventas: [
+      { id: "a", producto_id: "prod-001", producto: "Café", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:00:00", doc_clave: "Invoice:T:500", doc_serie: "T", doc_number: 500 },
+      { id: "c", producto_id: "prod-001", producto: "Café", cantidad: 1, importe: 8.5, fecha: "2026-10-09T09:10:00", doc_clave: "DeliveryNote:T:70", doc_serie: "T", doc_number: 70 },
+    ],
+    docs_agora: [
+      { id: "Invoice:T:500", type: "Invoice", origen: [{ serie: "T", number: 70 }] }, // factura factura el albarán T/70
+      { id: "DeliveryNote:T:70", type: "DeliveryNote" },
+    ],
+    productos: [{ id: "prod-001", nombre: "Café", ingredientes: [{ materia_id: "m1", cantidad: 2 }] }],
+    materias: [{ id: "m1", nombre: "Pan", disponibilidad_actual: 100, unidad: "ud" }],
+  });
+  const L = await C.limpiarDuplicados("2026-10-09", { nombre: "Moni" }, T);
+  assert.strictEqual(L.eliminados, 1, "el albarán vinculado se quita");
+  const claves = db.ventas.map((v) => v.doc_clave);
+  assert.ok(claves.includes("Invoice:T:500") && !claves.includes("DeliveryNote:T:70"), "queda la factura, se quita el albarán facturado");
 });
 
 test("limpiar sin duplicados no toca nada", async () => {

@@ -12061,11 +12061,11 @@ async function conciliacionRender(dia){
   try{
     const c=await api("/ventas/conciliacion"+(dia?("?dia="+encodeURIComponent(dia)):""));
     window._conc=c;
-    const dupBloque = (c.total_duplicado>0) ? `
+    const dupBloque = ((c.duplicados&&c.duplicados.length)||c.total_duplicado>0) ? `
       <div class="card" style="border-color:var(--alert);">
         <div class="card-name" style="color:var(--alert);">Doble conteo detectado: ${fmtEur(c.total_duplicado,"€")}</div>
-        <div class="card-meta">La misma venta aparece bajo varios tipos de documento (p. ej. un <b>albarán</b> que luego se <b>facturó</b>). Eso infla el total. Se conserva <b>la factura</b> (y todas las facturas reales) y solo se quita el albarán equivalente, uno a uno. Los documentos <b>ambiguos</b> no se tocan: se señalan para que los revises.</div>
-        ${c.duplicados.slice(0,12).map(d=>`<div class="card-meta" style="margin-top:6px;">· ${fmtEur(d.importe_unitario,"€")} × ${d.veces}: ${d.tickets.map(t=>`${esc(t.tipo)} ${esc(t.ref)}${t.hora?" ("+t.hora+")":""}`).join(" = ")} <span style="color:var(--alert)">→ sobra ${fmtEur(d.importe_duplicado,"€")}</span>${(d.ambiguos&&d.ambiguos.length)?` <span style="color:#9C5A2E">· ${d.ambiguos.length} ambiguo(s) sin tocar</span>`:""}</div>`).join("")}
+        <div class="card-meta">La misma venta aparece bajo varios tipos de documento. Solo se quita el albarán cuando la <b>factura lo referencia</b> (vínculo documental). Si solo coinciden en contenido pero sin vínculo, se marcan como <b>candidatos</b> y NO se tocan: pueden ser ventas legítimas idénticas.</div>
+        ${c.duplicados.slice(0,12).map(d=>`<div class="card-meta" style="margin-top:6px;">· ${fmtEur(d.importe_unitario,"€")} × ${d.veces}: ${d.tickets.map(t=>`${esc(t.tipo)} ${esc(t.ref)}${t.hora?" ("+t.hora+")":""}`).join(" = ")} <span style="color:var(--alert)">→ sobra ${fmtEur(d.importe_duplicado,"€")}</span>${(d.candidatos&&d.candidatos.length)?` <span style="color:#9C5A2E">· ${d.candidatos.length} candidato(s) sin vínculo, sin tocar</span>`:""}</div>`).join("")}
         <div class="card-actions"><button class="btn-primary" onclick="conciliarQuitarDuplicados(this)">Quitar duplicados y reponer stock (${fmtEur(c.total_duplicado,"€")})</button></div>
         <div id="conc-dup-msg" style="font-size:12px;color:var(--olive);margin-top:8px;"></div>
       </div>` : `

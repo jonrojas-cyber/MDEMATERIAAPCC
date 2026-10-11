@@ -49,7 +49,8 @@ function importarVentas(texto, fuente = "csv") {
   const filas = parseCSV(texto);
   const productos = store.readAll("productos");
   const materias = store.readAll("materias");
-  const ventas = store.readAll("ventas");
+  const ventasPrevias = store.readAll("ventas");
+  const nowISO = new Date().toISOString();
 
   const idxProd = {};
   productos.forEach((p) => {
@@ -57,53 +58,56 @@ function importarVentas(texto, fuente = "csv") {
   });
   const idxMat = {};
   materias.forEach((m) => (idxMat[m.id] = m));
+  const prodById = {};
+  productos.forEach((p) => { prodById[p.id] = p; });
+
+  const dia = (f) => String(f || "").slice(0, 10);
+  const ajustarStock = (producto, cantidad, signo) => {
+    (producto && producto.ingredientes || []).forEach((ing) => {
+      const m = idxMat[ing.materia_id];
+      if (m) m.disponibilidad_actual = Math.max(0, Math.round(((Number(m.disponibilidad_actual) || 0) + signo * ing.cantidad * cantidad) * 100) / 100);
+    });
+  };
 
   let importadas = 0;
   const noReconocidos = [];
+  const nuevas = [];
+  const dias = new Set();
 
   filas.forEach((fila) => {
     const nombre = buscarCampo(fila, ["producto", "articulo", "artículo", "nombre", "descripcion", "descripción"]);
     const cantidad = num(buscarCampo(fila, ["cantidad", "uds", "unidades", "qty"])) || 1;
     const importe = num(buscarCampo(fila, ["importe", "total", "precio", "pvp"]));
-    const fecha = buscarCampo(fila, ["fecha", "hora", "fechahora", "fecha_hora"]) || new Date().toISOString();
+    const fecha = buscarCampo(fila, ["fecha", "hora", "fechahora", "fecha_hora"]) || nowISO;
     if (!nombre) return;
-
     const producto = idxProd[normProd(nombre)];
-    if (!producto) {
-      noReconocidos.push(nombre);
-      return;
-    }
-
-    // Descontar stock de materias según el escandallo.
-    (producto.ingredientes || []).forEach((ing) => {
-      const m = idxMat[ing.materia_id];
-      if (m) {
-        m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual - ing.cantidad * cantidad) * 100) / 100);
-      }
-    });
-
-    ventas.push({
-      id: store.nextId("ven", "ventas"),
-      producto_id: producto.id,
-      producto: producto.nombre,
-      cantidad,
-      importe,
-      fecha,
-      fuente,
-      importado_en: new Date().toISOString(),
-    });
+    if (!producto) { noReconocidos.push(nombre); return; }
+    dias.add(dia(fecha));
+    nuevas.push({ id: store.nextId("ven", "ventas"), producto_id: producto.id, producto: producto.nombre, cantidad, importe, fecha, fuente, importado_en: nowISO });
     importadas += cantidad;
   });
 
+  // IDEMPOTENCIA (agora.3): reemplaza por FUENTE + DÍA. Reimportar el mismo periodo
+  // NO duplica; un solapamiento parcial solo reemplaza los días comunes. NO toca
+  // ventas de otra fuente (p. ej. del conector) ni deduplica por contenido.
+  const reemplazadas = ventasPrevias.filter((v) => v.fuente === fuente && dias.has(dia(v.fecha)));
+  const quedan = ventasPrevias.filter((v) => !(v.fuente === fuente && dias.has(dia(v.fecha))));
+  // Stock NEUTRO al reimportar: revierte el consumo de las filas reemplazadas y
+  // aplica el de las nuevas (si el CSV es el mismo, el neto es cero).
+  reemplazadas.forEach((v) => ajustarStock(prodById[v.producto_id], Number(v.cantidad) || 0, +1));
+  nuevas.forEach((v) => ajustarStock(prodById[v.producto_id], Number(v.cantidad) || 0, -1));
+
   store.writeAll("materias", materias);
-  store.writeAll("ventas", ventas);
+  store.writeAll("ventas", quedan.concat(nuevas));
 
   const resumen = {
     fuente,
     lineas: filas.length,
     ventas_importadas: importadas,
+    reemplazadas: reemplazadas.length, // filas de la MISMA fuente+día sustituidas (no duplicadas)
+    dias: [...dias],
     productos_no_reconocidos: [...new Set(noReconocidos)],
-    cuando: new Date().toISOString(),
+    cuando: nowISO,
   };
   registrarSync(resumen);
   return resumen;
@@ -157,6 +161,24 @@ function claveIdem(doc) {
   if (serie != null && number != null) return `${tipoDoc(doc)}:${serie}:${number}`;
   const id = campoDoc(doc, ["id", "docId", "documentId", "code", "codigo"]);
   return id ? "id:" + String(id) : "";
+}
+// Referencias documentales de ORIGEN de un documento (p. ej. una factura que
+// consolida varios albaranes). Se guardan para que la conciliación pueda
+// deduplicar SOLO con vínculo explícito (agora.1). Si Ágora no las trae, null.
+function referenciasOrigen(doc) {
+  const campos = ["DeliveryNotes", "deliveryNotes", "Albaranes", "albaranes", "SourceDocuments", "sourceDocuments", "DocumentosOrigen", "References", "referencias"];
+  for (const c of campos) {
+    const v = doc && doc[c];
+    if (Array.isArray(v) && v.length) {
+      const out = v.map((x) => {
+        if (x == null) return null;
+        if (typeof x === "object") return { serie: x.Serie != null ? x.Serie : x.serie, number: x.Number != null ? x.Number : x.number };
+        return x;
+      }).filter(Boolean);
+      if (out.length) return out;
+    }
+  }
+  return null;
 }
 // ¿Documento ANULADO/cancelado? (agora.5). Admite banderas booleanas y estados
 // de texto habituales. Si Ágora usa otro nombre de campo, se añade aquí (ver nota
@@ -215,6 +237,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const noVinculados = new Set();
   const materiasFaltantes = new Set(); // escandallos que apuntan a una materia inexistente (datos.7)
   const anulados = []; // documentos anulados/cancelados: no son venta (agora.5)
+  const posiblesDuplicados = []; // mismo Serie+Número+día que una venta existente: se marca, NO se descarta (agora.4)
   const movimientos = [];
   const nuevasVentas = []; // se insertan en LOTE al final, sin reescribir la tabla (datos.5)
   let unidades = 0, importeTotal = 0;
@@ -262,15 +285,14 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       return;
     }
 
-    // ¿Esta venta ya existe por otra vía (mismo Serie+Número+día)? No duplicar: se
-    // marca procesada (para confirmarla a Ágora y que no la reenvíe) y se omite.
+    // ¿Coincide por Serie+Número+día con una venta ya existente (otra vía/tipo)?
+    // NO se descarta (podría ser un documento DISTINTO · agora.4): se importa igual
+    // y se MARCA como posible duplicado, conservando trazabilidad del origen. La
+    // conciliación lo revisa con vínculo documental; nunca se pierde una venta en
+    // silencio. El documento idéntico re-enviado (misma clave) ya se omitió antes.
     const bk = bizKey(serie, number, fecha);
-    if (serie != null && number != null && ventasBiz.has(bk)) {
-      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, dedup: true };
-      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
-      deduplicados.push({ serie, number });
-      return;
-    }
+    const posibleDup = (serie != null && number != null && ventasBiz.has(bk));
+    if (posibleDup) posiblesDuplicados.push({ serie, number, type });
 
     // 1) Resolver TODAS las líneas primero (no descontamos nada aún).
     const resueltas = [];
@@ -325,11 +347,16 @@ function importarDocs(docs, { registrar, usuario } = {}) {
         producto_id: producto.id, producto: producto.nombre,
         cantidad, importe, importe_neto: (neto != null ? neto : null), fecha, fuente: "agora",
         doc_clave: clave, doc_serie: serie, doc_number: number, importado_en: nowISO,
+        // Trazabilidad: si coincide con una venta previa por Serie+Número+día, se
+        // marca (no se descarta) para que la conciliación la revise (agora.4).
+        posible_duplicado: posibleDup ? bk : undefined,
       });
       unidades += cantidad; importeTotal += importe;
     });
 
+    const origen = referenciasOrigen(doc);
     const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO };
+    if (origen) rec.origen = origen; // vínculo documental para la conciliación (agora.1)
     if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
     procesados.push({ clave, serie, number, type });
     ventasBiz.add(bk); // ya presente: evita duplicar la misma venta dentro del lote
@@ -351,6 +378,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     pedidos_omitidos: omitidosPedido.length,
     anulados_omitidos: anulados.length,
     duplicados_evitados: deduplicados.length,
+    posibles_duplicados: posiblesDuplicados.length, // importados y marcados, NO descartados (agora.4)
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
     productos_no_vinculados: [...noVinculados],

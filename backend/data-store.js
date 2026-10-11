@@ -298,6 +298,20 @@ function insert(name, item) {
   return item;
 }
 
+// Inserción incremental por LOTE: añade N filas nuevas sin reescribir toda la
+// tabla (datos.5/rendimiento.1). En JSON = una sola escritura de fichero; en
+// PostgreSQL = una transacción de upserts (NO borra el histórico, a diferencia de
+// writeAll→replaceAll). Devuelve las filas insertadas.
+function insertMany(name, rows) {
+  const lista = Array.isArray(rows) ? rows.filter((r) => r && r.id != null) : [];
+  if (!lista.length) return lista;
+  const items = readAll(name);
+  for (const r of lista) items.push(r);
+  if (usingDb) encolar(name, () => db.insertMany(name, lista));
+  else writeFile(name, cache[name]); // JSON: una única escritura para todo el lote
+  return lista;
+}
+
 // Borra una fila por id (CRUD completo). Devuelve la fila borrada o null.
 function remove(name, id) {
   const items = readAll(name);
@@ -366,4 +380,4 @@ function persistenceInfo() {
 // Hook SOLO para tests: fuerza el modo BD/JSON sin un Postgres real.
 function __setUsingDbForTests(v) { usingDb = !!v; }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo, __setUsingDbForTests };
+module.exports = { init, readAll, writeAll, findById, update, insert, insertMany, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo, __setUsingDbForTests };

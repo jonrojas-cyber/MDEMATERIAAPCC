@@ -51,6 +51,7 @@ function montarAgora() {
   store.writeAll = (n, a) => { db[n] = a; };
   store.findById = (n, id) => (db[n] || []).find((x) => x.id === id) || null;
   store.insert = (n, o) => { (db[n] = db[n] || []).push(o); return o; };
+  store.insertMany = (n, rows) => { const a = (db[n] = db[n] || []); (rows || []).forEach((r) => a.push(r)); return rows; };
   store.update = (n, id, patch) => { const x = (db[n] || []).find((y) => y.id === id); if (x) Object.assign(x, patch); return x; };
   store.nextId = (p) => `${p}-${++seq}`;
   store.flush = async () => {};

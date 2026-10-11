@@ -34,7 +34,7 @@ const FILES = [
   "agora-cuadre", "backup-restore", "seguridad", "durabilidad",
   "agora-cron-idempotente", "motor-financiero", "sv-timers", "periodos-stock",
   "rendimiento", "roles-regla2", "cuadre-agora", "aislamiento-db", "backup-consistente",
-  "process-guards", "integracion-http", "doble-iva",
+  "process-guards", "integracion-http", "doble-iva", "incremental-ventas",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");

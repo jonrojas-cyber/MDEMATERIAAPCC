@@ -158,6 +158,15 @@ function claveIdem(doc) {
   const id = campoDoc(doc, ["id", "docId", "documentId", "code", "codigo"]);
   return id ? "id:" + String(id) : "";
 }
+// ¿Documento ANULADO/cancelado? (agora.5). Admite banderas booleanas y estados
+// de texto habituales. Si Ágora usa otro nombre de campo, se añade aquí (ver nota
+// en el cuadre: hace falta una muestra para fijar el nombre exacto).
+function esAnulado(doc) {
+  if (!doc || typeof doc !== "object") return false;
+  if (doc.Cancelled === true || doc.Voided === true || doc.IsVoid === true || doc.Anulado === true || doc.anulado === true || doc.Annulled === true) return true;
+  const s = String(doc.Status || doc.status || doc.State || doc.estado || "").toLowerCase();
+  return /anulad|cancelad|cancel|void|anulada/.test(s);
+}
 // Número robusto (no el parser CSV español): number nativo, "8.5", "1.234,56", "1,234.56".
 function numJSON(v) {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -205,7 +214,9 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const deduplicados = [];   // {serie, number} ya existentes por otra vía (no se duplican)
   const noVinculados = new Set();
   const materiasFaltantes = new Set(); // escandallos que apuntan a una materia inexistente (datos.7)
+  const anulados = []; // documentos anulados/cancelados: no son venta (agora.5)
   const movimientos = [];
+  const nuevasVentas = []; // se insertan en LOTE al final, sin reescribir la tabla (datos.5)
   let unidades = 0, importeTotal = 0;
   const nowISO = new Date().toISOString();
 
@@ -237,6 +248,17 @@ function importarDocs(docs, { registrar, usuario } = {}) {
       const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true };
       if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
       omitidosPedido.push({ serie, number });
+      return;
+    }
+
+    // Documento ANULADO/cancelado: no es venta (agora.5). No se cuenta y se marca
+    // procesado para que el conector no lo reenvíe. (Las INVITACIONES llegan como
+    // líneas con importe 0 → ya suman 0; las DEVOLUCIONES, con cantidad negativa
+    // → ya restan.)
+    if (esAnulado(doc)) {
+      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true, anulado: true };
+      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+      anulados.push({ serie, number });
       return;
     }
 
@@ -298,7 +320,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
           producto: producto.nombre, created_at: nowISO, created_by: (usuario && usuario.nombre) || "Ágora",
         });
       });
-      ventas.push({
+      nuevasVentas.push({
         id: store.nextId("ven", "ventas"),
         producto_id: producto.id, producto: producto.nombre,
         cantidad, importe, importe_neto: (neto != null ? neto : null), fecha, fuente: "agora",
@@ -313,9 +335,12 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     ventasBiz.add(bk); // ya presente: evita duplicar la misma venta dentro del lote
   });
 
-  movimientos.forEach((mv) => store.insert("stock_movements", mv));
+  // Escrituras INCREMENTALES: añade solo lo nuevo, sin reescribir la tabla de
+  // ventas entera en cada sync (datos.5/rendimiento.1). Materias es pequeña (se
+  // actualizan saldos de las tocadas), así que su writeAll es barato.
+  store.insertMany("stock_movements", movimientos);
   store.writeAll("materias", materias);
-  store.writeAll("ventas", ventas);
+  store.insertMany("ventas", nuevasVentas);
 
   const resumen = {
     fuente: "agora",
@@ -324,6 +349,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     bloqueados: bloqueados.length,
     omitidos_ya_procesados: omitidos.length,
     pedidos_omitidos: omitidosPedido.length,
+    anulados_omitidos: anulados.length,
     duplicados_evitados: deduplicados.length,
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
@@ -338,7 +364,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   // confirman también los deduplicados (ya existían) para que Ágora no los reenvíe.
   return {
     ...resumen,
-    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number })), ...omitidosPedido.map((d) => ({ Serie: d.serie, Number: d.number }))],
+    procesados_ref: [...procesados.map((p) => ({ Serie: p.serie, Number: p.number })), ...deduplicados.map((d) => ({ Serie: d.serie, Number: d.number })), ...omitidosPedido.map((d) => ({ Serie: d.serie, Number: d.number })), ...anulados.map((d) => ({ Serie: d.serie, Number: d.number }))],
     bloqueados_detalle: bloqueados,
   };
 }

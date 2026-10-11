@@ -18,6 +18,7 @@ function montar() {
   store.writeAll = (n, a) => { db[n] = a; };
   store.findById = (n, id) => (db[n] || []).find((x) => x.id === id) || null;
   store.insert = (n, o) => { (db[n] = db[n] || []).push(o); return o; };
+  store.insertMany = (n, rows) => { const a = (db[n] = db[n] || []); (rows || []).forEach((r) => a.push(r)); return rows; };
   store.update = (n, id, patch) => { const x = (db[n] || []).find((y) => y.id === id); if (x) Object.assign(x, patch); return x; };
   store.nextId = (p) => `${p}-${++seq}`;
   store.flush = async () => {};
@@ -63,6 +64,21 @@ test("la devolución repone stock (no lo descuenta)", () => {
   agora.importarDocs(docs, {});
   // Devolución de 3 cafés × 2 g = +6 g repuestos.
   assert.strictEqual(db.materias[0].disponibilidad_actual, 106, "stock repuesto (+6), no descontado");
+});
+
+test("un documento ANULADO/cancelado no se cuenta como venta", () => {
+  const db = montar();
+  const docs = {
+    Invoices: [
+      { Serie: "T", Number: 10, BusinessDay: "2026-10-10", Lines: [{ ProductName: "Café", Quantity: 1, TotalAmount: 2 }] },
+      { Serie: "T", Number: 11, BusinessDay: "2026-10-10", Cancelled: true, Lines: [{ ProductName: "Café", Quantity: 5, TotalAmount: 10 }] },
+      { Serie: "T", Number: 12, BusinessDay: "2026-10-10", Status: "Anulada", Lines: [{ ProductName: "Café", Quantity: 3, TotalAmount: 6 }] },
+    ],
+  };
+  const r = agora.importarDocs(docs, {});
+  assert.strictEqual(r.anulados_omitidos, 2, "se omiten las 2 anuladas");
+  assert.strictEqual(r.importe_total, 2, "solo cuenta la factura válida (2)");
+  assert.strictEqual(db.ventas.length, 1, "una sola venta registrada");
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s)`); process.exit(1); }

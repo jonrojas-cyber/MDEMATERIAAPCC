@@ -108,6 +108,28 @@ async function tx(fn) {
   }
 }
 
+// Inserta/actualiza MUCHAS filas en una sola transacción (append incremental),
+// SIN borrar las existentes. Para la ingesta de ventas: añade solo lo nuevo en
+// vez de reescribir toda la tabla (replaceAll hacía DELETE+INSERT de todo · datos.5).
+async function insertMany(name, rows) {
+  const t = ident(name);
+  if (!rows || !rows.length) return;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const row of rows) {
+      if (!row || row.id == null) continue;
+      await client.query(SQL_UPSERT(t), [String(row.id), row]);
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch (_) {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // Snapshot CONSISTENTE de varias entidades en UNA sola transacción
 // REPEATABLE READ: todas las tablas se leen en el mismo instante lógico, de modo
 // que una copia de seguridad no mezcla estados de distintos momentos aunque el
@@ -174,4 +196,4 @@ function __setPoolForTests(fake) {
   pool = fake;
 }
 
-module.exports = { connect, ensureTable, count, loadAll, upsert, del, tx, snapshotAll, replaceAll, isActive, ping, cerrar, __setPoolForTests };
+module.exports = { connect, ensureTable, count, loadAll, upsert, del, insertMany, tx, snapshotAll, replaceAll, isActive, ping, cerrar, __setPoolForTests };

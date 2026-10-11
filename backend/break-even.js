@@ -107,10 +107,13 @@ function puntoEquilibrio(now = Date.now(), opts = {}) {
   };
 
   // Margen de seguridad: cuánto pueden caer las ventas reales antes de perder.
-  // Compara la venta media diaria reciente (30 días) con el ingreso de equilibrio.
+  // Compara la venta media diaria reciente con el ingreso de equilibrio, en la
+  // MISMA base (neto): el equilibrio se calcula con contribución y fijos NETOS, así
+  // que la venta a comparar también debe ser neta (dinero.2). Antes se comparaba
+  // venta BRUTA contra equilibrio neto y sobreestimaba el margen de seguridad.
   const financials = require("./financials");
   const rMes = periods.rango("mes", now);
-  const ventasMes = financials.ventasEnRango(rMes);
+  const ventasMes = financials.ventasNetasEnRango(rMes);
   const diasMes = Math.max(1, (Math.min(now, rMes.hasta) - rMes.desde) / 86400000);
   const ventaMediaDia = ventasMes / diasMes;
   let margenSeguridad = null;

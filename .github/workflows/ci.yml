@@ -17,11 +17,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Instalar dependencias del backend
-        run: npm install --prefix backend
+      - name: Instalar dependencias del backend (reproducible)
+        run: npm ci --prefix backend
 
-      - name: Instalar dependencias de test
-        run: npm install
+      - name: Instalar dependencias de test (reproducible)
+        run: npm ci
 
       - name: Instalar Chromium de Playwright
         run: npx playwright install --with-deps chromium

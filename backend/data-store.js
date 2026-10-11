@@ -14,7 +14,22 @@ const fs = require("fs");
 const path = require("path");
 const db = require("./db");
 
-const DATA_DIR = path.join(__dirname, "data");
+// SEED_DIR: semillas versionadas (fuente de verdad para sembrar). En modo
+// aislado NUNCA se escribe aquí, así los fixtures del repo no se mutan.
+const SEED_DIR = path.join(__dirname, "data");
+// DATA_DIR: almacén runtime escribible. En producción coincide con SEED_DIR
+// (comportamiento idéntico de siempre). Los tests y cualquier entorno aislado
+// definen CONTROL_M_DATA_DIR para NO tocar los ficheros versionados ni los
+// datos reales. Así la suite deja de depender de `git checkout` para limpiar.
+const DATA_DIR = resolveDataDir();
+
+function resolveDataDir() {
+  const env = (process.env.CONTROL_M_DATA_DIR || "").trim();
+  if (!env) return SEED_DIR;
+  const dir = path.resolve(env);
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {}
+  return dir;
+}
 
 // Todas las entidades del sistema (incluye las nuevas: productos, ventas, impresiones).
 const ENTITIES = [
@@ -94,36 +109,68 @@ const ENTITIES = [
 
 const cache = {};
 let usingDb = false;
+let dbConnectFailed = false; // DATABASE_URL presente pero la conexión falló
 
 function filePath(name) {
   return path.join(DATA_DIR, `${name}.json`);
+}
+
+function seedPath(name) {
+  return path.join(SEED_DIR, `${name}.json`);
+}
+
+// Lee la semilla versionada de una entidad (solo lectura, desde SEED_DIR).
+function readSeed(name) {
+  try {
+    return JSON.parse(fs.readFileSync(seedPath(name), "utf-8"));
+  } catch (e) {
+    return [];
+  }
 }
 
 function readFile(name) {
   try {
     return JSON.parse(fs.readFileSync(filePath(name), "utf-8"));
   } catch (e) {
+    // Fichero runtime ausente en modo aislado (CONTROL_M_DATA_DIR): siembra
+    // transparente desde las semillas versionadas. Los tests ven los fixtures
+    // de siempre, pero cualquier escritura cae en la copia temporal, nunca en
+    // SEED_DIR. En producción (DATA_DIR === SEED_DIR) esto no aplica.
+    if (e.code === "ENOENT" && DATA_DIR !== SEED_DIR) {
+      const seed = readSeed(name);
+      try { writeFile(name, seed); } catch (_) {}
+      return seed;
+    }
     return [];
   }
 }
 
 function writeFile(name, data) {
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
   fs.writeFileSync(filePath(name), JSON.stringify(data, null, 2), "utf-8");
 }
 
 // Se llama una vez al arrancar el servidor, antes de aceptar peticiones.
 async function init() {
-  usingDb = await db.connect().catch((e) => {
-    console.error("No se pudo conectar a PostgreSQL, uso ficheros JSON:", e.message);
-    return false;
-  });
+  // Solo intentamos Postgres si hay DATABASE_URL. Si la hay y falla, lo
+  // recordamos (dbConnectFailed) para que el arranque pueda abortar en
+  // producción en vez de caer en silencio a disco efímero (ver server.js).
+  if (process.env.DATABASE_URL) {
+    usingDb = await db.connect().catch((e) => {
+      dbConnectFailed = true;
+      console.error("No se pudo conectar a PostgreSQL:", e.message);
+      return false;
+    });
+  } else {
+    usingDb = false;
+  }
 
   for (const name of ENTITIES) {
     if (usingDb) {
       await db.ensureTable(name);
       let rows = await db.loadAll(name);
       if (rows.length === 0) {
-        const seed = readFile(name); // siembra inicial desde el JSON
+        const seed = readSeed(name); // siembra inicial desde las semillas versionadas
         if (seed.length) {
           await db.replaceAll(name, seed);
           rows = seed;
@@ -257,4 +304,15 @@ function nextId(prefix, name) {
   return `${prefix}-${String(n).padStart(3, "0")}-${Date.now().toString().slice(-5)}`;
 }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, DATA_DIR, ENTITIES, isUsingDb: () => usingDb };
+// Estado de persistencia SIN secretos (para /api/salud, arranque y backup).
+function persistenceInfo() {
+  return {
+    modo: usingDb ? "postgres" : "json",
+    aislado: DATA_DIR !== SEED_DIR, // true en tests / entorno de pruebas
+    data_dir: path.basename(DATA_DIR), // solo el nombre, nunca la ruta completa
+    db_configurada: !!process.env.DATABASE_URL,
+    db_conexion_fallida: dbConnectFailed,
+  };
+}
+
+module.exports = { init, readAll, writeAll, findById, update, insert, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo };

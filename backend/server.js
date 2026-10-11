@@ -20,6 +20,10 @@ app.use("/api/auth", require("./routes/auth"));
 
 app.get("/api/salud", (req, res) => {
   const persistente = db.isActive();
+  const info = store.persistenceInfo();
+  const version = String(
+    process.env.RENDER_GIT_COMMIT || process.env.SOURCE_VERSION || process.env.GIT_SHA || "dev"
+  ).slice(0, 12);
   res.json({
     estado: "Control M · Producción en marcha",
     almacen: persistente ? "postgres" : "json",
@@ -27,6 +31,10 @@ app.get("/api/salud", (req, res) => {
     // "efimera": modo ficheros JSON; en Render el disco es efímero -> riesgo
     // de pérdida de datos al reiniciar. El frontend avisa si es efímera.
     persistencia: persistente ? "persistente" : "efimera",
+    // Identificador de versión NO sensible (sha corto del despliegue si lo
+    // expone el entorno). Útil para verificar qué versión está en vivo.
+    version,
+    modo_datos: info.aislado ? "aislado (pruebas)" : "real",
     hora: new Date().toISOString(),
   });
 });
@@ -423,15 +431,41 @@ store
     // disco efímero (Render) y se PIERDEN al reiniciar. Avisamos fuerte; y con
     // REQUIRE_DB=1 el arranque se aborta para impedir la pérdida silenciosa.
     if (!db.isActive()) {
-      const enProd = process.env.NODE_ENV === "production";
-      console.warn(
-        "\n⚠️  PERSISTENCIA EFÍMERA: sin DATABASE_URL, los datos se guardan en\n" +
-        "   ficheros JSON locales. En un disco efímero (Render) se PERDERÁN al\n" +
-        "   reiniciar. Configura DATABASE_URL (PostgreSQL) para conservarlos.\n"
-      );
-      if (enProd && process.env.REQUIRE_DB === "1") {
-        console.error("REQUIRE_DB=1 y sin DATABASE_URL en producción: arranque abortado.");
+      const info = store.persistenceInfo();
+      const enProd = process.env.NODE_ENV === "production" || !!process.env.RENDER;
+      const exigeDb = process.env.REQUIRE_DB === "1" || process.env.PERSISTENCE === "postgres";
+
+      // Caso grave: había DATABASE_URL pero la conexión falló. Antes se caía en
+      // silencio a disco efímero (pérdida de datos · AUDITORIA datos.8). Ahora
+      // se aborta salvo que se pida el fallback explícitamente.
+      if (info.db_conexion_fallida && process.env.ALLOW_JSON_FALLBACK !== "1") {
+        console.error(
+          "\n⛔ DATABASE_URL configurada pero la conexión a PostgreSQL FALLÓ.\n" +
+          "   Para no escribir en disco efímero sin querer, el arranque se aborta.\n" +
+          "   Revisa la BD. Si de verdad quieres ficheros JSON: ALLOW_JSON_FALLBACK=1.\n"
+        );
         process.exit(1);
+      }
+
+      // Persistencia de BD EXIGIDA explícitamente pero sin BD activa → abortar.
+      if (exigeDb) {
+        console.error(
+          "\n⛔ Persistencia PostgreSQL EXIGIDA (REQUIRE_DB=1 / PERSISTENCE=postgres)\n" +
+          "   pero no hay BD activa: arranque abortado para no perder datos.\n"
+        );
+        process.exit(1);
+      }
+
+      // Por defecto: avisar fuerte (salvo que el operador declare PERSISTENCE=json
+      // a conciencia). No se aborta, para no romper un arranque que hoy funciona.
+      if (process.env.PERSISTENCE !== "json") {
+        console.warn(
+          "\n⚠️  PERSISTENCIA EFÍMERA: sin DATABASE_URL, los datos se guardan en\n" +
+          "   ficheros JSON locales. En un disco efímero (Render) se PERDERÁN al\n" +
+          "   reiniciar. Configura DATABASE_URL (PostgreSQL) para conservarlos, o\n" +
+          "   declara PERSISTENCE=json si es intencionado (silencia este aviso).\n" +
+          (enProd ? "   ⚠ ESTÁS EN PRODUCCIÓN.\n" : "")
+        );
       }
     }
     // Siembra idempotente de la carta de café (cafés Inefable + leches). Inserta

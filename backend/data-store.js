@@ -225,17 +225,33 @@ async function init() {
 // durable (fs.writeFileSync), así que la promesa resuelve ya confirmada.
 const colas = {};
 let ultimoErrorEscritura = null; // último fallo de escritura desde el último flush
+// Entidades cuya CACHÉ quedó por delante del almacén durable (una escritura
+// modificó la caché pero el guardado falló). Reads sobre ellas podrían "mentir"
+// hasta que se reconcilie. Se limpia al confirmarse una escritura o al reconciliar.
+const divergentes = new Set();
 function encolar(name, op) {
   const prev = colas[name] || Promise.resolve();
   // La cadena NO se envenena (cada op captura su error para no bloquear futuras
   // escrituras), pero el fallo se REGISTRA para que flush() lo propague. Así una
   // escritura fallida en Postgres no se reporta como éxito (datos.3 / tests.1).
   const next = prev.then(op).then(
-    () => {},
-    (e) => { ultimoErrorEscritura = e instanceof Error ? e : new Error(String(e)); console.error(`Error guardando '${name}':`, e && e.message); }
+    () => { divergentes.delete(name); }, // confirmada: caché y BD coinciden
+    (e) => {
+      ultimoErrorEscritura = e instanceof Error ? e : new Error(String(e));
+      divergentes.add(name); // la caché quedó por delante de la BD: divergencia (persistencia)
+      console.error(`Error guardando '${name}':`, e && e.message);
+    }
   );
   colas[name] = next;
   return next;
+}
+
+// Escritura JSON síncrona y DURABLE (writeFileSync + rename atómico). Si falla, la
+// caché quedó por delante del fichero (que sigue intacto por el rename atómico):
+// se marca divergencia y se relanza para que NADIE lo tome por éxito.
+function escribirJSON(name) {
+  try { writeFile(name, cache[name]); divergentes.delete(name); }
+  catch (e) { divergentes.add(name); throw e; }
 }
 // Espera a que TODAS las escrituras pendientes terminen y LANZA si alguna falló.
 // Las rutas que hacen `await store.flush()` antes de responder obtienen así un
@@ -252,18 +268,18 @@ async function flush() {
 // Persistencia por fila (no reescribe la tabla entera).
 function persistUpsert(name, row) {
   if (usingDb) return encolar(name, () => db.upsert(name, row));
-  writeFile(name, cache[name]); // JSON: durable y síncrono
+  escribirJSON(name); // JSON: durable y síncrono (lanza si falla)
   return Promise.resolve();
 }
 function persistDelete(name, id) {
   if (usingDb) return encolar(name, () => db.del(name, id));
-  writeFile(name, cache[name]);
+  escribirJSON(name);
   return Promise.resolve();
 }
 // Reemplazo masivo (writeAll): solo cuando de verdad cambia toda la colección.
 function persistAll(name) {
   if (usingDb) return encolar(name, () => db.replaceAll(name, cache[name]));
-  writeFile(name, cache[name]);
+  escribirJSON(name);
   return Promise.resolve();
 }
 
@@ -308,7 +324,7 @@ function insertMany(name, rows) {
   const items = readAll(name);
   for (const r of lista) items.push(r);
   if (usingDb) encolar(name, () => db.insertMany(name, lista));
-  else writeFile(name, cache[name]); // JSON: una única escritura para todo el lote
+  else escribirJSON(name); // JSON: una única escritura para todo el lote (lanza si falla)
   return lista;
 }
 
@@ -353,7 +369,7 @@ async function transaction(fn) {
     else if (i !== -1) arr.splice(i, 1);
     tocadas.add(o.name);
   }
-  if (!usingDb) tocadas.forEach((name) => writeFile(name, cache[name]));
+  if (!usingDb) tocadas.forEach((name) => escribirJSON(name));
 }
 
 function nextId(prefix, name) {
@@ -366,6 +382,24 @@ function nextId(prefix, name) {
   return `${prefix}-${t}-${r}`;
 }
 
+// Entidades cuya caché divergió del almacén durable por un guardado fallido.
+function divergencias() { return [...divergentes]; }
+
+// RECONCILIACIÓN (persistencia): re-hidrata la caché desde el almacén DURABLE
+// (PostgreSQL o el fichero JSON), descartando los cambios en memoria que NO se
+// llegaron a guardar. Es la salida tras un guardado fallido: en vez de dejar la
+// caché "mintiendo" por delante del disco/BD, se vuelve a la última verdad durable.
+// Nota: el cambio que falló se PIERDE a propósito (falló su guardado); hay que
+// reintentarlo. Sin argumento reconcilia todas las entidades divergentes.
+async function reconciliar(name) {
+  const nombres = name ? [name] : [...divergentes];
+  for (const n of nombres) {
+    cache[n] = usingDb ? await db.loadAll(n) : readFile(n);
+    divergentes.delete(n);
+  }
+  return nombres;
+}
+
 // Estado de persistencia SIN secretos (para /api/salud, arranque y backup).
 function persistenceInfo() {
   return {
@@ -374,10 +408,11 @@ function persistenceInfo() {
     data_dir: path.basename(DATA_DIR), // solo el nombre, nunca la ruta completa
     db_configurada: !!process.env.DATABASE_URL,
     db_conexion_fallida: dbConnectFailed,
+    divergencias: [...divergentes], // entidades con caché por delante del almacén durable
   };
 }
 
 // Hook SOLO para tests: fuerza el modo BD/JSON sin un Postgres real.
 function __setUsingDbForTests(v) { usingDb = !!v; }
 
-module.exports = { init, readAll, writeAll, findById, update, insert, insertMany, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo, __setUsingDbForTests };
+module.exports = { init, readAll, writeAll, findById, update, insert, insertMany, remove, flush, transaction, nextId, readSeed, DATA_DIR, SEED_DIR, ENTITIES, isUsingDb: () => usingDb, persistenceInfo, reconciliar, divergencias, __setUsingDbForTests };

@@ -450,6 +450,15 @@ function calcular(opts = {}) {
     (store.readAll("ventas") || []).forEach((v) => { const t = new Date(v.fecha).getTime(); if (t >= rMes.desde && t < rMes.hasta) { const k = String(v.fecha).slice(0, 10); mapa[k] = (mapa[k] || 0) + (Number(v.importe) || 0); } });
     return Object.entries(mapa).sort().map(([fecha, ventas]) => ({ fecha, ventas: eur(ventas) }));
   })();
+  // EBITDA del mes: hay que distinguir el EBITDA A FECHA (hasta hoy) de la PREVISIÓN
+  // a cierre. Antes la portada solo mostraba el de HASTA HOY junto a la previsión de
+  // VENTAS (proyectada), y confundía (parecía el EBITDA del mes completo). La
+  // previsión de EBITDA usa el MISMO criterio lineal por días que el resto del motor
+  // (executive-dashboard.proyeccion_mes), para no tener dos números distintos.
+  const _ebitdaMTD = (base.financiero && base.financiero.ebitda_mes != null) ? base.financiero.ebitda_mes : null;
+  const _diasTransMes = Math.max(1, (now - rMes.desde) / DAY);
+  const _ebitdaPrevCierre = _ebitdaMTD != null ? eur(_ebitdaMTD * ((365 / 12) / _diasTransMes)) : null;
+
   const mes = {
     ventas_acum: eur(ventasMes), objetivo: objetivoMes, pct: M.objetivo_pct,
     ritmo_necesario_dia: ritmoNecesarioDia, dias_abiertos_restantes: diasAbiertosRestantes,
@@ -458,7 +467,9 @@ function calcular(opts = {}) {
     vs_mes_anterior_pct: M.vs_anterior_pct != null ? pct1(M.vs_anterior_pct) : null,
     vs_mes_anterior_dias: M.dias_comparados != null ? M.dias_comparados : null, // nº de días comparados (1..N)
     ventas_mes_anterior_td: M.ventas_mes_anterior_td != null ? eur(M.ventas_mes_anterior_td) : null, // mes ant. a igual fecha
-    resultado_operativo: (base.financiero && base.financiero.ebitda_mes != null) ? eur(base.financiero.ebitda_mes) : null,
+    resultado_operativo: _ebitdaMTD != null ? eur(_ebitdaMTD) : null, // EBITDA HASTA HOY (mes a fecha)
+    resultado_operativo_prevision: _ebitdaPrevCierre,                  // EBITDA proyectado a cierre (mismo criterio que la previsión de ventas)
+    resultado_operativo_fiable: _diasTransMes >= 3,                    // motor-fechas.6: por debajo de 3 días es volátil
     ebitda_pct: M.ebitda_pct,
     serie: serieMes,
     estado: objetivoMes != null && ventasMes > 0 ? estado(prevCierreMes || ventasMes, { objetivo: objetivoMes }) : "sin_datos",

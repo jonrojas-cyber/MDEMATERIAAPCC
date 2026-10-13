@@ -3620,9 +3620,10 @@ function dashHomeHTML(dsh){
     ${chart}
     <div class="dk-rows">
       <div><span>ritmo necesario/día</span><b>${MES.ritmo_necesario_dia!=null?vizEur(MES.ritmo_necesario_dia):"—"}</b></div>
-      <div><span>previsión de cierre</span><b>${MES.prevision_cierre!=null?vizEur(MES.prevision_cierre):"—"}</b></div>
+      <div><span>previsión de cierre <span class="viz-mut">(ventas)</span></span><b>${MES.prevision_cierre!=null?vizEur(MES.prevision_cierre):"—"}</b></div>
       <div><span>días abiertos restantes</span><b>${MES.dias_abiertos_restantes!=null?MES.dias_abiertos_restantes:"—"}</b></div>
-      <div><span>resultado operativo (EBITDA)</span><b>${MES.resultado_operativo!=null?vizEur(MES.resultado_operativo):"—"}</b></div>
+      <div><span>resultado operativo (EBITDA) <span class="viz-mut">· hasta hoy</span></span><b>${MES.resultado_operativo!=null?vizEur(MES.resultado_operativo):"—"}</b></div>
+      <div><span title="EBITDA proyectado a fin de mes con el ritmo actual (mismo criterio que la previsión de ventas). No es el resultado ya conseguido.">EBITDA previsto a cierre${MES.resultado_operativo_fiable===false?' <span class="viz-mut">(pocos días)</span>':''}</span><b>${MES.resultado_operativo_prevision!=null?vizEur(MES.resultado_operativo_prevision):"—"}</b></div>
       <div><span title="Comparado hasta el mismo día del mes anterior (${MES.vs_mes_anterior_dias!=null?MES.vs_mes_anterior_dias:"?"} días), no contra el mes completo.">vs mes anterior${MES.vs_mes_anterior_dias!=null?` <span class="viz-mut">(primeros ${MES.vs_mes_anterior_dias} días)</span>`:""}</span><b>${MES.vs_mes_anterior_pct!=null?vizDelta(MES.vs_mes_anterior_pct,"pct",true):"—"}</b></div>
     </div>
   </section>`;

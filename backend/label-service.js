@@ -79,6 +79,25 @@ function escapeHTML(s) {
   return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
+// IMPRESIÓN POR CABLE (driver de Windows) · SIN PREGUNTAR.
+// La etiqueta se abre, se manda al `window.print()` y la ventana se CIERRA sola
+// al terminar (afterprint), para que no se acumulen pestañas y el gesto sea
+// "pulsar → sale → desaparece". Con el navegador en modo `--kiosk-printing`
+// (ver impresora-directa/) no aparece ningún diálogo: imprime directo a la
+// impresora predeterminada (la D520 por USB). Sin ese modo, sale el diálogo del
+// navegador como respaldo y, al imprimir/cancelar, la ventana se cierra igual.
+// `ms` = retardo antes de imprimir (deja pintar QR y, en lotes, varias etiquetas).
+function autoprintWinScript(ms) {
+  const delay = Number(ms) || 350;
+  return `<script>window.addEventListener('load',function(){
+    var done=false;
+    function cerrar(){ if(done)return; done=true; setTimeout(function(){ try{window.close();}catch(e){} },500); }
+    window.addEventListener('afterprint',cerrar);
+    setTimeout(function(){ try{window.print();}catch(e){} },${delay});
+    setTimeout(cerrar,60000); // red de seguridad si 'afterprint' no llega
+  });</script>`;
+}
+
 const { partes: partesMadrid } = require("./tz");
 
 function fechaCorta(iso) {
@@ -370,7 +389,7 @@ async function renderEtiquetaHTML(req, { lote, receta, responsable, autoprint, a
   })();
   </script>
   ${autoprint ? "<script>window.addEventListener('load',function(){var b=document.querySelector('.toolbar .primary'); if(b) b.focus();});</script>" : ""}
-  ${autoprintWin ? "<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},350);});</script>" : ""}
+  ${autoprintWin ? autoprintWinScript(350) : ""}
 </body></html>`;
 }
 
@@ -573,7 +592,7 @@ async function renderEtiquetasLoteHTML(req, especs, { autoprintWin } = {}) {
   @media screen{ body{ background:#ddd; padding:16px; } .label{ margin:0 auto 10px; box-shadow:0 0 0 1px #999; } }
 </style></head><body>
 ${bloques.join("\n")}
-${autoprintWin ? "<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},450);});</script>" : ""}
+${autoprintWin ? autoprintWinScript(450) : ""}
 </body></html>`;
 }
 

@@ -1,0 +1,103 @@
+========================================================================
+ IMPRESION DIRECTA DE ETIQUETAS  ·  Control M
+ m de materia · nota para quien lo instala en el TPV
+========================================================================
+
+QUE ES (en una frase)
+---------------------
+Deja la impresora de etiquetas conectada POR CABLE (USB) y hace que, al
+pulsar "Imprimir" en Control M, la etiqueta salga SOLA, sin ningun
+dialogo de "¿imprimir?". Pulsas y sale. Nada de Bluetooth, nada de
+emparejar, nada de confirmar.
+
+Funciona porque Control M ya genera la etiqueta al tamano exacto
+(90 x 40 mm, margenes 0) y la manda a la impresora del sistema. El
+acceso directo de esta carpeta abre Control M en un modo del navegador
+que imprime directo, sin preguntar.
+
+
+LO QUE NECESITAS (3 cosas, una sola vez)
+----------------------------------------
+1) La impresora de etiquetas conectada por USB al PC del TPV, encendida.
+
+2) Su driver instalado (el de Phomemo D520, desde la web de Phomemo).
+   En Configuracion -> Bluetooth y dispositivos -> Impresoras tiene que
+   aparecer la impresora.
+     - Abrela -> Preferencias de impresion:
+         Tamano de papel: 90 x 40 mm (crea uno personalizado si no esta)
+         Margenes: 0
+         Orientacion: horizontal (apaisado)
+
+3) Google Chrome (recomendado) o Microsoft Edge instalado en el PC.
+   Cualquiera de los dos vale.
+
+
+INSTALACION (una sola vez)
+--------------------------
+1) Copia esta carpeta "impresora-directa" al PC del TPV, por ejemplo en
+   C:\control-m\impresora-directa
+
+2) Abre "Imprimir-directo.bat" con el Bloc de notas y comprueba las dos
+   lineas de arriba del todo:
+     - CONTROLM_URL  -> la URL de Control M (ya viene puesta la de
+                        produccion; cambiala solo si usais otra).
+     - IMPRESORA     -> el nombre EXACTO de la impresora tal y como sale
+                        en Windows (p. ej. "Phomemo D520"). Asi queda como
+                        predeterminada al abrir. Si lo dejas vacio (""),
+                        usara la que ya tengas por defecto.
+   Guarda.
+
+3) Doble clic en "instalar-acceso-directo.bat".
+   Crea en el ESCRITORIO un acceso llamado
+   "Control M - Imprimir etiquetas".
+
+
+EL DIA A DIA
+------------
+- Para trabajar con etiquetas, abre Control M con ese acceso del
+  escritorio ("Control M - Imprimir etiquetas"), NO con el navegador
+  normal (el normal si pregunta).
+- Entra en Etiquetas, elige el producto y la operacion, y pulsa Imprimir.
+  La etiqueta sale sola por la impresora. La ventana de impresion se
+  cierra ella.
+- Puedes dejar esa ventana de Control M abierta todo el dia.
+
+
+COMPROBAR QUE FUNCIONA
+----------------------
+- Abre Control M con el acceso del escritorio.
+- Ve a Etiquetas y pulsa "Imprimir prueba".
+- Debe salir una etiqueta de PRUEBA sin que aparezca ningun dialogo.
+  Si aparece el dialogo de imprimir, es que Control M se abrio con el
+  navegador normal: cierralo y abrelo con el acceso del escritorio.
+
+
+SOLUCION DE PROBLEMAS
+---------------------
+- "Sale el dialogo de imprimir":
+    Has abierto Control M con el navegador normal. Usa el acceso del
+    escritorio "Control M - Imprimir etiquetas".
+
+- "Imprime en el PDF / en otra impresora":
+    No esta puesta la de etiquetas como predeterminada. Pon su nombre en
+    la linea IMPRESORA de "Imprimir-directo.bat", o marcala como
+    predeterminada en Windows (Impresoras -> ... -> Predeterminada).
+
+- "Sale cortada o pequena":
+    Revisa en las Preferencias de impresion de la D520 que el papel es
+    90 x 40 mm y los margenes 0.
+
+- "No encuentra Chrome ni Edge":
+    Instala Google Chrome (https://www.google.com/chrome) y vuelve a
+    ejecutar el acceso.
+
+
+LOS ARCHIVOS DE ESTA CARPETA
+----------------------------
+  · Imprimir-directo.bat       -> abre Control M en modo impresion directa.
+                                   Lleva arriba la URL y el nombre de la
+                                   impresora (se editan una vez).
+  · instalar-acceso-directo.bat-> doble clic una vez: crea el acceso del
+                                   escritorio. ES EL RECOMENDADO.
+  · LEEME.txt                  -> esto.
+========================================================================

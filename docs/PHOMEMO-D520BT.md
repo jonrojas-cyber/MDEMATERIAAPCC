@@ -1,77 +1,87 @@
-# Impresión de etiquetas · Phomemo D520BT
+# Impresión de etiquetas · Phomemo D520
 
-Control M genera etiquetas térmicas de **62 × 40 mm** con QR para cada lote.
-Esta guía explica cómo dejar la Phomemo D520BT lista para imprimirlas desde el
-navegador como una impresora más del sistema.
+Control M genera etiquetas térmicas de **90 × 40 mm** con QR para cada lote.
+Esta guía explica cómo imprimirlas **por cable, directo y sin diálogo** (modo
+recomendado para el TPV) y, como alternativa, por Bluetooth desde el móvil.
 
 ## Qué imprime
 
-Cada etiqueta lleva, a la izquierda, el nombre de la preparación, el código de
-lote, la fecha de producción, la fecha de consumo recomendada, la cantidad y el
-responsable; y a la derecha, un **QR** que abre la ficha del lote. El tamaño es
-exacto: **62 mm de ancho × 40 mm de alto**.
+Cada etiqueta lleva, a la izquierda, un **QR** de trazabilidad (abre la ficha
+del lote con la vida útil en vivo) y, a la derecha, el nombre de la preparación,
+el código de lote, la fecha de elaboración, la fecha de consumo recomendada, la
+cantidad y el responsable. El tamaño es exacto: **90 mm de ancho × 40 mm de
+alto**, con `@page { size: 90mm 40mm; margin: 0 }`.
 
-Desde la pantalla **Lotes activos**, el botón **Imprimir etiqueta** abre la
-etiqueta y lanza el diálogo de impresión. Cada impresión queda registrada en el
-**historial** (`/api/etiquetas/historial`).
+---
 
-## 1. Emparejar la impresora en Windows (Bluetooth)
+## A. Cable directo, sin preguntar (RECOMENDADO para el TPV)
 
-1. Enciende la Phomemo D520BT y comprueba que el LED de Bluetooth parpadea.
-2. En Windows: **Configuración → Bluetooth y dispositivos → Agregar dispositivo
-   → Bluetooth**.
-3. Selecciona **D520BT** en la lista y completa el emparejamiento.
+El objetivo: pulsar **Imprimir** y que la etiqueta **salga sola** por la
+impresora conectada por USB, sin que aparezca el diálogo de "¿imprimir?".
 
-## 2. Instalar el driver y configurarla como impresora del sistema
+Control M ya genera la etiqueta a tamaño exacto y la manda a la impresora del
+sistema; lo único que hace falta es abrir Control M en un **navegador en modo
+`kiosk-printing`**, que imprime directo a la impresora predeterminada. Eso lo
+deja montado la carpeta **`impresora-directa/`** del repositorio.
 
-1. Descarga el driver oficial desde la web de Phomemo (modelo **D520**) e
-   instálalo.
-2. Abre **Configuración → Bluetooth y dispositivos → Impresoras y escáneres**.
-   La D520BT debe aparecer como impresora.
-3. Ábrela → **Preferencias de impresión** y define el tamaño de papel:
-   - **Ancho: 62 mm · Alto: 40 mm** (crea un tamaño personalizado si no existe).
-   - Márgenes a **0**.
-   - Orientación **horizontal** (apaisado).
-4. *(Opcional)* Márcala como **impresora predeterminada** mientras trabajáis con
-   etiquetas, para que el navegador la seleccione sola.
+### Montaje (una sola vez, en el PC del TPV)
 
-## 3. Ajustes de impresión en el navegador (Chrome / Edge)
+1. **Impresora por USB**: conéctala y enciéndela. Instala su **driver**
+   (Phomemo D520). En *Configuración → Bluetooth y dispositivos → Impresoras y
+   escáneres* debe aparecer.
+2. **Preferencias de impresión** de la impresora:
+   - **Tamaño de papel: 90 × 40 mm** (crea un tamaño personalizado si no existe).
+   - **Márgenes: 0.**
+   - **Orientación: horizontal** (apaisado).
+   - *(Recomendado)* márcala como **impresora predeterminada**.
+3. Copia la carpeta **`impresora-directa`** al PC (p. ej. `C:\control-m\`).
+4. *(Opcional)* abre `Imprimir-directo.bat` con el Bloc de notas y revisa:
+   - `CONTROLM_URL` → la URL de Control M (ya viene la de producción).
+   - `IMPRESORA` → el nombre EXACTO de la impresora en Windows (p. ej.
+     `Phomemo D520`); así la deja predeterminada al abrir. Vacío `""` = no la toca.
+5. Doble clic en **`instalar-acceso-directo.bat`**: crea en el escritorio el
+   acceso **“Control M · Imprimir etiquetas”**.
 
-Al pulsar **Imprimir etiqueta** se abre el diálogo de impresión. La primera vez:
+### Día a día
 
-1. **Destino**: selecciona **Phomemo D520BT**.
-2. **Más opciones / Configuración**:
-   - **Tamaño de papel**: 62 × 40 mm.
-   - **Márgenes**: Ninguno.
-   - **Escala**: 100 % (no "Ajustar al área de impresión").
-   - **Gráficos de fondo**: activado (para que el QR salga nítido).
-3. Imprime. El navegador recordará estos ajustes para las siguientes.
+- Abre Control M **con ese acceso del escritorio** (no con el navegador normal;
+  el normal sí pregunta).
+- En **Etiquetas**: elige producto y operación, pulsa **Imprimir** → la etiqueta
+  sale sola y la ventana de impresión se cierra ella.
+- Verifícalo con **“Imprimir prueba”**: no debe aparecer ningún diálogo.
 
-> La etiqueta ya trae `@page { size: 62mm 40mm; margin: 0 }`, así que con
-> márgenes "Ninguno" y escala 100 % encaja al milímetro.
+> Por qué funciona: el acceso abre el navegador con `--kiosk-printing` y
+> `--app=<url>`. Ese modo imprime directo a la impresora predeterminada sin
+> diálogo. La página de la etiqueta llama a `window.print()` y se autocierra al
+> terminar (`afterprint`).
 
-## 4. Probar sin imprimir
+---
 
-Abre directamente en el navegador (sustituye el id de lote):
+## B. Bluetooth desde el móvil (alternativa)
 
-```
-http://TU-SERVIDOR/etiqueta/lote/lote-001
-```
+Para etiquetar con el teléfono/tablet sin cable: en la pantalla **Etiquetas**,
+botón **“📶 Conectar Bluetooth”** (Chrome/Edge en Android; iPhone/Safari no tiene
+Bluetooth web). La primera vez se elige la **D520** y luego reconecta sola. El
+botón **“diagnóstico”** ayuda a afinar el canal/lenguaje si hiciera falta.
 
-Verás la etiqueta en pantalla con un botón **Imprimir**. Añade `?print=1` para
-que lance el diálogo automáticamente:
+---
 
-```
-http://TU-SERVIDOR/etiqueta/lote/lote-001?print=1
-```
+## C. Impresora del sistema con diálogo (respaldo)
+
+Si abres Control M con el navegador normal, al imprimir aparece el diálogo del
+navegador. La primera vez:
+
+1. **Destino**: selecciona la **Phomemo D520**.
+2. **Tamaño de papel**: 90 × 40 mm · **Márgenes**: Ninguno · **Escala**: 100 %
+   (no "Ajustar al área de impresión") · **Gráficos de fondo**: activado (QR
+   nítido). El navegador recuerda estos ajustes.
 
 ## Solución de problemas
 
-- **Sale cortada o muy pequeña**: revisa que el tamaño de papel sea 62 × 40 mm y
-  la escala 100 % (no "ajustar").
-- **El QR sale en blanco**: activa **Gráficos de fondo** en el diálogo de
-  impresión.
-- **No aparece la impresora**: vuelve a emparejar por Bluetooth y confirma que
-  el driver D520 está instalado.
-- **Texto desplazado**: pon todos los márgenes a 0 en las preferencias de la
-  impresora y en el diálogo del navegador.
+- **Sale el diálogo de imprimir**: has abierto Control M con el navegador
+  normal; usa el acceso **“Control M · Imprimir etiquetas”**.
+- **Imprime en PDF o en otra impresora**: la de etiquetas no es la
+  predeterminada; ponla por defecto o indícala en `IMPRESORA` del `.bat`.
+- **Sale cortada o pequeña**: revisa 90 × 40 mm y escala 100 % (no "ajustar").
+- **El QR sale en blanco**: activa **Gráficos de fondo** en el diálogo.
+- **Texto desplazado**: márgenes a 0 en las preferencias de la impresora.

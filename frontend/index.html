@@ -5907,19 +5907,25 @@ function etqRender(){
     <div id="etq-resultados" style="margin-top:10px"></div>
     <div class="card" id="pbt-bar" style="display:block;margin-top:14px;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span style="font-size:12.5px;font-weight:700;">🖨️ Impresión por cable (directa)</span>
-        <button class="btn-ghost" style="font-size:12px" onclick="etqAyudaCable()">ⓘ cómo activar</button>
-        <button class="btn-primary" style="margin-left:auto;font-size:12px;padding:8px 14px" onclick="etqImprimirPruebaWin()">🖨️ Imprimir prueba</button>
+        <span style="font-size:12.5px;font-weight:700;">🔌 Impresión por cable (USB)</span>
+        <button class="btn-primary" style="margin-left:auto;font-size:12px;padding:8px 14px" onclick="usbConectar()">🔌 Conectar cable</button>
       </div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.45;">
-        Pulsa <b>Imprimir</b> y la etiqueta sale sola por la impresora conectada por USB, sin diálogo.
-        Si te pide confirmación, abre Control M con el acceso <b>“Control M · Imprimir etiquetas”</b> del TPV.
+        Conecta la impresora por USB a la tablet, pulsa <b>Conectar cable</b> y permite el acceso una vez.
+        Luego prueba los dos modos y <b>dime cuál saca la etiqueta bien</b>:
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
-        <span style="font-size:11px;color:var(--muted)">Alternativa móvil ·</span>
+        <button class="btn-ghost" style="font-size:12px" onclick="usbImprimirPrueba('tspl')">🏷️ prueba TSPL</button>
+        <button class="btn-ghost" style="font-size:12px" onclick="usbImprimirPrueba('escpos')">🧾 prueba ESC/POS</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;border-top:1px solid rgba(0,0,0,.08);padding-top:8px;">
+        <span style="font-size:11px;color:var(--muted)">En PC (acceso directo) ·</span>
+        <button class="btn-ghost" style="font-size:11px" onclick="etqImprimirPruebaWin()">🖨️ prueba (diálogo)</button>
+        <button class="btn-ghost" style="font-size:11px" onclick="etqAyudaCable()">ⓘ ayuda</button>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto">Móvil ·</span>
         <span id="pbt-estado" style="font-size:11px;">Bluetooth</span>
-        <button class="btn-ghost" style="font-size:11px;margin-left:auto" onclick="pbtConectarManual()">📶 Conectar Bluetooth</button>
-        <button class="btn-ghost" style="font-size:11px" onclick="pbtDiagnostico()">diagnóstico</button>
+        <button class="btn-ghost" style="font-size:11px" onclick="pbtConectarManual()">📶</button>
+        <button class="btn-ghost" style="font-size:11px" onclick="pbtDiagnostico()">diag.</button>
       </div>
     </div>`;
   const foot=`<button class="btn-ghost" onclick="goBack()">← Salir</button>`;
@@ -6734,6 +6740,88 @@ async function pbtImprimir(path){
   }catch(e){ pbtToast("");
     if(confirm("No se pudo imprimir directo ("+(e.message||e)+"). ¿Abrir la etiqueta para imprimirla a mano?")) window.open(path, "_blank"); }
   finally{ _pbtOcupado = false; }
+}
+
+// ── IMPRESIÓN POR CABLE (USB · WebUSB) ───────────────────────────────────────
+// Para la D520BT (Quyin) conectada por USB a la tablet/PC. El navegador puede
+// hablar con la impresora por WebUSB (una sola vez pide permiso; luego imprime
+// sin diálogo). El IDIOMA exacto de esta marca no está verificado, así que se
+// prueban los dos candidatos — TSPL (lenguaje de etiquetas) y ESC/POS raster
+// (GS v 0, el mismo del Bluetooth) — y se deja fijado el que imprima bien.
+// Reutiliza el rasterizado real (pbtCargar + pbtRaster), fuente única del diseño.
+var _usbPrinter = null; // { device, epOut, iface }
+function usbDisponible(){ return !!(navigator.usb && navigator.usb.requestDevice); }
+async function usbAbrir(dev){
+  await dev.open();
+  if(!dev.configuration){ try{ await dev.selectConfiguration(1); }catch(e){} }
+  var cfg = dev.configuration; if(!cfg) throw new Error("la impresora no expone configuración USB");
+  for(var i=0;i<cfg.interfaces.length;i++){
+    var iface = cfg.interfaces[i];
+    for(var a=0;a<iface.alternates.length;a++){
+      var alt = iface.alternates[a];
+      var ep = (alt.endpoints||[]).find(function(e){ return e.direction==="out" && e.type==="bulk"; });
+      if(ep){
+        await dev.claimInterface(iface.interfaceNumber);
+        if(alt.alternateSetting){ try{ await dev.selectAlternateInterface(iface.interfaceNumber, alt.alternateSetting); }catch(e){} }
+        return { device:dev, epOut: ep.endpointNumber, iface: iface.interfaceNumber };
+      }
+    }
+  }
+  throw new Error("la impresora no expone un canal USB de escritura (endpoint bulk OUT)");
+}
+// Conecta: usa la impresora ya recordada (sin diálogo) o muestra el selector
+// (dentro del gesto del botón). forzar=true va directo al selector.
+async function usbAsegurar(forzar){
+  if(_usbPrinter && _usbPrinter.device && _usbPrinter.device.opened) return _usbPrinter;
+  var dev = null;
+  if(!forzar && navigator.usb.getDevices){ try{ var ds = await navigator.usb.getDevices(); if(ds && ds.length) dev = ds[0]; }catch(e){} }
+  if(!dev) dev = await navigator.usb.requestDevice({ filters: [] });
+  _usbPrinter = await usbAbrir(dev);
+  return _usbPrinter;
+}
+async function usbEnviar(bytes){
+  var p = _usbPrinter; if(!p) throw new Error("sin impresora USB");
+  var CH = 4096;
+  for(var i=0;i<bytes.length;i+=CH){ await p.device.transferOut(p.epOut, bytes.slice(i, i+CH)); }
+}
+// TSPL: envuelve el raster 1bpp en una etiqueta. Polaridad TSPL = 1 blanco / 0
+// negro (al revés que ESC/POS), por eso se INVIERTE el raster (pbtRaster da 1=negro).
+function usbTSPL(mono){
+  var head = "SIZE 90 mm,40 mm\r\nGAP 2 mm,0 mm\r\nDIRECTION 1\r\nREFERENCE 0,0\r\nDENSITY 10\r\nSPEED 4\r\nCLS\r\n"
+           + "BITMAP 0,0,"+mono.bytesPerRow+","+mono.height+",0,";
+  var inv = new Uint8Array(mono.data.length);
+  for(var i=0;i<mono.data.length;i++) inv[i] = (~mono.data[i]) & 0xff;
+  var enc = new TextEncoder(), h = enc.encode(head), t = enc.encode("\r\nPRINT 1,1\r\n");
+  var out = new Uint8Array(h.length + inv.length + t.length);
+  out.set(h,0); out.set(inv, h.length); out.set(t, h.length+inv.length);
+  return out;
+}
+// Conectar por cable (gesto del botón → selector de Android la 1ª vez).
+async function usbConectar(){
+  if(!usbDisponible()){ alert("Este navegador no tiene impresión por cable (WebUSB). Abre Control M en Chrome en la tablet (Android) o en un PC con Chrome/Edge."); return; }
+  try{ pbtToast("Conectando por cable…"); await usbAsegurar(true); pbtToast("Impresora por cable conectada ✓", 1800); }
+  catch(e){ pbtToast(""); if(!(e && e.name==="NotFoundError")) alert("No se pudo conectar por cable: "+((e&&e.message)||e)+"\n\nComprueba que el cable USB de la impresora está puesto en la tablet y la impresora encendida."); }
+}
+// Imprime una PRUEBA por cable en el idioma indicado ('tspl' | 'escpos').
+async function usbImprimirPrueba(lang){
+  var qs=new URLSearchParams(); qs.set("n","PRUEBA cable · "+lang.toUpperCase()); qs.set("c","m de materia"); qs.set("v","0"); qs.set("p",new Date().toISOString());
+  await usbImprimir("/etiqueta/prep?"+qs.toString(), lang);
+}
+// Carga la etiqueta, la rasteriza y la manda por cable en el idioma elegido.
+async function usbImprimir(path, lang){
+  if(!usbDisponible()){ alert("Este navegador no tiene WebUSB. Abre Control M en Chrome (Android) o en un PC."); return; }
+  try{ await usbAsegurar(false); }
+  catch(e){ try{ await usbAsegurar(true); }catch(e2){ pbtToast(""); alert("No se pudo conectar por cable: "+((e2&&e2.message)||e2)); return; } }
+  var r=null;
+  try{
+    pbtToast("Imprimiendo por cable ("+lang.toUpperCase()+")…");
+    r = await pbtCargar(path);
+    var mono = await pbtRaster(r.label, r.css, 720);
+    var bytes = (lang==="escpos") ? pbtEscpos(mono) : usbTSPL(mono);
+    await usbEnviar(bytes);
+    pbtToast("Enviado por cable ✓", 2000);
+  }catch(e){ pbtToast(""); alert("No se pudo imprimir por cable: "+((e&&e.message)||e)); }
+  finally{ if(r&&r.frame) r.frame.remove(); }
 }
 
 // ── Base de matcha · gel fluido (matcha + agua + gellan) ──────────────────────

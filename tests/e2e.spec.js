@@ -1746,7 +1746,11 @@ test("fichaje: reloj lista a la gente; se ficha con PIN y valida transiciones", 
 test("rutinas: el responsable de apertura/cierre sale del turno del día", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const h = { Authorization: `Bearer ${moni.token}` };
-  const hoy = new Date().toISOString().slice(0, 10);
+  // "Hoy" en hora de Madrid (como el servidor, hoyStr · motor-fechas.3), NO en UTC:
+  // entre las 22:00 y las 24:00 UTC el día local ya es el siguiente, y el turno se
+  // guardaría con una fecha y se consultaría con otra (el test fallaba esa franja).
+  const _n = new Date();
+  const hoy = `${_n.getFullYear()}-${String(_n.getMonth() + 1).padStart(2, "0")}-${String(_n.getDate()).padStart(2, "0")}`;
   // Asigna hoy: Daniel Apertura, Lara Cierre.
   const a = await request.post("/api/turnos", { headers: h, data: { persona: "DaniTest", fecha: hoy, inicio: "07:00", fin: "15:00", funcion: "Apertura" } });
   const c = await request.post("/api/turnos", { headers: h, data: { persona: "LaraTest", fecha: hoy, inicio: "09:00", fin: "17:00", funcion: "Cierre" } });

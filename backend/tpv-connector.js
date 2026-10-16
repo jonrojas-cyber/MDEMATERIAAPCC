@@ -131,7 +131,7 @@ function marcarContacto(store) {
 
 // Ingesta principal. Devuelve el resumen del motor + procesados_ref (lo que el
 // agente debe confirmar a Ágora para que deje de reexportarlo).
-function ingerir(store, body, opts) {
+async function ingerir(store, body, opts) {
   opts = opts || {};
   const docs = extraerDocs(body);
   if (!docs.length) {
@@ -145,7 +145,7 @@ function ingerir(store, body, opts) {
     err.code = "SIN_DOCS";
     throw err;
   }
-  return agora.importarDocs(docs, { usuario: opts.usuario || { nombre: "Conector TPV" } });
+  return await agora.importarDocs(docs, { usuario: opts.usuario || { nombre: "Conector TPV" } });
 }
 
 // Minutos (entero) transcurridos desde una fecha ISO, o null si no hay fecha.

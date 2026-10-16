@@ -53,7 +53,7 @@ router.post("/importar", express.raw({ type: ["text/*", "application/csv", "appl
     // eliminan duplicados de importaciones anteriores (por otro método) y las
     // ventas se reconstruyen limpias y con el neto. Idempotente por reconstrucción.
     let consumo = null;
-    try { consumo = require("../ventas-export").importarReemplazando(store, req.body || Buffer.alloc(0)); }
+    try { consumo = await require("../ventas-export").importarReemplazando(store, req.body || Buffer.alloc(0)); }
     catch (e) { consumo = { error: e.message }; }
     await store.flush();
     res.json({ ok: true, snapshot: snap, consumo });

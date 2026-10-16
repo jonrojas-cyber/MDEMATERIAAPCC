@@ -5,40 +5,15 @@
 //    hora), para no derivar 1 h en los cambios de horario.
 //  · datos.7: un escandallo con materia inexistente se SEÑALA (no se traga en
 //    silencio) y no descuenta stock fantasma.
+// importarDocs es ASÍNCRONO (escritura atómica · F03): el store simulado incluye
+// una transaction que aplica las ops al final.
 // Ejecutar (en TZ Europe/Madrid, como el runner): node tests/periodos-stock.unit.js
 const assert = require("assert");
 const periods = require("../backend/periods");
 
 let fallos = 0;
-function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + (e && e.message)); } }
+async function test(n, fn) { try { await fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + (e && e.message)); } }
 
-console.log("periodos y stock");
-
-test("motor-fechas.4: comparativo 'mes' a 31 de marzo NO se desborda a marzo", () => {
-  const now = new Date(2026, 2, 31, 12, 0, 0).getTime(); // 31 marzo 2026, mediodía
-  const comp = periods.comparativoAnterior("mes", now);
-  // El tramo anterior empieza el 1 de febrero y NO pasa del 1 de marzo (fin de febrero).
-  assert.strictEqual(new Date(comp.desde).getMonth(), 1, "empieza en febrero");
-  assert.ok(comp.hasta <= periods.startOfMonth(now), "no se desborda al mes en curso");
-  assert.ok(comp.hasta <= periods.addMonths(comp.desde, 1), "capado al fin de febrero");
-});
-
-test("motor-fechas.5: comparativo 'año anterior' alineado al día (sin hora, sin deriva DST)", () => {
-  const now = new Date(2026, 9, 25, 15, 30, 0).getTime(); // 25 oct 2026 (cambio de horario)
-  const comp = periods.comparativoAnioAnterior("hoy", now);
-  assert.strictEqual(new Date(comp.desde).getHours(), 0, "desde a medianoche");
-  assert.strictEqual(new Date(comp.hasta).getHours(), 0, "hasta a medianoche");
-  assert.strictEqual(new Date(comp.desde).getFullYear(), 2025, "año anterior");
-});
-
-test("semana siempre empieza en lunes", () => {
-  // 2026-10-11 es domingo; su semana ISO empieza el lunes 2026-10-05.
-  const now = new Date(2026, 9, 11, 12, 0, 0).getTime();
-  const r = periods.rango("semana", now);
-  assert.strictEqual(new Date(r.desde).getDay(), 1, "lunes");
-});
-
-// ── datos.7: integridad referencial en la ingesta de Ágora ───────────────────
 const store = require("../backend/data-store");
 function montarAgora() {
   const db = {
@@ -55,19 +30,54 @@ function montarAgora() {
   store.update = (n, id, patch) => { const x = (db[n] || []).find((y) => y.id === id); if (x) Object.assign(x, patch); return x; };
   store.nextId = (p) => `${p}-${++seq}`;
   store.flush = async () => {};
+  store.transaction = async (fn) => {
+    const ops = [];
+    await fn({ upsert: (n, row) => ops.push(["u", n, row]), del: (n, id) => ops.push(["d", n, id]), readAll: store.readAll });
+    ops.forEach(([t, n, x]) => {
+      const a = (db[n] = db[n] || []);
+      if (t === "u") { const i = a.findIndex((y) => y.id === x.id); if (i === -1) a.push(x); else a[i] = x; }
+      else { const i = a.findIndex((y) => y.id === x); if (i !== -1) a.splice(i, 1); }
+    });
+  };
   return db;
 }
 const agora = require("../backend/agora");
 
-test("datos.7: materia inexistente en escandallo se SEÑALA y no descuenta stock fantasma", () => {
-  const db = montarAgora();
-  const r = agora.importarDocs({ Invoices: [{ Serie: "T", Number: 1, BusinessDay: "2026-10-10", Lines: [{ ProductName: "Café", Quantity: 1, TotalAmount: 2 }] }] }, {});
-  assert.ok(Array.isArray(r.materias_faltantes) && r.materias_faltantes.length === 1, "señala 1 materia faltante");
-  assert.ok(/m-NO/.test(r.materias_faltantes[0]), "identifica la materia inexistente");
-  // La materia que SÍ existe se descontó (100 − 1 = 99); la inexistente no creó nada.
-  assert.strictEqual(db.materias.find((m) => m.id === "m-existe").disponibilidad_actual, 99);
-  assert.strictEqual(db.materias.length, 1, "no se inventó la materia inexistente");
-});
+(async () => {
+  console.log("periodos y stock");
 
-if (fallos) { console.error(`\n${fallos} fallo(s)`); process.exit(1); }
-console.log("  todo en verde");
+  await test("motor-fechas.4: comparativo 'mes' a 31 de marzo NO se desborda a marzo", async () => {
+    const now = new Date(2026, 2, 31, 12, 0, 0).getTime();
+    const comp = periods.comparativoAnterior("mes", now);
+    assert.strictEqual(new Date(comp.desde).getMonth(), 1, "empieza en febrero");
+    assert.ok(comp.hasta <= periods.startOfMonth(now), "no se desborda al mes en curso");
+    assert.ok(comp.hasta <= periods.addMonths(comp.desde, 1), "capado al fin de febrero");
+  });
+
+  await test("motor-fechas.5: comparativo 'año anterior' alineado al día (sin hora, sin deriva DST)", async () => {
+    const now = new Date(2026, 9, 25, 15, 30, 0).getTime();
+    const comp = periods.comparativoAnioAnterior("hoy", now);
+    assert.strictEqual(new Date(comp.desde).getHours(), 0, "desde a medianoche");
+    assert.strictEqual(new Date(comp.hasta).getHours(), 0, "hasta a medianoche");
+    assert.strictEqual(new Date(comp.desde).getFullYear(), 2025, "año anterior");
+  });
+
+  await test("semana siempre empieza en lunes", async () => {
+    const now = new Date(2026, 9, 11, 12, 0, 0).getTime();
+    const r = periods.rango("semana", now);
+    assert.strictEqual(new Date(r.desde).getDay(), 1, "lunes");
+  });
+
+  await test("datos.7: materia inexistente en escandallo se SEÑALA y no descuenta stock fantasma", async () => {
+    const db = montarAgora();
+    const r = await agora.importarDocs({ Invoices: [{ Serie: "T", Number: 1, BusinessDay: "2026-10-10", Lines: [{ ProductName: "Café", Quantity: 1, TotalAmount: 2 }] }] }, {});
+    assert.ok(Array.isArray(r.materias_faltantes) && r.materias_faltantes.length === 1, "señala 1 materia faltante");
+    assert.ok(/m-NO/.test(r.materias_faltantes[0]), "identifica la materia inexistente");
+    assert.strictEqual(db.materias.find((m) => m.id === "m-existe").disponibilidad_actual, 99);
+    assert.strictEqual(db.materias.length, 1, "no se inventó la materia inexistente");
+  });
+
+  if (fallos) { console.error(`\n${fallos} fallo(s) en periodos y stock`); process.exit(1); }
+  console.log("  periodos y stock OK");
+  process.exit(0);
+})();

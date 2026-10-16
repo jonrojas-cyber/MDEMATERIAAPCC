@@ -234,7 +234,7 @@ function normalizarDocs(docs) {
   return out;
 }
 
-function importarDocs(docs, { registrar, usuario } = {}) {
+async function importarDocs(docs, { registrar, usuario } = {}) {
   const lista = normalizarDocs(docs);
   const productos = store.readAll("productos");
   const materias = store.readAll("materias");
@@ -255,16 +255,17 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   const bloqueados = [];     // {clave, no_vinculados:[...]}
   const omitidos = [];
   const omitidosPedido = []; // pedidos/comandas: no son venta cerrada, no se cuentan
-  const deduplicados = [];   // {serie, number} ya existentes por otra vía (no se duplican)
+  const deduplicados = [];   // {serie, number, type} misma venta ya registrada por otra vía → DESCARTADA (no se duplica · F36/F20)
   const noVinculados = new Set();
   const materiasFaltantes = new Set(); // escandallos que apuntan a una materia inexistente (datos.7)
   const anulados = []; // documentos anulados/cancelados: no son venta (agora.5)
   const invitaciones = []; // líneas servidas a 0 € (comp/invitación): se registran y se CUENTAN aparte (agora.5)
   const devoluciones = []; // líneas negativas (devolución/abono): restan y se cuentan aparte (agora.5)
   const descuentosGlobales = []; // descuento a nivel de documento: se SEÑALA, reparto pendiente de muestra (agora.5 PARCIAL)
-  const posiblesDuplicados = []; // mismo Serie+Número+día que una venta existente: se marca, NO se descarta (agora.4)
   const movimientos = [];
   const nuevasVentas = []; // se insertan en LOTE al final, sin reescribir la tabla (datos.5)
+  const docRecs = [];                // marcadores docs_agora: se escriben AL FINAL, en la MISMA transacción que la venta (F03)
+  const materiasTocadas = new Set(); // ids de materias cuyo saldo cambió (upsert atómico, no writeAll de toda la tabla)
   let unidades = 0, importeTotal = 0;
   const nowISO = new Date().toISOString();
 
@@ -278,6 +279,9 @@ function importarDocs(docs, { registrar, usuario } = {}) {
   };
   const ventasBiz = new Set();
   ventas.forEach((v) => { if (v.doc_serie != null || v.doc_number != null) ventasBiz.add(bizKey(v.doc_serie, v.doc_number, v.fecha)); });
+  // Marcador docs_agora DIFERIDO: se acumula y se persiste en la transacción final
+  // (F03), nunca a mitad del bucle (que dejaría "procesado" sin su venta → pérdida).
+  const marcar = (rec) => { docRecs.push(rec); porClave[rec.id] = rec; };
 
   lista.forEach((doc) => {
     const clave = claveIdem(doc);
@@ -293,8 +297,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     // llega además como albarán/factura). Evita contar de más sin riesgo de perder
     // ventas reales. Se marca procesado para que el conector no lo reenvíe.
     if (/salesorder|pedido|comanda/i.test(String(type || ""))) {
-      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true };
-      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+      marcar({ id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true });
       omitidosPedido.push({ serie, number });
       return;
     }
@@ -304,20 +307,24 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     // líneas con importe 0 → ya suman 0; las DEVOLUCIONES, con cantidad negativa
     // → ya restan.)
     if (esAnulado(doc)) {
-      const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true, anulado: true };
-      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+      marcar({ id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, no_venta: true, anulado: true });
       anulados.push({ serie, number });
       return;
     }
 
-    // ¿Coincide por Serie+Número+día con una venta ya existente (otra vía/tipo)?
-    // NO se descarta (podría ser un documento DISTINTO · agora.4): se importa igual
-    // y se MARCA como posible duplicado, conservando trazabilidad del origen. La
-    // conciliación lo revisa con vínculo documental; nunca se pierde una venta en
-    // silencio. El documento idéntico re-enviado (misma clave) ya se omitió antes.
+    // IDEMPOTENCIA POR CLAVE DE NEGOCIO (Serie+Número+día). Si esta venta YA está
+    // registrada por otra vía (p. ej. el conector como Invoice y ahora el export
+    // mensual como TicketExport), se DESCARTA: no se añade ni se descuenta stock, y
+    // se marca procesada para que Ágora deje de reenviarla. Antes solo se SEÑALABA
+    // (agora.4) y se duplicaba el ingreso y el consumo (F36/F20). Serie+Número es la
+    // identidad del documento en Ágora: una coincidencia = el mismo evento económico.
+    // (El documento idéntico re-enviado con la MISMA clave ya se omitió más arriba.)
     const bk = bizKey(serie, number, fecha);
-    const posibleDup = (serie != null && number != null && ventasBiz.has(bk));
-    if (posibleDup) posiblesDuplicados.push({ serie, number, type });
+    if (serie != null && number != null && ventasBiz.has(bk)) {
+      marcar({ id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO, dedup_de: bk });
+      deduplicados.push({ serie, number, type });
+      return;
+    }
 
     // 1) Resolver TODAS las líneas primero (no descontamos nada aún).
     const resueltas = [];
@@ -352,9 +359,9 @@ function importarDocs(docs, { registrar, usuario } = {}) {
 
     // 2) Si falta algún producto por vincular → BLOQUEAR (no descontar, no marcar).
     if (faltan.length) {
-      const rec = { id: clave, status: "blocked", type, serie, number, fecha, no_vinculados: [...new Set(faltan)], visto_en: nowISO };
-      if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
-      bloqueados.push({ clave, no_vinculados: rec.no_vinculados });
+      const noVinc = [...new Set(faltan)];
+      marcar({ id: clave, status: "blocked", type, serie, number, fecha, no_vinculados: noVinc, visto_en: nowISO });
+      bloqueados.push({ clave, no_vinculados: noVinc });
       return;
     }
 
@@ -365,6 +372,7 @@ function importarDocs(docs, { registrar, usuario } = {}) {
         if (!m) { materiasFaltantes.add(`${producto.nombre || producto.id} → ${ing.materia_id}`); return; } // integridad (datos.7): no se descuenta un ingrediente inexistente, pero se SEÑALA
         const delta = -Math.round(ing.cantidad * cantidad * 100) / 100;
         m.disponibilidad_actual = Math.max(0, Math.round((m.disponibilidad_actual + delta) * 100) / 100);
+        materiasTocadas.add(m.id);
         movimientos.push({
           id: store.nextId("mov", "stock_movements"),
           source: "agora", source_ref: `${type}:${serie}:${number}`,
@@ -379,9 +387,6 @@ function importarDocs(docs, { registrar, usuario } = {}) {
         doc_clave: clave, doc_serie: serie, doc_number: number, importado_en: nowISO,
         // Naturaleza explícita (agora.5): "venta" | "invitacion" | "devolucion".
         naturaleza: naturaleza || "venta",
-        // Trazabilidad: si coincide con una venta previa por Serie+Número+día, se
-        // marca (no se descarta) para que la conciliación la revise (agora.4).
-        posible_duplicado: posibleDup ? bk : undefined,
       });
       unidades += cantidad; importeTotal += importe;
       if (naturaleza === "invitacion") invitaciones.push({ serie, number, producto: producto.nombre, unidades: cantidad });
@@ -396,17 +401,23 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     const origen = referenciasOrigen(doc);
     const rec = { id: clave, status: "processed", type, serie, number, fecha, procesado_en: nowISO };
     if (origen) rec.origen = origen; // vínculo documental para la conciliación (agora.1)
-    if (porClave[clave]) store.update("docs_agora", clave, rec); else store.insert("docs_agora", rec);
+    marcar(rec);
     procesados.push({ clave, serie, number, type });
-    ventasBiz.add(bk); // ya presente: evita duplicar la misma venta dentro del lote
+    ventasBiz.add(bk); // evita duplicar la misma venta dentro del lote
   });
 
-  // Escrituras INCREMENTALES: añade solo lo nuevo, sin reescribir la tabla de
-  // ventas entera en cada sync (datos.5/rendimiento.1). Materias es pequeña (se
-  // actualizan saldos de las tocadas), así que su writeAll es barato.
-  store.insertMany("stock_movements", movimientos);
-  store.writeAll("materias", materias);
-  store.insertMany("ventas", nuevasVentas);
+  // ESCRITURA ATÓMICA (F03): movimientos de stock + ventas + saldos de materia +
+  // marcadores docs_agora se confirman TODO-O-NADA en una sola transacción. Así un
+  // fallo a mitad NO deja marcadores "procesado" sin su venta (pérdida) ni venta sin
+  // marcador (duplicación). store.transaction ya existía y no se usaba en este flujo.
+  if (docRecs.length || nuevasVentas.length || movimientos.length || materiasTocadas.size) {
+    await store.transaction((tx) => {
+      movimientos.forEach((m) => tx.upsert("stock_movements", m));
+      nuevasVentas.forEach((v) => tx.upsert("ventas", v));
+      materiasTocadas.forEach((id) => { const m = idxMat[id]; if (m) tx.upsert("materias", m); });
+      docRecs.forEach((r) => tx.upsert("docs_agora", r));
+    });
+  }
 
   const resumen = {
     fuente: "agora",
@@ -426,8 +437,8 @@ function importarDocs(docs, { registrar, usuario } = {}) {
     descuentos_globales: descuentosGlobales.length,
     importe_descuento_global: Math.round(descuentosGlobales.reduce((s, x) => s + (Number(x.importe) || 0), 0) * 100) / 100,
     descuento_global_pendiente: descuentosGlobales.length > 0,
-    duplicados_evitados: deduplicados.length,
-    posibles_duplicados: posiblesDuplicados.length, // importados y marcados, NO descartados (agora.4)
+    duplicados_evitados: deduplicados.length, // misma venta por otra vía: DESCARTADA de raíz (no duplicada · F36/F20)
+    posibles_duplicados: 0, // ya no se "marca e importa" el duplicado: se descarta antes de registrarlo
     unidades_vendidas: Math.round(unidades * 100) / 100,
     importe_total: Math.round(importeTotal * 100) / 100,
     productos_no_vinculados: [...noVinculados],

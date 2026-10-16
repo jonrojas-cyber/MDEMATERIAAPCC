@@ -60,7 +60,7 @@ async function ingestar(store, payload) {
     try {
       const buf = bufDe(a);
       // 1) Motor "Análisis de Ventas" (día/ticket/producto): reemplaza el/los mes(es).
-      const rep = ventasExport.importarReemplazando(store, buf);
+      const rep = await ventasExport.importarReemplazando(store, buf);
       if (rep.docs > 0) {
         const co = rep.resultado || {};
         procesados += co.procesados || 0;

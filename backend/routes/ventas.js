@@ -19,7 +19,7 @@ router.post("/importar", textParser, async (req, res) => {
   try {
     const ve = require("../ventas-export");
     const buf = Buffer.from(csv, "utf8");
-    const rep = ve.importarReemplazando(store, buf);
+    const rep = await ve.importarReemplazando(store, buf);
     if (rep.docs > 0) {
       await store.flush();
       const co = rep.resultado || {};
@@ -45,7 +45,7 @@ router.post("/importar", textParser, async (req, res) => {
 router.post("/agora-import", express.json({ limit: "8mb" }), async (req, res) => {
   const docs = (req.body && (req.body.docs || req.body.documents || req.body)) || [];
   try {
-    const r = agora.importarDocs(docs, { usuario: req.user });
+    const r = await agora.importarDocs(docs, { usuario: req.user });
     require("../auditoria").registrar(req, {
       accion: "ventas_agora",
       entidad: "ventas",

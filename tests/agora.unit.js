@@ -4,6 +4,7 @@
 //   · idempotencia por GlobalId / Serie+Number
 //   · bloqueo de documentos con producto no vinculado (no descuenta)
 //   · libro de movimientos de stock
+// importarDocs es ASÍNCRONO (escritura atómica con store.transaction · F03).
 // Ejecutar: node tests/agora.unit.js  (revertir backend/data después).
 
 const assert = require("assert");
@@ -11,8 +12,8 @@ const store = require("../backend/data-store");
 const agora = require("../backend/agora");
 
 let fallos = 0;
-function test(nombre, fn) {
-  try { fn(); console.log("  ✓ " + nombre); }
+async function test(nombre, fn) {
+  try { await fn(); console.log("  ✓ " + nombre); }
   catch (e) { fallos++; console.error("  ✗ " + nombre + "\n    " + e.message); }
 }
 
@@ -26,86 +27,86 @@ assert.ok(prod, "hace falta al menos un producto con escandallo en el seed");
 const ing0 = prod.ingredientes[0];
 const stockAntes = (store.readAll("materias").find((m) => m.id === ing0.materia_id) || {}).disponibilidad_actual;
 
-console.log("agora.importarDocs · reglas de la guía v8.9.3");
+(async () => {
+  console.log("agora.importarDocs · reglas de la guía v8.9.3");
 
-test("documento vinculado: procesa, descuenta stock y crea movimiento", () => {
-  const r = agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 121, GlobalId: "uuid-1", Lines: [{ ProductName: prod.nombre, Quantity: 2, Amount: 17 }] }] });
-  assert.strictEqual(r.procesados, 1, "1 procesado");
-  assert.strictEqual(r.bloqueados, 0, "0 bloqueados");
-  assert.deepStrictEqual(r.procesados_ref, [{ Serie: "F", Number: "121" }], "ref para confirmar a Ágora");
-  const stockDespues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  assert.ok(stockDespues < stockAntes, "descontó stock");
-  const movs = store.readAll("stock_movements").filter((m) => m.materia_id === ing0.materia_id);
-  assert.ok(movs.length >= 1 && movs[0].delta < 0 && movs[0].source === "agora", "movimiento negativo registrado");
-});
-
-test("reimportar el MISMO documento (GlobalId) no descuenta dos veces", () => {
-  const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  const r = agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 121, GlobalId: "uuid-1", Lines: [{ ProductName: prod.nombre, Quantity: 2, Amount: 17 }] }] });
-  assert.strictEqual(r.procesados, 0, "0 procesados");
-  assert.strictEqual(r.omitidos_ya_procesados, 1, "1 omitido (idempotente)");
-  const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  assert.strictEqual(despues, antes, "el stock no volvió a bajar");
-});
-
-test("producto NO vinculado: bloquea el documento y no descuenta nada", () => {
-  const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  const movsAntes = store.readAll("stock_movements").length;
-  const r = agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 200, Lines: [{ ProductName: "ProductoQueNoExiste", Quantity: 1, Amount: 3 }] }] });
-  assert.strictEqual(r.procesados, 0, "no procesa");
-  assert.strictEqual(r.bloqueados, 1, "1 bloqueado");
-  assert.ok(r.productos_no_vinculados.includes("ProductoQueNoExiste"), "reporta el no vinculado");
-  const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  assert.strictEqual(despues, antes, "no tocó el stock");
-  assert.strictEqual(store.readAll("stock_movements").length, movsAntes, "no creó movimientos");
-});
-
-test("idempotencia por Serie+Number cuando no hay GlobalId", () => {
-  const uno = agora.importarDocs({ docs: [{ type: "DeliveryNote", Serie: "A", Number: 5, Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 8.5 }] }] });
-  assert.strictEqual(uno.procesados, 1);
-  const dos = agora.importarDocs({ docs: [{ type: "DeliveryNote", Serie: "A", Number: 5, Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 8.5 }] }] });
-  assert.strictEqual(dos.procesados, 0);
-  assert.strictEqual(dos.omitidos_ya_procesados, 1);
-});
-
-test("estructura real de Ágora (Invoice → InvoiceItems → Lines) descuenta stock", () => {
-  const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  // Payload tal cual lo devuelve Ágora: {Invoices:[{Serie,Number,InvoiceItems:[{Lines:[...]}]}]}
-  const r = agora.importarDocs({
-    Invoices: [{
-      Serie: "T", Number: 99, BusinessDay: "2026-07-01", DocumentType: "BasicInvoice",
-      InvoiceItems: [{
-        GlobalId: "item-uuid-99",
-        Lines: [{ ProductName: prod.nombre, Quantity: 2, TotalAmount: 5, UnitPrice: 2.5 }],
-      }],
-    }],
+  await test("documento vinculado: procesa, descuenta stock y crea movimiento", async () => {
+    const r = await agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 121, GlobalId: "uuid-1", Lines: [{ ProductName: prod.nombre, Quantity: 2, Amount: 17 }] }] });
+    assert.strictEqual(r.procesados, 1, "1 procesado");
+    assert.strictEqual(r.bloqueados, 0, "0 bloqueados");
+    assert.deepStrictEqual(r.procesados_ref, [{ Serie: "F", Number: "121" }], "ref para confirmar a Ágora");
+    const stockDespues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    assert.ok(stockDespues < stockAntes, "descontó stock");
+    const movs = store.readAll("stock_movements").filter((m) => m.materia_id === ing0.materia_id);
+    assert.ok(movs.length >= 1 && movs[0].delta < 0 && movs[0].source === "agora", "movimiento negativo registrado");
   });
-  assert.strictEqual(r.procesados, 1, "procesa la factura anidada");
-  assert.strictEqual(r.bloqueados, 0, "no la bloquea");
-  assert.strictEqual(r.unidades_vendidas, 2, "lee la cantidad de la línea anidada");
-  assert.strictEqual(r.importe_total, 5, "lee TotalAmount de la línea");
-  const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
-  assert.ok(despues < antes, "descontó stock desde la estructura anidada");
-});
 
-test("empareja pese a TILDES / MAYÚSCULAS / ESPACIOS (no bloquea esas ventas)", () => {
-  store.writeAll("docs_agora", []);
-  const ps = store.readAll("productos");
-  ps.push({ id: "prod-test-acc", clave: "Colección Ñam", nombre: "Colección Ñam", agora_ref: "Colección Ñam", precio_venta: 2, activo: true, ingredientes: [] });
-  store.writeAll("productos", ps);
-  // Ágora manda el mismo producto SIN tildes, en mayúsculas y con espacios de más.
-  const r = agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 900, GlobalId: "uuid-acc", Lines: [{ ProductName: "COLECCION   NAM", Quantity: 1, Amount: 2 }] }] });
-  assert.strictEqual(r.bloqueados, 0, "no se bloquea por tildes/espacios/mayúsculas");
-  assert.strictEqual(r.procesados, 1, "empareja y procesa la venta");
-});
+  await test("reimportar el MISMO documento (GlobalId) no descuenta dos veces", async () => {
+    const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    const r = await agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 121, GlobalId: "uuid-1", Lines: [{ ProductName: prod.nombre, Quantity: 2, Amount: 17 }] }] });
+    assert.strictEqual(r.procesados, 0, "0 procesados");
+    assert.strictEqual(r.omitidos_ya_procesados, 1, "1 omitido (idempotente)");
+    const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    assert.strictEqual(despues, antes, "el stock no volvió a bajar");
+  });
 
-test("la venta guarda importe (con IVA) e importe_neto (Base) para el P&L", () => {
-  agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 950, GlobalId: "uuid-neto", Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 2.2, Base: 2 }] }] });
-  const v = (store.readAll("ventas") || []).find((x) => x.doc_clave === "gid:uuid-neto");
-  assert.ok(v, "registró la venta");
-  assert.strictEqual(v.importe, 2.2);      // con IVA (Amount)
-  assert.strictEqual(v.importe_neto, 2);   // base sin IVA → lo que usa la cuenta de resultados
-});
+  await test("producto NO vinculado: bloquea el documento y no descuenta nada", async () => {
+    const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    const movsAntes = store.readAll("stock_movements").length;
+    const r = await agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 200, Lines: [{ ProductName: "ProductoQueNoExiste", Quantity: 1, Amount: 3 }] }] });
+    assert.strictEqual(r.procesados, 0, "no procesa");
+    assert.strictEqual(r.bloqueados, 1, "1 bloqueado");
+    assert.ok(r.productos_no_vinculados.includes("ProductoQueNoExiste"), "reporta el no vinculado");
+    const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    assert.strictEqual(despues, antes, "no tocó el stock");
+    assert.strictEqual(store.readAll("stock_movements").length, movsAntes, "no creó movimientos");
+  });
 
-console.log(fallos ? `\n${fallos} prueba(s) FALLIDA(s)` : "\nTodas las pruebas de Ágora OK");
-process.exit(fallos ? 1 : 0);
+  await test("idempotencia por Serie+Number cuando no hay GlobalId", async () => {
+    const uno = await agora.importarDocs({ docs: [{ type: "DeliveryNote", Serie: "A", Number: 5, Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 8.5 }] }] });
+    assert.strictEqual(uno.procesados, 1);
+    const dos = await agora.importarDocs({ docs: [{ type: "DeliveryNote", Serie: "A", Number: 5, Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 8.5 }] }] });
+    assert.strictEqual(dos.procesados, 0);
+    assert.strictEqual(dos.omitidos_ya_procesados, 1);
+  });
+
+  await test("estructura real de Ágora (Invoice → InvoiceItems → Lines) descuenta stock", async () => {
+    const antes = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    const r = await agora.importarDocs({
+      Invoices: [{
+        Serie: "T", Number: 99, BusinessDay: "2026-07-01", DocumentType: "BasicInvoice",
+        InvoiceItems: [{
+          GlobalId: "item-uuid-99",
+          Lines: [{ ProductName: prod.nombre, Quantity: 2, TotalAmount: 5, UnitPrice: 2.5 }],
+        }],
+      }],
+    });
+    assert.strictEqual(r.procesados, 1, "procesa la factura anidada");
+    assert.strictEqual(r.bloqueados, 0, "no la bloquea");
+    assert.strictEqual(r.unidades_vendidas, 2, "lee la cantidad de la línea anidada");
+    assert.strictEqual(r.importe_total, 5, "lee TotalAmount de la línea");
+    const despues = store.readAll("materias").find((m) => m.id === ing0.materia_id).disponibilidad_actual;
+    assert.ok(despues < antes, "descontó stock desde la estructura anidada");
+  });
+
+  await test("empareja pese a TILDES / MAYÚSCULAS / ESPACIOS (no bloquea esas ventas)", async () => {
+    store.writeAll("docs_agora", []);
+    const ps = store.readAll("productos");
+    ps.push({ id: "prod-test-acc", clave: "Colección Ñam", nombre: "Colección Ñam", agora_ref: "Colección Ñam", precio_venta: 2, activo: true, ingredientes: [] });
+    store.writeAll("productos", ps);
+    const r = await agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 900, GlobalId: "uuid-acc", Lines: [{ ProductName: "COLECCION   NAM", Quantity: 1, Amount: 2 }] }] });
+    assert.strictEqual(r.bloqueados, 0, "no se bloquea por tildes/espacios/mayúsculas");
+    assert.strictEqual(r.procesados, 1, "empareja y procesa la venta");
+  });
+
+  await test("la venta guarda importe (con IVA) e importe_neto (Base) para el P&L", async () => {
+    await agora.importarDocs({ docs: [{ type: "Invoice", Serie: "F", Number: 950, GlobalId: "uuid-neto", Lines: [{ ProductName: prod.nombre, Quantity: 1, Amount: 2.2, Base: 2 }] }] });
+    const v = (store.readAll("ventas") || []).find((x) => x.doc_clave === "gid:uuid-neto");
+    assert.ok(v, "registró la venta");
+    assert.strictEqual(v.importe, 2.2);      // con IVA (Amount)
+    assert.strictEqual(v.importe_neto, 2);   // base sin IVA → lo que usa la cuenta de resultados
+  });
+
+  console.log(fallos ? `\n${fallos} prueba(s) FALLIDA(s)` : "\nTodas las pruebas de Ágora OK");
+  process.exit(fallos ? 1 : 0);
+})();

@@ -64,11 +64,11 @@ function parseDocs(filas) {
 }
 
 // Importa el consumo desde el buffer del export. `agoraImportar` inyectable (test).
-function importar(buf, opts = {}) {
+async function importar(buf, opts = {}) {
   const agoraImportar = opts.agoraImportar || require("./agora").importarDocs;
   const docs = parseDocs(aFilas(buf));
   if (!docs.length) return { docs: 0, resultado: null };
-  const r = agoraImportar(docs, { usuario: { nombre: "Export Ágora" } });
+  const r = await agoraImportar(docs, { usuario: { nombre: "Export Ágora" } });
   return { docs: docs.length, resultado: r };
 }
 
@@ -77,17 +77,19 @@ function importar(buf, opts = {}) {
 // doc_clave) y los reconstruye limpios, con neto y sin duplicar. Es lo que deben
 // usar TODAS las vías de subida de ventas. Devuelve 0 docs si el fichero no tiene
 // el formato jerárquico (día/ticket/producto), para poder caer a otro lector.
-function importarReemplazando(store, buf, opts = {}) {
+async function importarReemplazando(store, buf, opts = {}) {
   const docs = parseDocs(aFilas(buf));
   if (!docs.length) return { docs: 0, resultado: null, reemplazado: false, meses: [] };
   const meses = new Set(docs.map((d) => String(d.Date || "").slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)));
-  if (meses.size && store) {
-    const enMes = (f) => meses.has(String(f || "").slice(0, 7));
-    store.writeAll("ventas", (store.readAll("ventas") || []).filter((v) => !enMes(v.fecha)));
-    store.writeAll("docs_agora", (store.readAll("docs_agora") || []).filter((d) => !enMes(d.fecha)));
-  }
-  const r = importar(buf, opts);
-  return { ...r, reemplazado: true, meses: [...meses] };
+  // RECONCILIA, NO ARRASA (F02/F20). Antes borraba TODAS las ventas y docs del mes
+  // —de cualquier fuente, incluido el conector en vivo— y reconstruía solo con el
+  // fichero: si el export cubría menos días/productos, esas ventas se PERDÍAN, y el
+  // stock se re-descontaba en cada reimportación. Ahora se delega en la idempotencia
+  // del motor (agora.importarDocs): omite lo ya procesado (misma clave) y DESCARTA la
+  // misma venta llegada por otra vía (misma Serie+Número+día), sin tocar lo de otras
+  // fuentes ni duplicar el consumo. Se conserva el nombre por compatibilidad de rutas.
+  const r = await importar(buf, opts);
+  return { ...r, reemplazado: true, reconciliado: true, meses: [...meses] };
 }
 
 module.exports = { importar, importarReemplazando, parseDocs, aFilas };

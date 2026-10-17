@@ -17,7 +17,9 @@ router.get("/", (req, res) => {
   const mes = req.query.mes || meses[0] || new Date().toISOString().slice(0, 7);
   const snap = am.obtener(mes);
   let pl = null;
-  try { pl = cr.calcular({}, new Date(mes + "-15T12:00:00Z")); } catch (e) { pl = null; }
+  // El P&L debe ser del MES SELECCIONADO. calcular lee el mes de opts.mes (el 2º
+  // argumento posicional NO existe y se ignoraba → salía siempre el mes en curso · E3).
+  try { pl = cr.calcular({ mes }); } catch (e) { pl = null; }
   res.json({ mes, meses, snapshot: snap, cuenta: pl });
 });
 
@@ -29,14 +31,14 @@ router.post("/importar", express.raw({ type: ["text/*", "application/csv", "appl
     // req.body es un Buffer: parseExportBuffer detecta xlsx (ZIP) o CSV.
     const snap = am.parseExportBuffer(req.body || Buffer.alloc(0), req.query.mes);
     am.guardar(snap);
-    // Fija el cierre de ventas del mes para la Cuenta de Resultados. OJO: la
-    // Cuenta de Resultados trata `ventas_mes_*` como BRUTO (con IVA) y lo netea
-    // dividiendo por (1+IVA). Antes aquí se guardaba snap.neto (NETO) → la cuenta
-    // lo volvía a dividir = DOBLE descuento de IVA (motor-fechas.1/2). Se guarda el
-    // BRUTO (snap.total) para respetar la convención y cuadrar con Ágora.
+    // Fija el cierre de ventas del mes para la Cuenta de Resultados. CONVENCIÓN ÚNICA
+    // (E2): se guarda el NETO real de Ágora (snap.neto = suma de la columna Base, sin
+    // IVA), que es la base del P&L; la Cuenta de Resultados lo usa TAL CUAL (no re-netea).
+    // Antes se guardaba el BRUTO (snap.total) y la cuenta lo dividía por un 10% PLANO,
+    // lo que fallaba con IVA mixto (bolsa retail/para llevar al 21%) e inflaba el resultado.
     const id = `ventas_mes_${snap.mes}`;
-    if (store.findById("config", id)) store.update("config", id, { valor: snap.total });
-    else store.insert("config", { id, valor: snap.total });
+    if (store.findById("config", id)) store.update("config", id, { valor: snap.neto });
+    else store.insert("config", { id, valor: snap.neto });
     try {
       require("../auditoria").registrar(req, {
         accion: "analisis_mes_import", entidad: "analisis_mes", entidad_id: snap.id,

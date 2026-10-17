@@ -10093,7 +10093,7 @@ function adRender(d){
   if(r.disponible){
     const col=r.cubierto?"var(--ok,#3c7a4a)":"var(--alert,#b23b3b)";
     rentBlock=`<div class="section-label" style="margin-top:16px;">¿Cubrió el día?</div>
-      <div class="lim-param"><div><b>${adEur(v.total)}</b><span>vendido</span></div><div><b>${adEur(r.ingreso_equilibrio_dia)}</b><span>equilibrio/día</span></div><div><b style="color:${col};">${r.cobertura_pct!=null?r.cobertura_pct+"%":"—"}</b><span>cobertura</span></div><div><b style="color:${col};">${r.diferencia_eur>=0?"+":""}${adEur(r.diferencia_eur)}</b><span>${r.cubierto?"por encima":"faltaron"}</span></div></div>`;
+      <div class="lim-param"><div><b>${adEur(v.total_neto)}</b><span>vendido (neto)</span></div><div><b>${adEur(r.ingreso_equilibrio_dia)}</b><span>equilibrio/día</span></div><div><b style="color:${col};">${r.cobertura_pct!=null?r.cobertura_pct+"%":"—"}</b><span>cobertura</span></div><div><b style="color:${col};">${r.diferencia_eur>=0?"+":""}${adEur(r.diferencia_eur)}</b><span>${r.cubierto?"por encima":"faltaron"}</span></div></div>`;
   } else {
     rentBlock=`<div class="ad-note" style="margin-top:12px;">Punto de equilibrio no disponible: ${esc(r.motivo||"faltan datos de carta/costes fijos/sueldos.")}</div>`;
   }

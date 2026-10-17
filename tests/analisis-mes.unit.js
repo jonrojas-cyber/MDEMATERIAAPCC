@@ -71,5 +71,24 @@ test("el snapshot sembrado de septiembre 2026 es coherente", () => {
   assert.ok(Math.abs(suma - 100) < 1.5, "suma %=" + suma);
 });
 
+test("E1 · agregarDesdeVentas (conector) usa importe_neto y NO re-aplica IVA (cuadra con la vía CSV)", () => {
+  // Fixture IVA mixto (doc 03): importe=BRUTO, importe_neto=NETO (Base de Ágora).
+  const store = require("../backend/data-store");
+  const ventas = [
+    { producto_id: "p-cafe", fecha: "2026-09-01", cantidad: 5000, importe: 11000, importe_neto: 10000, doc_clave: "d1" },
+    { producto_id: "p-sand", fecha: "2026-09-02", cantidad: 1000, importe: 6600, importe_neto: 6000, doc_clave: "d2" },
+    { producto_id: "p-bolsa", fecha: "2026-09-03", cantidad: 200, importe: 2420, importe_neto: 2000, doc_clave: "d3" },
+  ];
+  const prods = [{ id: "p-cafe", categoria: "Cafes" }, { id: "p-sand", categoria: "--" }, { id: "p-bolsa", categoria: "Retail" }];
+  const orig = store.readAll;
+  store.readAll = (n) => (n === "ventas" ? ventas : n === "productos" ? prods : []);
+  try {
+    const s = am.agregarDesdeVentas("2026-09");
+    assert.strictEqual(s.neto, 18000, "neto = suma de importe_neto (Base), no el bruto (el bug daba 20.020)");
+    assert.strictEqual(s.total, 20020, "total = bruto con IVA, sin re-aplicar 10% (el bug daba 22.022)");
+    assert.strictEqual(s.tickets, 3);
+  } finally { store.readAll = orig; }
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en análisis del mes`); process.exit(1); }
 console.log("  análisis del mes OK");

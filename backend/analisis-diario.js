@@ -217,14 +217,17 @@ function computar(datos, fecha) {
   let rentabilidad = null;
   if (equilibrio && equilibrio.disponible && equilibrio.ingreso_equilibrio_dia_abierto != null) {
     const objetivo = equilibrio.ingreso_equilibrio_dia_abierto;
+    // El equilibrio es VENTA NETA (contribución y fijos en base neta). El veredicto se
+    // compara con la venta NETA del día (hoy.total_neto), no con la bruta (E6): mezclar
+    // bruto con IVA contra un umbral neto sobrestimaba la cobertura y volteaba el veredicto.
     rentabilidad = {
       disponible: true,
       ingreso_equilibrio_dia: objetivo,
       ratio_contribucion_pct: equilibrio.ratio_contribucion_pct,
       base_fija_diaria: equilibrio.base_fija_diaria,
-      cubierto: hoy.total >= objetivo,
-      diferencia_eur: eur(hoy.total - objetivo),
-      cobertura_pct: objetivo > 0 ? Math.round((hoy.total / objetivo) * 100) : null,
+      cubierto: hoy.total_neto >= objetivo,
+      diferencia_eur: eur(hoy.total_neto - objetivo),
+      cobertura_pct: objetivo > 0 ? Math.round((hoy.total_neto / objetivo) * 100) : null,
     };
   } else {
     rentabilidad = { disponible: false, motivo: "Falta el punto de equilibrio (carta con coste, costes fijos y sueldos)." };
@@ -251,9 +254,9 @@ function alertasDia(v, comp, compras, rent) {
   }
   // Rentabilidad: por debajo del equilibrio.
   if (rent && rent.disponible && !rent.cubierto) {
-    out.push({ severidad: "critico", titulo: `El día NO cubrió el punto de equilibrio`, detalle: `Vendiste ${v.total} € y necesitabas ${rent.ingreso_equilibrio_dia} € para no perder (${rent.cobertura_pct}%). Faltaron ${eur(-rent.diferencia_eur)} €.` });
+    out.push({ severidad: "critico", titulo: `El día NO cubrió el punto de equilibrio`, detalle: `Vendiste ${v.total_neto} € netos y necesitabas ${rent.ingreso_equilibrio_dia} € para no perder (${rent.cobertura_pct}%). Faltaron ${eur(-rent.diferencia_eur)} €.` });
   } else if (rent && rent.disponible && rent.cubierto) {
-    out.push({ severidad: "ok", titulo: `Día por encima del equilibrio`, detalle: `${v.total} € vendidos, ${rent.diferencia_eur} € por encima del mínimo para no perder.` });
+    out.push({ severidad: "ok", titulo: `Día por encima del equilibrio`, detalle: `${v.total_neto} € netos vendidos, ${rent.diferencia_eur} € por encima del mínimo para no perder.` });
   }
   // Cobertura de coste (cuánta venta no podemos evaluar en margen).
   if (v.cobertura_coste_pct != null && v.cobertura_coste_pct < 60 && v.importe_sin_coste > 0) {

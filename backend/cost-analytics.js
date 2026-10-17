@@ -21,7 +21,10 @@ const SUSCRIPCIONES = new Set(["Software", "Suscripciones", "Marketing", "TPV", 
 function mensualDe(f) { return fixedCosts.costeDiario(f) * (365 / 12); }
 
 // ── COST ANALYTICS ENGINE ───────────────────────────────────────────────────
-function alertas(now = Date.now()) {
+// localId identifica el local para el histórico de anomalías (bloque 4). Faltaba
+// como parámetro: `localId` se usaba en el cuerpo y lanzaba ReferenceError (tragado
+// por el try/catch) → la alerta de subida anómala NO se emitía jamás (E7).
+function alertas(now = Date.now(), localId = "principal") {
   const activos = store.readAll("fixed_costs").filter((f) => fixedCosts.activoEn(f, now) && f.periodicity !== "one_time");
   const out = [];
 

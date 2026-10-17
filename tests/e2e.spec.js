@@ -1186,6 +1186,15 @@ test("análisis del mes: importar CSV de Ágora crea el snapshot y fija el cierr
   expect(j.snapshot.mes).toBe("2026-07");
   expect(j.snapshot.neto).toBe(150);
   expect(j.snapshot.tickets).toBe(2);
+  // E3: el P&L del panel es del MES PEDIDO (julio), no del mes en curso (antes la ruta
+  // pasaba la fecha como 2º argumento posicional y calcular lo ignoraba → salía octubre).
+  const mesGet = await (await request.get("/api/analisis-mes?mes=2026-07", { headers })).json();
+  expect(mesGet.mes).toBe("2026-07");
+  expect(mesGet.cuenta).not.toBeNull();
+  expect(mesGet.cuenta.mes).toBe("2026-07");
+  // E2: el import fijó el cierre en NETO (snap.neto=150); la cuenta lo usa TAL CUAL (no 150/1,10).
+  expect(mesGet.cuenta.cuenta.ingresos).toBe(150);
+  expect(mesGet.cuenta.cuenta.ventas_origen).toBe("cierre_guardado");
   // El equipo (Lara) NO puede ver ni importar el análisis (es dinero).
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
   const rr = await request.get("/api/analisis-mes", { headers: { Authorization: `Bearer ${lara.token}` } });
@@ -1643,17 +1652,17 @@ test("cuenta de resultados: API admin-only con estructura P&L y bloqueo al equip
   expect(j.cuenta).toHaveProperty("ingresos");
   expect(j.cuenta).toHaveProperty("personal");
   expect(j.cuenta).toHaveProperty("ebitda");
-  // Override de ventas: recalcula ingresos. La cifra de Ágora viene en BRUTO; el
-  // P&L muestra ingresos en NETO (÷1,10): 10000 → 9090,91.
+  // Override de ventas: el cierre se introduce y se usa en NETO (sin IVA, como pide el
+  // campo del front) y NO se re-netea (E2): 10000 → ingresos 10000.
   const ov = await (await request.get("/api/cuenta-resultados?mes=2026-06&ventas=10000", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
-  expect(ov.cuenta.ingresos).toBe(9090.91);
+  expect(ov.cuenta.ingresos).toBe(10000);
   expect(ov.cuenta.ventas_origen).toBe("manual_agora");
-  // Guardar el cierre del mes lo fija (persistente) y la GET lo refleja (8500 bruto → 7727,27 neto).
+  // Guardar el cierre del mes lo fija (persistente) y la GET lo refleja (8500 neto = 8500).
   const saved = await (await request.post("/api/cuenta-resultados/cierre", { headers: { Authorization: `Bearer ${moni.token}` }, data: { mes: "2026-06", ventas: 8500 } })).json();
-  expect(saved.cuenta.ingresos).toBe(7727.27);
+  expect(saved.cuenta.ingresos).toBe(8500);
   expect(saved.cuenta.ventas_origen).toBe("cierre_guardado");
   const again = await (await request.get("/api/cuenta-resultados?mes=2026-06", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
-  expect(again.cuenta.ingresos).toBe(7727.27);
+  expect(again.cuenta.ingresos).toBe(8500);
   // Borrarlo (ventas 0) vuelve a las ventas de la app.
   const cleared = await (await request.post("/api/cuenta-resultados/cierre", { headers: { Authorization: `Bearer ${moni.token}` }, data: { mes: "2026-06", ventas: 0 } })).json();
   expect(cleared.cuenta.ventas_origen).not.toBe("cierre_guardado");

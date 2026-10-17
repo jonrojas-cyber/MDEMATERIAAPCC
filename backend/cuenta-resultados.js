@@ -140,16 +140,18 @@ function calcular(opts = {}) {
   else if (Number.isFinite(fcManual) && fcManual > 0) { foodCost = fcManual / 100; food_cost_origen = "manual"; }
 
   // Override de ventas (cierre de Ágora): parámetro > cierre GUARDADO > ventas app.
-  // La cifra de Ágora/cierre viene en BRUTO (con IVA); el P&L va en NETO, así que
-  // se convierte. La vía "produccion" ya tiene su propio neto (ventasNetasProd).
-  const IVA_VENTA = require("./iva").IVA_VENTA; // fuente única (dinero.8)
-  let ventasBruto = ventasProd, ventas_origen = "produccion";
+  // CONVENCIÓN ÚNICA (E2 · dinero.8): el override se guarda y se consume en NETO (la
+  // Base de Ágora, sin IVA), igual que ventasNetasProd. Antes se guardaba el BRUTO y
+  // se neteaba a un 10% PLANO, lo que (a) fallaba con IVA mixto (10% café/comida, 21%
+  // bolsa retail/para llevar → inflaba el ingreso) y (b) no era idempotente al reguardar
+  // (cada guardado encogía la cifra /1,10). Ahora NO se re-netea: neto entra, neto sale.
+  let ventasNeto = ventasNetasProd, ventas_origen = "produccion";
   const ov = Number(opts.ventas);
   const guardado = config.find((c) => c && c.id === `ventas_mes_${R.etiqueta}`);
   const ovGuardado = guardado ? Number(guardado.valor) : NaN;
-  if (Number.isFinite(ov) && ov > 0) { ventasBruto = ov; ventas_origen = "manual_agora"; }
-  else if (Number.isFinite(ovGuardado) && ovGuardado > 0) { ventasBruto = ovGuardado; ventas_origen = "cierre_guardado"; }
-  const ventas = ventas_origen === "produccion" ? eur(ventasNetasProd) : eur(ventasBruto / (1 + IVA_VENTA));
+  if (Number.isFinite(ov) && ov > 0) { ventasNeto = ov; ventas_origen = "manual_agora"; }
+  else if (Number.isFinite(ovGuardado) && ovGuardado > 0) { ventasNeto = ovGuardado; ventas_origen = "cierre_guardado"; }
+  const ventas = eur(ventasNeto);
 
   // Coste de materia (contra ventas NETAS): con food cost manual = ventas × food cost.
   // Si es calculado, usa el real de producción (o el ratio neto/neto si hay override).

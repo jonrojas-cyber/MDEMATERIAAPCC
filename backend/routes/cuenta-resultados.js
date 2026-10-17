@@ -31,6 +31,15 @@ router.post("/food-cost", express.json(), async (req, res) => {
     } else if (store.findById("config", "food_cost_manual_pct")) {
       store.remove("config", "food_cost_manual_pct");
     }
+    // Trazabilidad de overrides (A.4): quién/cuándo cambia el food cost manual.
+    try {
+      require("../auditoria").registrar(req, {
+        accion: Number.isFinite(val) && val > 0 ? "food_cost_manual_set" : "food_cost_manual_borrar",
+        entidad: "config", entidad_id: "food_cost_manual_pct",
+        resumen: `Food cost manual ${Number.isFinite(val) && val > 0 ? val + " %" : "borrado"}`,
+        meta: { valor: Number.isFinite(val) && val > 0 ? val : null },
+      });
+    } catch (e) {}
     await store.flush();
     res.json(cr.calcular({ mes: (req.body && req.body.mes) || undefined }));
   } catch (e) {
@@ -53,6 +62,15 @@ router.post("/cierre", express.json(), async (req, res) => {
     } else if (store.findById("config", id)) {
       store.remove("config", id); // vaciar = volver a las ventas de la app
     }
+    // Trazabilidad de overrides (A.4): quién/cuándo fija/borra el cierre de ventas (NETO).
+    try {
+      require("../auditoria").registrar(req, {
+        accion: Number.isFinite(val) && val > 0 ? "cierre_ventas_set" : "cierre_ventas_borrar",
+        entidad: "config", entidad_id: id,
+        resumen: `Cierre de ventas ${mes}: ${Number.isFinite(val) && val > 0 ? val + " € netos" : "borrado"}`,
+        meta: { mes, valor: Number.isFinite(val) && val > 0 ? val : null },
+      });
+    } catch (e) {}
     await store.flush();
     res.json(cr.calcular({ mes }));
   } catch (e) {

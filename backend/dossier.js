@@ -11,6 +11,7 @@
 
 const store = require("./data-store");
 const costing = require("./costing");
+const financials = require("./financials"); // fuente única del neto de una venta (netoDeVenta)
 
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 function ymd(f) { return String(f || "").slice(0, 10); }
@@ -19,7 +20,9 @@ function pct(n) { return n == null ? null : Math.round(n * 1000) / 10; }
 // Agrega las ventas del rango por producto, cruzando con el coste real (costing).
 function agregarVentas(ventas, prodById, prodByName, idxMat, desde, hasta) {
   const d0 = ymd(desde), d1 = ymd(hasta);
-  let importe = 0, unidades = 0, coste = 0, importeConCoste = 0;
+  // importe/total = BRUTO (titular, cuadra con Ágora). El margen y el beneficio van en
+  // base NETA (el coste es neto): numerador y denominador sin IVA (E5 · dinero.8).
+  let importe = 0, unidades = 0, coste = 0, importeConCoste = 0, netoConCoste = 0;
   const tickets = new Set();
   const porProducto = {}, porCategoria = {};
   ventas.forEach((v) => {
@@ -27,6 +30,7 @@ function agregarVentas(ventas, prodById, prodByName, idxMat, desde, hasta) {
     const f = ymd(v.fecha);
     if (f < d0 || f > d1) return;
     const cant = Number(v.cantidad) || 0, imp = Number(v.importe) || 0;
+    const net = financials.netoDeVenta(v); // NETO real (importe_neto = Base de Ágora)
     const p = prodById[v.producto_id] || prodByName[String(v.producto || "").toLowerCase()];
     const cu = p ? costing.costeProducto(p, idxMat) : 0;
     importe += imp; unidades += cant;
@@ -35,23 +39,23 @@ function agregarVentas(ventas, prodById, prodByName, idxMat, desde, hasta) {
     if (!porCategoria[cat]) porCategoria[cat] = { categoria: cat, importe: 0, unidades: 0 };
     porCategoria[cat].importe += imp; porCategoria[cat].unidades += cant;
     const key = v.producto || (p && p.nombre) || v.producto_id || "—";
-    if (!porProducto[key]) porProducto[key] = { producto: key, categoria: cat, unidades: 0, importe: 0, coste: 0, coste_conocido: cu > 0 };
-    porProducto[key].unidades += cant; porProducto[key].importe += imp; porProducto[key].coste += cu * cant;
-    if (cu > 0) { porProducto[key].coste_conocido = true; coste += cu * cant; importeConCoste += imp; }
+    if (!porProducto[key]) porProducto[key] = { producto: key, categoria: cat, unidades: 0, importe: 0, neto: 0, coste: 0, coste_conocido: cu > 0 };
+    porProducto[key].unidades += cant; porProducto[key].importe += imp; porProducto[key].neto += net; porProducto[key].coste += cu * cant;
+    if (cu > 0) { porProducto[key].coste_conocido = true; coste += cu * cant; importeConCoste += imp; netoConCoste += net; }
   });
   const nT = tickets.size || 0;
   const prod = Object.values(porProducto).map((x) => ({
     producto: x.producto, categoria: x.categoria,
     unidades: Math.round(x.unidades * 10) / 10, importe: eur(x.importe),
     coste: x.coste_conocido ? eur(x.coste) : null,
-    beneficio: x.coste_conocido ? eur(x.importe - x.coste) : null,
-    margen_pct: x.coste_conocido && x.importe > 0 ? Math.round((1 - x.coste / x.importe) * 100) : null,
+    beneficio: x.coste_conocido ? eur(x.neto - x.coste) : null,
+    margen_pct: x.coste_conocido && x.neto > 0 ? Math.round((1 - x.coste / x.neto) * 100) : null,
   })).sort((a, b) => b.importe - a.importe);
   return {
     total: eur(importe), tickets: nT, ticket_medio: nT ? eur(importe / nT) : 0,
     unidades: Math.round(unidades * 10) / 10,
-    coste_materia: eur(coste), margen_eur: eur(importeConCoste - coste),
-    margen_pct: importeConCoste > 0 ? Math.round((1 - coste / importeConCoste) * 100) : null,
+    coste_materia: eur(coste), margen_eur: eur(netoConCoste - coste),
+    margen_pct: netoConCoste > 0 ? Math.round((1 - coste / netoConCoste) * 100) : null,
     cobertura_coste_pct: importe > 0 ? Math.round((importeConCoste / importe) * 100) : null,
     por_producto: prod,
     por_categoria: Object.values(porCategoria).map((c) => ({ categoria: c.categoria, importe: eur(c.importe), unidades: Math.round(c.unidades * 10) / 10, pct: importe > 0 ? Math.round((c.importe / importe) * 100) : 0 })).sort((a, b) => b.importe - a.importe),

@@ -4,6 +4,7 @@
 const store = require("./data-store");
 const costing = require("./costing");
 const insights = require("./insights");
+const financials = require("./financials"); // fuente única del neto de una venta (netoDeVenta)
 const { categoriaDe } = require("./clasificador");
 const { estadoStock } = require("./umbral");
 
@@ -23,7 +24,9 @@ function kpis() {
   const hoy = new Date().toDateString();
 
   const ventasHoy = ventas.filter((v) => v.fecha && new Date(v.fecha).toDateString() === hoy);
-  const facturacion = eur(ventasHoy.reduce((s, v) => s + (Number(v.importe) || 0), 0));
+  const facturacion = eur(ventasHoy.reduce((s, v) => s + (Number(v.importe) || 0), 0)); // BRUTO (titular, cuadra con Ágora)
+  // El margen va en base NETA (el coste es neto): numerador y denominador sin IVA (E5 · dinero.8).
+  const facturacionNeta = eur(ventasHoy.reduce((s, v) => s + financials.netoDeVenta(v), 0));
   const costeVendido = eur(ventasHoy.reduce((s, v) => {
     const p = prodById[v.producto_id] || prodByName[String(v.producto || "").toLowerCase()];
     return s + (p ? costing.costeProducto(p, idxMat) * (Number(v.cantidad) || 0) : 0);
@@ -38,8 +41,8 @@ function kpis() {
   return {
     facturacion_hoy: facturacion,
     coste_vendido: costeVendido,
-    margen_bruto_eur: eur(facturacion - costeVendido),
-    margen_bruto_pct: facturacion > 0 ? Math.round((1 - costeVendido / facturacion) * 100) : null,
+    margen_bruto_eur: eur(facturacionNeta - costeVendido),
+    margen_bruto_pct: facturacionNeta > 0 ? Math.round((1 - costeVendido / facturacionNeta) * 100) : null,
     merma_hoy: mermaHoy,
     valor_almacen: costing.valorStock(materias),
     valor_produccion: costing.valorProduccion(null, null, idxMat),
@@ -85,15 +88,16 @@ function topProductos(dias = 30) {
     const key = v.producto || v.producto_id || "?";
     const p = prodById[v.producto_id] || prodByName[String(v.producto || "").toLowerCase()];
     const cant = Number(v.cantidad) || 0;
-    const importe = Number(v.importe) || 0;
-    const coste = p ? costing.costeProducto(p, idxMat) * cant : 0;
-    if (!acc[key]) acc[key] = { producto: key, unidades: 0, importe: 0, coste: 0 };
-    acc[key].unidades += cant; acc[key].importe += importe; acc[key].coste += coste;
+    const importe = Number(v.importe) || 0;   // BRUTO (titular, ranking por facturación)
+    const neto = financials.netoDeVenta(v);   // NETO → base del beneficio y el margen (E5)
+    const coste = p ? costing.costeProducto(p, idxMat) * cant : 0; // coste neto
+    if (!acc[key]) acc[key] = { producto: key, unidades: 0, importe: 0, neto: 0, coste: 0 };
+    acc[key].unidades += cant; acc[key].importe += importe; acc[key].neto += neto; acc[key].coste += coste;
   });
   const arr = Object.values(acc).map((x) => ({
     producto: x.producto, unidades: Math.round(x.unidades * 10) / 10,
-    importe: eur(x.importe), beneficio: eur(x.importe - x.coste),
-    margen: x.importe > 0 ? Math.round((1 - x.coste / x.importe) * 100) : null,
+    importe: eur(x.importe), beneficio: eur(x.neto - x.coste),
+    margen: x.neto > 0 ? Math.round((1 - x.coste / x.neto) * 100) : null,
   }));
   return {
     por_venta: [...arr].sort((a, b) => b.importe - a.importe).slice(0, 8),

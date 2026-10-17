@@ -94,8 +94,9 @@ test("rentabilidad: compara con el punto de equilibrio", () => {
   const r = A.computar(datos, "2026-09-05");
   assert.strictEqual(r.rentabilidad.disponible, true);
   assert.strictEqual(r.rentabilidad.ingreso_equilibrio_dia, 100);
-  assert.strictEqual(r.rentabilidad.cubierto, false);   // 10,9 < 100
-  assert.strictEqual(r.rentabilidad.cobertura_pct, 11);
+  // El veredicto compara en NETO (total_neto, no bruto · E6): 10,9 bruto → 9,9 neto.
+  assert.strictEqual(r.rentabilidad.cubierto, false);   // 9,9 neto < 100
+  assert.strictEqual(r.rentabilidad.cobertura_pct, 10);  // round(9,9/100), no 11 (que era bruto)
 });
 
 test("alertas: no cubre equilibrio + venta sin coste + producto estrella", () => {

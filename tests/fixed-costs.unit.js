@@ -57,7 +57,9 @@ test("break-even: ingreso de equilibrio = coste fijo / margen de contribución",
   assert.ok(Math.abs(be.ingreso_equilibrio_con_creditos_dia - be.ingreso_equilibrio_dia) < 0.01, "sin créditos, con-créditos = base");
   // margen 75% → ingreso equilibrio = 50 / 0.75 = 66.67
   assert.ok(Math.abs(be.ingreso_equilibrio_dia - 66.67) < 0.1, "ingreso equilibrio ≈ 66.67: " + be.ingreso_equilibrio_dia);
-  assert.strictEqual(be.hoy.cafes, Math.ceil(be.ingreso_equilibrio_dia / 2), "cafés = ingreso / precio café");
+  // El ingreso de equilibrio es NETO; el café (cafe_medio=2) es BRUTO → se netea al
+  // IVA de venta (0,10) antes de dividir, misma base (E6).
+  assert.strictEqual(be.hoy.cafes, Math.ceil(be.ingreso_equilibrio_dia / (2 / 1.10)), "cafés = ingreso neto / precio café NETO");
 });
 
 test("margen de seguridad: negativo cuando las ventas no cubren lo fijo", () => {

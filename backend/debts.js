@@ -85,7 +85,10 @@ function interesMensual(d, now = Date.now()) {
   if (!activa(d)) return 0;
   const pend = Number(d.outstanding_amount) || 0;
   const tasa = tipoAnual(d);
-  if (tasa != null && pend > 0) return eur((pend * tasa) / 12);
+  // Un tipo > 0 declarado manda. Pero un 0% "del banco" cuyo cuadro paga MÁS que el
+  // principal es incoherente (ese exceso ES interés): con tasa 0 (o ausente) se deriva
+  // del propio calendario (intereses totales ÷ cuotas), no se toma el 0% al pie (E·interés).
+  if (tasa != null && tasa > 0 && pend > 0) return eur((pend * tasa) / 12);
   const n = cuotasRestantes(d, now);
   const tot = interesesEstimados(d, now);
   if (n && n > 0 && tot > 0) return eur(tot / n);

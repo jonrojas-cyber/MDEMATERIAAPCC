@@ -138,6 +138,18 @@ function patrimonioNeto(now = Date.now()) {
   };
 }
 
+// Coste de PERSONAL de fuente ÚNICA (anti doble-conteo · L8). Si hay staff_finance
+// (nóminas), MANDA: los costes fijos de categoría "Personal" NO se suman encima (sería
+// contar el personal dos veces, +57 k€/año en el peor caso). Si no hay staff, el personal
+// son esos fijos (como hasta ahora). Así fixed_costs(Personal) y staff_finance nunca
+// aportan a la vez. Devuelve también "otros" (fijos no-personal) para no recalcularlos.
+function costeLaboralEnRango(r, now = Date.now()) {
+  const seg = fixedCosts.costeEnRangoSegmentado(r, now);
+  const hayStaff = (store.readAll("staff_finance") || []).some((s) => s && s.activo !== false);
+  const personal = hayStaff ? eur(staff.costeEnRango(r)) : eur(seg.personal);
+  return { personal, otros: eur(seg.otros), fuente: hayStaff ? "staff_finance" : "fixed_costs" };
+}
+
 // ── BENEFICIO REAL ──────────────────────────────────────────────────────────
 function beneficio(r, now = Date.now()) {
   const materias = store.readAll("materias");
@@ -146,12 +158,12 @@ function beneficio(r, now = Date.now()) {
   const ventas = eur(ventasEnRango(r));            // BRUTO (con IVA) → titular, cuadra con Ágora/TPV
   const ventasNetas = eur(ventasNetasEnRango(r));  // SIN IVA → base real del P&L
   const costeMateria = eur(costeMateriaVendidaEnRango(r, idxMat, idxProd)); // coste NETO (sin IVA)
-  // Segmentación única: personal (categoría "Personal") vs otros fijos. El personal
-  // deja de estar enterrado dentro de "gastos_fijos" y el ratio laboral deja de ser 0.
-  const seg = fixedCosts.costeEnRangoSegmentado(r, now);
-  const laboral = eur(seg.personal + staff.costeEnRango(r));
+  // Personal de FUENTE ÚNICA (anti doble-conteo · L8) y otros fijos. El personal deja
+  // de estar enterrado dentro de "gastos_fijos" y el ratio laboral deja de ser 0.
+  const lab = costeLaboralEnRango(r, now);
+  const laboral = lab.personal;
   const variables = eur(variablesEnRango(r) + mermaEnRango(r));
-  const fijos = eur(seg.otros);
+  const fijos = lab.otros;
   // El beneficio se calcula sobre ventas NETAS (el IVA repercutido no es ingreso) y
   // coste neto: así deja de estar inflado y el food cost cuadra con el de la carta.
   const base = ventasNetas;
@@ -197,15 +209,18 @@ function beneficio(r, now = Date.now()) {
 // Coste medio diario de operar (para el runway): fijos + laboral + media diaria
 // de materia consumida (últimos 30 días, con fallback a compras).
 function costeMedioDiario(now = Date.now()) {
-  const fijoDiario = fixedCosts.totales(now).diario;
-  const laboralDiario = staff.costeDiarioTotal();
+  // Personal de fuente ÚNICA (anti doble-conteo · L8): antes se sumaba el personal de
+  // fixed_costs (dentro de totales) Y el de staff_finance → doble conteo si ambos existen.
+  const seg = fixedCosts.totalesSegmentado(now);
+  const hayStaff = (store.readAll("staff_finance") || []).some((s) => s && s.activo !== false);
+  const personalDiario = hayStaff ? staff.costeDiarioTotal() : seg.personal.diario;
   const r30 = { desde: now - 30 * 86400000, hasta: now };
   const materias = store.readAll("materias");
   const idxMat = costing.indiceMaterias(materias);
   const idxProd = indicesProducto();
   let materiaDiaria = costeMateriaVendidaEnRango(r30, idxMat, idxProd) / 30;
   if (!(materiaDiaria > 0)) materiaDiaria = comprasEnRango(r30) / 30;
-  return eur(fijoDiario + laboralDiario + materiaDiaria);
+  return eur(seg.otros.diario + personalDiario + materiaDiaria);
 }
 
 // ── EXTRAS FINANCIEROS DEL SNAPSHOT EJECUTIVO ───────────────────────────────
@@ -214,12 +229,15 @@ function costeMedioDiario(now = Date.now()) {
 // amortización es 0 hasta que los activos amorticen en la cuenta de resultados).
 function extrasFinancieros(now = Date.now()) {
   const seg = fixedCosts.totalesSegmentado(now);
-  const laboralDiario = seg.personal.diario + staff.costeDiarioTotal();
+  // Personal de fuente ÚNICA (anti doble-conteo · L8): staff_finance manda si existe;
+  // si no, el personal son los fixed_costs 'Personal'. Nunca se suman los dos.
+  const hayStaff = (store.readAll("staff_finance") || []).some((s) => s && s.activo !== false);
+  const laboralDiario = hayStaff ? staff.costeDiarioTotal() : seg.personal.diario;
   const MES = 365 / 12;
   const benMes = beneficio(periods.rango("mes", now), now);
   return {
     // Burn mensual = todo lo que sale sí o sí (personal + otros fijos), SIN materia.
-    monthly_burn: eur((seg.total.diario + staff.costeDiarioTotal()) * MES),
+    monthly_burn: eur((seg.otros.diario + laboralDiario) * MES),
     expected_payroll: eur(laboralDiario * MES),      // nómina esperada (ya separada de los fijos)
     expected_fixed_costs: seg.otros.mensual,         // otros fijos, SIN personal
     beneficio_mes: benMes.beneficio_operativo,
@@ -230,5 +248,5 @@ function extrasFinancieros(now = Date.now()) {
 
 module.exports = {
   ventasEnRango, ventasNetasEnRango, netoDeVenta, ticketsEnRango, costeMateriaVendidaEnRango, mermaEnRango, comprasEnRango, variablesEnRango,
-  costeDeAbrir, patrimonioNeto, beneficio, costeMedioDiario, extrasFinancieros, indicesProducto, impuestoBeneficioPct, eur,
+  costeDeAbrir, patrimonioNeto, beneficio, costeLaboralEnRango, costeMedioDiario, extrasFinancieros, indicesProducto, impuestoBeneficioPct, eur,
 };

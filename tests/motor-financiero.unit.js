@@ -20,6 +20,16 @@ test("fijo 12,10 'con_iva' 21% deducible → 10 neto; 'sin_iva' → 12,10", () =
   assert.strictEqual(fixedCosts.importeNeto({ amount: 12.10, vat: 0.21, base: "con_iva", iva_deducible: false }), 12.10, "IVA no deducible = coste real");
 });
 
+test("E7 · importeNeto normaliza el IVA en % entero (21 → 0,21), no divide por 22", () => {
+  // El formulario y las semillas guardan vat como PORCENTAJE entero (21/10).
+  assert.strictEqual(fixedCosts.importeNeto({ amount: 665.50, vat: 21, base: "con_iva", iva_deducible: true }), 550, "665,50/1,21 = 550 (no /22 = 30,25)");
+  assert.strictEqual(fixedCosts.importeNeto({ amount: 12.10, vat: 21, base: "con_iva", iva_deducible: true }), 10);
+  // importeNeto no redondea (eso es aguas abajo); el 10% deja arrastre de coma flotante.
+  assert.ok(Math.abs(fixedCosts.importeNeto({ amount: 110, vat: 10, base: "con_iva", iva_deducible: true }) - 100) < 0.001, "110/1,10 ≈ 100 (IVA 10%)");
+  // Compatibilidad: una fracción ya dada (0,21) se respeta.
+  assert.strictEqual(fixedCosts.importeNeto({ amount: 12.10, vat: 0.21, base: "con_iva", iva_deducible: true }), 10);
+});
+
 // ── margen por producto en base neta (dinero.3/4/5) ──────────────────────────
 const costing = require("../backend/costing");
 test("margen por producto: coste y margen € en NETO, ratios invariantes", () => {

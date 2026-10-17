@@ -41,11 +41,33 @@ test("agrega ventas del rango y excluye lo de fuera", () => {
 test("cruza el escandallo REAL: beneficio y margen solo donde hay coste", () => {
   const d = D.computar(base);
   const esp = d.ventas.por_producto.find((p) => p.producto === "Espresso");
-  assert.strictEqual(esp.coste, 3);             // 0,30 × 10
-  assert.strictEqual(esp.beneficio, 15);        // 18 − 3
+  assert.strictEqual(esp.coste, 3);             // 0,30 × 10 (coste neto)
+  // Beneficio sobre venta NETA (E5): sin importe_neto en la venta, neto = 18/1,10 = 16,36.
+  assert.strictEqual(esp.beneficio, 13.36);     // 16,36 neto − 3
   const agua = d.ventas.por_producto.find((p) => p.producto === "Agua");
   assert.strictEqual(agua.coste, null);         // sin coste → no inventa
   assert.strictEqual(agua.margen_pct, null);
+});
+
+test("E5 · margen neto/neto con IVA mixto (coste neto contra venta NETA, no bruta)", () => {
+  // Fixture IVA mixto (doc 03): importe=BRUTO, importe_neto=NETO (Base de Ágora).
+  const productosMix = [
+    { id: "p-cafe", nombre: "Café", categoria: "Cafes", precio_venta: 2.2, coste_materia: 0.44, activo: true },
+    { id: "p-sand", nombre: "Sándwich", categoria: "comida", precio_venta: 6.6, coste_materia: 2.0, activo: true },
+    { id: "p-bolsa", nombre: "Bolsa 250g", categoria: "retail", precio_venta: 12.1, coste_materia: 5.0, activo: true },
+  ];
+  const ventasMix = [
+    { id: "a", producto_id: "p-cafe", producto: "Café", cantidad: 5000, importe: 11000, importe_neto: 10000, fecha: "2026-09-10T09:00:00Z", fuente: "agora", doc_clave: "T1" },
+    { id: "b", producto_id: "p-sand", producto: "Sándwich", cantidad: 1000, importe: 6600, importe_neto: 6000, fecha: "2026-09-10T09:00:00Z", fuente: "agora", doc_clave: "T2" },
+    { id: "c", producto_id: "p-bolsa", producto: "Bolsa 250g", cantidad: 200, importe: 2420, importe_neto: 2000, iva: 0.21, fecha: "2026-09-10T09:00:00Z", fuente: "agora", doc_clave: "T3" },
+  ];
+  const d = D.computar({ ...base, productos: productosMix, ventas: ventasMix });
+  assert.strictEqual(d.ventas.total, 20020);     // titular BRUTO intacto
+  // Margen agregado NETO/NETO: (18.000 − 5.200)/18.000 = 71% (el bug bruto daba 74%).
+  assert.strictEqual(d.ventas.margen_eur, 12800); // 18.000 neto − 5.200 coste (el bug daba 14.820)
+  assert.strictEqual(d.ventas.margen_pct, 71);
+  const bolsa = d.ventas.por_producto.find((p) => /bolsa/i.test(p.producto));
+  assert.strictEqual(bolsa.margen_pct, 50);       // 2.000 neto − 1.000 (el bug bruto daba 59%)
 });
 
 test("carta_escandallo lista todos los activos y marca los sin coste", () => {

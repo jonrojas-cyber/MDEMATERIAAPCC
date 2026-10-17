@@ -103,14 +103,20 @@ function puntoEquilibrio(now = Date.now(), opts = {}) {
   const ingresoDiaConCreditos = ratio ? fijoDiaConCreditos / ratio : null;
   const ingresoDiaAbiertoConCreditos = ingresoDiaConCreditos != null && diasAbiertosMes > 0 ? (ingresoDiaConCreditos * MES) / diasAbiertosMes : null;
 
+  // El ingreso de equilibrio es NETO; ticket_medio/cafe_medio son PVP (BRUTO, con IVA).
+  // Se netean a la MISMA base antes de dividir (E6): dividir un neto por un bruto
+  // subestimaba los clientes/cafés necesarios ~10%. IVA de venta: fuente única (iva.js).
+  const ivaVenta = require("./iva").IVA_VENTA;
+  const ticketNeto = ticket != null ? ticket / (1 + ivaVenta) : null;
+  const cafeNeto = cafe != null ? cafe / (1 + ivaVenta) : null;
   const escala = (dias) => {
     if (ingresoDia == null) return { disponible: false };
     const ingreso = ingresoDia * dias;
     return {
       disponible: true,
       ingreso_necesario: eur(ingreso),
-      clientes: ticket ? Math.ceil(ingreso / ticket) : null,
-      cafes: cafe ? Math.ceil(ingreso / cafe) : null,
+      clientes: ticketNeto ? Math.ceil(ingreso / ticketNeto) : null,
+      cafes: cafeNeto ? Math.ceil(ingreso / cafeNeto) : null,
     };
   };
 

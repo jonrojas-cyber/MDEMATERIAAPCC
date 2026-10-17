@@ -40,7 +40,12 @@ function diasDe(fc) {
 function importeNeto(fc) {
   const amount = Number(fc.amount) || 0;
   const base = fc.base || fc.iva_base; // "con_iva" | "sin_iva" | undefined
-  const vat = Number(fc.vat) || 0;
+  // El IVA se guarda como PORCENTAJE entero (21, 10) desde el formulario y las semillas.
+  // Normalizar a fracción antes de netear (E7): con vat=21 la fórmula daba amount/22
+  // en vez de amount/1,21 (coste infravalorado ~95%). Se respeta una fracción ya dada
+  // (0,21) para compatibilidad hacia atrás.
+  const vatRaw = Number(fc.vat) || 0;
+  const vat = vatRaw > 1 ? vatRaw / 100 : vatRaw;
   if (base === "con_iva" && vat > 0 && fc.iva_deducible !== false) {
     return amount / (1 + vat);
   }

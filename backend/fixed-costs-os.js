@@ -30,7 +30,7 @@ function sistemaOperativo(now = Date.now(), localId = "principal") {
   const equilibrio = breakEven.puntoEquilibrio(now, { perfil, contribucion: contrib });
 
   const forecast = costAnalytics.forecast(now, perfil.inflacion_anual_pct, localId);
-  const analitica = costAnalytics.alertas(now);
+  const analitica = costAnalytics.alertas(now, localId);
   const evolucion = costAnalytics.evolucion(now, localId);
 
   // Titular ejecutivo: las cifras que el dueño quiere ver en 5 segundos.

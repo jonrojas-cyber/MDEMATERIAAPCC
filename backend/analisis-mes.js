@@ -11,6 +11,7 @@
 // Resultados (fuente única del dinero).
 
 const store = require("./data-store");
+const financials = require("./financials"); // fuente única del neto de una venta (netoDeVenta)
 
 const WD = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const ORDEN_WD = [1, 2, 3, 4, 5, 6, 0]; // lunes→domingo
@@ -133,13 +134,17 @@ function agregarDesdeVentas(mes, opts) {
   const diasMap = {}; const famMap = {}; const tk = new Set();
   ventas.forEach((v) => {
     const fecha = String(v.fecha).slice(0, 10);
-    const cant = Number(v.cantidad) || 0, imp = Number(v.importe) || 0;
+    const cant = Number(v.cantidad) || 0;
+    const imp = Number(v.importe) || 0;      // BRUTO (con IVA) → titular, cuadra con Ágora
+    const net = financials.netoDeVenta(v);   // NETO real (importe_neto = Base de Ágora) → base del P&L
+    // Doble IVA corregido (ERROR 1 · dinero.8): el neto es la Base (no v.importe), y el total es el
+    // bruto TAL CUAL (no bruto×1,10). Idéntico contrato que la vía CSV (col E=Base/neto, col F=Total/bruto).
     const d = (diasMap[fecha] = diasMap[fecha] || { fecha, uds: 0, neto: 0, total: 0 });
-    d.uds += cant; d.neto += imp; d.total += imp * (1 + IVA_HOSTELERIA);
+    d.uds += cant; d.neto += net; d.total += imp;
     const p = byId[v.producto_id];
     const familia = (p && p.categoria) || "Otros";
     const f = (famMap[familia] = famMap[familia] || { familia, uds: 0, neto: 0 });
-    f.uds += cant; f.neto += imp;
+    f.uds += cant; f.neto += net;
     if (v.doc_clave) tk.add(v.doc_clave);
   });
   return componer(mes, Object.values(diasMap), tk.size, famMap, "conector");

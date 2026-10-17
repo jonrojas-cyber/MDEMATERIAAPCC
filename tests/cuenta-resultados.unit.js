@@ -64,12 +64,13 @@ test("un cierre mensual guardado en config manda sobre las ventas de la app", ()
   if (prev) store.update("config", id, { valor: 7777 }); else store.insert("config", { id, valor: 7777 });
   try {
     const r = CR.calcular({ now });
-    // La cifra de Ágora/cierre viene en BRUTO; el P&L muestra ingresos en NETO (÷1,10).
-    assert.strictEqual(r.cuenta.ingresos, 7070, "usa el cierre guardado, en neto (7777/1,10)");
+    // El cierre `ventas_mes_*` se guarda en NETO (Base de Ágora) y se usa TAL CUAL,
+    // sin re-netear (E2): antes se dividía por 1,10 y con IVA mixto inflaba el resultado.
+    assert.strictEqual(r.cuenta.ingresos, 7777, "usa el cierre guardado, en NETO directo");
     assert.strictEqual(r.cuenta.ventas_origen, "cierre_guardado");
-    // El parámetro explícito gana incluso sobre el guardado.
+    // El parámetro explícito gana incluso sobre el guardado (también NETO).
     const r2 = CR.calcular({ now, ventas: 5000 });
-    assert.strictEqual(r2.cuenta.ingresos, 4545.45, "5000 bruto → 4545,45 neto");
+    assert.strictEqual(r2.cuenta.ingresos, 5000, "override NETO directo (no se divide)");
     assert.strictEqual(r2.cuenta.ventas_origen, "manual_agora");
   } finally {
     if (prev) store.update("config", id, { valor: prev.valor }); else store.remove("config", id);
@@ -89,14 +90,14 @@ test("food cost manual fija el coste de materia = ventas × food cost", () => {
     const r = CR.calcular({ now });
     assert.strictEqual(r.cuenta.food_cost_pct, 26, "usa el food cost manual");
     assert.strictEqual(r.cuenta.food_cost_origen, "manual");
-    // 10.000 bruto → 9.090,91 neto; coste = neto × 26%.
-    assert.strictEqual(r.cuenta.ingresos, 9090.91, "ingresos en neto (10.000/1,10)");
-    assert.strictEqual(r.cuenta.coste_materia, 2363.64, "9.090,91 × 26%");
-    assert.strictEqual(r.cuenta.margen_bruto, 6727.27);
+    // El cierre 10.000 es NETO directo; coste = neto × 26% (E2: sin re-netear).
+    assert.strictEqual(r.cuenta.ingresos, 10000, "ingresos = cierre neto tal cual");
+    assert.strictEqual(r.cuenta.coste_materia, 2600, "10.000 × 26%");
+    assert.strictEqual(r.cuenta.margen_bruto, 7400);
     // El parámetro puntual gana sobre el manual guardado.
     const r2 = CR.calcular({ now, foodCost: 30 });
     assert.strictEqual(r2.cuenta.food_cost_pct, 30);
-    assert.strictEqual(r2.cuenta.coste_materia, 2727.27, "9.090,91 × 30%");
+    assert.strictEqual(r2.cuenta.coste_materia, 3000, "10.000 × 30%");
   } finally {
     if (prevV) store.update("config", idV, { valor: prevV.valor }); else store.remove("config", idV);
     if (prevF) store.update("config", "food_cost_manual_pct", { valor: prevF.valor }); else store.remove("config", "food_cost_manual_pct");
@@ -113,6 +114,13 @@ test("rangoMes construye bien un mes dado y el mes en curso", () => {
   const p = CR.rangoMes("2026-06", new Date("2026-09-20").getTime());
   assert.strictEqual(p.enCurso, false);
   assert.strictEqual(p.diasMes, 30);
+});
+
+test("E3 · calcular({mes}) usa el MES pedido, no el del sistema", () => {
+  const now = new Date("2026-10-17T10:00:00").getTime();
+  const r = CR.calcular({ mes: "2026-09", now });
+  assert.strictEqual(r.mes, "2026-09", "el P&L es del mes seleccionado (no octubre)");
+  assert.strictEqual(r.en_curso, false, "septiembre está cerrado en octubre");
 });
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en cuenta-resultados`); process.exit(1); }

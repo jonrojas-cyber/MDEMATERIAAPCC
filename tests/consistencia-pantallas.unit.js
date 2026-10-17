@@ -97,5 +97,28 @@ test("Cuenta de resultados usa la MISMA base neta que el P&L del mes", () => {
   assert.strictEqual(ben.ventas_netas, 50);
 });
 
+test("E4 · la Portada (Dashboard CEO) honra los MISMOS overrides que la Cuenta de Resultados", () => {
+  const dashboard = require("../backend/dashboard-ceo");
+  // Mes EN CURSO (now fijo = 20 oct 2026) con escandallos incompletos (coste crudo bajo)
+  // y un food cost MANUAL del 26%: antes la portada calculaba el EBITDA/food cost en crudo
+  // (ignoraba el override) y divergía de la cuenta de resultados. Ahora deriva de ella.
+  const nowX = Date.parse("2026-10-20T12:00:00Z");
+  montar({
+    ventas: [
+      { id: "v1", producto: "Café", producto_id: "p-cafe", cantidad: 10, importe: 110, importe_neto: 100, fecha: "2026-10-05T09:00:00Z", doc_clave: "Invoice:T:1", fuente: "agora" },
+      { id: "v2", producto: "Tosta", producto_id: "p-tosta", cantidad: 5, importe: 55, importe_neto: 50, fecha: "2026-10-06T10:00:00Z", doc_clave: "Invoice:T:2", fuente: "agora" },
+    ],
+    productos: [{ id: "p-cafe", nombre: "Café", coste_materia: 0.4 }, { id: "p-tosta", nombre: "Tosta", coste_materia: 1.0 }],
+    config: [{ id: "food_cost_manual_pct", valor: 26 }],
+  });
+  const cr = CR.calcular({ now: nowX });
+  const dc = dashboard.calcular({ now: nowX });
+  assert.strictEqual(cr.cuenta.food_cost_pct, 26, "la cuenta usa el food cost manual (override)");
+  assert.strictEqual(dc.mes.food_cost_pct, cr.cuenta.food_cost_pct, "la portada muestra el MISMO food cost (26), no el crudo");
+  assert.strictEqual(dc.mes.ingresos_netos, cr.cuenta.ingresos, "mismos ingresos netos");
+  assert.strictEqual(dc.mes.ebitda_pct, cr.cuenta.margen_ebitda_pct, "mismo margen EBITDA");
+  assert.strictEqual(dc.mes.resultado_operativo, cr.cuenta.ebitda, "mismo EBITDA (mes a fecha)");
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s)`); process.exit(1); }
 console.log("  todo en verde");

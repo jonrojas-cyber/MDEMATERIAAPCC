@@ -4,6 +4,7 @@
 
 const store = require("./data-store");
 const costing = require("./costing");
+const financials = require("./financials"); // fuente única del neto de una venta (netoDeVenta)
 
 const DAY = 86400000;
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
@@ -110,13 +111,14 @@ function productoProblema(dias) {
     const p = prodById[v.producto_id] || prodByName[String(v.producto || "").toLowerCase()];
     const key = v.producto || v.producto_id || "?";
     const cant = Number(v.cantidad) || 0;
-    const importe = Number(v.importe) || 0;
-    const coste = p ? costing.costeProducto(p, idxMat) * cant : 0;
-    if (!acc[key]) acc[key] = { nombre: key, unidades: 0, importe: 0, coste: 0 };
-    acc[key].unidades += cant; acc[key].importe += importe; acc[key].coste += coste;
+    const importe = Number(v.importe) || 0;   // BRUTO (titular, ranking por venta)
+    const neto = financials.netoDeVenta(v);   // NETO → base del margen (E5 · dinero.8)
+    const coste = p ? costing.costeProducto(p, idxMat) * cant : 0; // coste neto
+    if (!acc[key]) acc[key] = { nombre: key, unidades: 0, importe: 0, neto: 0, coste: 0 };
+    acc[key].unidades += cant; acc[key].importe += importe; acc[key].neto += neto; acc[key].coste += coste;
   });
-  const arr = Object.values(acc).filter((x) => x.importe > 0 && x.coste > 0)
-    .map((x) => ({ ...x, margen: Math.round((1 - x.coste / x.importe) * 100) }));
+  const arr = Object.values(acc).filter((x) => x.neto > 0 && x.coste > 0)
+    .map((x) => ({ ...x, margen: Math.round((1 - x.coste / x.neto) * 100) }));
   if (!arr.length) return null;
   // Ordena por volumen de venta; coge el más vendido con margen bajo (<50%).
   const porVenta = [...arr].sort((a, b) => b.importe - a.importe);

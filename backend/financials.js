@@ -23,6 +23,17 @@ function indicesProducto() {
   return { byId, byName };
 }
 
+// Tipo de impuesto sobre el beneficio (PROVISIÓN, dinero.1). Config editable
+// `impuesto_beneficio_pct`; por defecto 15% (tipo reducido de sociedad nueva, orientativo).
+// Es una estimación para provisionar el impuesto, NO un cálculo fiscal: el régimen real
+// (IRPF de actividad si es autónoma, o Impuesto de Sociedades si es SL) lo fija la gestoría.
+const IMPUESTO_PCT_DEFECTO = 15;
+function impuestoBeneficioPct() {
+  const c = (store.readAll("config") || []).find((x) => x && x.id === "impuesto_beneficio_pct");
+  const v = c ? Number(c.valor) : NaN;
+  return Number.isFinite(v) && v >= 0 ? v : IMPUESTO_PCT_DEFECTO;
+}
+
 function ventasEnRango(r) {
   return store.readAll("ventas")
     .filter((v) => v.fecha && enRango(v.fecha, r))
@@ -152,13 +163,27 @@ function beneficio(r, now = Date.now()) {
   const interesMes = debtsMod.interesMensualTotal(now);
   const dias = (r.hasta - r.desde) / 86400000;
   const interesesPeriodo = eur(interesMes * (dias / (365 / 12)));
-  const neto = eur(operativo - interesesPeriodo);
+  // Cascada hasta el beneficio NETO real (dinero.1): EBITDA − amortización = EBIT;
+  // EBIT − intereses = BAI; BAI − impuesto = neto. Antes el "neto" era solo
+  // operativo − intereses (sin amortización ni impuesto) y salía sobrevalorado.
+  const amortizacion = assetsMod.amortizacionEnRango(r, now);
+  const resultadoExplotacion = eur(operativo - amortizacion);  // EBIT (resultado de explotación)
+  const bai = eur(resultadoExplotacion - interesesPeriodo);    // beneficio antes de impuestos
+  const impuestoPct = impuestoBeneficioPct();
+  const impuesto = bai > 0 ? eur(bai * impuestoPct / 100) : 0; // provisión solo sobre BAI positivo (sin impuesto sobre pérdidas)
+  const neto = eur(bai - impuesto);                            // beneficio NETO (provisión de impuesto incluida)
   return {
     ventas, ventas_netas: ventasNetas, coste_materia: costeMateria, coste_laboral: laboral,
     gastos_variables: variables, gastos_fijos: fijos,
     beneficio_operativo: operativo,
+    amortizacion,
+    resultado_explotacion: resultadoExplotacion,
     intereses_estimados: interesesPeriodo,
-    beneficio_neto_estimado: neto,
+    bai,
+    impuesto,
+    impuesto_pct: impuestoPct,
+    beneficio_neto: neto,
+    beneficio_neto_estimado: neto, // compat: ahora es el neto REAL (con amortización e impuesto)
     food_cost_pct: pctDe(costeMateria, base),
     coste_laboral_pct: pctDe(laboral, base),
     // Prime cost = materia + personal (la cifra que los hosteleros vigilan; objetivo ~60-65%).
@@ -205,5 +230,5 @@ function extrasFinancieros(now = Date.now()) {
 
 module.exports = {
   ventasEnRango, ventasNetasEnRango, netoDeVenta, ticketsEnRango, costeMateriaVendidaEnRango, mermaEnRango, comprasEnRango, variablesEnRango,
-  costeDeAbrir, patrimonioNeto, beneficio, costeMedioDiario, extrasFinancieros, indicesProducto, eur,
+  costeDeAbrir, patrimonioNeto, beneficio, costeMedioDiario, extrasFinancieros, indicesProducto, impuestoBeneficioPct, eur,
 };

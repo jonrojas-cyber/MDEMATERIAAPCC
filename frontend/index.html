@@ -10376,7 +10376,9 @@ async function crCargar(){
 }
 function crFilaPL(c){
   const fc = c.food_cost_pct!=null?` (${c.food_cost_pct}%)`:"";
-  const linea=(lbl,val,neg,strong)=>`<tr${strong?' style="font-weight:800;border-top:1px solid var(--line,#3a3a2e);"':''}><td>${esc(lbl)}</td><td class="q" style="text-align:right;${neg?'color:var(--alert,#b23b3b);':''}${strong&&(val>=0)?'color:var(--ok,#3c7a4a);':''}">${c.coste_materia==null&&/materia|margen|ebitda|resultado/i.test(lbl)&&val==null?'pend.':((neg?'−':'')+adEur(Math.abs(val==null?0:val)))}</td></tr>`;
+  const pend = c.coste_materia==null;
+  const linea=(lbl,val,neg,strong)=>`<tr${strong?' style="font-weight:800;border-top:1px solid var(--line,#3a3a2e);"':''}><td>${esc(lbl)}</td><td class="q" style="text-align:right;${neg?'color:var(--alert,#b23b3b);':''}${strong&&(val>=0)?'color:var(--ok,#3c7a4a);':''}">${pend&&/materia|margen|ebitda|resultado|beneficio|explotaci|bai|impuesto|amortiz|inter/i.test(lbl)&&val==null?'pend.':((neg?'−':'')+adEur(Math.abs(val==null?0:val)))}</td></tr>`;
+  const impPct = c.impuesto_pct!=null?` (prov. ${c.impuesto_pct}%)`:"";
   return `<table class="lim-tab"><tbody>
     ${linea("Ingresos (ventas netas)",c.ingresos,false,false)}
     ${linea("− Coste de materia"+fc, c.coste_materia, true, false)}
@@ -10385,8 +10387,14 @@ function crFilaPL(c){
     ${linea("− Otros gastos fijos", c.otros_fijos, true, false)}
     ${(c.variables>0)?linea("− Variables / mermas", c.variables, true, false):""}
     ${linea("= EBITDA"+(c.margen_ebitda_pct!=null?` (${c.margen_ebitda_pct}%)`:""), c.ebitda, false, true)}
-    ${linea("− Cuota de préstamos", c.cuota_creditos, true, false)}
-    ${linea("= RESULTADO (caja)", c.resultado_caja, false, true)}
+    ${(c.amortizacion>0)?linea("− Amortización", c.amortizacion, true, false):""}
+    ${linea("= Resultado de explotación (EBIT)", c.resultado_explotacion, false, false)}
+    ${(c.intereses>0)?linea("− Intereses (financiación)", c.intereses, true, false):""}
+    ${linea("= Beneficio antes de impuestos", c.bai, false, false)}
+    ${linea("− Impuesto"+impPct, c.impuesto, true, false)}
+    ${linea("= Beneficio neto"+(c.margen_neto_pct!=null?` (${c.margen_neto_pct}%)`:""), c.beneficio_neto, false, true)}
+    ${linea("− Cuota de préstamos (caja)", c.cuota_creditos, true, false)}
+    ${linea("= Resultado de caja", c.resultado_caja, false, false)}
   </tbody></table>`;
 }
 function crRender(r){
@@ -10427,7 +10435,7 @@ function crRender(r){
     ${r.equilibrio_mes!=null?`<div class="ad-note" style="margin-top:8px;">Punto de equilibrio del mes (con tu food cost real): <b>${adEur(r.equilibrio_mes)}</b> de venta para no perder.</div>`:""}
     ${r.proyeccion?`
       <div class="section-label" style="margin-top:16px;">Proyección a mes completo (lineal)</div>
-      ${crFilaPL({...r.proyeccion, food_cost_pct:c.food_cost_pct, margen_ebitda_pct:(r.proyeccion.ebitda!=null&&r.proyeccion.ingresos>0?Math.round(r.proyeccion.ebitda/r.proyeccion.ingresos*100):null), ventas_origen:c.ventas_origen})}
+      ${crFilaPL({...r.proyeccion, food_cost_pct:c.food_cost_pct, impuesto_pct:c.impuesto_pct, margen_ebitda_pct:(r.proyeccion.ebitda!=null&&r.proyeccion.ingresos>0?Math.round(r.proyeccion.ebitda/r.proyeccion.ingresos*100):null), margen_neto_pct:(r.proyeccion.beneficio_neto!=null&&r.proyeccion.ingresos>0?Math.round(r.proyeccion.beneficio_neto/r.proyeccion.ingresos*100):null), ventas_origen:c.ventas_origen})}
       <div class="ad-foot">Proyección lineal: escala la venta de los ${r.dias_transcurridos} días a los ${r.dias_mes} del mes. Es orientativa.</div>`:""}
     <div class="ad-foot">Fuente única del dinero: ventas (Ágora) × escandallos + gastos fijos + créditos. El coste de materia usa tus escandallos cargados.</div>
   `);

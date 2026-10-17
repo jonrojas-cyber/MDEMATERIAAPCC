@@ -34,12 +34,21 @@ function componer(d) {
   const {
     etiqueta, diasMes, diasTranscurridos, enCurso,
     ventas, coste_materia, personal, otros_fijos, variables,
-    cuota_creditos, food_cost_pct, ventas_origen = "produccion", food_cost_origen = "calculado",
+    cuota_creditos, amortizacion = 0, intereses = 0, impuesto_pct = 0,
+    food_cost_pct, ventas_origen = "produccion", food_cost_origen = "calculado",
   } = d;
 
   const tieneMateria = coste_materia != null;
   const margen_bruto = tieneMateria ? eur(ventas - coste_materia) : null;
   const ebitda = tieneMateria ? eur(margen_bruto - personal - otros_fijos - variables) : null;
+  // Cascada contable hasta el beneficio NETO (dinero.1): EBITDA − amortización = EBIT;
+  // EBIT − intereses = BAI; BAI − impuesto (provisión sobre BAI>0) = beneficio neto.
+  // El resultado de CAJA (EBITDA − cuota ENTERA del préstamo) se conserva como criterio
+  // de caja aparte: no confunde beneficio (devengo) con liquidez (caja).
+  const resultado_explotacion = ebitda != null ? eur(ebitda - amortizacion) : null;   // EBIT
+  const bai = resultado_explotacion != null ? eur(resultado_explotacion - intereses) : null;
+  const impuesto = bai != null ? (bai > 0 ? eur(bai * impuesto_pct / 100) : 0) : null;
+  const beneficio_neto = bai != null ? eur(bai - impuesto) : null;
   const resultado_caja = ebitda != null ? eur(ebitda - cuota_creditos) : null;
 
   const cuenta = {
@@ -53,6 +62,14 @@ function componer(d) {
     variables: eur(variables),
     ebitda,
     margen_ebitda_pct: ebitda != null && ventas > 0 ? pct1(ebitda / ventas) : null,
+    amortizacion: eur(amortizacion),
+    resultado_explotacion,
+    intereses: eur(intereses),
+    bai,
+    impuesto,
+    impuesto_pct,
+    beneficio_neto,
+    margen_neto_pct: beneficio_neto != null && ventas > 0 ? pct1(beneficio_neto / ventas) : null,
     cuota_creditos: eur(cuota_creditos),
     resultado_caja,
     ventas_origen,
@@ -77,6 +94,13 @@ function componer(d) {
     const creditoMes = cuota_creditos * (diasMes / diasTranscurridos);
     const mbP = materiaP != null ? ventasP - materiaP : null;
     const ebitdaP = mbP != null ? mbP - personalMes - otrosMes - variablesP : null;
+    // Amortización e intereses a mes completo (son ~fijos mensuales, como personal/otros).
+    const amortMes = amortizacion * (diasMes / diasTranscurridos);
+    const interesMesP = intereses * (diasMes / diasTranscurridos);
+    const reP = ebitdaP != null ? ebitdaP - amortMes : null;              // EBIT proyectado
+    const baiP = reP != null ? reP - interesMesP : null;
+    const impuestoP = baiP != null ? (baiP > 0 ? baiP * impuesto_pct / 100 : 0) : null;
+    const netoP = baiP != null ? baiP - impuestoP : null;
     const fiable = diasTranscurridos >= MIN_DIAS_PROYECCION;
     const bandaPct = Math.round((100 / Math.sqrt(diasTranscurridos)) * 10) / 10; // ± orientativo
     proyeccion = {
@@ -85,6 +109,12 @@ function componer(d) {
       margen_bruto: mbP != null ? eur(mbP) : null,
       personal: eur(personalMes), otros_fijos: eur(otrosMes), variables: eur(variablesP),
       ebitda: ebitdaP != null ? eur(ebitdaP) : null,
+      amortizacion: eur(amortMes),
+      resultado_explotacion: reP != null ? eur(reP) : null,
+      intereses: eur(interesMesP),
+      bai: baiP != null ? eur(baiP) : null,
+      impuesto: impuestoP != null ? eur(impuestoP) : null,
+      beneficio_neto: netoP != null ? eur(netoP) : null,
       cuota_creditos: eur(creditoMes),
       resultado_caja: ebitdaP != null ? eur(ebitdaP - creditoMes) : null,
       // Fiabilidad de la proyección (motor-fechas.6):
@@ -173,11 +203,18 @@ function calcular(opts = {}) {
   const variables = financials.variablesEnRango(rango) + financials.mermaEnRango(rango);
   const cuotaMes = require("./debts").resumen(now).cuota_mensual_total || 0;
   const cuota_creditos = cuotaMes * (dias / MES);
+  // Coste financiero (INTERESES, no la cuota entera) y amortización del periodo, para la
+  // cascada hasta el beneficio neto. Impuesto: provisión al tipo configurado (dinero.1).
+  const interesMes = require("./debts").interesMensualTotal(now);
+  const intereses = interesMes * (dias / MES);
+  const amortizacion = require("./assets").amortizacionEnRango(rango, now);
+  const impuesto_pct = financials.impuestoBeneficioPct();
 
   return componer({
     etiqueta: R.etiqueta, diasMes: R.diasMes, diasTranscurridos: R.diasTranscurridos, enCurso: R.enCurso,
     ventas, coste_materia, personal, otros_fijos: otrosFijos, variables,
-    cuota_creditos, food_cost_pct: foodCost, food_cost_origen, ventas_origen,
+    cuota_creditos, amortizacion, intereses, impuesto_pct,
+    food_cost_pct: foodCost, food_cost_origen, ventas_origen,
   });
 }
 

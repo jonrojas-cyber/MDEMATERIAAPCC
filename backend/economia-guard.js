@@ -16,8 +16,13 @@ const PATRONES = [
   /^margen/i,                       // margen, margen_bruto, margen_euros, margen_medio_carta, margen_pct, margen_objetivo, margen_operativo_pct...
   /^food_cost/i,                    // food_cost, food_cost_pct, food_cost_medio, food_cost_objetivo
   /^valor_stock/i,                  // valor_stock_total, valor_stock_actual
-  /^beneficio/i,                    // beneficio, beneficio_operativo, beneficio_neto_estimado
+  /^beneficio/i,                    // beneficio, beneficio_operativo, beneficio_neto_estimado, beneficio_neto
   /^ebitda/i,
+  /^amortizacion/i,                 // D&A de la cascada del P&L
+  /^intereses/i,                    // coste financiero (no es público para el equipo)
+  /^impuesto/i,                     // provisión del impuesto sobre el beneficio
+  /^bai$/i,                         // beneficio antes de impuestos
+  /^resultado_explotacion/i,        // EBIT
   /^prime_cost/i,
   /^rentabilidad/i,
   /^escenarios$/i,                  // carta: escenarios de PVP por food-cost objetivo (estrategia de precio)

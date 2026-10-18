@@ -79,19 +79,83 @@ router.post("/movimiento", async (req, res) => {
     categoria: String(b.categoria || ""),
     importe, fecha: b.fecha ? String(b.fecha) : new Date().toISOString(),
     estado: b.estado === "hecho" ? "hecho" : "previsto",
+    cuenta_id: b.cuenta_id || null,
     creado_en: new Date().toISOString(),
   };
   store.insert("treasury_movements", mov);
+  // Si nace ya "hecho" contra una cuenta, mueve el saldo real (un pago baja la caja/banco).
+  if (mov.estado === "hecho" && mov.cuenta_id && store.findById("financial_accounts", mov.cuenta_id)) {
+    aplicarAlSaldo(mov, req);
+    store.update("treasury_movements", mov.id, { aplicado_al_saldo: true });
+    mov.aplicado_al_saldo = true;
+  }
   await store.flush();
   res.status(201).json(mov);
 });
 
+// Marcar un movimiento PREVISTO como HECHO contra una cuenta → mueve el saldo (idempotente).
+router.post("/movimiento/:id/hecho", async (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  const mov = store.findById("treasury_movements", req.params.id);
+  if (!mov) return res.status(404).json({ error: "Movimiento no encontrado" });
+  if (mov.aplicado_al_saldo) return res.json(mov); // ya movió el saldo: idempotente
+  const cuentaId = (req.body && req.body.cuenta_id) || mov.cuenta_id;
+  if (!cuentaId || !store.findById("financial_accounts", cuentaId)) return res.status(400).json({ error: "Indica una cuenta válida para mover el saldo." });
+  const upd = store.update("treasury_movements", mov.id, { estado: "hecho", cuenta_id: cuentaId, hecho_en: new Date().toISOString(), aplicado_al_saldo: true });
+  aplicarAlSaldo(upd, req);
+  await store.flush();
+  res.json(store.findById("treasury_movements", mov.id));
+});
+
 router.delete("/movimiento/:id", async (req, res) => {
   if (!soloAdmin(req, res)) return;
-  if (!store.findById("treasury_movements", req.params.id)) return res.status(404).json({ error: "Movimiento no encontrado" });
-  store.remove("treasury_movements", req.params.id);
+  const mov = store.findById("treasury_movements", req.params.id);
+  if (!mov) return res.status(404).json({ error: "Movimiento no encontrado" });
+  // Si ya había movido el saldo, se revierte (borrar un pago hecho devuelve el dinero a la cuenta).
+  if (mov.aplicado_al_saldo && mov.cuenta_id) aplicarAlSaldo({ ...mov, tipo: mov.tipo === "cobro" ? "pago" : "cobro" }, req);
+  store.remove("treasury_movements", mov.id);
   await store.flush();
   res.json({ ok: true });
 });
+
+// Conciliación bancaria: registra el saldo del EXTRACTO y expone el descuadre con el libro.
+// ajustar:true pone el saldo del libro = extracto (para cuadrar), con rastro de auditoría.
+router.post("/cuenta/:id/conciliar", async (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  const cuenta = store.findById("financial_accounts", req.params.id);
+  if (!cuenta) return res.status(404).json({ error: "Cuenta no encontrada" });
+  const b = req.body || {};
+  const saldoExtracto = Number(b.saldo_extracto);
+  if (!Number.isFinite(saldoExtracto)) return res.status(400).json({ error: "Indica el saldo del extracto." });
+  const descuadre = Math.round(((Number(cuenta.balance) || 0) - saldoExtracto) * 100) / 100;
+  const patch = { saldo_extracto: saldoExtracto, conciliado_en: new Date().toISOString() };
+  if (b.ajustar === true) patch.balance = saldoExtracto; // cuadrar el libro con el banco
+  store.update("financial_accounts", cuenta.id, patch);
+  try {
+    require("../auditoria").registrar(req, {
+      accion: "tesoreria_conciliar", entidad: "financial_accounts", entidad_id: cuenta.id,
+      resumen: `Conciliación ${cuenta.name}: extracto ${saldoExtracto} € · descuadre ${descuadre} €${b.ajustar ? " (ajustado al extracto)" : ""}`,
+      meta: { saldo_extracto: saldoExtracto, descuadre, ajustado: !!b.ajustar },
+    });
+  } catch (e) {}
+  await store.flush();
+  res.json({ ...store.findById("financial_accounts", cuenta.id), descuadre: b.ajustar ? 0 : descuadre });
+});
+
+// Aplica un movimiento HECHO al saldo de su cuenta: un cobro lo sube, un pago lo baja.
+// Deja rastro de auditoría (trazabilidad del dinero · A.4).
+function aplicarAlSaldo(mov, req) {
+  const cuenta = store.findById("financial_accounts", mov.cuenta_id);
+  if (!cuenta) return;
+  const delta = (mov.tipo === "cobro" ? 1 : -1) * (Number(mov.importe) || 0);
+  store.update("financial_accounts", cuenta.id, { balance: Math.round(((Number(cuenta.balance) || 0) + delta) * 100) / 100 });
+  try {
+    require("../auditoria").registrar(req, {
+      accion: "tesoreria_saldo", entidad: "financial_accounts", entidad_id: cuenta.id,
+      resumen: `${mov.tipo} ${mov.importe} € en ${cuenta.name} (saldo ${delta >= 0 ? "+" : ""}${delta} €)`,
+      meta: { mov_id: mov.id, delta },
+    });
+  } catch (e) {}
+}
 
 module.exports = router;

@@ -404,17 +404,21 @@ function calcular(opts = {}) {
   const T = base.tesoreria || {};
   const pagos7 = pagos7Dias(now);
   const liquidez = T.liquidez_inmediata != null ? T.liquidez_inmediata : ((T.caja || 0) + (T.banco || 0));
-  const comprometido = eur((T.pagos_pendientes || 0) + (T.iva_pendiente || 0) + (T.irpf_pendiente || 0) + (T.ss_pendiente || 0));
+  // Comprometido/disponible de FUENTE ÚNICA (treasury.compromisosCorto): pagos + impuestos
+  // + cuota de deuda + fijos del mes, sin doble conteo. Antes aquí se restaba SOLO pagos +
+  // impuestos y —peor— disponible = liquidez (no restaba nada · H1/H2).
+  const comprometido = require("./treasury").compromisosCorto(now).comprometido;
+  const registrado = eur((T.pagos_pendientes || 0) + (T.iva_pendiente || 0) + (T.irpf_pendiente || 0) + (T.ss_pendiente || 0));
   const saldoPrevisto7 = eur(liquidez - (pagos7.total || 0));
-  // Sin cuentas ni movimientos: la tesorería está PENDIENTE de conectar, no "en rojo".
-  const sinTesoreria = (T.num_cuentas || 0) === 0 && liquidez === 0 && comprometido === 0 && (T.cobros_pendientes || 0) === 0;
+  // Sin cuentas ni movimientos TECLEADOS: la tesorería está PENDIENTE de conectar, no "en rojo".
+  const sinTesoreria = (T.num_cuentas || 0) === 0 && liquidez === 0 && registrado === 0 && (T.cobros_pendientes || 0) === 0;
   const tesoreria = {
     caja: T.caja != null ? eur(T.caja) : null,
     banco: T.banco != null ? eur(T.banco) : null,
     liquidez: eur(liquidez),
     cobros_pendientes: T.cobros_pendientes != null ? eur(T.cobros_pendientes) : null,
     pagos_7d: pagos7.total, pagos_7d_items: pagos7.items,
-    comprometido, disponible: eur(liquidez),
+    comprometido, disponible: eur(liquidez - comprometido),
     fiscal: { iva: eur(T.iva_pendiente || 0), irpf: eur(T.irpf_pendiente || 0), ss: eur(T.ss_pendiente || 0) },
     dias_supervivencia: T.dias_supervivencia != null ? T.dias_supervivencia : null,
     saldo_previsto_7d: saldoPrevisto7,

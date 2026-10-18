@@ -94,9 +94,10 @@ function sistemaOperativo(now = Date.now(), localId = "principal") {
   const cf = cashflow.resumen(now);
   const vEmpresa = valorEmpresa(now, patr);
 
-  // Comprometido a corto plazo (≈ 1 mes) y disponible.
-  const comprometido = eur(base.pagos_pendientes + base.iva_pendiente + base.irpf_pendiente + base.ss_pendiente + extras.expected_fixed_costs + deuda.cuota_mensual_total);
-  const disponible = eur(base.liquidez_inmediata - comprometido);
+  // Comprometido a corto plazo y disponible: FUENTE ÚNICA (treasury.resumen → compromisosCorto),
+  // con anti doble-conteo de fijos. Antes se recalculaba aquí con otra fórmula (divergía · H1/H2).
+  const comprometido = base.comprometido;
+  const disponible = base.disponible;
 
   const emergency = emergencyMonitor(now, base.liquidez_inmediata);
 
@@ -104,6 +105,7 @@ function sistemaOperativo(now = Date.now(), localId = "principal") {
     caja: base.caja, banco: base.banco,
     liquidez_inmediata: base.liquidez_inmediata,
     disponible, comprometido,
+    conciliacion: base.conciliacion, // descuadre libro vs extracto por cuenta
     cobros_pendientes: base.cobros_pendientes,
     pagos_pendientes: base.pagos_pendientes,
     iva_pendiente: base.iva_pendiente, irpf_pendiente: base.irpf_pendiente, ss_pendiente: base.ss_pendiente,

@@ -773,6 +773,35 @@ test("tesorería OS: el endpoint ensambla todos los bloques", async ({ page }) =
   expect(Array.isArray(os.obligaciones)).toBe(true);
 });
 
+test("tesorería: un movimiento 'hecho' mueve el saldo (idempotente) y la conciliación detecta el descuadre", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const h = { Authorization: `Bearer ${moni.token}` };
+  const cuenta = await (await request.post("/api/treasury/cuenta", { headers: h, data: { name: "Banco test", type: "banco", balance: 1000 } })).json();
+  const saldo = async () => (await (await request.get("/api/treasury", { headers: h })).json()).cuentas.find((c) => c.id === cuenta.id).balance;
+  // Cobro previsto → marcar HECHO contra la cuenta → saldo 1.000 + 250 = 1.250.
+  const cobro = await (await request.post("/api/treasury/movimiento", { headers: h, data: { tipo: "cobro", concepto: "Cobro test", importe: 250 } })).json();
+  const hecho = await (await request.post(`/api/treasury/movimiento/${cobro.id}/hecho`, { headers: h, data: { cuenta_id: cuenta.id } })).json();
+  expect(hecho.estado).toBe("hecho");
+  expect(await saldo()).toBe(1250);
+  // Idempotente: re-marcar no vuelve a mover el saldo.
+  await request.post(`/api/treasury/movimiento/${cobro.id}/hecho`, { headers: h, data: { cuenta_id: cuenta.id } });
+  expect(await saldo()).toBe(1250);
+  // Pago creado ya "hecho" contra la cuenta → saldo 1.250 − 300 = 950.
+  const pago = await (await request.post("/api/treasury/movimiento", { headers: h, data: { tipo: "pago", concepto: "Pago test", importe: 300, estado: "hecho", cuenta_id: cuenta.id } })).json();
+  expect(await saldo()).toBe(950);
+  // Conciliar contra extracto 900 → descuadre 50 (libro 950 − extracto 900).
+  const conc = await (await request.post(`/api/treasury/cuenta/${cuenta.id}/conciliar`, { headers: h, data: { saldo_extracto: 900 } })).json();
+  expect(conc.descuadre).toBe(50);
+  const resumen = await (await request.get("/api/treasury", { headers: h })).json();
+  expect(resumen.conciliacion.cuentas.find((c) => c.id === cuenta.id).descuadre).toBe(50);
+  // disponible resta los compromisos (no es la liquidez a secas).
+  expect(resumen.disponible).toBeLessThanOrEqual(resumen.liquidez_inmediata);
+  // Limpieza.
+  await request.delete(`/api/treasury/movimiento/${cobro.id}`, { headers: h });
+  await request.delete(`/api/treasury/movimiento/${pago.id}`, { headers: h });
+  await request.delete(`/api/treasury/cuenta/${cuenta.id}`, { headers: h });
+});
+
 test("tesorería OS: la pantalla muestra flujo de caja y valor de empresa", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

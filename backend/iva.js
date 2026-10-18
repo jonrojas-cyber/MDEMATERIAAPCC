@@ -14,9 +14,12 @@ function ivaValido(v) {
   return v != null && v !== "" && Number(v) >= 0 && Number(v) < 1;
 }
 
-// IVA de venta a aplicar: el del dato si es válido, si no el de hostelería.
-function ivaDeVenta(v) {
-  return ivaValido(v) ? Number(v) : IVA_VENTA;
+// IVA de venta a aplicar. DECISIÓN DE LA FUNDADORA (Mónica, 2026-10): el IVA de venta de
+// m de materia es el 10% para TODOS los productos; NO se aplica ningún otro tipo (ni 21%)
+// en el lado de ventas. Por eso devuelve SIEMPRE IVA_VENTA e ignora cualquier tipo por
+// línea/producto. Si algún día hubiera varios tipos de venta, este es el ÚNICO punto a tocar.
+function ivaDeVenta(_v) {
+  return IVA_VENTA;
 }
 
 // Base imponible (sin IVA) de un importe bruto.

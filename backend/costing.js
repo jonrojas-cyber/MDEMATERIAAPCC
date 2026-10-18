@@ -132,11 +132,11 @@ function costeProducto(producto, idxMat) {
   return costeProductoDetalle(producto, idxMat).coste;
 }
 
-// IVA de venta por defecto en hostelería (España): 10%. Editable por producto.
+// IVA de venta: 10% ÚNICO para TODOS los productos (decisión de la fundadora, Mónica
+// 2026-10). No se usa producto.iva en el lado de ventas; el PVP se netea siempre a 1,10.
 const IVA_DEF = require("./iva").IVA_VENTA; // fuente única (dinero.8)
-function ivaDe(producto) {
-  const v = producto && producto.iva != null ? Number(producto.iva) : IVA_DEF;
-  return v >= 0 && v < 1 ? v : IVA_DEF;
+function ivaDe(_producto) {
+  return IVA_DEF;
 }
 
 // Margen de un producto de carta, en base NETA (sin IVA), igual que el P&L

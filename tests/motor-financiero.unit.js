@@ -40,6 +40,17 @@ test("margen por producto: coste y margen € en NETO, ratios invariantes", () =
   assert.strictEqual(m.food_cost, 0.25, "food cost = 2,5/10 = 25%");
 });
 
+test("IVA de venta 10% ÚNICO (aplicado a TODO): un 0,21 declarado se netea igual al 10%", () => {
+  // costing ignora producto.iva: PVP 11 → neto 11/1,10 = 10 (no 11/1,21 = 9,09).
+  const m = costing.margenProducto({ precio_venta: 11, iva: 0.21, coste_materia: 2.5 }, {});
+  assert.strictEqual(m.precio_neto, 10, "PVP neteado al 10% pese al 0,21 declarado");
+  const financials = require("../backend/financials");
+  // netoDeVenta sin importe_neto: 121 bruto → 110 neto (10%), no 100 (21%).
+  assert.ok(Math.abs(financials.netoDeVenta({ importe: 121, iva: 0.21 }) - 110) < 0.001, "121/1,10 ≈ 110 (no 100)");
+  // Con importe_neto (la Base de Ágora) manda la Base registrada.
+  assert.strictEqual(financials.netoDeVenta({ importe: 121, importe_neto: 109, iva: 0.21 }), 109);
+});
+
 // ── P&L end-to-end (caso del plan) ───────────────────────────────────────────
 const desde = Date.parse("2026-10-10T00:00:00");
 const hasta = desde + 86400000;

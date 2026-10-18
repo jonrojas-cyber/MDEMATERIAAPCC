@@ -47,8 +47,9 @@ const IVA_VENTA_DEF = require("./iva").IVA_VENTA; // fuente única (dinero.8)
 function netoDeVenta(v) {
   if (v.importe_neto != null && v.importe_neto !== "") return Number(v.importe_neto) || 0;
   const bruto = Number(v.importe) || Number(v.total) || 0;
-  const iva = (v.iva != null && v.iva !== "" && Number(v.iva) >= 0 && Number(v.iva) < 1) ? Number(v.iva) : IVA_VENTA_DEF;
-  return bruto / (1 + iva);
+  // IVA de venta ÚNICO al 10% para todo (decisión de la fundadora): no se aplica ningún
+  // tipo por línea. importe_neto (la Base de Ágora) sigue mandando cuando viene.
+  return bruto / (1 + IVA_VENTA_DEF);
 }
 function ventasNetasEnRango(r) {
   return store.readAll("ventas")

@@ -2434,7 +2434,13 @@ async function checkPin() {
       pintarPinDots();
       return;
     }
-    setSession({ key: data.usuario.key, nombre: data.usuario.nombre, rol: data.usuario.rol, token: data.token });
+    let ses = data;
+    if (data.usuario && data.usuario.cambiar_pin) {
+      // PIN publicado, trivial o temporal: no se entra hasta elegir uno nuevo.
+      ses = await pinObligatorio(pin, data.token);
+      if (!ses) { _pinVal = ""; pintarPinDots(); document.getElementById("pin-err").textContent = "Necesitas un PIN nuevo para entrar."; return; }
+    }
+    setSession({ key: ses.usuario.key, nombre: ses.usuario.nombre, rol: ses.usuario.rol, token: ses.token });
     entrarApp();
   } catch (e) {
     document.getElementById("pin-err").textContent = "No se pudo conectar. Inténtalo de nuevo.";
@@ -2464,6 +2470,28 @@ function setTab(name) {
 }
 function irDominio(name, fn) { setTab(name); try { fn(); } catch (e) {} }
 
+// Cambio OBLIGATORIO al entrar (PIN publicado/trivial/temporal). Devuelve la
+// sesión nueva { token, usuario } o null si la persona cancela.
+async function pinObligatorio(actual, token) {
+  alert("Por seguridad, elige un PIN nuevo antes de entrar. El actual ya no es válido.");
+  for (;;) {
+    const nuevo = prompt("PIN nuevo (4 dígitos):");
+    if (nuevo == null) return null;
+    if (!/^\d{4}$/.test(nuevo)) { alert("El PIN debe tener 4 dígitos."); continue; }
+    const rep = prompt("Repite el PIN nuevo:");
+    if (rep == null) return null;
+    if (rep !== nuevo) { alert("No coinciden. Vuelve a intentarlo."); continue; }
+    const r = await fetch(API + "/auth/cambiar-pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ pin_actual: actual, pin_nuevo: nuevo }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.token) { alert("PIN actualizado. Úsalo a partir de ahora."); return d; }
+    alert(d.error || "No se pudo cambiar el PIN. Inténtalo de nuevo.");
+  }
+}
+
 // Cambio de PIN del usuario en sesión (4 dígitos).
 async function cambiarMiPin() {
   const actual = prompt("PIN actual (4 dígitos):");
@@ -2472,7 +2500,9 @@ async function cambiarMiPin() {
   if (nuevo == null) return;
   if (!/^\d{4}$/.test(nuevo)) { alert("El PIN nuevo debe tener 4 dígitos."); return; }
   try {
-    await api("/auth/cambiar-pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin_actual: actual, pin_nuevo: nuevo }) });
+    const d = await api("/auth/cambiar-pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin_actual: actual, pin_nuevo: nuevo }) });
+    const u = getUser();
+    if (u && d && d.token) setSession(Object.assign({}, u, { token: d.token }));
     alert("PIN actualizado. Úsalo la próxima vez que entres.");
   } catch (e) { alert(e.message); }
 }
@@ -2587,6 +2617,10 @@ async function api(path, opts = {}) {
       : "No se pudo conectar con el servidor. Comprueba la conexión e inténtalo de nuevo (no se ha guardado).");
   }
   if (r.status === 401) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Sesión expirada"); }
+  if (r.status === 403) {
+    const e403 = await r.clone().json().catch(() => ({}));
+    if (e403.cambiar_pin) { localStorage.removeItem("cm_session"); location.reload(); throw new Error("Elige un PIN nuevo para continuar"); }
+  }
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
     // Nunca dejar el mensaje vacío: si el servidor no da detalle (502/timeout,

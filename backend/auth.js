@@ -173,9 +173,37 @@ function login(usuario, pin) {
 
   // Éxito: limpia intentos y firma token (incluye local_id para multi-local).
   store.update("usuarios", u.id, { intentos_fallidos: 0, bloqueado_hasta: null });
+  // PIN publicado/débil o marcado temporal → sesión limitada a cambiarlo.
+  const cambiar = controlPinActivo() && (!!u.pin_temporal || pinDebil(pin));
+  return firmar(u, cambiar);
+}
+
+// Firma la sesión. Con `cambiarPin` el token SOLO sirve para /api/auth/*
+// (requerido() bloquea el resto) hasta que el usuario elige un PIN nuevo.
+function firmar(u, cambiarPin) {
   const payload = { key: u.key, nombre: u.nombre, rol: u.rol, local_id: u.local_id || "principal" };
+  if (cambiarPin) payload.cambiar_pin = true;
   const token = jwt.sign(payload, SECRET, { expiresIn: EXPIRA });
-  return { token, usuario: { ...payload, pin_temporal: !!u.pin_temporal } };
+  return { token, usuario: { ...payload, pin_temporal: !!u.pin_temporal, cambiar_pin: !!cambiarPin } };
+}
+
+// ── PIN publicados o triviales ──────────────────────────────────────────────
+// Estos PIN aparecieron en el repositorio (documentación y semillas) o son
+// triviales: con ellos se entra, pero solo para elegir uno nuevo. Solo se aplica
+// con datos reales (en tests/aislado las cuentas de prueba siguen igual), o si
+// se fuerza con CONTROL_M_FORZAR_PIN=1.
+const PINES_PUBLICADOS = new Set(["1111", "2222", "3333", "4444", "5234", "1234"]);
+function pinDebil(pin) {
+  const p = String(pin || "");
+  if (!/^\d{4}$/.test(p)) return true;
+  if (PINES_PUBLICADOS.has(p)) return true;
+  if (/^(\d)\1{3}$/.test(p)) return true; // 0000, 7777…
+  const d = p.split("").map(Number);
+  const paso = d[1] - d[0];
+  return (paso === 1 || paso === -1) && d.every((x, i) => i === 0 || x - d[i - 1] === paso); // 1234, 9876…
+}
+function controlPinActivo() {
+  return process.env.CONTROL_M_FORZAR_PIN === "1" || !store.persistenceInfo().aislado;
 }
 
 // Cambio de PIN (exige el actual). Devuelve {ok} o {error}.
@@ -184,8 +212,10 @@ function cambiarPin(usuario, pinActual, pinNuevo) {
   const u = buscarUsuario(usuario);
   if (!u || !verifyPin(pinActual, u.pin_hash)) return { error: "El PIN actual no es correcto." };
   if (!/^\d{4}$/.test(String(pinNuevo || ""))) return { error: "El PIN nuevo debe tener 4 dígitos." };
+  if (controlPinActivo() && String(pinNuevo) === String(pinActual)) return { error: "El PIN nuevo tiene que ser distinto del actual." };
+  if (controlPinActivo() && pinDebil(pinNuevo)) return { error: "Ese PIN no es seguro (publicado, repetido o en serie). Elige otro." };
   store.update("usuarios", u.id, { pin_hash: hashPin(pinNuevo), pin_temporal: false });
-  return { ok: true };
+  return { ok: true, sesion: firmar({ ...u, pin_temporal: false }, false) };
 }
 
 function verificar(token) {
@@ -205,6 +235,7 @@ function tokenDe(req) {
 function requerido(req, res, next) {
   const user = verificar(tokenDe(req));
   if (!user) return res.status(401).json({ error: "Sesión no válida. Vuelve a iniciar sesión." });
+  if (user.cambiar_pin) return res.status(403).json({ error: "Elige un PIN nuevo para continuar.", cambiar_pin: true });
   if (user.rol !== "admin") {
     const seg = (req.path || "").split("/").filter(Boolean)[0];
     if (!EQUIPO_ALLOWED.has(seg)) {
@@ -215,4 +246,4 @@ function requerido(req, res, next) {
   next();
 }
 
-module.exports = { login, cambiarPin, verificar, requerido, tokenDe, ensureSeed, hashPin, verificarPin };
+module.exports = { login, cambiarPin, pinDebil, controlPinActivo, verificar, requerido, tokenDe, ensureSeed, hashPin, verificarPin };

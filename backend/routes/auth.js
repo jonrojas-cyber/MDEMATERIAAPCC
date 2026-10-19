@@ -29,7 +29,8 @@ router.post("/cambiar-pin", async (req, res) => {
   const r = auth.cambiarPin(user.key, pin_actual, pin_nuevo);
   if (r.error) return res.status(400).json(r);
   await store.flush(); // confirmar el nuevo hash antes de responder
-  res.json(r);
+  // Devuelve una sesión nueva ya sin la restricción de "cambiar PIN".
+  res.json({ ok: true, token: r.sesion.token, usuario: r.sesion.usuario });
 });
 
 // GET /api/auth/me  -> datos de la sesión actual (valida el token)

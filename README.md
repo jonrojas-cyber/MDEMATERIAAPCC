@@ -55,11 +55,14 @@ Se ejecutan también en cada push/PR mediante GitHub Actions (`.github/workflows
 Autenticación **JWT** (12 h). Los PIN viven en el backend (`auth.js`), no en el
 frontend.
 
-| Usuario | PIN | Rol | Ve |
-|---------|-----|-----|----|
-| Jon | 1111 | admin | Todo |
-| Mónica | 3333 | admin | Todo |
-| Lara | 2222 | equipo | Solo operativa (preparaciones, lotes, revisiones, ajustes) |
+| Usuario | Rol | Ve |
+|---------|-----|----|
+| Jon | admin | Todo |
+| Mónica | admin | Todo |
+| Lara | equipo | Solo operativa (preparaciones, lotes, revisiones, ajustes) |
+
+Los PIN reales nunca se documentan. Con datos reales, un PIN publicado, repetido
+(0000) o en serie (1234) solo permite entrar para elegir uno nuevo.
 
 ## Módulos
 

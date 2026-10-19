@@ -1,5 +1,6 @@
 const express = require("express");
 const store = require("../data-store");
+const ledger = require("../stock-ledger");
 
 const router = express.Router();
 
@@ -114,6 +115,26 @@ router.get("/conciliacion", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message || "No se pudo calcular la conciliación." });
   }
+});
+
+// GET /api/inventario/libro — el libro de stock auditable + reconciliación de
+// almacén. Solo admin (dinero). Toda entrada/salida (compra, venta, merma, ajuste,
+// recuento) deja asiento; aquí se ve el saldo por materia, los faltantes (salidas
+// que excedieron el stock, antes ocultas), la cobertura del libro y el flujo del mes.
+// ?materia=<id> devuelve el detalle de movimientos de una materia.
+router.get("/libro", (req, res) => {
+  if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "Solo un administrador puede ver el libro de stock." });
+  if (req.query.materia) {
+    return res.json(ledger.movimientosDe(store, String(req.query.materia), req.query.limit ? Number(req.query.limit) : 200));
+  }
+  const now = new Date();
+  const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const hasta = now.toISOString().slice(0, 10);
+  res.json({
+    reconciliacion: ledger.reconciliar(store),
+    flujo_mes: ledger.flujo(store, desde, hasta),
+    periodo: { desde, hasta },
+  });
 });
 
 // GET /api/inventario/:id — detalle de un recuento.

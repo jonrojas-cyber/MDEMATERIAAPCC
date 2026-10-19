@@ -3,6 +3,7 @@ const store = require("../data-store");
 const costing = require("../costing");
 const M = require("../mermas-motivos");
 const analytics = require("../mermas-analytics");
+const ledger = require("../stock-ledger");
 
 const router = express.Router();
 
@@ -55,11 +56,16 @@ router.post("/", express.json(), async (req, res) => {
   const cantidad = M.parseCantidad(b.cantidad);
   const unidad = M.UNIDADES.includes(b.unidad) ? b.unidad : (b.unidad ? String(b.unidad).slice(0, 10) : "ud");
   const { obj, coste, objetivo_nombre, deducirMateria } = resolver(b.ref, b.nombre, cantidad);
-  if (deducirMateria) {
-    const nuevo = Math.max(0, Math.round(((Number(deducirMateria.disponibilidad_actual) || 0) - cantidad) * 100) / 100);
-    store.update("materias", deducirMateria.id, { disponibilidad_actual: nuevo });
-  }
   const ahora = new Date().toISOString();
+  // La merma de una materia baja el stock DEJANDO ASIENTO en el libro (fuente única
+  // del movimiento): el faltante, si lo hay, queda visible y no se oculta.
+  if (deducirMateria) {
+    ledger.aplicar(store, {
+      materia_id: deducirMateria.id, delta: -cantidad, reason: "merma",
+      source: "mermas", unidad, producto: objetivo_nombre || deducirMateria.nombre,
+      created_by: (req.user && req.user.nombre) || b.responsable || "Equipo", created_at: ahora,
+    });
+  }
   const ajuste = {
     id: store.nextId("aju", "ajustes"),
     tipo_objetivo: obj.tipo, objetivo_id: obj.id,

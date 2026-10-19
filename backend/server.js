@@ -305,6 +305,23 @@ app.all("/avisos/cron", async (req, res) => {
   }
 });
 
+// Informe semanal de CONSISTENCIA (solo lectura) para la auditoría programada
+// externa de los lunes. Público pero exige su PROPIO token (no reutiliza el de
+// avisos: si se filtra, solo expone este resumen de producción, sin ventas ni
+// tesorería). Sin INFORME_CONSISTENCIA_TOKEN definido, queda desactivado (503).
+app.get("/informe/consistencia", (req, res) => {
+  const token = process.env.INFORME_CONSISTENCIA_TOKEN;
+  if (!token) return res.status(503).json({ error: "INFORME_CONSISTENCIA_TOKEN no configurado en el servidor" });
+  const got = req.headers["x-informe-token"] || req.query.token;
+  if (!seguridad.tokenIgual(got, token)) return res.status(401).json({ error: "Token inválido" });
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(require("./informe-consistencia").generar(store, { dias: req.query.dias }));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── CONECTOR TPV (Ágora) ──────────────────────────────────────────────────────
 // Un pequeño agente en el local lee las ventas del TPV y las EMPUJA aquí por HTTPS
 // saliente (cero puertos entrantes, cero IP fija). Autentica con la CLAVE del

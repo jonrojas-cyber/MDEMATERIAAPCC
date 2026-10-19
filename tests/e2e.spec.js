@@ -489,6 +489,33 @@ test("panel del propietario: KPIs, balance y descuadre de inventario sin errores
   expect(errors).toEqual([]);
 });
 
+test("cuadre diario Control M ⇄ Ágora: estructura, veredicto y bloqueo al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  // Admin: trae el desglose por naturaleza y un veredicto.
+  const c = await (await request.get("/api/ventas/cuadre-dia?dia=2026-09-15", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
+  expect(c).toHaveProperty("veredicto");
+  expect(["cuadra", "descuadre"]).toContain(c.veredicto);
+  for (const k of ["ventas", "invitaciones", "devoluciones", "anulaciones", "bloqueados", "duplicados", "incidencias"]) expect(c).toHaveProperty(k);
+  expect(c.ventas).toHaveProperty("iva");
+  // Equipo: prohibido (dinero).
+  const code = (await request.get("/api/ventas/cuadre-dia", { headers: { Authorization: `Bearer ${lara.token}` } })).status();
+  expect(code).toBe(403);
+});
+
+test("fiabilidad (Fase C): % de datos reales, checklist y bloqueo al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const f = await (await request.get("/api/fiabilidad", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
+  expect(typeof f.fiabilidad_pct).toBe("number");
+  expect(["fiable", "casi", "en_construccion"]).toContain(f.veredicto);
+  expect(Array.isArray(f.dominios)).toBe(true);
+  expect(f.dominios.length).toBe(f.areas_total);
+  expect(Array.isArray(f.checklist)).toBe(true);
+  const code = (await request.get("/api/fiabilidad", { headers: { Authorization: `Bearer ${lara.token}` } })).status();
+  expect(code).toBe(403);
+});
+
 test("recepción: campos de lote/caducidad y tres estados", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -810,6 +837,30 @@ test("tesorería OS: la pantalla muestra flujo de caja y valor de empresa", asyn
   await expect(page.locator(".cc-label", { hasText: /Flujo de caja · mes/ })).toBeVisible();
   await expect(page.locator(".cc-label", { hasText: /Valor de la empresa/ })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("tesorería UI: marcar un movimiento 'hecho' desde la pantalla mueve el saldo de la cuenta", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // Prepara cuenta + cobro previsto desde la propia app (admin ya logueado).
+  const ids = await page.evaluate(async () => {
+    const c = await api("/treasury/cuenta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Banco UI", type: "banco", balance: 500 }) });
+    const m = await api("/treasury/movimiento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "cobro", concepto: "Cobro UI", importe: 120 }) });
+    return { cuenta: c.id, mov: m.id };
+  });
+  await page.evaluate(() => irA_tesoreria());
+  await expect(page.locator(".section-label", { hasText: /Movimientos pendientes/ })).toBeVisible();
+  // Botón Conciliar presente en la fila de cuentas.
+  await expect(page.locator('button', { hasText: /^Conciliar$/ }).first()).toBeVisible();
+  // Elige la cuenta recién creada en el selector del movimiento y marca Hecho.
+  await page.selectOption(`#mvh-${ids.mov}`, ids.cuenta);
+  await page.locator('button', { hasText: /^Hecho$/ }).first().click();
+  // El saldo de la cuenta sube 500 + 120 = 620.
+  await expect.poll(async () => await page.evaluate(async (id) => (await api("/treasury")).cuentas.find((c) => c.id === id).balance, ids.cuenta)).toBe(620);
+  expect(errors).toEqual([]);
+  // Limpieza.
+  await page.evaluate(async (ids) => { await api("/treasury/movimiento/" + ids.mov, { method: "DELETE" }); await api("/treasury/cuenta/" + ids.cuenta, { method: "DELETE" }); }, ids);
 });
 
 // PRD 005 — Fixed Costs OS: una llamada trae coste de existir, coste por hora,

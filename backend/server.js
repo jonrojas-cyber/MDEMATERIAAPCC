@@ -296,7 +296,10 @@ app.all("/avisos/cron", async (req, res) => {
   try {
     const avisos = require("./avisos");
     const r = req.query.force === "1" ? await avisos.enviarAviso({ force: true }) : await avisos.cronTick();
-    res.json({ ok: true, ...r });
+    // Mismo disparador: concilia el día anterior Control M ⇄ Ágora y avisa si no cuadra.
+    let cuadre = null;
+    try { cuadre = await require("./conciliacion-diaria").cronTick(); await store.flush(); } catch (e) { cuadre = { ok: false, error: e.message }; }
+    res.json({ ok: true, avisos: r, cuadre });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -430,6 +433,7 @@ app.use("/api/prevision", require("./routes/prevision"));
 app.use("/api/analitica", require("./routes/analitica"));
 app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/inventario", require("./routes/inventario"));
+app.use("/api/fiabilidad", require("./routes/fiabilidad")); // medidor Fase C (datos reales vs estimados)
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/compras-productos", require("./routes/compras-productos"));
 app.use("/api/compras-informe", require("./routes/compras-informe"));
@@ -657,6 +661,13 @@ store
     const avisos = require("./avisos");
     setInterval(() => avisos.cronTick(), 5 * 60 * 1000).unref();
     avisos.cronTick(); // comprobación inicial al arrancar
+
+    // Conciliación diaria Control M ⇄ Ágora: a partir de media mañana concilia el
+    // día anterior una vez y, si no cuadra, dispara alarma push. Cada 15 min.
+    const conciliacionDiaria = require("./conciliacion-diaria");
+    const tickCuadre = async () => { try { await conciliacionDiaria.cronTick(); await store.flush(); } catch (e) { console.error("Cuadre diario cron error:", e.message); } };
+    setInterval(tickCuadre, 15 * 60 * 1000).unref();
+    tickCuadre(); // comprobación inicial al arrancar
   })
   .catch((e) => {
     console.error("Fallo al inicializar el almacén de datos:", e);

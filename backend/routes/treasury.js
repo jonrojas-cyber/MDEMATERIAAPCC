@@ -20,7 +20,13 @@ router.get("/os", (req, res) => {
   if (!soloAdmin(req, res)) return;
   const localId = (req.user && req.user.local_id) || "principal";
   try {
-    res.json({ ...treasuryOS.sistemaOperativo(Date.now(), localId), cuentas: store.readAll("financial_accounts") });
+    // movimientos: lista cruda (con id y estado) para operar desde la UI
+    // (marcar hecho / borrar). Los previstos primero, por fecha.
+    const movimientos = store.readAll("treasury_movements").slice().sort((a, b) => {
+      if ((a.estado === "hecho") !== (b.estado === "hecho")) return a.estado === "hecho" ? 1 : -1;
+      return String(a.fecha || "").localeCompare(String(b.fecha || ""));
+    });
+    res.json({ ...treasuryOS.sistemaOperativo(Date.now(), localId), cuentas: store.readAll("financial_accounts"), movimientos });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

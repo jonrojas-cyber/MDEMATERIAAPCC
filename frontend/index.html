@@ -8406,10 +8406,27 @@ async function irA_tesoreria(){
       <div class="cc-mini cc-accent">${esc(em.accion)}</div>
       ${em.dias_hasta_problema!=null?`<div class="cc-mini">Problema de liquidez estimado en ${em.dias_hasta_problema} días (${em.fecha_estimada}).</div>`:""}
       ${(em.eventos_negativos||[]).map(e=>`<div class="cc-mini">${fmt(e.fecha)} · ${esc(e.concepto)} deja la caja en ${eur0(e.saldo_tras)} €.</div>`).join("")}</div>`:"";
-    const cuentas=(d.cuentas||[]).map(c=>`<div class="cc-line"><span>${esc(c.name)} · ${c.type==='caja'?'Caja':'Banco'}</span><b>${eur0(c.balance)} €</b> <button class="btn-ghost" style="padding:2px 8px" onclick='ccAccForm(${JSON.stringify(c.id)})'>Editar</button><button class="btn-ghost" style="padding:2px 8px" onclick='ccAccBorrar(${JSON.stringify(c.id)})'>×</button></div>`).join("")||`<div class="cc-mini">Añade tus cuentas (caja y banco) para ver liquidez y días de supervivencia.</div>`;
+    const cuentas=(d.cuentas||[]).map(c=>`<div class="cc-line"><span>${esc(c.name)} · ${c.type==='caja'?'Caja':'Banco'}</span><b>${eur0(c.balance)} €</b> <button class="btn-ghost" style="padding:2px 8px" onclick='ccConciliar(${JSON.stringify(c.id)},${JSON.stringify(c.name)},${Number(c.balance)||0})'>Conciliar</button><button class="btn-ghost" style="padding:2px 8px" onclick='ccAccForm(${JSON.stringify(c.id)})'>Editar</button><button class="btn-ghost" style="padding:2px 8px" onclick='ccAccBorrar(${JSON.stringify(c.id)})'>×</button></div>`).join("")||`<div class="cc-mini">Añade tus cuentas (caja y banco) para ver liquidez y días de supervivencia.</div>`;
     const pagos=(d.proximos_pagos||[]).map(p=>`<div class="cc-line"><span>${fmt(p.fecha)} · ${esc(p.concepto)}</span><b>−${eur0(p.importe)} €</b></div>`).join("")||`<div class="cc-mini">Sin pagos próximos.</div>`;
     const cobros=(d.proximos_cobros||[]).map(p=>`<div class="cc-line"><span>${fmt(p.fecha)} · ${esc(p.concepto)}</span><b>+${eur0(p.importe)} €</b></div>`).join("")||`<div class="cc-mini">Sin cobros próximos.</div>`;
     const obl=(d.obligaciones||[]).slice(0,5).map(o=>`<div class="cc-line"><span>${esc(o.nombre)} · ${esc(o.categoria)}</span><b>${eur0(o.importe_mes)} €/mes</b></div>`).join("")||`<div class="cc-mini">Sin obligaciones recurrentes registradas.</div>`;
+    // Conciliación bancaria: descuadre libro vs extracto por cuenta (fuente única del backend).
+    const conc=db.conciliacion||{};
+    const concBlock=(conc.cuentas&&conc.cuentas.length)?`<div class="section-label">Conciliación bancaria</div>
+      <div class="cc-card"${Math.abs(conc.total_descuadre||0)>=0.005?' style="border-left:3px solid #D62A1C;"':''}>
+      ${conc.cuentas.map(c=>`<div class="cc-line"><span>${esc(c.name)}${c.conciliado_en?` · ${fmt(c.conciliado_en)}`:""}</span><b>${Math.abs(c.descuadre)<0.005?"✓ cuadra":eur0(c.descuadre)+" € desc."}</b></div>`).join("")}
+      ${conc.sin_conciliar?`<div class="cc-mini">${conc.sin_conciliar} cuenta(s) sin conciliar todavía.</div>`:""}</div>`:"";
+    // Movimientos pendientes (previstos): operar desde aquí · marcar hecho (mueve el saldo) o borrar.
+    const cuentasOpts=(d.cuentas||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+    const movsPend=(d.movimientos||[]).filter(m=>m.estado!=="hecho");
+    const movRow=m=>`<div class="cc-line" style="flex-wrap:wrap;gap:6px">
+      <span>${m.tipo==="cobro"?"+":"−"}${eur0(m.importe)} € · ${esc(m.concepto||m.categoria||"Movimiento")}${m.fecha?` · ${fmt(m.fecha)}`:""}</span>
+      <span style="display:flex;gap:4px;align-items:center">
+        ${cuentasOpts?`<select id="mvh-${esc(m.id)}" style="padding:2px 4px;font-size:12px">${cuentasOpts}</select>`:""}
+        <button class="btn-ghost" style="padding:2px 8px" onclick='ccMovHecho(${JSON.stringify(m.id)})'>Hecho</button>
+        <button class="btn-ghost" style="padding:2px 8px" onclick='ccMovBorrar(${JSON.stringify(m.id)})'>×</button>
+      </span></div>`;
+    const pendBlock=movsPend.length?`<div class="section-label">Movimientos pendientes</div><div class="cc-card">${movsPend.map(movRow).join("")}</div>`:"";
     setInner(`
       ${emBanner}
       <div class="cc-card cc-hero-single"><div class="cc-label">Liquidez inmediata</div>
@@ -8430,6 +8447,8 @@ async function irA_tesoreria(){
       <div class="section-label">Cuentas</div>
       <div class="card-actions" style="margin-bottom:8px;"><button class="btn-primary" onclick="ccAccForm()">Añadir cuenta</button> <button class="btn-ghost" onclick="ccMovForm()">Registrar cobro/pago</button></div>
       <div class="cc-card">${cuentas}</div>
+      ${concBlock}
+      ${pendBlock}
       <div class="section-label">Próximos pagos</div><div class="cc-card">${pagos}</div>
       <div class="section-label">Próximos cobros</div><div class="cc-card">${cobros}</div>`);
   }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
@@ -8480,6 +8499,31 @@ async function ccMovGuardar(btn){
   if(btn) btn.disabled=true;
   try{ await api("/treasury/movimiento",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); irA_tesoreria(); }
   catch(e){ el("mv-msg").textContent=e.message; if(btn) btn.disabled=false; }
+}
+// Marcar un movimiento previsto como HECHO contra una cuenta → mueve el saldo real.
+async function ccMovHecho(id){
+  const sel=el("mvh-"+id); const cuenta_id=sel?sel.value:null;
+  if(!cuenta_id){ alert("Añade una cuenta y elígela para aplicar el movimiento al saldo."); return; }
+  try{ await api("/treasury/movimiento/"+id+"/hecho",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cuenta_id})}); irA_tesoreria(); }
+  catch(e){ alert(e.message); }
+}
+async function ccMovBorrar(id){ if(!confirm("¿Borrar este movimiento? Si ya movió el saldo, se revierte.")) return; try{ await api("/treasury/movimiento/"+id,{method:"DELETE"}); irA_tesoreria(); }catch(e){ alert(e.message); } }
+// Conciliación bancaria: compara el saldo del libro con el del extracto y, si hay
+// descuadre, ofrece ajustar el libro al extracto (con rastro de auditoría en backend).
+async function ccConciliar(id,name,balance){
+  const v=prompt("Saldo del EXTRACTO de "+name+" (lo que dice el banco), en €:", balance!=null?String(balance):"");
+  if(v==null) return;
+  const saldo=Number(String(v).replace(",","."));
+  if(!Number.isFinite(saldo)){ alert("Indica un número válido."); return; }
+  try{
+    const r=await api("/treasury/cuenta/"+id+"/conciliar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({saldo_extracto:saldo})});
+    const desc=Number(r.descuadre||0);
+    if(Math.abs(desc)<0.005){ alert("✓ "+name+" cuadra con el banco."); irA_tesoreria(); return; }
+    if(confirm(name+": descuadre de "+desc.toFixed(2)+" € (libro "+(Number(r.balance)||0).toFixed(2)+" € vs extracto "+saldo.toFixed(2)+" €).\n\n¿Ajustar el libro al extracto?")){
+      await api("/treasury/cuenta/"+id+"/conciliar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({saldo_extracto:saldo,ajustar:true})});
+    }
+    irA_tesoreria();
+  }catch(e){ alert(e.message); }
 }
 
 // ── CALENDARIO DE EMPRESA · semana (lunes→domingo) ─────────────────────────
@@ -10490,7 +10534,24 @@ async function finCargar(){
     window._finData=r;
     if(!window._fin.mes) window._fin.mes=r.mes_base;
     finRender();
+    finFiabilidad(); // tarjeta de fiabilidad de datos (Fase C), al final
   }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+// Fase C · medidor de fiabilidad: % de datos reales + qué falta para cuadrar a cero.
+async function finFiabilidad(){
+  try{
+    const f=await api("/fiabilidad");
+    const host=el("inner-content"); if(!host||!f) return;
+    const col=f.veredicto==="fiable"?"var(--ok,#3c7a4a)":(f.veredicto==="casi"?"#c79a3a":"var(--alert,#b23b3b)");
+    const items=(f.checklist||[]).map(c=>`<div class="card-meta" style="color:${c.estado==='pendiente'?'var(--alert,#b23b3b)':'#9C5A2E'}">· <b>${esc(c.label)}</b>: ${esc(c.accion)}</div>`).join("")||`<div class="card-meta" style="color:var(--ok,#3c7a4a)">Todo respaldado por datos reales. Cero estimaciones.</div>`;
+    host.insertAdjacentHTML("beforeend",`
+      <div class="section-label">Fiabilidad de los datos</div>
+      <div class="card" style="border-left:3px solid ${col};">
+        <div class="card-name" style="color:${col};">${f.fiabilidad_pct} % con datos reales · ${f.areas_reales}/${f.areas_total} áreas</div>
+        <div class="card-meta">Lo que falta para cuadrar a cero (cargar lo real sustituye la estimación sembrada):</div>
+        ${items}
+      </div>`);
+  }catch(e){ /* informativo: si falla, no molesta al resumen */ }
 }
 function finFechaMes(etq){
   const mn=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -12187,6 +12248,17 @@ async function conciliacionRender(dia){
   try{
     const c=await api("/ventas/conciliacion"+(dia?("?dia="+encodeURIComponent(dia)):""));
     window._conc=c;
+    // Cuadre del día (Control M ⇄ Ágora): veredicto + desglose por naturaleza.
+    const cu=await api("/ventas/cuadre-dia"+(dia?("?dia="+encodeURIComponent(dia)):"")).catch(()=>null);
+    const semColor=cu?(cu.veredicto==="cuadra"?"var(--olive)":"var(--alert)"):"var(--muted)";
+    const cuadreCard=cu?`
+      <div class="section-label">Cuadre del día</div>
+      <div class="card" style="border-left:3px solid ${semColor};">
+        <div class="card-name" style="color:${semColor};">${cu.veredicto==="cuadra"?"✓ El día cuadra":"⚠ Revisar: el día no cuadra"}</div>
+        <div class="card-meta">${cu.ventas.num_tickets} tk · ${fmtEur(cu.ventas.bruto,"€")} brutos · base ${fmtEur(cu.ventas.neto,"€")} · IVA ${fmtEur(cu.ventas.iva,"€")}</div>
+        <div class="card-meta">Invitaciones ${cu.invitaciones.n} (${cu.invitaciones.unidades} ud) · Devoluciones ${cu.devoluciones.n} (${fmtEur(cu.devoluciones.importe,"€")}) · Anulaciones ${cu.anulaciones.n}</div>
+        ${cu.incidencias.length?`<div style="margin-top:6px;">${cu.incidencias.map(i=>`<div class="card-meta" style="color:var(--alert)">· ${esc(i.detalle)}</div>`).join("")}</div>`:`<div class="card-meta" style="color:var(--olive)">Todo lo de Ágora entró y no hay doble conteo.</div>`}
+      </div>`:"";
     const dupBloque = ((c.duplicados&&c.duplicados.length)||c.total_duplicado>0) ? `
       <div class="card" style="border-color:var(--alert);">
         <div class="card-name" style="color:var(--alert);">Doble conteo detectado: ${fmtEur(c.total_duplicado,"€")}</div>
@@ -12214,6 +12286,7 @@ async function conciliacionRender(dia){
       </details>`;
 
     box.innerHTML=`
+      ${cuadreCard}
       <div class="section-label">Conciliación con Ágora · hoy (${esc(c.dia)})</div>
       <div class="card">
         <div class="card-name">Control M cuenta hoy: ${fmtEur(c.bruto,"€")} <span style="font-size:11px;color:var(--muted)">(con IVA)</span></div>

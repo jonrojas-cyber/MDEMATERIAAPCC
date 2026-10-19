@@ -111,6 +111,15 @@ router.get("/conciliacion", (req, res) => {
   res.json(require("../conciliacion-ventas").conciliacionDia(req.query.dia));
 });
 
+// GET /api/ventas/cuadre-dia?dia=YYYY-MM-DD — conciliación diaria Control M ⇄ Ágora:
+// desglose por naturaleza (venta/invitación/devolución), anulaciones, bloqueados,
+// duplicados y salud del conector, con veredicto (cuadra/descuadre). Solo admin.
+router.get("/cuadre-dia", (req, res) => {
+  const { soloAdmin } = require("./_guard");
+  if (!soloAdmin(req, res)) return;
+  res.json(require("../conciliacion-diaria").cuadreDia(req.query.dia));
+});
+
 // POST /api/ventas/conciliacion/limpiar-duplicados?dia= — quita el doble conteo
 // estructural (albarán/pedido ya facturado) y repone su stock. Solo admin.
 router.post("/conciliacion/limpiar-duplicados", express.json(), async (req, res) => {

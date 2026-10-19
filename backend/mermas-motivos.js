@@ -29,6 +29,33 @@ const MERMAS_MOTIVOS = [
 
 function motivo(k) { return MERMAS_MOTIVOS.find((m) => m.k === k) || null; }
 
+// Compatibilidad: motivos de la lista plana antigua de /ajustes → clave canónica.
+// (Antes /ajustes tenía su propia taxonomía distinta de /mermas; ahora es única.)
+const LEGACY = {
+  "caducidad": "caducado",
+  "error de preparación": "mal_elaborado",
+  "error de preparacion": "mal_elaborado",
+  "rotura": "roto",
+  "sobreproducción": "sobrante",
+  "sobreproduccion": "sobrante",
+  "devolución": "devolucion",
+  "devolucion": "devolucion",
+  "prueba i+d": "prueba",
+};
+
+// Normaliza un motivo entrante (clave canónica `k`, etiqueta `t`, o string antiguo)
+// al motivo canónico de la taxonomía ÚNICA. Devuelve el objeto motivo o null.
+function normalizar(entrada) {
+  const s = String(entrada || "").trim();
+  if (!s) return null;
+  const porClave = motivo(s);
+  if (porClave) return porClave;
+  const porEtiqueta = MERMAS_MOTIVOS.find((m) => m.t.toLowerCase() === s.toLowerCase());
+  if (porEtiqueta) return porEtiqueta;
+  const k = LEGACY[s.toLowerCase()];
+  return k ? motivo(k) : null;
+}
+
 // Secciones ordenadas (para pintar los botones agrupados en la app).
 function secciones() {
   const orden = ["Caducidad y estado", "Accidente", "Elaboración y servicio", "Cortesía y consumo"];
@@ -67,4 +94,4 @@ function validar(datos) {
   return { ok: errores.length === 0, errores };
 }
 
-module.exports = { MERMAS_MOTIVOS, motivo, secciones, parseCantidad, UNIDADES, resolverObjetivo, validar };
+module.exports = { MERMAS_MOTIVOS, motivo, normalizar, LEGACY, secciones, parseCantidad, UNIDADES, resolverObjetivo, validar };

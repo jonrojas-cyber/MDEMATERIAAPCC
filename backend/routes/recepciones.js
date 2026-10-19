@@ -3,6 +3,7 @@ const store = require("../data-store");
 const ocr = require("../ocr");
 const { convertir } = require("../unidades");
 const intake = require("../albaran-intake");
+const ledger = require("../stock-ledger");
 const { esLineaProducto, normNombre, buscarProveedor, crearProveedorDesdeOCR, crearMateriaDesdeLinea, clasificarTipoDocumento } = intake;
 
 const router = express.Router();
@@ -433,6 +434,13 @@ function aplicarStock(recepcion) {
         const m = materias.find((x) => x.id === l.materia_id);
         if (m) {
           m.disponibilidad_actual = Math.round((m.disponibilidad_actual + cant) * 100) / 100;
+          // Entrada al libro de stock (fuente única del movimiento). El saldo ya lo
+          // mueve esta función en memoria (writeAll al final), así que solo se asienta.
+          ledger.asiento(store, {
+            materia_id: m.id, delta: cant, reason: "compra", source: "recepcion",
+            source_ref: recepcion.id || "", unidad: m.unidad || "", producto: m.nombre,
+            created_by: "Recepción", created_at: recepcion.fecha || new Date().toISOString(),
+          });
           // Precio de compra de este proveedor (si la línea lo trae). Si cambia
           // respecto al anterior, se guarda en el histórico de precios (como Gstock).
           const pu = Number(l.precio_unitario);

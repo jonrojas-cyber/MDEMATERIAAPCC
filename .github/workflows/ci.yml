@@ -9,7 +9,8 @@ on:
 jobs:
   e2e:
     name: E2E (Playwright)
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 no admite Ubuntu 26.04; fijar el entorno compatible.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

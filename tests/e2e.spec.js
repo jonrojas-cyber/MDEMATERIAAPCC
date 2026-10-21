@@ -4,6 +4,52 @@
 // de comprobaciones básicas de accesibilidad por teclado.
 const { test, expect } = require("@playwright/test");
 
+test("APPCC: rechaza temperaturas vacías y registra coma decimal con autor real", async ({ request }) => {
+  const sesion = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const headers = { Authorization: `Bearer ${sesion.token}` };
+  const antes = await (await request.get("/api/revisiones", { headers })).json();
+  for (const valor of [null, "", " ", false, [], {}, "Infinity", "0x10"]) {
+    const r = await request.post("/api/revisiones/registrar", { headers, data: { tipo: "Nevera cocina", valor } });
+    expect(r.status()).toBe(400);
+  }
+  const despues = await (await request.get("/api/revisiones", { headers })).json();
+  expect(despues.length).toBe(antes.length);
+  const r = await request.post("/api/revisiones/registrar", { headers, data: { tipo: "Nevera cocina", valor: "6,5", responsable: "Otra persona" } });
+  expect(r.status()).toBe(201);
+  const revision = await r.json();
+  expect(revision.valor).toBe("6.5°C");
+  expect(revision.estado).toBe("Fuera del rango esperado");
+  expect(revision.responsable).toBe("Lara");
+  expect(revision.accion_correctiva).toBeTruthy();
+});
+
+test("rutinas: un fallo de carga no presenta una checklist vacía", async ({ page }) => {
+  await login(page);
+  await page.route("**/api/apertura?*", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Sin conexión" }) }));
+  await page.evaluate(() => irA_apertura());
+  await expect(page.getByRole("alert")).toContainText("No se ha podido cargar la rutina");
+  await expect(page.locator(".apstep")).toHaveCount(0);
+});
+
+test("rutinas: una tarea solo se confirma tras guardar y un fallo exige recargar", async ({ page }) => {
+  await login(page);
+  await page.route("**/api/apertura?*", route => route.fulfill({ contentType: "application/json", body: JSON.stringify({ pasos: {}, responsables: [] }) }));
+  let intentos = 0;
+  await page.route("**/api/apertura/toggle", async route => {
+    intentos++;
+    await new Promise(resolve => setTimeout(resolve, 400));
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Guardado no disponible" }) });
+  });
+  await page.evaluate(() => irA_apertura());
+  await page.locator(".apstep").first().click();
+  await expect(page.getByRole("status")).toHaveText("Guardando…");
+  await expect(page.locator(".apstep.done")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toContainText("No se ha confirmado el guardado");
+  await page.locator(".apstep").first().click();
+  expect(intentos).toBe(1);
+  await expect(page.locator(".apstep.done")).toHaveCount(0);
+});
+
 // Inicia sesión como Mónica (admin, PIN 3333) y espera el inicio cargado.
 async function login(page) {
   await page.goto("/");

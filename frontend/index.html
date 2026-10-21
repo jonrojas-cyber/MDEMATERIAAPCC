@@ -7158,11 +7158,13 @@ async function irA_rutina(rutina){
   openSection("rutina-"+r, RUTINAS[r].titulo);
   setInner(`<div class="empty">Cargando…</div>`);
   try{
-    const d=await api("/apertura?rutina="+r).catch(()=>({pasos:{}}));
+    const d=await api("/apertura?rutina="+r);
+    if(window._rutina!==r || currentSection!=="rutina-"+r) return;
+    window._aperError="";
     window._aperPasos=(d&&d.pasos)||{};
     window._aperResp=(d&&d.responsables)||[];
     renderRutina();
-  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+  }catch(e){ if(window._rutina===r && currentSection==="rutina-"+r) setInner(`<div class="err" role="alert">No se ha podido cargar la rutina. Comprueba la conexión. ${esc(e.message)}</div><button onclick="irA_rutina('${r}')">Reintentar</button>`); }
 }
 function irA_apertura(){ return irA_rutina("apertura"); }
 function irA_cierre(){ return irA_rutina("cierre"); }
@@ -7177,7 +7179,7 @@ function renderRutina(){
   let html=`${r==="apertura"?saludoHTML(u):""}
     <div class="section-label">Rutina de ${r==="apertura"?"apertura":"cierre"} · ${hechos}/${total}</div>
     <div style="height:6px;background:var(--olive-light);border-radius:3px;overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:${pct}%;background:var(--ink);transition:width .3s;"></div></div>
-    ${respBanner}`;
+    ${respBanner}${window._aperError?`<div class="err" role="alert">${esc(window._aperError)}</div><button onclick="irA_rutina('${r}')">Reintentar</button>`:""}${window._aperGuardando?`<div role="status">Guardando…</div>`:""}`;
   html+=PASOS.map(p=>{
     const done=!!pasos[p.k];
     const quien=(done&&pasos[p.k].responsable)?` · ${esc(pasos[p.k].responsable)}`:"";
@@ -7202,13 +7204,20 @@ function aperAbrir(fn){
   if (typeof window[fn] === "function") window[fn]();
 }
 async function toggleApertura(k, hecho){
+  if(window._aperGuardando || window._aperError) return;
   const u=getUser(), r=window._rutina||"apertura";
-  window._aperPasos=window._aperPasos||{};
-  if(hecho){ window._aperPasos[k]={hecho:true,responsable:(u&&u.nombre)||""}; }
-  else { delete window._aperPasos[k]; }
+  window._aperGuardando=true;
+  window._aperError="";
   renderRutina();
-  try{ await api("/apertura/toggle",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({step:k,hecho:!!hecho,responsable:(u&&u.nombre)||"",rutina:r})}); }
-  catch(e){ irA_rutina(r); }
+  try{
+    const d=await api("/apertura/toggle",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({step:k,hecho:!!hecho,responsable:(u&&u.nombre)||"",rutina:r})});
+    if(window._rutina===r) window._aperPasos=d.pasos||{};
+  }
+  catch(e){ if(window._rutina===r) window._aperError="No se ha confirmado el guardado. Vuelve a abrir la rutina para comprobar su estado. "+e.message; }
+  finally{
+    window._aperGuardando=false;
+    if(window._rutina===r && currentSection==="rutina-"+r) renderRutina();
+  }
 }
 
 // ── RECETARIO DE CAFÉ · calibración por tipo ───────────────────────────────

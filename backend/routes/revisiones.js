@@ -34,8 +34,8 @@ router.get("/", (req, res) => {
 });
 
 // Registra una revisión de hoy. El estado lo calcula el sistema, no quien la registra.
-router.post("/registrar", (req, res) => {
-  const { tipo, valor, responsable } = req.body;
+router.post("/registrar", async (req, res, next) => {
+  const { tipo, valor, responsable } = req.body || {};
   const definicion = TIPOS_REVISION.find((t) => t.tipo === tipo);
   if (!definicion) return res.status(400).json({ error: "Tipo de revisión no reconocido" });
 
@@ -44,8 +44,15 @@ router.post("/registrar", (req, res) => {
   let accionCorrectiva = "";
 
   if (definicion.clase === "temperatura") {
-    const num = Number(valor);
-    if (Number.isNaN(num)) return res.status(400).json({ error: "Introduce un valor numérico" });
+    // Number(null), Number("") y Number(false) son 0: nunca registrar una
+    // medición ficticia como una nevera correcta. Admitir coma decimal local.
+    const texto = typeof valor === "string" ? valor.trim().replace(",", ".") : valor;
+    if ((typeof texto !== "number" && typeof texto !== "string") || texto === "" ||
+        (typeof texto === "string" && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(texto))) {
+      return res.status(400).json({ error: "Introduce la temperatura medida" });
+    }
+    const num = Number(texto);
+    if (!Number.isFinite(num)) return res.status(400).json({ error: "Introduce un valor numérico finito" });
     valorFinal = `${num}${definicion.unidad}`;
     if (num < definicion.min || num > definicion.max) {
       estado = "Fuera del rango esperado";
@@ -61,11 +68,14 @@ router.post("/registrar", (req, res) => {
     valor: valorFinal,
     estado,
     accion_correctiva: accionCorrectiva,
-    responsable: responsable || "Sin asignar",
+    responsable: (req.user && req.user.nombre) || responsable || "Sin asignar",
     fecha: new Date().toISOString(),
   };
-  store.insert("revisiones", revision);
-  res.status(201).json(revision);
+  try {
+    store.insert("revisiones", revision);
+    await store.flush(); // no confirmar al equipo antes de guardar en disco/BD
+    res.status(201).json(revision);
+  } catch (e) { next(e); }
 });
 
 // Registro APPCC para inspección de Sanidad: revisiones agrupadas por día,

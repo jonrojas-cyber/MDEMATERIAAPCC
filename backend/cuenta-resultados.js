@@ -50,6 +50,11 @@ function componer(d) {
   const impuesto = bai != null ? (bai > 0 ? eur(bai * impuesto_pct / 100) : 0) : null;
   const beneficio_neto = bai != null ? eur(bai - impuesto) : null;
   const resultado_caja = ebitda != null ? eur(ebitda - cuota_creditos) : null;
+  // DINERO LIBRE (caja tras impuesto): lo que de verdad queda en el bolsillo del mes.
+  // Caja = EBITDA − cuota ENTERA del préstamo (capital+intereses, que sí sale de caja),
+  // menos la provisión de impuesto (IRPF/Sociedades). La cuota de autónomos, si está
+  // dada de alta como gasto fijo, ya va dentro del EBITDA.
+  const dinero_libre = resultado_caja != null ? eur(resultado_caja - (impuesto || 0)) : null;
 
   const cuenta = {
     ingresos: eur(ventas),
@@ -72,6 +77,7 @@ function componer(d) {
     margen_neto_pct: beneficio_neto != null && ventas > 0 ? pct1(beneficio_neto / ventas) : null,
     cuota_creditos: eur(cuota_creditos),
     resultado_caja,
+    dinero_libre,
     ventas_origen,
   };
 
@@ -117,6 +123,7 @@ function componer(d) {
       beneficio_neto: netoP != null ? eur(netoP) : null,
       cuota_creditos: eur(creditoMes),
       resultado_caja: ebitdaP != null ? eur(ebitdaP - creditoMes) : null,
+      dinero_libre: ebitdaP != null ? eur((ebitdaP - creditoMes) - (impuestoP || 0)) : null,
       // Fiabilidad de la proyección (motor-fechas.6):
       fiable,
       dias_observados: diasTranscurridos,

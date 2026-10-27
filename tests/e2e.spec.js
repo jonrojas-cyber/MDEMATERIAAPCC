@@ -503,6 +503,27 @@ test("cuadre diario Control M ⇄ Ágora: estructura, veredicto y bloqueo al equ
   expect(code).toBe(403);
 });
 
+test("fiscal: el tipo de impuesto es editable (admin) y la cuenta de resultados lo usa; equipo bloqueado", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const h = { Authorization: `Bearer ${moni.token}` };
+  // Fijar IRPF de autónoma al 27%.
+  const put = await (await request.put("/api/fiscal", { headers: h, data: { impuesto_pct: 27, regimen: "autonoma" } })).json();
+  expect(put.impuesto_pct).toBe(27);
+  expect(put.regimen).toBe("autonoma");
+  const get = await (await request.get("/api/fiscal", { headers: h })).json();
+  expect(get.impuesto_pct).toBe(27);
+  // La cuenta de resultados refleja el nuevo tipo (impuesto_pct) y expone dinero_libre.
+  const cr = await (await request.get("/api/cuenta-resultados", { headers: h })).json();
+  expect(cr.cuenta.impuesto_pct).toBe(27);
+  expect(cr.cuenta).toHaveProperty("dinero_libre");
+  // Validación de rango y bloqueo al equipo.
+  const bad = (await request.put("/api/fiscal", { headers: h, data: { impuesto_pct: 80 } })).status();
+  expect(bad).toBe(400);
+  const team = (await request.get("/api/fiscal", { headers: { Authorization: `Bearer ${lara.token}` } })).status();
+  expect(team).toBe(403);
+});
+
 test("fiabilidad (Fase C): % de datos reales, checklist y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

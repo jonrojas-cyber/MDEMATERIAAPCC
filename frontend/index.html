@@ -10439,6 +10439,7 @@ function crFilaPL(c){
     ${linea("= Beneficio neto"+(c.margen_neto_pct!=null?` (${c.margen_neto_pct}%)`:""), c.beneficio_neto, false, true)}
     ${linea("− Cuota de préstamos (caja)", c.cuota_creditos, true, false)}
     ${linea("= Resultado de caja", c.resultado_caja, false, false)}
+    ${linea("= Dinero libre (caja tras impuesto)", c.dinero_libre, false, true)}
   </tbody></table>`;
 }
 function crRender(r){
@@ -10465,6 +10466,11 @@ function crRender(r){
         <input id="cr-fc" type="number" step="0.1" placeholder="p. ej. 26" value="${esc(c.food_cost_pct!=null?c.food_cost_pct:"")}" style="width:100%;">
         <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:3px;">Provisional mientras faltan escandallos. Cuando estén todos los productos, deja el campo vacío y guarda para usar el food cost REAL.</div>
         <div class="card-actions" style="margin-top:6px;"><button class="btn-ghost" onclick="crGuardarFoodCost(this)">Guardar food cost</button></div>
+      </div>
+      <div class="field"><label>Impuesto sobre beneficio % <span style="color:var(--muted,#8a8577);">(IRPF si eres autónoma · Sociedades si SL)</span></label>
+        <input id="cr-imp" type="number" step="0.1" placeholder="p. ej. 27" value="${esc(c.impuesto_pct!=null?c.impuesto_pct:"")}" style="width:100%;">
+        <div style="font-size:11px;color:var(--muted,#8a8577);margin-top:3px;">Tu tipo efectivo (pregúntalo a tu gestoría). Autónoma: IRPF por tramos (~25–35% a tu nivel). SL nueva: 15%. El 15% era solo un valor por defecto, no tu impuesto real.</div>
+        <div class="card-actions" style="margin-top:6px;"><button class="btn-ghost" onclick="crGuardarImpuesto(this)">Guardar impuesto</button></div>
       </div>
       <div class="card-actions" style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn-primary" onclick="window._cr.ventas=el('cr-ventas').value.trim();crCargar()">Calcular</button>
@@ -10502,6 +10508,15 @@ async function crGuardarFoodCost(btn){
     const r=await api("/cuenta-resultados/food-cost",{method:"POST",body:JSON.stringify({mes,food_cost:fc?Number(fc):0})});
     crRender(r);
   }catch(e){ if(btn) btn.disabled=false; alert(e.message); }
+}
+// Guarda el tipo de impuesto (IRPF/Sociedades). Hasta ahora el 15% estaba clavado;
+// ahora es editable y la cascada + el "dinero libre" lo usan.
+async function crGuardarImpuesto(btn){
+  const v=el("cr-imp").value.trim();
+  if(v===""||!(Number(v)>=0)){ alert("Indica el porcentaje de impuesto (p. ej. 27)."); return; }
+  if(btn) btn.disabled=true;
+  try{ await api("/fiscal",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({impuesto_pct:Number(v)})}); crCargar(); }
+  catch(e){ if(btn) btn.disabled=false; alert(e.message); }
 }
 async function crBorrarCierre(btn){
   const mes=window._cr.mes;

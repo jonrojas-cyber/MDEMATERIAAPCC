@@ -451,6 +451,7 @@ app.use("/api/analitica", require("./routes/analitica"));
 app.use("/api/ajustes", require("./routes/ajustes"));
 app.use("/api/inventario", require("./routes/inventario"));
 app.use("/api/fiabilidad", require("./routes/fiabilidad")); // medidor Fase C (datos reales vs estimados)
+app.use("/api/fiscal", require("./routes/fiscal")); // régimen + tipo de impuesto (IRPF/Sociedades) configurable
 app.use("/api/proveedores", require("./routes/proveedores"));
 app.use("/api/compras-productos", require("./routes/compras-productos"));
 app.use("/api/compras-informe", require("./routes/compras-informe"));

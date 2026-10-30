@@ -80,7 +80,31 @@ test("el total CUADRA con el P&L (misma función que la cuenta de resultados)", 
   cerca(d.ventas_netas, ventasPnl, "ventas netas = las del P&L");
   cerca(d.ventas_netas, 50.50, "ventas netas totales");
   cerca(d.coste_materia, 10.25, "coste materia total");
-  cerca(d.food_cost_pct, 0.203, "food cost global = coste / ventas");
+  // Food cost REAL sobre lo COSTEADO (real: Latte 25 + Agua 7,5 + Croqueta 8 = 40,5):
+  cerca(d.ventas_costeadas, 40.50, "ventas costeadas (real+estimado+parcial)");
+  cerca(d.food_cost_pct, 0.253, "food cost real = 10,25 / 40,50 (NO diluido por lo sin costear)");
+  // El 'sobre toda la venta' (diluido) se expone aparte, nunca como el real:
+  cerca(d.food_cost_pct_total, 0.203, "food cost sobre toda la venta = 10,25 / 50,50");
+});
+
+test("devoluciones: unidades netas <= 0 → food cost null; cobertura acotada [0,1]", () => {
+  store.writeAll("materias", [
+    { id: "m1", nombre: "Café Brasil (espresso)", unidad: "g", coste_medio: 0.0239 },
+    { id: "m2", nombre: "Leche fresca", unidad: "ml", coste_medio: 0.001 },
+  ]);
+  store.writeAll("productos", [{ id: "p1", nombre: "Latte" }]);
+  const hoy = new Date().toISOString();
+  store.writeAll("ventas", [
+    { id: "v1", producto_id: "p1", producto: "Latte", cantidad: 5, importe_neto: 12.5, fecha: hoy },
+    { id: "v2", producto_id: "p1", producto: "Latte", cantidad: -5, importe_neto: -6, fecha: hoy }, // devolución
+    { id: "v3", producto_id: null, producto: "Snack ajeno", cantidad: -1, importe_neto: -30, fecha: hoy }, // abono sin ficha
+  ]);
+  const t = Date.parse(hoy);
+  const d = aud.auditar({ desde: t - 3600000, hasta: t + 3600000 });
+  const latte = fila(d, "Latte");
+  assert.strictEqual(latte.unidades, 0, "unidades netas 0 tras la devolución");
+  assert.strictEqual(latte.food_cost_pct, null, "net<=0 uds → food cost null (no margen infinito)");
+  assert.ok(d.cobertura_real_pct >= 0 && d.cobertura_real_pct <= 1, "cobertura acotada a [0,1] pese a netos negativos");
 });
 
 test("cobertura real y orden accionable (sin ficha / sin coste primero)", () => {

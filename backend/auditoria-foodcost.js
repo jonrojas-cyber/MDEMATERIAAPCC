@@ -75,7 +75,9 @@ function auditar(r) {
       pvp_unit_neto: row.unidades > 0 ? Math.round((ventasNetas / row.unidades) * 100) / 100 : 0,
       coste_unit: Math.round(costeUnit * 10000) / 10000,
       coste_total: costeTotal,
-      food_cost_pct: ventasNetas > 0 ? Math.round((costeTotal / ventasNetas) * 1000) / 1000 : null,
+      // Food cost % solo con unidades netas positivas: una devolución que deja el neto
+      // en 0 o negativo no es "0% de food cost" (margen infinito falso), es no medible.
+      food_cost_pct: (ventasNetas > 0 && row.unidades > 0) ? Math.round((costeTotal / ventasNetas) * 1000) / 1000 : null,
       fuente,
       estado,
     });
@@ -84,7 +86,7 @@ function auditar(r) {
   // Primero lo accionable (sin ficha, sin coste, parcial, estimado), luego por coste total €.
   filas.sort((a, b) => (RANK[a.estado] - RANK[b.estado]) || (b.coste_total - a.coste_total));
 
-  // Totales OFICIALES del P&L (misma función que la cuenta de resultados) → cuadre exacto.
+  // Totales OFICIALES del P&L (misma función que la cuenta de resultados) → cuadre.
   const ventasNetas = Math.round(financials.ventasNetasEnRango(r) * 100) / 100;
   const costeMateria = Math.round(financials.costeMateriaVendidaEnRango(r, idxMat, idxProd) * 100) / 100;
 
@@ -97,14 +99,28 @@ function auditar(r) {
     };
   }
 
+  // Base COSTEADA: ventas de productos con coste (real + estimado + parcial). El food
+  // cost REAL se mide SOBRE lo costeado; meter en el denominador lo que aún no tiene
+  // coste (sin_coste/sin_ficha, que aportan 0) diluiría el % a la baja y engañaría.
+  const COSTEADO = new Set(["real", "estimado", "parcial"]);
+  const ventasCosteadas = Math.round(filas.filter((f) => COSTEADO.has(f.estado)).reduce((s, f) => s + f.ventas_netas, 0) * 100) / 100;
+  // Cobertura sobre ventas POSITIVAS (las devoluciones no deben dar >100% ni negativos).
+  const ventasPos = filas.reduce((s, f) => s + Math.max(0, f.ventas_netas), 0);
+  const ventasRealPos = filas.filter((f) => f.estado === "real").reduce((s, f) => s + Math.max(0, f.ventas_netas), 0);
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
   return {
     desde: r.desde,
     hasta: r.hasta,
     ventas_netas: ventasNetas,
+    ventas_costeadas: ventasCosteadas,
     coste_materia: costeMateria,
-    food_cost_pct: ventasNetas > 0 ? Math.round((costeMateria / ventasNetas) * 1000) / 1000 : null,
-    // Cobertura: qué % de tu facturación tiene food cost REAL (ni estimado ni sin fijar).
-    cobertura_real_pct: ventasNetas > 0 ? Math.round((porEstado.real.ventas_netas / ventasNetas) * 1000) / 1000 : null,
+    // Food cost REAL: coste / ventas de lo COSTEADO (lo que de verdad tiene coste).
+    food_cost_pct: ventasCosteadas > 0 ? Math.round((costeMateria / ventasCosteadas) * 1000) / 1000 : null,
+    // Food cost sobre TODA la venta (lo no costeado cuenta como 0) — informativo, NO es el real.
+    food_cost_pct_total: ventasNetas > 0 ? Math.round((costeMateria / ventasNetas) * 1000) / 1000 : null,
+    // Cobertura: qué % de tu facturación tiene food cost REAL (acotada a 0–100%).
+    cobertura_real_pct: ventasPos > 0 ? Math.round(clamp01(ventasRealPos / ventasPos) * 1000) / 1000 : null,
     total_productos: filas.length,
     por_estado: porEstado,
     productos: filas,

@@ -13158,8 +13158,9 @@ function audfcRender(){
   const barra=ventas>0?`<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin:8px 0;">${segs.map(([e,c])=>{const w=Math.round(((pe[e]&&pe[e].ventas_netas||0)/ventas)*100);return w>0?`<div title="${e}" style="width:${w}%;background:${c};"></div>`:"";}).join("")}</div>`:"";
   const alertas=[g("sin_ficha")?`<span style="color:#b23b3b;">${g("sin_ficha")} sin ficha</span>`:"",g("sin_coste")?`<span style="color:#b23b3b;">${g("sin_coste")} sin coste</span>`:"",g("parcial")?`${g("parcial")} parciales`:"",g("estimado")?`${g("estimado")} estimados`:"",`${g("real")} reales`].filter(Boolean).join(" · ");
   const resumen=`<div class="card">
-    <div class="card-name">Food cost global ${audfcPct(d.food_cost_pct)}</div>
-    <div class="card-meta">Ventas netas ${audfcEur(d.ventas_netas)} · coste materia ${audfcEur(d.coste_materia)} · ${d.total_productos} productos vendidos</div>
+    <div class="card-name">Food cost real ${audfcPct(d.food_cost_pct)}</div>
+    <div class="card-meta">sobre lo costeado (${audfcEur(d.ventas_costeadas)}) · coste materia ${audfcEur(d.coste_materia)}${d.food_cost_pct_total!=null?` · sobre toda la venta ${audfcPct(d.food_cost_pct_total)}`:""}</div>
+    <div class="card-meta">Ventas netas ${audfcEur(d.ventas_netas)} · ${d.total_productos} productos vendidos</div>
     ${barra}
     <div class="card-meta"><b>Cobertura real ${audfcPct(d.cobertura_real_pct)}</b> de tu facturación · ${alertas}</div>
   </div>`;

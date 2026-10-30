@@ -13065,14 +13065,17 @@ async function irA_carta(){
     const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="irA_cafes()">Cafés</button><button class="btn-ghost" onclick="formReceta()">Crear receta</button></div>`;
     const resumen=`<div class="section-label">Resumen de la carta</div>
       <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
-        <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
+        <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.productos_sin_coste?` · <b>${d.productos_sin_coste} sin coste</b>`:""}${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
     const items=section("Productos", d.productos, p=>{
+      const falta=!!p.sin_coste;   // coste sin fijar: ni se pinta margen falso ni PVP sugerido
       const col=p.rentabilidad==="alta"?"var(--ink)":(p.rentabilidad==="media"?"#5C6145":"var(--muted)");
       const w=Math.max(2,Math.round(p.margen_bruto*100));
-      const barra=`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
+      const barra=falta?"":`<div style="margin-top:8px;height:6px;background:#E2DBCB;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${w}%;background:${col};"></div></div>`;
       const ing=p.ingredientes.map(i=>`${i.nombre} ${i.cantidad}${i.unidad}`).join(" · ");
+      // Nota cuando falta el coste: es el patrón "receta por definir" (clase lim-nota).
+      const avisoCoste=falta?`<div class="lim-nota" style="color:var(--warn);"><b>Coste sin fijar.</b> Pulsa <b>Editar</b> y añade su receta (ingredientes) o su coste de compra. En cuanto lo fijes, verás su food cost y el PVP recomendado. No invento nada.</div>`:"";
       // Escenarios de food-cost (20/25/30%) + objetivo editable por producto.
-      const e3 = p.escenarios ? `
+      const e3 = (p.escenarios && !falta) ? `
         <div style="font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 4px;">PVP por food-cost objetivo · coste con IVA</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
           ${['20','25','30'].map(fc=>{
@@ -13083,7 +13086,7 @@ async function irA_carta(){
               <div style="font-size:15px;font-weight:700;color:var(--ink);">${v.toFixed(2)} €</div></div>`;
           }).join("")}
         </div>` : "";
-      const sugiere = p.escenarios ? `
+      const sugiere = (p.escenarios && !falta) ? `
         <div style="font-size:11px;margin-top:8px;color:var(--muted);">objetivo
           <input type="number" min="5" max="90" step="1" value="${Math.round(p.food_cost_objetivo)}" onchange="setFcObjetivo('${p.id}',this.value)" style="width:60px;padding:4px 6px;margin:0 2px;"> % food cost →
           <b style="color:var(--olive);">${p.precio_recomendado.toFixed(2)} €</b></div>` : "";
@@ -13092,11 +13095,14 @@ async function irA_carta(){
       const meta2=[p.version?`Versión ${esc(p.version)}`:"",p.vida_util_horas?`Vida útil ${p.vida_util_horas} h`:""].filter(Boolean).join(" · ");
       const metaLine=meta2?`<div style="font-size:10px;color:var(--muted);margin-top:4px;">${meta2}</div>`:"";
       const foto=p.foto_url?`<img src="${p.foto_url}" style="width:100%;max-width:180px;border-radius:8px;border:1px solid var(--line);margin-top:8px;">`:"";
+      const meta=falta
+        ? `${p.precio_venta.toFixed(2)} € · <b>coste sin fijar</b>`
+        : `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`;
       return card(
-        `${p.nombre}${p.coste_estimado?' <span style="font-size:9px;color:var(--muted);">(estimado)</span>':""}`,
-        `${p.precio_venta.toFixed(2)} € · coste ${p.coste.toFixed(2)} € · margen ${Math.round(p.margen_bruto*100)}% (${p.margen_euros.toFixed(2)} €)`,
+        `${p.nombre}${(!falta&&p.coste_estimado)?' <span style="font-size:9px;color:var(--muted);">(estimado)</span>':""}`,
+        meta,
         `<button class="btn-ghost" onclick="formReceta('${p.id}')">Editar</button><button class="btn-ghost" onclick="borrarReceta('${p.id}')">Quitar</button>`,
-        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+e3+sugiere+alerg+metaLine+foto
+        barra+`<div style="font-size:10px;color:#888070;margin-top:8px;">${ing}</div>`+avisoCoste+e3+sugiere+alerg+metaLine+foto
       );
     }, "No hay productos en la carta.");
     setInner(cab+resumen+items);

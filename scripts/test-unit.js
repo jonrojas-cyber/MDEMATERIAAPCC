@@ -38,6 +38,7 @@ const FILES = [
   "coste-parcial", "motor-fechas", "persistencia-divergencia", "dinero-consistencia",
   "retencion-movimientos", "contencion-ingesta", "beneficio-neto", "coste-laboral",
   "stock-ledger", "conciliacion-diaria", "fiabilidad", "fiscal", "escandallos-base",
+  "carta",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");

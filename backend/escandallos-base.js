@@ -97,18 +97,47 @@ function costeReceta(receta, materias) {
   return Math.round(total * 10000) / 10000;
 }
 
+// Unidades "por pieza": la materia se compra y se vende tal cual (agua, refrescos,
+// botellas…), sin receta. Se valora 1:1 con su coste de compra. Las de peso/volumen
+// (g/ml) NO entran aquí: necesitan una receta con cantidades.
+const UNIDADES_PIEZA = new Set([
+  "ud", "uds", "u", "un", "und", "unidad", "unidades",
+  "pza", "pzas", "pieza", "piezas", "bote", "botes", "lata", "latas",
+  "botella", "botellas", "brick", "bricks",
+]);
+
+function normU(u) {
+  return String(u == null ? "" : u)
+    .toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z]+/g, "");
+}
+
+// Coste de una materia vendida tal cual (reventa): nombre EXACTO (normalizado) y
+// unidad por pieza. Nombre exacto a propósito, para no casar por error (p. ej. "agua"
+// con "agua de coco"). Devuelve el coste de compra (el más barato si hay formatos) o null.
+function costeReventa(nombre, materias) {
+  const k = norm(nombre);
+  if (!k) return null;
+  const cand = (materias || []).filter((m) =>
+    Number(m && m.coste_medio) > 0 && UNIDADES_PIEZA.has(normU(m.unidad)) && norm(m.nombre) === k);
+  if (!cand.length) return null;
+  return cand.reduce((a, b) => (Number(b.coste_medio) < Number(a.coste_medio) ? b : a)).coste_medio;
+}
+
 // Coste de materia base de un producto por su nombre. Devuelve { coste, fuente } o null.
-// fuente: "facturas" (receta × coste real de tus materias) · "escandallo" (LAB) · "estimado".
+// fuente: "facturas" (receta o reventa × coste real de tus materias) · "escandallo" (LAB) · "estimado".
 function coste(nombre) {
   const k = norm(nombre);
+  const materias = store.readAll("materias") || [];
   const receta = RECETAS[k];
   if (receta) {
-    const materias = store.readAll("materias") || [];
     const c = costeReceta(receta, materias);
     if (c != null && c > 0) return { coste: c, fuente: "facturas" };
   }
+  // Reventa: lo que compras y vendes tal cual → coste real de compra (de tus facturas).
+  const rev = costeReventa(nombre, materias);
+  if (rev != null && rev > 0) return { coste: Math.round(rev * 10000) / 10000, fuente: "facturas" };
   const p = PLANO[k];
   return p ? { coste: p.c, fuente: p.f } : null;
 }
 
-module.exports = { coste, norm, PLANO, RECETAS, buscarMateria, costeReceta };
+module.exports = { coste, norm, PLANO, RECETAS, buscarMateria, costeReceta, costeReventa };

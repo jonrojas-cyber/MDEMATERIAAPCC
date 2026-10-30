@@ -113,6 +113,16 @@ function costeProductoDetalle(producto, idxMat, idxRecProd) {
   const idxRec = idxRecProd || indiceRecetasProduccion();
   const calc = () => {
     const d = costeEscandalloDetalle(producto && producto.ingredientes, idxMat, idxRec);
+    // RESPALDO del food cost automático: si el producto no tiene escandallo mapeado
+    // (coste 0 o incompleto), usa el coste de materia base por nombre. Así lo que
+    // vende Ágora sin escandallo propio igualmente aporta coste → el food cost se
+    // calcula solo. En cuanto se cargue el escandallo/coste real, ese manda.
+    if (!(d.coste > 0) || d.incompleto) {
+      const base = require("./escandallos-base").coste(producto && producto.nombre);
+      if (base && base.coste > 0) {
+        return { coste: Math.round(base.coste * 10000) / 10000, incompleto: false, sin_coste: [], fuente_coste: base.fuente };
+      }
+    }
     return { coste: Math.round(d.coste * 10000) / 10000, incompleto: d.incompleto, sin_coste: d.sin_coste };
   };
   const pid = producto && producto.id;

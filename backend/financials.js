@@ -15,11 +15,26 @@ const treasury = require("./treasury");
 const { eur, pctDe } = require("./fmt"); // formato único (dinero.9): % a 1 decimal
 function enRango(fecha, r) { const t = new Date(fecha).getTime(); return Number.isFinite(t) && t >= r.desde && t < r.hasta; }
 
+// Clave de nombre normalizada (trim + minúsculas): Ágora/TPV exporta nombres con
+// espacios o mayúsculas variables; sin normalizar, ventas de productos que SÍ están
+// en el catálogo no resolverían por nombre y su coste se perdería (food cost
+// infravalorado). Normalizar aquí, en la fuente única, arregla P&L y auditoría juntos.
+function claveNombre(s) { return String(s == null ? "" : s).trim().toLowerCase(); }
+
 // Índices de producto para valorar el coste de lo vendido (reutiliza costing).
 function indicesProducto() {
   const productos = store.readAll("productos");
   const byId = {}; const byName = {};
-  productos.forEach((p) => { byId[p.id] = p; if (p.nombre) byName[p.nombre.toLowerCase()] = p; });
+  productos.forEach((p) => {
+    byId[p.id] = p;
+    if (p.nombre) {
+      const k = claveNombre(p.nombre);
+      // Nombre único: el producto ACTIVO manda; un archivado (activo:false) no debe
+      // eclipsar al activo al resolver una venta por nombre (sería coste 0 erróneo).
+      const prev = byName[k];
+      if (!prev || (prev.activo === false && p.activo !== false)) byName[k] = p;
+    }
+  });
   return { byId, byName };
 }
 
@@ -72,7 +87,7 @@ function costeMateriaVendidaEnRango(r, idxMat, idxProd) {
   return store.readAll("ventas")
     .filter((v) => v.fecha && enRango(v.fecha, r))
     .reduce((s, v) => {
-      const p = byId[v.producto_id] || byName[String(v.producto || "").toLowerCase()];
+      const p = byId[v.producto_id] || byName[claveNombre(v.producto)];
       return s + (p ? costing.costeProducto(p, idxMat) * (Number(v.cantidad) || 0) : 0);
     }, 0);
 }
@@ -249,5 +264,5 @@ function extrasFinancieros(now = Date.now()) {
 
 module.exports = {
   ventasEnRango, ventasNetasEnRango, netoDeVenta, ticketsEnRango, costeMateriaVendidaEnRango, mermaEnRango, comprasEnRango, variablesEnRango,
-  costeDeAbrir, patrimonioNeto, beneficio, costeLaboralEnRango, costeMedioDiario, extrasFinancieros, indicesProducto, impuestoBeneficioPct, eur,
+  costeDeAbrir, patrimonioNeto, beneficio, costeLaboralEnRango, costeMedioDiario, extrasFinancieros, indicesProducto, impuestoBeneficioPct, eur, claveNombre,
 };

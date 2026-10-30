@@ -107,6 +107,31 @@ test("devoluciones: unidades netas <= 0 → food cost null; cobertura acotada [0
   assert.ok(d.cobertura_real_pct >= 0 && d.cobertura_real_pct <= 1, "cobertura acotada a [0,1] pese a netos negativos");
 });
 
+test("nombres de Ágora con espacios/mayúsculas resuelven (no 'sin ficha'); el activo manda", () => {
+  store.writeAll("materias", [
+    { id: "m1", nombre: "Café Brasil (espresso)", unidad: "g", coste_medio: 0.0239 },
+    { id: "m2", nombre: "Leche fresca", unidad: "ml", coste_medio: 0.001 },
+  ]);
+  store.writeAll("productos", [
+    { id: "pArch", nombre: "Brownie", activo: false },     // archivado SIN coste, mismo nombre
+    { id: "pAct", nombre: "Brownie", coste_materia: 0.80 }, // activo CON coste
+    { id: "p1", nombre: "Latte" },
+  ]);
+  const hoy = new Date().toISOString();
+  store.writeAll("ventas", [
+    { id: "v1", producto: " LATTE ", cantidad: 10, importe_neto: 25, fecha: hoy }, // sin id, con espacios/mayúsculas
+    { id: "v2", producto: "Brownie", cantidad: 5, importe_neto: 10, fecha: hoy },   // por nombre, duplicado activo/archivado
+  ]);
+  const t = Date.parse(hoy);
+  const d = aud.auditar({ desde: t - 3600000, hasta: t + 3600000 });
+  const latte = fila(d, "Latte");
+  assert.ok(latte && latte.en_catalogo, "' LATTE ' resuelve al Latte del catálogo (no sin ficha)");
+  assert.strictEqual(latte.estado, "real", "con coste real, no sin_coste");
+  const brownie = fila(d, "Brownie");
+  assert.strictEqual(brownie.estado, "real", "el Brownie ACTIVO (con coste) manda sobre el archivado");
+  cerca(brownie.coste_unit, 0.80, "coste del producto activo, no 0 del archivado");
+});
+
 test("cobertura real y orden accionable (sin ficha / sin coste primero)", () => {
   const r = sembrar();
   const d = aud.auditar(r);

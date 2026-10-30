@@ -13163,8 +13163,8 @@ async function setFcObjetivo(id, fcPct){
 // volumen, la FUENTE del coste y el food cost %. Cuadra con el P&L (mismo motor).
 const AUDFC_PRESETS=[["hoy","Hoy"],["mes","Mes"],["anio","Año"]];
 const AUDFC_ESTADO={
-  real:{t:"real",c:"#3c7a4a"}, estimado:{t:"estimado",c:"#c79a3a"}, parcial:{t:"parcial",c:"#c79a3a"},
-  sin_coste:{t:"sin coste",c:"#b23b3b"}, sin_ficha:{t:"sin ficha",c:"#b23b3b"},
+  real:{t:"real",c:"#3c7a4a"}, estimado:{t:"estimado",c:"#c79a3a"}, parcial:{t:"parcial",c:"#d8b36a"},
+  sin_coste:{t:"sin coste",c:"#b23b3b"}, sin_ficha:{t:"sin ficha",c:"#7a2e2e"},
 };
 async function irA_auditoriaFoodcost(){
   navInto(()=>irA_categoria("informes"));
@@ -13176,7 +13176,7 @@ async function irA_auditoriaFoodcost(){
 async function audfcCargar(){
   setInner(`<div class="empty">Calculando el food cost real por producto…</div>`);
   try{
-    const d=await api("/auditoria-foodcost?preset="+encodeURIComponent(window._audfc.preset||"mes"));
+    const d=await api("/auditoria-foodcost?preset="+encodeURIComponent((window._audfc||(window._audfc={preset:"mes"})).preset||"mes"));
     window._audfcData=d; audfcRender();
   }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
@@ -13184,12 +13184,15 @@ function audfcPct(x){ return x==null?"—":(Math.round(x*1000)/10)+"%"; }
 function audfcEur(n){ return fmtEur(n)+" €"; }
 function audfcRender(){
   const d=window._audfcData; if(!d) return audfcCargar();
-  const toggle=AUDFC_PRESETS.map(([k,t])=>`<button class="chip ${window._audfc.preset===k?'on':''}" onclick="window._audfc.preset='${k}';audfcCargar()">${t}</button>`).join("");
+  const pr=(window._audfc||(window._audfc={preset:"mes"})).preset;
+  const toggle=AUDFC_PRESETS.map(([k,t])=>`<button class="chip ${pr===k?'on':''}" onclick="window._audfc.preset='${k}';audfcCargar()">${t}</button>`).join("");
   const pe=d.por_estado||{};
   const g=(e)=>(pe[e]&&pe[e].productos)||0;
   const ventas=d.ventas_netas||0;
-  const segs=[["real","#3c7a4a"],["estimado","#c79a3a"],["parcial","#d8b36a"],["sin_coste","#b23b3b"],["sin_ficha","#7a2e2e"]];
-  const barra=ventas>0?`<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin:8px 0;">${segs.map(([e,c])=>{const w=Math.round(((pe[e]&&pe[e].ventas_netas||0)/ventas)*100);return w>0?`<div title="${e}" style="width:${w}%;background:${c};"></div>`:"";}).join("")}</div>`:"";
+  // Colores de la barra desde la MISMA fuente que los badges (AUDFC_ESTADO), sin repetir hex.
+  const segs=["real","estimado","parcial","sin_coste","sin_ficha"].map(e=>[e,AUDFC_ESTADO[e].c]);
+  // Anchos proporcionales (1 decimal) que suman ~100%; fondo neutro por si hay sub-pixel.
+  const barra=ventas>0?`<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin:8px 0;background:var(--line);">${segs.map(([e,c])=>{const w=Math.round(((pe[e]&&pe[e].ventas_netas||0)/ventas)*1000)/10;return w>0?`<div title="${e}" style="width:${w}%;background:${c};"></div>`:"";}).join("")}</div>`:"";
   const alertas=[g("sin_ficha")?`<span style="color:#b23b3b;">${g("sin_ficha")} sin ficha</span>`:"",g("sin_coste")?`<span style="color:#b23b3b;">${g("sin_coste")} sin coste</span>`:"",g("parcial")?`${g("parcial")} parciales`:"",g("estimado")?`${g("estimado")} estimados`:"",`${g("real")} reales`].filter(Boolean).join(" · ");
   const resumen=`<div class="card">
     <div class="card-name">Food cost real ${audfcPct(d.food_cost_pct)}</div>
@@ -13205,7 +13208,7 @@ function audfcRender(){
     const costeTxt=p.estado==="sin_ficha"?"no está en el catálogo · no se puede costear"
       :(p.estado==="sin_coste"?"coste sin fijar (pulsa Editar y añade su receta)"
       :`coste ${audfcEur(p.coste_unit)}/ud${fc?` · ${fc}`:""}${p.estado==="parcial"?" · <b>parcial</b> (falta coste de alguna materia)":""}${p.coste_total>0?` · coste total ${audfcEur(p.coste_total)}`:""}`);
-    const accion=p.en_catalogo&&p.producto_id?`<button class="btn-ghost" onclick="formReceta('${p.producto_id}')">Editar receta</button>`:"";
+    const accion=p.en_catalogo&&p.producto_id?`<button class="btn-ghost" onclick="formReceta('${esc(String(p.producto_id))}')">Editar receta</button>`:"";
     return card(
       `${esc(p.nombre)} ${badge}`,
       `${fmtEur(p.unidades)} uds · ${audfcEur(p.ventas_netas)} ventas · PVP ${audfcEur(p.pvp_unit_neto)}/ud (neto)`,

@@ -45,8 +45,10 @@ function auditar(r) {
   // Agrupa las ventas por el producto vendido (resuelto a su ficha, o por nombre si no existe).
   const map = new Map();
   for (const v of ventas) {
-    const p = byId[v.producto_id] || byName[String(v.producto || "").toLowerCase()];
-    const key = p ? "id:" + p.id : "nom:" + String(v.producto || "").toLowerCase().trim();
+    // Misma resolución y misma clave normalizada que el P&L (financials): un nombre con
+    // espacios/mayúsculas resuelve igual, y la agrupación no parte un producto en dos.
+    const p = byId[v.producto_id] || byName[financials.claveNombre(v.producto)];
+    const key = p ? "id:" + p.id : "nom:" + financials.claveNombre(v.producto);
     let row = map.get(key);
     if (!row) {
       row = { nombre: p ? p.nombre : (v.producto || "(sin nombre)"), producto_id: p ? p.id : null, en_catalogo: !!p, _p: p || null, unidades: 0, ventas_netas: 0 };
@@ -86,9 +88,11 @@ function auditar(r) {
   // Primero lo accionable (sin ficha, sin coste, parcial, estimado), luego por coste total €.
   filas.sort((a, b) => (RANK[a.estado] - RANK[b.estado]) || (b.coste_total - a.coste_total));
 
-  // Totales OFICIALES del P&L (misma función que la cuenta de resultados) → cuadre.
-  const ventasNetas = Math.round(financials.ventasNetasEnRango(r) * 100) / 100;
-  const costeMateria = Math.round(financials.costeMateriaVendidaEnRango(r, idxMat, idxProd) * 100) / 100;
+  // Titulares = suma EXACTA de las líneas: una auditoría debe cuadrar consigo misma
+  // (la columna por producto suma el titular). Coincide con el P&L salvo redondeo de
+  // céntimos, porque usa el MISMO motor y la MISMA resolución producto↔venta.
+  const ventasNetas = Math.round(filas.reduce((s, f) => s + f.ventas_netas, 0) * 100) / 100;
+  const costeMateria = Math.round(filas.reduce((s, f) => s + f.coste_total, 0) * 100) / 100;
 
   const porEstado = {};
   for (const e of ESTADOS) {

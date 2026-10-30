@@ -14,11 +14,21 @@ function soloAdmin(req, res) {
   return true;
 }
 
+// Acepta epoch (ms) o fecha ISO (AAAA-MM-DD); undefined si no es parseable (así el
+// rango personalizado no cae en NaN → resultado vacío silencioso).
+function aTs(x) {
+  if (x == null || x === "") return undefined;
+  const n = Number(x);
+  if (Number.isFinite(n)) return n;
+  const t = Date.parse(String(x));
+  return Number.isFinite(t) ? t : undefined;
+}
+
 router.get("/", (req, res) => {
   if (!soloAdmin(req, res)) return;
   try {
     const preset = req.query.preset || "mes";
-    const custom = { desde: req.query.desde, hasta: req.query.hasta };
+    const custom = { desde: aTs(req.query.desde), hasta: aTs(req.query.hasta) };
     const r = periods.rango(preset, Date.now(), custom);
     const data = auditoria.auditar(r);
     res.json(Object.assign({ preset: r.preset, label: r.label }, data));

@@ -41,6 +41,21 @@ test("sin la materia emparejada, cae al respaldo estimado", () => {
   assert.strictEqual(fw.fuente, "estimado");
 });
 
+test("reventa: materia vendida tal cual (por pieza) se valora con su coste de compra", () => {
+  store.writeAll("materias", [
+    { id: "a1", nombre: "Agua", unidad: "ud", coste_medio: 0.35 },
+    { id: "a2", nombre: "Agua", unidad: "botella", coste_medio: 0.28 }, // formato más barato
+    { id: "a3", nombre: "Café Etiopía", unidad: "g", coste_medio: 0.03 }, // peso → NO reventa
+  ]);
+  const agua = base.coste("Agua");
+  cerca(agua.coste, 0.28, "agua: el formato más barato por pieza");
+  assert.strictEqual(agua.fuente, "facturas", "reventa = coste real de compra");
+  // Nombre que no casa EXACTAMENTE → no inventa (null); evita casar 'agua' con otra cosa.
+  assert.strictEqual(base.coste("Agua con gas"), null, "sin materia homónima por pieza → null");
+  // Una materia de peso (g) NO es reventa 1:1: necesita receta con cantidades.
+  assert.strictEqual(base.coste("Café Etiopía"), null, "materia en g no se revende por unidad");
+});
+
 test("comida: coste real del escandallo del LAB (fijo)", () => {
   cerca(base.coste("Crunch origen").coste, 1.48, "crunch origen");
   assert.strictEqual(base.coste("Crunch origen").fuente, "escandallo");

@@ -58,6 +58,10 @@ function escandallar(producto, materias) {
     activo: producto.activo !== false,
     precio_venta: precio,
     coste,
+    // Coste sin fijar: el producto no tiene escandallo, ni coste directo, ni respaldo
+    // por nombre. Su "margen" NO es 100% —es desconocido—. El front lo marca como tal
+    // (nunca como el más rentable) y no sugiere PVP hasta que se fije la receta.
+    sin_coste: !(mm.coste > 0),
     margen_bruto: mm.margen_bruto,
     margen_euros: mm.margen_euros,
     food_cost: mm.food_cost,
@@ -113,7 +117,9 @@ router.get("/", (req, res) => {
     productos_costeados: conCoste.length,      // sobre cuántos se calcula la media
     productos_sin_coste: conPrecio.length - conCoste.length,
     hay_estimaciones: items.some((i) => i.coste_estimado),
-    productos: items.sort((a, b) => b.margen_bruto - a.margen_bruto),
+    // Los costeados primero (por margen); los que aún no tienen coste, al final:
+    // un producto sin coste no es "el más rentable", así que no debe encabezar la carta.
+    productos: items.sort((a, b) => (a.sin_coste ? 1 : 0) - (b.sin_coste ? 1 : 0) || b.margen_bruto - a.margen_bruto),
   });
 });
 
@@ -211,3 +217,4 @@ router.delete("/:id", (req, res) => {
 });
 
 module.exports = router;
+module.exports.escandallar = escandallar; // para tests unitarios (coste/sin_coste)

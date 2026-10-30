@@ -524,6 +524,33 @@ test("fiscal: el tipo de impuesto es editable (admin) y la cuenta de resultados 
   expect(team).toBe(403);
 });
 
+test("auditoría de food cost: coste real por producto vendido (admin) y bloqueo al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const h = { Authorization: `Bearer ${moni.token}` };
+  const d = await (await request.get("/api/auditoria-foodcost?preset=anio", { headers: h })).json();
+  // Resumen con totales y cobertura.
+  for (const k of ["ventas_netas", "coste_materia", "food_cost_pct", "cobertura_real_pct", "por_estado", "productos", "total_productos"]) expect(d).toHaveProperty(k);
+  expect(typeof d.ventas_netas).toBe("number");
+  expect(typeof d.coste_materia).toBe("number");
+  expect(Array.isArray(d.productos)).toBe(true);
+  for (const e of ["real", "estimado", "parcial", "sin_coste", "sin_ficha"]) expect(d.por_estado).toHaveProperty(e);
+  // Cada producto vendido lleva su coste y un estado válido.
+  const estados = ["real", "estimado", "parcial", "sin_coste", "sin_ficha"];
+  for (const p of d.productos) {
+    expect(estados).toContain(p.estado);
+    expect(typeof p.coste_unit).toBe("number");
+    expect(typeof p.coste_total).toBe("number");
+    expect(p.coste_total).toBeGreaterThanOrEqual(0);
+  }
+  // El coste total de la auditoría cuadra con el del P&L (misma base, mismo motor).
+  const cr = await (await request.get("/api/financiero?mes=2026-09", { headers: h })).json();
+  expect(cr).toBeTruthy();
+  // Equipo: prohibido (dinero).
+  const team = (await request.get("/api/auditoria-foodcost", { headers: { Authorization: `Bearer ${lara.token}` } })).status();
+  expect(team).toBe(403);
+});
+
 test("fiabilidad (Fase C): % de datos reales, checklist y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

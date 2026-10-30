@@ -493,6 +493,7 @@ app.use("/api/analisis-diario", require("./routes/analisis-diario")); // rayos X
 app.use("/api/dossier", require("./routes/dossier")); // dossier para asesoría con Claude (admin)
 app.use("/api/cuenta-resultados", require("./routes/cuenta-resultados")); // P&L mensual (admin)
 app.use("/api/financiero", require("./routes/financiero")); // resumen día·mes·año con cascada EBITDA (admin)
+app.use("/api/auditoria-foodcost", require("./routes/auditoria-foodcost")); // food cost real por producto vendido (admin)
 app.use("/api/catalogo-revision", require("./routes/catalogo-revision")); // revisión bimestral del catálogo de compra (admin)
 app.use("/api/limpieza-catalogo", require("./routes/limpieza-catalogo")); // archivar productos/producciones no vinculados (admin)
 app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)

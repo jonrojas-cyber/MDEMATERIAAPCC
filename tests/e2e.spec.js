@@ -551,6 +551,25 @@ test("auditoría de food cost: coste real por producto vendido (admin) y bloqueo
   expect(team).toBe(403);
 });
 
+test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const d = await (await request.get("/api/auditoria-escandallos", { headers: { Authorization: `Bearer ${moni.token}` } })).json();
+  for (const k of ["total", "con_escandallo", "por_estado", "lineas_total", "lineas_enlazadas", "enlace_pct", "productos"]) expect(d).toHaveProperty(k);
+  for (const e of ["enlazado", "parcial", "coste_directo", "incompleto", "sin_escandallo"]) expect(d.por_estado).toHaveProperty(e);
+  expect(Array.isArray(d.productos)).toBe(true);
+  const estados = ["enlazado", "parcial", "coste_directo", "incompleto", "sin_escandallo"];
+  const origenes = ["compra", "elaboracion", "estimado", "manual", "sin_precio", "sin_materia"];
+  for (const p of d.productos) {
+    expect(estados).toContain(p.estado);
+    expect(Array.isArray(p.lineas)).toBe(true);
+    for (const l of p.lineas) expect(origenes).toContain(l.origen);
+  }
+  // Equipo: prohibido (coste/escandallo).
+  const team = (await request.get("/api/auditoria-escandallos", { headers: { Authorization: `Bearer ${lara.token}` } })).status();
+  expect(team).toBe(403);
+});
+
 test("fiabilidad (Fase C): % de datos reales, checklist y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

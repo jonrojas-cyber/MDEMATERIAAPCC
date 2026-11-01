@@ -33,17 +33,21 @@
 
 const store = require("./data-store");
 const costing = require("./costing");
+const compras = require("./coste-desde-compras");
 
 // Etiqueta de origen del coste de una materia. `det` es el coste resuelto por el
-// motor (incluye elaboraciones recursivas); se usa solo para saber si una elaboración
-// llega a resolver su coste.
-function origenMateria(m, elaboracionIds, det) {
+// motor (incluye elaboraciones recursivas). `conCompra` es el conjunto de materias
+// con una compra REAL registrada (artículo de compras_productos emparejado).
+function origenMateria(m, elaboracionIds, det, conCompra) {
   if (!m) return "sin_materia";
   if (elaboracionIds.has(m.id)) return det && det.resuelto && det.coste > 0 ? "elaboracion" : "sin_precio";
   const coste = Number(m.coste_medio) || 0;
   if (coste <= 0 || m.pendiente_coste === true) return "sin_precio";
-  if (m.coste_estimado === true) return "estimado";      // estimado manda sobre precio_compra de relleno
-  if (Number(m.precio_compra) > 0) return "compra";
+  // Hay una COMPRA real de esta materia → enlazada (gana al flag estimado y al
+  // precio_compra; refleja que su coste viene de una compra que metiste).
+  if (conCompra && conCompra.has(m.id)) return "compra";
+  if (m.coste_estimado === true) return "estimado";       // estimado explícito, sin compra real → no "compra"
+  if (Number(m.precio_compra) > 0) return "compra";        // precio volcado de una compra pasada
   return "manual";
 }
 
@@ -62,6 +66,8 @@ function auditar() {
   const byId = {}; materias.forEach((m) => (byId[m.id] = m));
   const elaboracionIds = new Set();
   recetas.forEach((rec) => { if (rec && rec.produce_materia_id) elaboracionIds.add(rec.produce_materia_id); });
+  // Materias con una compra REAL registrada (no solo con precio_compra volcado).
+  const conCompra = compras.materiasConCompra(store);
 
   const filas = productos.map((p) => {
     const ings = p.ingredientes || [];
@@ -72,7 +78,7 @@ function auditar() {
       const m = byId[ing.materia_id];
       // Coste €/unidad del MISMO motor (resuelve elaboraciones por su receta).
       const dMat = costing.costeMateriaDetalle(ing.materia_id, idxMat, idxRec);
-      const origen = origenMateria(m, elaboracionIds, dMat);
+      const origen = origenMateria(m, elaboracionIds, dMat, conCompra);
       const cant = Number(ing.cantidad) || 0;
       return {
         materia_id: ing.materia_id,

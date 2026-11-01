@@ -146,5 +146,18 @@ test("enlace por COMPRA real: artículo en compras aunque no haya precio_compra 
   assert.strictEqual(prod(d, "Matcha latte").lineas[0].origen, "estimado", "matcha estimada SIN compra real → estimado, no 'compra'");
 });
 
+test("enlace por LÍNEA de factura/recepción (materia fuera del catálogo de Compras)", () => {
+  store.writeAll("materias", [{ id: "mz", nombre: "Azúcar moreno", unidad: "g", coste_medio: 0.002 }]);
+  store.writeAll("recetas", []);
+  store.writeAll("compras_productos", []); // NO está en el catálogo de Compras
+  store.writeAll("recepciones", [
+    { id: "rec1", tipo_documento: "factura", procesada: true, lineas: [{ materia_id: "mz", precio_unitario: 0.002, importe: 2 }] },
+  ]);
+  store.writeAll("productos", [{ id: "p1", nombre: "Café con azúcar", ingredientes: [{ materia_id: "mz", cantidad: 10 }] }]);
+  const d = aud.auditar();
+  assert.strictEqual(prod(d, "Café con azúcar").lineas[0].origen, "compra", "la factura procesada enlaza la materia a una compra real");
+  assert.strictEqual(prod(d, "Café con azúcar").estado, "enlazado");
+});
+
 if (fallos) { console.error(`\n${fallos} prueba(s) de la auditoría de escandallos fallaron`); process.exit(1); }
 console.log("\nTodas las pruebas de la auditoría de escandallos OK");

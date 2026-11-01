@@ -104,6 +104,34 @@ function aplicar(st) {
   return { fijados, detalle };
 }
 
+// Conjunto de IDs de materia que tienen AL MENOS una compra registrada: un artículo
+// de compras_productos que empareja con la materia (mismo emparejamiento que aplicar:
+// materia_id → nombre normalizado → palabras). Es el enlace REAL venta↔compra, con
+// independencia de que precio_compra se haya volcado (aplicar omite el volcado cuando
+// el precio cambia <1%, así que precio_compra por sí solo infravalora el enlace).
+function materiasConCompra(st) {
+  st = st || store;
+  const materias = st.readAll("materias") || [];
+  const compras = st.readAll("compras_productos") || [];
+  const byId = {}; const byName = {};
+  materias.forEach((m) => { byId[m.id] = m; if (!byName[norm(m.nombre)]) byName[norm(m.nombre)] = m; });
+  const con = new Set();
+  compras.forEach((a) => {
+    let m = a.materia_id ? byId[a.materia_id] : null;
+    if (!m) m = byName[norm(a.nombre)];
+    if (!m) m = intake.mejorPorPalabras(a.nombre, materias);
+    if (m) con.add(m.id);
+  });
+  // Derivadas de fruta entera: su compra es la fruta (misma regla que el volcado).
+  [
+    { id: "mat-lim-piel-lima", fruta: /\blima/ },
+    { id: "mat-lim-piel-pomelo", fruta: /pomelo|toronja/ },
+    { id: "mat-lim-zumo-pomelo", fruta: /pomelo|toronja/ },
+    { id: "mat-lim-zumo-naranja", fruta: /naranja/ },
+  ].forEach((der) => { if (byId[der.id] && compras.some((a) => der.fruta.test(norm(a.nombre)))) con.add(der.id); });
+  return con;
+}
+
 async function seedCosteDesdeCompras() {
   try {
     const { fijados } = aplicar(store);
@@ -113,4 +141,4 @@ async function seedCosteDesdeCompras() {
   }
 }
 
-module.exports = { seedCosteDesdeCompras, aplicar, costeUnidad };
+module.exports = { seedCosteDesdeCompras, aplicar, costeUnidad, materiasConCompra };

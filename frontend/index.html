@@ -13256,7 +13256,7 @@ function audescRender(){
   const pista = bajo?`<div class="lim-nota" style="color:var(--warn);"><b>Pocos costes enlazados a compra.</b> Para que el coste salga de tus facturas (y se actualice solo), carga las facturas en <b>Compras</b>: el sistema vuelca el precio a cada materia. Mientras, el coste es el que metiste a mano o una estimación.</div>`:"";
   const resumen=`<div class="card">
     <div class="card-name">Ingredientes enlazados a compra ${d.enlace_pct!=null?(Math.round(d.enlace_pct*1000)/10)+"%":"—"}</div>
-    <div class="card-meta">${d.lineas_enlazadas}/${d.lineas_total} ingredientes con precio de compra registrado (de tus facturas)</div>
+    <div class="card-meta">${d.lineas_enlazadas}/${d.lineas_total} ingredientes con una compra registrada (coste de tus facturas)</div>
     <div class="card-meta">${d.total} productos · ${d.con_escandallo} con escandallo · ${alertas}</div>
     ${pista}
   </div>`;

@@ -127,5 +127,24 @@ test("reparaciones: prioridad, cruce con el motor y guardas de cantidad", () => 
   assert.strictEqual(prod(d, "Café negativo").estado, "incompleto", "cantidad negativa → incompleto, nunca 'enlazado'");
 });
 
+test("enlace por COMPRA real: artículo en compras aunque no haya precio_compra volcado", () => {
+  store.writeAll("materias", [
+    { id: "mx", nombre: "Harina", unidad: "g", coste_medio: 0.001 },                                  // a mano, SIN precio_compra
+    { id: "mte", nombre: "Matcha", unidad: "g", coste_medio: 0.20, precio_compra: 0.20, coste_estimado: true }, // estimado + relleno, SIN compra real
+  ]);
+  store.writeAll("recetas", []);
+  store.writeAll("compras_productos", [
+    { id: "a1", nombre: "Harina de trigo", materia_id: "mx", precio_sin_iva: 0.80, cantidad_formato: 1000, formato: "g" },
+  ]);
+  store.writeAll("productos", [
+    { id: "p1", nombre: "Pan", ingredientes: [{ materia_id: "mx", cantidad: 100 }] },
+    { id: "p2", nombre: "Matcha latte", ingredientes: [{ materia_id: "mte", cantidad: 2 }] },
+  ]);
+  const d = aud.auditar();
+  assert.strictEqual(prod(d, "Pan").lineas[0].origen, "compra", "hay compra de Harina → enlazada aunque no tenga precio_compra");
+  assert.strictEqual(prod(d, "Pan").estado, "enlazado");
+  assert.strictEqual(prod(d, "Matcha latte").lineas[0].origen, "estimado", "matcha estimada SIN compra real → estimado, no 'compra'");
+});
+
 if (fallos) { console.error(`\n${fallos} prueba(s) de la auditoría de escandallos fallaron`); process.exit(1); }
 console.log("\nTodas las pruebas de la auditoría de escandallos OK");

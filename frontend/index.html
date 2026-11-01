@@ -10349,8 +10349,9 @@ function amRender(r){
         ${kpi("EBITDA", adEur(c.ebitda))}
         ${kpi("margen EBITDA", (c.margen_ebitda_pct!=null?c.margen_ebitda_pct+"%":"—"))}
         ${kpi("resultado caja", adEur(c.resultado_caja))}
-        ${kpi("food cost", (c.food_cost_pct!=null?c.food_cost_pct+"%":"—"))}
+        ${kpi(c.food_cost_origen==="manual"?"food cost · MANUAL":"food cost · real", (c.food_cost_pct!=null?c.food_cost_pct+"%":"—"))}
       </div>
+      ${c.food_cost_origen==="manual"?`<div class="ad-note" style="margin-top:8px;color:var(--warn);"><b>Food cost MANUAL fijado (${c.food_cost_pct}%).</b> Esta cifra NO es el food cost real de tus escandallos y compras — es un % puesto a mano que tapa el real.<div class="card-actions" style="margin-top:6px;"><button class="btn-primary" onclick="amQuitarFoodManual(this)">Quitar el manual y ver el real</button></div></div>`:`<div class="ad-note" style="margin-top:8px;">Food cost <b>real</b>: calculado del coste de materia de cada venta (escandallos × tus compras).</div>`}
       ${eq!=null?`<div class="ad-note" style="margin-top:8px;">Punto de equilibrio del mes: <b>${adEur(eq)}</b>. ${s.neto>=eq?`Lo superas (venta ${adEur(s.neto)}). ✓`:`Te faltan ${adEur(eq-s.neto)} para cubrir.`}</div>`:""}
       <div class="ad-foot" style="margin-top:6px;">El dinero (coste, food cost, resultado) sale de la Cuenta de Resultados — fuente única.</div>`;
   }
@@ -10366,6 +10367,15 @@ async function amCargarMermas(mes){
   var cont=el("am-mermas"); if(!cont||!mes) return;
   try{ var a=await api("/mermas/analisis?rango=mes-"+encodeURIComponent(mes)); cont.innerHTML='<div class="cc-card cc-wide">'+ccMermasHTML(a, mes)+'</div>'; }
   catch(e){ cont.innerHTML=""; }
+}
+// Quita el food cost MANUAL (config global) para que el mes muestre el REAL calculado
+// de los escandallos y compras. Aviso honesto: si faltan escandallos, el real puede
+// salir bajo hasta completarlos (usa la Auditoría de escandallos).
+async function amQuitarFoodManual(btn){
+  if(!confirm("Verás el food cost REAL calculado de tus escandallos y compras.\n\nSi aún te faltan escandallos por completar, puede salir más bajo de lo real hasta que los termines (revísalos en «Auditoría escandallos»).\n\n¿Quitar el food cost manual?")) return;
+  if(btn){ btn.disabled=true; btn.textContent="Quitando…"; }
+  try{ await api("/cuenta-resultados/food-cost",{method:"POST",body:JSON.stringify({mes:window._am.mes,food_cost:0})}); amCargar(); }
+  catch(e){ if(btn){ btn.disabled=false; btn.textContent="Quitar el manual y ver el real"; } alert(e.message); }
 }
 async function amImportar(btn){
   const inp=el("am-file"); const f=inp&&inp.files&&inp.files[0];

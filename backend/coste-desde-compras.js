@@ -116,11 +116,17 @@ function materiasConCompra(st) {
   const byId = {}; const byName = {};
   materias.forEach((m) => { byId[m.id] = m; if (!byName[norm(m.nombre)]) byName[norm(m.nombre)] = m; });
   const con = new Set();
+  // 1) Artículos del catálogo de Compras (con precio).
   compras.forEach((a) => {
     let m = a.materia_id ? byId[a.materia_id] : null;
     if (!m) m = byName[norm(a.nombre)];
     if (!m) m = intake.mejorPorPalabras(a.nombre, materias);
     if (m) con.add(m.id);
+  });
+  // 2) Líneas de facturas/albaranes YA procesados (recepciones): cada línea lleva su
+  //    materia_id enlazado por el procesador de facturas → señal directa de compra real.
+  (st.readAll("recepciones") || []).forEach((rec) => {
+    (rec && rec.lineas || []).forEach((l) => { if (l && l.materia_id && byId[l.materia_id]) con.add(l.materia_id); });
   });
   // Derivadas de fruta entera: su compra es la fruta (misma regla que el volcado).
   [

@@ -38,7 +38,7 @@ const FILES = [
   "coste-parcial", "motor-fechas", "persistencia-divergencia", "dinero-consistencia",
   "retencion-movimientos", "contencion-ingesta", "beneficio-neto", "coste-laboral",
   "stock-ledger", "conciliacion-diaria", "fiabilidad", "informe-consistencia", "pin-obligatorio",
-  "fiscal", "escandallos-base", "carta", "auditoria-foodcost",
+  "fiscal", "escandallos-base", "carta", "auditoria-foodcost", "auditoria-escandallos",
 ].map((n) => `tests/${n}.unit.js`);
 
 const ROOT = path.join(__dirname, "..");

@@ -7893,6 +7893,7 @@ function ccRender(d){
     <div class="cc-links">
       <button class="cc-link cc-link-wide" onclick="irA_financiero()">Resumen financiero · EBITDA día · mes · año (con prime cost)</button>
       <button class="cc-link cc-link-wide" onclick="irA_auditoriaFoodcost()">Auditoría de food cost · coste real por producto vendido</button>
+      <button class="cc-link cc-link-wide" onclick="irA_auditoriaEscandallos()">Auditoría de escandallos · ¿real y enlazado a la compra?</button>
       <button class="cc-link cc-link-wide" onclick="irA_timeline()">Línea temporal · pasado, presente y futuro</button>
       <button class="cc-link" onclick="irA_panel()">Análisis y tendencias</button>
       <button class="cc-link" onclick="irA_costesFijos()">Costes fijos</button>
@@ -13097,7 +13098,7 @@ async function irA_carta(){
   openSection("carta","Carta y márgenes");
   try{
     const d=await api("/carta");
-    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="irA_cafes()">Cafés</button><button class="btn-ghost" onclick="formReceta()">Crear receta</button><button class="btn-ghost" onclick="irA_auditoriaFoodcost()">Auditoría food cost</button></div>`;
+    const cab=`<div class="card-actions" style="margin-bottom:14px;"><button class="btn-primary" onclick="irA_cafes()">Cafés</button><button class="btn-ghost" onclick="formReceta()">Crear receta</button><button class="btn-ghost" onclick="irA_auditoriaFoodcost()">Auditoría food cost</button><button class="btn-ghost" onclick="irA_auditoriaEscandallos()">Auditoría escandallos</button></div>`;
     const resumen=`<div class="section-label">Resumen de la carta</div>
       <div class="card"><div class="card-name">Margen medio ${Math.round(d.margen_medio*100)}%</div>
         <div class="card-meta">Food cost medio ${Math.round(d.food_cost_medio*100)}% · ${d.total_productos} productos${d.productos_sin_coste?` · <b>${d.productos_sin_coste} sin coste</b>`:""}${d.hay_estimaciones?" · incluye costes estimados":""}</div></div>`;
@@ -13217,6 +13218,56 @@ function audfcRender(){
     );
   }, "No hay ventas en el periodo.");
   setInner(`<div class="card-actions" style="margin-bottom:10px;">${toggle}</div>`+resumen+filas);
+}
+
+// ── AUDITORÍA DE ESCANDALLOS (¿real y enlazado a la compra?) ─────────────────
+// Para cada producto: su escandallo ingrediente a ingrediente, con el origen del
+// coste de cada materia (compra real / estimado / sin precio). Solo dirección.
+const AUDE_ESTADO={
+  enlazado:{t:"enlazado",c:"#3c7a4a"}, parcial:{t:"parcial",c:"#c79a3a"},
+  coste_directo:{t:"coste a mano",c:"#d8b36a"}, incompleto:{t:"incompleto",c:"#b23b3b"},
+  sin_escandallo:{t:"sin escandallo",c:"#7a2e2e"},
+};
+const AUDE_ORIGEN={
+  compra:{t:"compra",c:"#3c7a4a"}, elaboracion:{t:"elaboración",c:"#5c7a6a"},
+  estimado:{t:"estimado",c:"#c79a3a"}, manual:{t:"a mano",c:"#c79a3a"},
+  sin_precio:{t:"sin precio",c:"#b23b3b"}, sin_materia:{t:"sin materia",c:"#b23b3b"},
+};
+function audescEur(n){ return fmtEur(n)+" €"; }
+function audescBadge(map,k){ const x=map[k]||{t:k,c:"var(--muted)"}; return `<span style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:${x.c};border:1px solid ${x.c};border-radius:4px;padding:1px 5px;white-space:nowrap;">${x.t}</span>`; }
+async function irA_auditoriaEscandallos(){
+  navInto(()=>irA_categoria("informes"));
+  openSection("audesc","Auditoría de escandallos");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección ve la auditoría de escandallos.</div>`); return; }
+  setInner(`<div class="empty">Analizando los escandallos uno a uno…</div>`);
+  try{ const d=await api("/auditoria-escandallos"); window._audescData=d; audescRender(); }
+  catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+function audescRender(){
+  const d=window._audescData; if(!d) return irA_auditoriaEscandallos();
+  const pe=d.por_estado||{};
+  const g=(e)=>pe[e]||0;
+  const alertas=[g("sin_escandallo")?`<span style="color:#b23b3b;">${g("sin_escandallo")} sin escandallo</span>`:"",g("incompleto")?`<span style="color:#b23b3b;">${g("incompleto")} incompletos</span>`:"",g("coste_directo")?`${g("coste_directo")} a mano`:"",g("parcial")?`${g("parcial")} parciales`:"",`${g("enlazado")} enlazados`].filter(Boolean).join(" · ");
+  const resumen=`<div class="card">
+    <div class="card-name">Ingredientes enlazados a compra ${d.enlace_pct!=null?(Math.round(d.enlace_pct*1000)/10)+"%":"—"}</div>
+    <div class="card-meta">${d.lineas_enlazadas}/${d.lineas_total} líneas de escandallo con coste de factura real</div>
+    <div class="card-meta">${d.total} productos · ${d.con_escandallo} con escandallo · ${alertas}</div>
+  </div>`;
+  const filas=section("Escandallo a escandallo", d.productos, p=>{
+    const lineas = p.tiene_escandallo
+      ? p.lineas.map(l=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-top:1px solid var(--line);">
+          <span>${esc(l.nombre)} <span style="color:var(--muted);">${fmtEur(l.cantidad)}${esc(l.unidad)}</span></span>
+          <span style="white-space:nowrap;">${audescEur(l.coste_linea)} ${audescBadge(AUDE_ORIGEN,l.origen)}</span></div>`).join("")
+      : `<div style="font-size:11px;color:var(--muted);margin-top:4px;">${p.estado==="coste_directo"?`Coste declarado a mano: ${audescEur(p.coste)} (sin escandallo de ingredientes).`:`Sin escandallo. ${p.fuente_coste?`Coste por respaldo (${esc(p.fuente_coste)}).`:"Sin coste."} Pulsa Editar para fijar su receta.`}</div>`;
+    const accion=`<button class="btn-ghost" onclick="formReceta('${esc(String(p.id))}')">Editar receta</button>`;
+    return card(
+      `${esc(p.nombre)} ${audescBadge(AUDE_ESTADO,p.estado)}`,
+      `coste ${audescEur(p.coste)}${p.tiene_escandallo?` · ${p.lineas_enlazadas}/${p.lineas_total} ingredientes de compra`:""}`,
+      accion,
+      `<div style="margin-top:6px;">${lineas}</div>`
+    );
+  }, "No hay productos en la carta.");
+  setInner(resumen+filas);
 }
 
 // ── CARTA POR CATEGORÍAS · árbol de escandallos ──────────────────────────

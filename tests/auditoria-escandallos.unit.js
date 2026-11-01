@@ -82,5 +82,50 @@ test("orden accionable: lo peor primero (sin escandallo / incompleto)", () => {
   assert.strictEqual(d.productos[0].estado, "sin_escandallo", "lo que no tiene escandallo, primero");
 });
 
+test("reparaciones: prioridad, cruce con el motor y guardas de cantidad", () => {
+  store.writeAll("materias", [
+    { id: "mc", nombre: "Café", unidad: "g", coste_medio: 0.02, precio_compra: 0.02 },                    // compra
+    { id: "mte", nombre: "Matcha", unidad: "g", coste_medio: 0.20, precio_compra: 0.20, coste_estimado: true }, // estimado AUNQUE tenga precio_compra
+    { id: "maceite", nombre: "Aceite", unidad: "ml", coste_medio: 0.01 },
+    { id: "melab", nombre: "Salsa", unidad: "g", coste_medio: 0 },     // elaboración derivada (coste en su receta)
+    { id: "mroto", nombre: "Mermelada", unidad: "g", coste_medio: 0 }, // elaboración que NO resuelve
+    { id: "msin", nombre: "Especia", unidad: "g", coste_medio: 0, pendiente_coste: true },
+  ]);
+  store.writeAll("recetas", [
+    { id: "r1", nombre: "Salsa", produce_materia_id: "melab", resultado_base: 100, ingredientes: [{ materia_id: "maceite", cantidad: 100 }] },
+    { id: "r2", nombre: "Mermelada", produce_materia_id: "mroto" }, // sin resultado_base → no resuelve
+  ]);
+  store.writeAll("productos", [
+    { id: "pe", nombre: "Matcha latte", ingredientes: [{ materia_id: "mte", cantidad: 2 }] },
+    { id: "pel", nombre: "Bowl salsa", ingredientes: [{ materia_id: "melab", cantidad: 50 }] },
+    { id: "proto", nombre: "Tosta rota", ingredientes: [{ materia_id: "mroto", cantidad: 30 }] },
+    { id: "pdir", nombre: "Refresco", coste_materia: 0.50, ingredientes: [{ materia_id: "msin", cantidad: 10 }] },
+    { id: "pcero", nombre: "Café con especia", ingredientes: [{ materia_id: "mc", cantidad: 18 }, { materia_id: "msin", cantidad: 0 }] },
+    { id: "pneg", nombre: "Café negativo", ingredientes: [{ materia_id: "mc", cantidad: -18 }] },
+  ]);
+  const d = aud.auditar();
+
+  const ml = prod(d, "Matcha latte");
+  assert.strictEqual(ml.lineas[0].origen, "estimado", "coste_estimado gana a precio_compra");
+  assert.strictEqual(ml.estado, "sin_compra", "tiene coste pero sin enlace a compra");
+
+  const bowl = prod(d, "Bowl salsa");
+  assert.strictEqual(bowl.lineas[0].origen, "elaboracion");
+  cerca(bowl.lineas[0].coste_unit, 0.01, "coste €/g de la salsa DESDE su receta (no 0)");
+  cerca(bowl.lineas[0].coste_linea, 0.50, "50 g × 0,01 (la línea cuadra con el total)");
+  assert.strictEqual(bowl.estado, "enlazado");
+
+  const roto = prod(d, "Tosta rota");
+  assert.strictEqual(roto.lineas[0].origen, "sin_precio", "elaboración que no resuelve no es 'enlazado'");
+  assert.strictEqual(roto.estado, "incompleto");
+
+  const ref = prod(d, "Refresco");
+  assert.strictEqual(ref.estado, "coste_directo", "coste declarado + ingredientes → coste_directo, no incompleto");
+  cerca(ref.coste, 0.50, "usa el coste declarado");
+
+  assert.strictEqual(prod(d, "Café con especia").estado, "enlazado", "línea de cantidad 0 no cuenta como incompleto");
+  assert.strictEqual(prod(d, "Café negativo").estado, "incompleto", "cantidad negativa → incompleto, nunca 'enlazado'");
+});
+
 if (fallos) { console.error(`\n${fallos} prueba(s) de la auditoría de escandallos fallaron`); process.exit(1); }
 console.log("\nTodas las pruebas de la auditoría de escandallos OK");

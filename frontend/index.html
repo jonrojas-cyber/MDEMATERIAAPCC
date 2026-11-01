@@ -13225,7 +13225,8 @@ function audfcRender(){
 // coste de cada materia (compra real / estimado / sin precio). Solo dirección.
 const AUDE_ESTADO={
   enlazado:{t:"enlazado",c:"#3c7a4a"}, parcial:{t:"parcial",c:"#c79a3a"},
-  coste_directo:{t:"coste a mano",c:"#d8b36a"}, incompleto:{t:"incompleto",c:"#b23b3b"},
+  sin_compra:{t:"sin enlace a compra",c:"#c79a3a"}, coste_directo:{t:"coste a mano",c:"#d8b36a"},
+  estimado:{t:"estimado",c:"#c79a3a"}, incompleto:{t:"incompleto",c:"#b23b3b"},
   sin_escandallo:{t:"sin escandallo",c:"#7a2e2e"},
 };
 const AUDE_ORIGEN={
@@ -13234,7 +13235,10 @@ const AUDE_ORIGEN={
   sin_precio:{t:"sin precio",c:"#b23b3b"}, sin_materia:{t:"sin materia",c:"#b23b3b"},
 };
 function audescEur(n){ return fmtEur(n)+" €"; }
-function audescBadge(map,k){ const x=map[k]||{t:k,c:"var(--muted)"}; return `<span style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:${x.c};border:1px solid ${x.c};border-radius:4px;padding:1px 5px;white-space:nowrap;">${x.t}</span>`; }
+// Coste de línea: hasta 3 decimales en importes pequeños (una especia a 0,004 € no es "0 €").
+function audescFino(n){ n=Number(n)||0; const dec=(Math.abs(n)>0&&Math.abs(n)<1)?3:2; return (Math.round(n*1000)/1000).toLocaleString("es-ES",{maximumFractionDigits:dec})+" €"; }
+function audescCant(n){ n=Number(n)||0; const dec=(Math.abs(n)>0&&Math.abs(n)<1)?3:(Number.isInteger(n)?0:1); return (Math.round(n*1000)/1000).toLocaleString("es-ES",{maximumFractionDigits:dec}); }
+function audescBadge(map,k){ const x=map[k]||{t:k,c:"var(--muted)"}; return `<span style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:${x.c};border:1px solid ${x.c};border-radius:4px;padding:1px 5px;white-space:nowrap;">${esc(x.t)}</span>`; }
 async function irA_auditoriaEscandallos(){
   navInto(()=>irA_categoria("informes"));
   openSection("audesc","Auditoría de escandallos");
@@ -13247,24 +13251,29 @@ function audescRender(){
   const d=window._audescData; if(!d) return irA_auditoriaEscandallos();
   const pe=d.por_estado||{};
   const g=(e)=>pe[e]||0;
-  const alertas=[g("sin_escandallo")?`<span style="color:#b23b3b;">${g("sin_escandallo")} sin escandallo</span>`:"",g("incompleto")?`<span style="color:#b23b3b;">${g("incompleto")} incompletos</span>`:"",g("coste_directo")?`${g("coste_directo")} a mano`:"",g("parcial")?`${g("parcial")} parciales`:"",`${g("enlazado")} enlazados`].filter(Boolean).join(" · ");
+  const alertas=[g("sin_escandallo")?`<span style="color:#b23b3b;">${g("sin_escandallo")} sin escandallo</span>`:"",g("incompleto")?`<span style="color:#b23b3b;">${g("incompleto")} incompletos</span>`:"",g("estimado")?`${g("estimado")} estimados`:"",g("sin_compra")?`${g("sin_compra")} sin enlace`:"",g("coste_directo")?`${g("coste_directo")} a mano`:"",g("parcial")?`${g("parcial")} parciales`:"",`${g("enlazado")} enlazados`].filter(Boolean).join(" · ");
+  const bajo = d.enlace_pct!=null && d.enlace_pct<0.5;
+  const pista = bajo?`<div class="lim-nota" style="color:var(--warn);"><b>Pocos costes enlazados a compra.</b> Para que el coste salga de tus facturas (y se actualice solo), carga las facturas en <b>Compras</b>: el sistema vuelca el precio a cada materia. Mientras, el coste es el que metiste a mano o una estimación.</div>`:"";
   const resumen=`<div class="card">
     <div class="card-name">Ingredientes enlazados a compra ${d.enlace_pct!=null?(Math.round(d.enlace_pct*1000)/10)+"%":"—"}</div>
-    <div class="card-meta">${d.lineas_enlazadas}/${d.lineas_total} líneas de escandallo con coste de factura real</div>
+    <div class="card-meta">${d.lineas_enlazadas}/${d.lineas_total} ingredientes con precio de compra registrado (de tus facturas)</div>
     <div class="card-meta">${d.total} productos · ${d.con_escandallo} con escandallo · ${alertas}</div>
+    ${pista}
   </div>`;
   const filas=section("Escandallo a escandallo", d.productos, p=>{
     const lineas = p.tiene_escandallo
-      ? p.lineas.map(l=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-top:1px solid var(--line);">
-          <span>${esc(l.nombre)} <span style="color:var(--muted);">${fmtEur(l.cantidad)}${esc(l.unidad)}</span></span>
-          <span style="white-space:nowrap;">${audescEur(l.coste_linea)} ${audescBadge(AUDE_ORIGEN,l.origen)}</span></div>`).join("")
-      : `<div style="font-size:11px;color:var(--muted);margin-top:4px;">${p.estado==="coste_directo"?`Coste declarado a mano: ${audescEur(p.coste)} (sin escandallo de ingredientes).`:`Sin escandallo. ${p.fuente_coste?`Coste por respaldo (${esc(p.fuente_coste)}).`:"Sin coste."} Pulsa Editar para fijar su receta.`}</div>`;
-    const accion=`<button class="btn-ghost" onclick="formReceta('${esc(String(p.id))}')">Editar receta</button>`;
+      ? p.lineas.map(l=>`<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;font-size:11px;padding:3px 0;border-top:1px solid var(--line);">
+          <span style="min-width:0;overflow-wrap:anywhere;">${esc(l.nombre)} <span style="color:var(--muted);">${audescCant(l.cantidad)}${esc(l.unidad)}</span></span>
+          <span style="white-space:nowrap;">${audescFino(l.coste_linea)} ${audescBadge(AUDE_ORIGEN,l.origen)}</span></div>`).join("")
+      : `<div style="font-size:11px;color:var(--muted);margin-top:4px;">${p.estado==="coste_directo"?`Coste declarado a mano: ${audescEur(p.coste)} (sin escandallo de ingredientes).`:`Sin escandallo. ${p.fuente_coste?`Coste por respaldo ("${esc(p.fuente_coste)}").`:"Sin coste."} Pulsa Editar para fijar su receta.`}</div>`;
+    // Aviso cuando el coste NO viene del escandallo (respaldo por nombre) pese a tener ingredientes.
+    const nota = (p.tiene_escandallo && p.fuente_coste)?`<div style="font-size:10px;color:var(--warn);margin-top:4px;">⚠ El coste (${audescEur(p.coste)}) no sale de este escandallo sino de un respaldo por nombre ("${esc(p.fuente_coste)}"). Completa las materias para que salga del escandallo.</div>`:"";
+    const accion=`<button class="btn-ghost" onclick='formReceta(${JSON.stringify(String(p.id))})'>Editar receta</button>`;
     return card(
       `${esc(p.nombre)} ${audescBadge(AUDE_ESTADO,p.estado)}`,
       `coste ${audescEur(p.coste)}${p.tiene_escandallo?` · ${p.lineas_enlazadas}/${p.lineas_total} ingredientes de compra`:""}`,
       accion,
-      `<div style="margin-top:6px;">${lineas}</div>`
+      `<div style="margin-top:6px;">${lineas}${nota}</div>`
     );
   }, "No hay productos en la carta.");
   setInner(resumen+filas);

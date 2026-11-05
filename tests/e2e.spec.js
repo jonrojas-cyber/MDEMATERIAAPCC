@@ -572,6 +572,32 @@ test("proveedores: archivar/recuperar (admin) y bloqueo al equipo", async ({ req
   await request.post(`/api/proveedores/${creado.id}/archivar`, { headers: hA });
 });
 
+test("pedidos: el equipo no ve coste y un archivado queda fuera (guard de servidor)", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const hE = { Authorization: `Bearer ${lara.token}` };
+  const provs = await (await request.get("/api/proveedores", { headers: hA })).json();
+  const prov = (provs || [])[0];
+  if (prov) {
+    const catA = await (await request.get(`/api/pedidos/proveedor/${prov.id}`, { headers: hA })).json();
+    const catE = await (await request.get(`/api/pedidos/proveedor/${prov.id}`, { headers: hE })).json();
+    expect(catE.sin_economico).toBe(true);
+    if ((catA.articulos || []).length) {
+      expect(catA.articulos[0]).toHaveProperty("precio_pedido"); // admin sí
+      expect(catE.articulos[0].precio_pedido).toBeUndefined();    // equipo no
+    }
+    // Archivado: el catálogo y crear pedido quedan bloqueados en el SERVIDOR (410).
+    await request.post(`/api/proveedores/${prov.id}/archivar`, { headers: hA });
+    expect((await request.get(`/api/pedidos/proveedor/${prov.id}`, { headers: hE })).status()).toBe(410);
+    expect((await request.post("/api/pedidos", { headers: hE, data: { proveedor_id: prov.id, lineas: [{ materia_id: "zzz", cantidad: 1 }] } })).status()).toBe(410);
+    await request.post(`/api/proveedores/${prov.id}/recuperar`, { headers: hA });
+  }
+  // Recepciones: el equipo no ve importe de compra (gasto).
+  const recE = await (await request.get("/api/recepciones", { headers: hE })).json();
+  for (const r of (recE || [])) expect(r.importe_total === undefined).toBe(true);
+});
+
 test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

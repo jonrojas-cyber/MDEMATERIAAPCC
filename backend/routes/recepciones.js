@@ -56,9 +56,18 @@ function mejorMateriaPorPalabras(descripcion, materias) {
   return mejor;
 }
 
+// El equipo NUNCA ve dinero de coste (regla de negocio): importe_total de una factura
+// y los precios por línea son GASTO de compra, no venta. Se le ocultan.
+function sinEurosRec(r) {
+  const { importe_total, pendiente_pago, ...resto } = r;
+  if (Array.isArray(resto.lineas)) resto.lineas = resto.lineas.map((l) => { const { precio_unitario, importe, precio_esperado, ...lr } = l; return lr; });
+  return resto;
+}
 router.get("/", (req, res) => {
   try { require("../factura-procesar").programar(store); } catch (e) {} // lee facturas pendientes en segundo plano (automático)
-  res.json(store.readAll("recepciones").map(slim));
+  const esAdmin = !!(req.user && req.user.rol === "admin");
+  const out = store.readAll("recepciones").map(slim);
+  res.json(esAdmin ? out : out.map(sinEurosRec));
 });
 
 router.get("/ocr-estado", (req, res) => {

@@ -129,6 +129,9 @@ router.get("/", (req, res) => {
   // Mismo umbral que las Tareas (módulo umbral): por debajo del punto de pedido.
   const pedir = materias
     .filter((m) => estadoStock(m) !== "correcto")
+    // Coherente con Pedidos y el aviso de las 16:00: las materias cuyo único
+    // proveedor está archivado no cuentan (no se pueden pedir desde el flujo).
+    .filter((m) => { const p = proveedores.find((x) => x.id === m.proveedor_id); return !(p && p.archivado); })
     .map((m) => {
       const proveedor = proveedores.find((p) => p.id === m.proveedor_id);
       return {

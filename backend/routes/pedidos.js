@@ -19,6 +19,24 @@ function unidadPedido(u) {
 }
 function rN(n, d) { const f = Math.pow(10, d == null ? 2 : d); return Math.round((Number(n) || 0) * f) / f; }
 
+function esAdmin(req) { return !!(req.user && req.user.rol === "admin"); }
+// El equipo NUNCA ve coste/precio de compra (regla de negocio): se le entrega el
+// catálogo con cantidades y unidades, pero SIN los euros por artículo.
+function sinCostesCat(cat) {
+  if (!cat) return cat;
+  return Object.assign({}, cat, {
+    sin_economico: true,
+    articulos: (cat.articulos || []).map((a) => { const { precio_base, precio_pedido, ...resto } = a; return resto; }),
+  });
+}
+// Un pedido lleva el coste recalculado (total + precio por línea): se oculta al equipo.
+function sinCostesPedido(p) {
+  if (!p) return p;
+  const { total_estimado, ...resto } = p;
+  if (Array.isArray(resto.lineas)) resto.lineas = resto.lineas.map((l) => { const { precio_esperado, precio_pedido, ...lr } = l; return lr; });
+  return resto;
+}
+
 // Catálogo de un proveedor: sus artículos con precio ACTUALIZADO (coste real) en
 // unidad de pedido, estado de stock y CANTIDAD SUGERIDA para reponer. Reutiliza el
 // mismo cerebro de umbral que el aviso de las 16:00 (una sola fuente de verdad).
@@ -117,7 +135,8 @@ function soloDigitos(v) { return String(v == null ? "" : v).replace(/[^0-9]/g, "
 
 // ── Rutas ────────────────────────────────────────────────────────────────────
 router.get("/", (req, res) => {
-  res.json(store.readAll("pedidos").slice().reverse());
+  const peds = store.readAll("pedidos").slice().reverse();
+  res.json(esAdmin(req) ? peds : peds.map(sinCostesPedido));
 });
 
 // Sugerencias de compra agrupadas por proveedor (lo mismo que el aviso de 16:00).
@@ -141,15 +160,19 @@ router.put("/config", (req, res) => {
 
 // Catálogo de un proveedor (artículos + precio en unidad de pedido + sugerido).
 router.get("/proveedor/:id", (req, res) => {
+  const prov = store.findById("proveedores", req.params.id);
+  if (!prov) return res.status(404).json({ error: "Proveedor no encontrado" });
+  // Un proveedor ARCHIVADO está fuera del flujo de pedidos: no se puede pedir.
+  if (prov.archivado) return res.status(410).json({ error: "Este proveedor está archivado. Recupéralo en Proveedores para volver a pedirle." });
   const cat = catalogoProveedor(store, req.params.id);
   if (!cat) return res.status(404).json({ error: "Proveedor no encontrado" });
-  res.json(cat);
+  res.json(esAdmin(req) ? cat : sinCostesCat(cat));
 });
 
 router.get("/:id", (req, res) => {
   const p = store.findById("pedidos", req.params.id);
   if (!p) return res.status(404).json({ error: "Pedido no encontrado" });
-  res.json(p);
+  res.json(esAdmin(req) ? p : sinCostesPedido(p));
 });
 
 // Crear pedido: proveedor + líneas. Cada línea lleva la cantidad en UNIDAD BASE
@@ -163,6 +186,8 @@ router.post("/", (req, res) => {
   if (!candidatas.length) return res.status(400).json({ error: "Añade al menos un producto con cantidad" });
 
   const prov = store.findById("proveedores", proveedor_id);
+  // No se crean pedidos a proveedores archivados (fuera del flujo).
+  if (prov && prov.archivado) return res.status(410).json({ error: "Este proveedor está archivado. Recupéralo en Proveedores para pedirle." });
   const materias = store.readAll("materias");
   const compras = store.readAll("compras_productos") || [];
   const lineasN = candidatas.map((l) => {
@@ -206,7 +231,7 @@ router.post("/", (req, res) => {
     total_estimado: Math.round(lineasN.reduce((s, l) => s + l.cantidad * l.precio_esperado, 0) * 100) / 100,
   };
   store.insert("pedidos", pedido);
-  res.status(201).json(pedido);
+  res.status(201).json(esAdmin(req) ? pedido : sinCostesPedido(pedido));
 });
 
 // Marcar un pedido como enviado al proveedor.

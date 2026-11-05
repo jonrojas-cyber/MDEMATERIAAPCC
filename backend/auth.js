@@ -57,6 +57,9 @@ const EQUIPO_ALLOWED = new Set([
   "recetas",
   "carta",
   "etiquetas",
+  "pedidos", // el equipo HACE pedidos (sin ver coste: catálogo/total/WhatsApp sin euros, filtrado en la ruta)
+  "proveedores", // lectura para elegir proveedor al pedir; crear/editar/archivar y la ficha son solo admin
+  "recepciones", // el equipo recibe el reparto (albaranes); importes de compra ocultos al equipo
   "mermas", // mermas: el equipo registra la merma (sin ver coste); resumen económico gated a admin
   "cierre-caja", // cierre de caja: responsable/empleado cuentan y cierran (acciones sensibles gated dentro)
   "turnos", // cuadrante de turnos: el equipo ve su horario y función (sin dinero); editar es admin

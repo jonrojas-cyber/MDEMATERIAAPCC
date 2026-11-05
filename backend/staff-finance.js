@@ -7,8 +7,14 @@ const store = require("./data-store");
 const ESTADOS = ["trabajando", "libre", "vacaciones", "baja"];
 const COEF_EMPRESA = 1.32; // compat histórica: SS empresa por defecto ~32% (= COEF_EMPRESA − 1)
 const SS_EMPRESA_PCT_DEFECTO = COEF_EMPRESA - 1; // 0,32
+// SS a cargo del TRABAJADOR (se descuenta de su bruto). ~6,47% (contingencias comunes
+// 4,7% + desempleo 1,55% + formación 0,1% + MEI 0,12%). Es un valor por defecto editable:
+// lo exacto se toma de la nómina real que mete dirección.
+const SS_TRABAJADOR_PCT_DEFECTO = 0.0647;
 
 function eur(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+// Normaliza un porcentaje: admite 30 (→0,30) o 0,30. Negativo/no numérico → por defecto.
+function pct(v, def) { if (v == null || v === "") return def; v = Number(v); if (!Number.isFinite(v) || v < 0) return def; return v > 1 ? v / 100 : v; }
 
 // SS a cargo de la empresa (fracción) de un empleado. Por empleado (no un 1,32 global):
 // campo ss_empresa_pct (admite 30 o 0,30). Por defecto 0,32 para no cambiar los números
@@ -51,13 +57,18 @@ function costeDiarioEmpleado(s) {
 // Censo del equipo. Prioriza staff_finance; si está vacío, deriva de usuarios.
 function censo() {
   const sf = store.readAll("staff_finance").filter((s) => s.activo !== false);
-  if (sf.length) return { fuente: "staff_finance", equipo: sf };
   const usuarios = store.readAll("usuarios").filter((u) => u.rol);
-  const derivado = usuarios.map((u) => ({
-    id: u.id || u.key, usuario_key: u.key, nombre: u.nombre || u.key, rol: u.rol,
-    coste_hora: 0, horas_semana: 0, estado: "trabajando", activo: true, sin_datos: true,
-  }));
-  return { fuente: derivado.length ? "usuarios" : "vacio", equipo: derivado };
+  // FUSIÓN (no sustitución): datos reales de staff_finance + usuarios SIN ficha añadidos
+  // como coste 0 (sin_datos). Así, meter el sueldo de una persona NUNCA borra a las demás
+  // del censo de coste laboral (evita infravalorar el P&L).
+  const vistos = new Set();
+  sf.forEach((s) => { if (s.id) vistos.add(s.id); if (s.usuario_key) vistos.add(s.usuario_key); });
+  const equipo = sf.slice();
+  usuarios.forEach((u) => {
+    if (vistos.has(u.id) || vistos.has(u.key)) return;
+    equipo.push({ id: u.id || u.key, usuario_key: u.key, nombre: u.nombre || u.key, rol: u.rol, coste_hora: 0, horas_semana: 0, estado: "trabajando", activo: true, sin_datos: true });
+  });
+  return { fuente: sf.length ? "staff_finance" : (usuarios.length ? "usuarios" : "vacio"), equipo };
 }
 
 // Coste laboral imputable a un rango [desde, hasta).
@@ -97,4 +108,44 @@ function resumen(rango, now = Date.now()) {
   };
 }
 
-module.exports = { ESTADOS, COEF_EMPRESA, SS_EMPRESA_PCT_DEFECTO, ssEmpresaPct, costeAnualEmpleado, costeDiarioEmpleado, censo, costeEnRango, costeDiarioTotal, resumen, eur };
+// Desglose de la NÓMINA mensual de un empleado (la foto de una paga): del bruto se
+// restan la SS del trabajador y la retención de IRPF (porcentajes tomados de la nómina
+// real) para dar el NETO. Además, el coste para la empresa (bruto + SS empresa + gestor).
+// Fuente única del desglose salarial (que el panel y el asistente reutilizan).
+function desgloseNomina(s) {
+  s = s || {};
+  const bruto = eur(Number(s.salario_bruto_mensual) || 0);
+  const ssTrabPct = pct(s.ss_trabajador_pct, SS_TRABAJADOR_PCT_DEFECTO);
+  const irpfPct = pct(s.irpf_pct, 0);
+  const ssEmpPct = ssEmpresaPct(s);
+  const ssTrab = eur(bruto * ssTrabPct);
+  const irpf = eur(bruto * irpfPct);
+  const otras = eur(Number(s.otras_deducciones) || 0);
+  const neto = eur(bruto - ssTrab - irpf - otras);
+  const ssEmp = eur(bruto * ssEmpPct);
+  const gestor = eur(Number(s.gestor_mensual) || 0);
+  const pagas = Number(s.num_pagas) > 0 ? Number(s.num_pagas) : 12;
+  return {
+    id: s.id || s.usuario_key || null,
+    nombre: s.nombre || s.id || "",
+    rol: s.rol || "",
+    activo: s.activo !== false,
+    salario_bruto_mensual: bruto,
+    num_pagas: pagas,
+    bruto_anual: eur(bruto * pagas),
+    ss_trabajador: ssTrab,
+    ss_trabajador_pct: ssTrabPct,
+    irpf: irpf,
+    irpf_pct: irpfPct,
+    otras_deducciones: otras,
+    neto_mensual: neto,
+    ss_empresa: ssEmp,
+    ss_empresa_pct: ssEmpPct,
+    gestor_mensual: gestor,
+    coste_empresa_mensual: eur(bruto + ssEmp + gestor),
+    coste_empresa_anual: eur((bruto * pagas) + (ssEmp * pagas) + gestor * 12),
+    sin_datos: !(bruto > 0),
+  };
+}
+
+module.exports = { ESTADOS, COEF_EMPRESA, SS_EMPRESA_PCT_DEFECTO, SS_TRABAJADOR_PCT_DEFECTO, pct, ssEmpresaPct, costeAnualEmpleado, costeDiarioEmpleado, censo, costeEnRango, costeDiarioTotal, resumen, desgloseNomina, eur };

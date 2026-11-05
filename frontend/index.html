@@ -7552,7 +7552,11 @@ async function irA_categoria(cat) {
       const sub = esc(m.badge || (m.urgent ? "requiere atención" : ""));
       return labRow(esc(m.name), sub, `irA_${id}()`);
     }).join("");
-    setInner(`<div class="lab-eyebrow" style="margin:0 0 4px">${esc((c.name||"").toLowerCase())}</div><div class="lab-rows">${rows}</div>`);
+    // Nóminas / sueldos del equipo: dato sensible, solo dirección. Vive en Informes.
+    const extraInformes = (cat === "informes" && mbdsEsAdmin())
+      ? labRow("Nóminas y sueldos", "neto · bruto · SS · IRPF (solo dirección)", "irA_nominas()")
+      : "";
+    setInner(`<div class="lab-eyebrow" style="margin:0 0 4px">${esc((c.name||"").toLowerCase())}</div><div class="lab-rows">${rows}${extraInformes}</div>`);
   } catch(e) { setInner(`<div class="err">${esc(e.message)}</div>`); }
 }
 
@@ -11091,6 +11095,62 @@ async function irA_equipoHub(){
   navReset(); openSection("equipoHub","Equipo");
   try{ const d=await api("/equipo/hub"); window._eqhub=d; equipoHubRender(d); }
   catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+
+// ── NÓMINAS / SUELDOS (solo dirección) ───────────────────────────────────────
+// Dirección mete las cifras de la nómina real (bruto, % IRPF, % SS trabajador y % SS
+// empresa) y la app desglosa el NETO y el coste de empresa. Dato privado: el equipo no
+// accede (la ruta /api/nominas no está en EQUIPO_ALLOWED → 403).
+function nomEUR(n){ return new Intl.NumberFormat("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n)||0); }
+function nomPCT(p){ return new Intl.NumberFormat("es-ES",{maximumFractionDigits:2}).format((Number(p)||0)*100); }
+function nomDesgloseHTML(e){
+  return `Bruto ${nomEUR(e.salario_bruto_mensual)} € − SS trab. ${nomEUR(e.ss_trabajador)} € − IRPF ${nomEUR(e.irpf)} €${e.otras_deducciones?` − otras ${nomEUR(e.otras_deducciones)} €`:""} = <b>neto ${nomEUR(e.neto_mensual)} €/mes</b><br>Coste empresa ${nomEUR(e.coste_empresa_mensual)} €/mes · bruto anual ${nomEUR(e.bruto_anual)} € (${e.num_pagas} pagas)`;
+}
+async function irA_nominas(){
+  openSection("nominas","Nóminas y sueldos");
+  if(!mbdsEsAdmin()){ setInner(`<div class="err">Las nóminas son solo de dirección.</div>`); return; }
+  try{
+    const d=await api("/nominas"); window._nominas=d;
+    const cards=(d.empleados||[]).map((e)=>`
+      <div class="card" data-emp="${esc(e.id||"")}">
+        <div class="card-name">${esc(e.nombre)} <span class="card-meta" style="font-weight:400">· ${esc(e.rol||"")}</span></div>
+        <div class="field"><label>Bruto mensual (€)</label><input type="number" step="0.01" inputmode="decimal" class="nom-bruto" value="${e.salario_bruto_mensual||""}" style="width:100%;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="field" style="flex:1;min-width:90px;"><label>Nº pagas</label><input type="number" step="1" inputmode="numeric" class="nom-pagas" value="${e.num_pagas||12}" style="width:100%;"></div>
+          <div class="field" style="flex:1;min-width:90px;"><label>IRPF %</label><input type="number" step="0.01" inputmode="decimal" class="nom-irpf" value="${e.irpf_pct?nomPCT(e.irpf_pct):""}" placeholder="p. ej. 15" style="width:100%;"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="field" style="flex:1;min-width:90px;"><label>SS trabajador %</label><input type="number" step="0.01" inputmode="decimal" class="nom-sstrab" value="${nomPCT(e.ss_trabajador_pct)}" style="width:100%;"></div>
+          <div class="field" style="flex:1;min-width:90px;"><label>SS empresa %</label><input type="number" step="0.01" inputmode="decimal" class="nom-ssemp" value="${nomPCT(e.ss_empresa_pct)}" style="width:100%;"></div>
+        </div>
+        <div class="nom-desglose" style="font-size:12px;color:var(--muted);line-height:1.6;margin:6px 0;">${nomDesgloseHTML(e)}</div>
+        <div class="card-actions"><button class="btn-primary" onclick="nominaGuardar(this,'${esc(e.id||"")}')">Guardar</button></div>
+      </div>`).join("");
+    setInner(`
+      <div class="section-label">Plantilla</div>
+      <div class="card" style="border-color:var(--olive)">
+        <div class="card-meta" style="line-height:1.6;">Coste mensual empresa <b>${nomEUR(d.total_coste_empresa_mes)} €</b> · neto total <b>${nomEUR(d.total_neto_mes)} €</b> · bruto total <b>${nomEUR(d.total_bruto_mes)} €</b></div>
+      </div>
+      <div class="card-meta" style="margin:0 0 12px;line-height:1.6;">Mete los porcentajes de la <b>nómina real</b> (el IRPF y la SS del trabajador los ves en su nómina). El neto se calcula solo. Es un dato privado: el equipo no lo ve.</div>
+      ${cards||'<div class="empty">No hay trabajadores.</div>'}`);
+  }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
+}
+async function nominaGuardar(btn,id){
+  const card=btn.closest(".card"); if(!card) return;
+  const v=(cls)=>{ const n=card.querySelector("."+cls); return n?n.value.trim():""; };
+  const body={
+    salario_bruto_mensual:v("nom-bruto"),
+    num_pagas:v("nom-pagas"),
+    irpf_pct:v("nom-irpf"),           // en % (p. ej. 15 → el backend lo normaliza a 0,15)
+    ss_trabajador_pct:v("nom-sstrab"),
+    ss_empresa_pct:v("nom-ssemp"),
+  };
+  btn.disabled=true;
+  try{
+    const e=await api(`/nominas/${encodeURIComponent(id)}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const des=card.querySelector(".nom-desglose"); if(des) des.innerHTML=nomDesgloseHTML(e);
+    btn.disabled=false; btn.textContent="Guardado ✓"; setTimeout(()=>{ btn.textContent="Guardar"; },1500);
+  }catch(err){ alert(err.message); btn.disabled=false; }
 }
 function equipoHubRender(d){
   const admin=!!d.puede_editar;

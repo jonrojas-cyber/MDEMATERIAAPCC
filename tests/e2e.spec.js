@@ -729,6 +729,28 @@ test("asistente: el panel de voz se abre desde el botón flotante y responde", a
   expect(errors).toEqual([]);
 });
 
+test("nóminas: dirección ve el desglose (bruto/SS/IRPF/neto) y el equipo nunca (403)", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const hE = { Authorization: `Bearer ${lara.token}` };
+  // El equipo no accede (dato personal/dinero).
+  expect((await request.get("/api/nominas", { headers: hE })).status()).toBe(403);
+  expect((await request.put("/api/nominas/Lara", { headers: hE, data: { salario_bruto_mensual: 99999 } })).status()).toBe(403);
+  // Dirección fija un sueldo y obtiene el desglose exacto.
+  const put = await request.put("/api/nominas/Lara", { headers: hA, data: { salario_bruto_mensual: 1500, irpf_pct: 15, ss_trabajador_pct: 6.47 } });
+  expect(put.status()).toBe(200);
+  const d = await put.json();
+  expect(d.ss_trabajador).toBeCloseTo(97.05, 2);
+  expect(d.irpf).toBeCloseTo(225, 2);
+  expect(d.neto_mensual).toBeCloseTo(1177.95, 2);
+  const lista = await (await request.get("/api/nominas", { headers: hA })).json();
+  expect(Array.isArray(lista.empleados)).toBe(true);
+  expect(lista.total_coste_empresa_mes).toBeGreaterThan(0);
+  // Limpieza: deja el sueldo a 0 para no alterar el coste laboral de otras pruebas.
+  await request.put("/api/nominas/Lara", { headers: hA, data: { salario_bruto_mensual: 0, irpf_pct: 0, ss_trabajador_pct: 6.47 } });
+});
+
 test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

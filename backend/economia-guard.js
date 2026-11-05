@@ -12,7 +12,7 @@
 // Un nombre de campo es económico si empieza por alguno de estos prefijos.
 const PATRONES = [
   /^coste/i,                        // coste, coste_medio, coste_neto, coste_estimado, coste_total, coste_por_litro, coste_produccion_hoy, coste_mermas_hoy, coste_materia, coste_laboral...
-  /^precio_(compra|pactado|recomendado)/i, // precios de COSTE / recomendado (NO precio_venta)
+  /^precio_(compra|pactado|recomendado|base|pedido|esperado)/i, // precios de COSTE / recomendado / de pedido (NO precio_venta)
   /^margen/i,                       // margen, margen_bruto, margen_euros, margen_medio_carta, margen_pct, margen_objetivo, margen_operativo_pct...
   /^food_cost/i,                    // food_cost, food_cost_pct, food_cost_medio, food_cost_objetivo
   /^valor_stock/i,                  // valor_stock_total, valor_stock_actual

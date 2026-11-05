@@ -14182,7 +14182,8 @@ function initAsistente(){
     </div>`;
   document.body.appendChild(fab);
   document.body.appendChild(panel);
-  if(!asistSoportaVoz()){ const m=panel.querySelector("#asist-mic"); if(m) m.style.display="none"; }
+  // El micro se queda SIEMPRE visible: si el navegador no soporta dictado directo
+  // (p. ej. iPhone/iPad), al pulsarlo abrimos el teclado y guiamos a dictar con su 🎤.
   if(!window._asistHist.length){
     window._asistHist.push({rol:"assistant",texto:"Hola, soy tu asistente. Dime qué necesitas: «apunta una merma de un croissant por caída» o «¿cuál es el pronóstico de cierre de este mes?»."});
   }
@@ -14261,19 +14262,45 @@ function asistCancelar(){
   window._asistHist.push({rol:"assistant",texto:"De acuerdo, no hago nada."});
   asistPintar();
 }
-// Reconocimiento de voz (dictado) en español.
+// ¿iPhone/iPad? (incluye el iPad que se presenta como Mac con pantalla táctil).
+function asistEsIOS(){
+  return /iP(hone|ad|od)/.test(navigator.platform || "") ||
+    /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
+    (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1);
+}
+// Mensaje de sistema en el chat (avisos del propio asistente, no del modelo).
+function asistSys(texto){ window._asistHist.push({rol:"assistant",texto}); asistPintar(); }
+// Reconocimiento de voz (dictado) en español. Si el navegador no lo soporta
+// (iPhone/iPad: Safari/Chrome de iOS NO tienen Web Speech), abrimos el teclado y
+// guiamos a dictar con el micro del teclado (que sí funciona en iOS).
 function asistEscuchar(){
   if(_asistPensando) return; // ocupado respondiendo: no arranques el dictado
   if(_asistEscuchando){ asistPararVoz(); return; }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ const i=document.getElementById("asist-in"); if(i){ i.focus(); } return; }
+  if(!SR){
+    const i=document.getElementById("asist-in"); if(i) i.focus();
+    if(!window._asistHintTeclado){
+      window._asistHintTeclado=true;
+      asistSys(asistEsIOS()
+        ? "En iPhone/iPad el dictado va con el teclado: toca el micrófono 🎤 de tu teclado (junto a la barra espaciadora), habla, y pulsa Enviar."
+        : "Tu navegador no permite dictado directo. Usa el micrófono del teclado para hablar, o escribe el mensaje.");
+    }
+    return;
+  }
   try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(_){}
   _asistRec=new SR(); _asistRec.lang="es-ES"; _asistRec.interimResults=false; _asistRec.maxAlternatives=1;
   _asistRec.onresult=(ev)=>{ const t=ev.results&&ev.results[0]&&ev.results[0][0]&&ev.results[0][0].transcript; asistPararVoz(); if(t&&t.trim()) asistEnviar(t.trim()); };
-  _asistRec.onerror=()=>{ asistPararVoz(); };
+  _asistRec.onerror=(ev)=>{
+    asistPararVoz();
+    const err=(ev&&ev.error)||"";
+    if(err==="not-allowed"||err==="service-not-allowed") asistSys("No tengo permiso para el micrófono. Actívalo (candado de la barra de direcciones → Micrófono) o usa el micro del teclado.");
+    else if(err==="audio-capture") asistSys("No encuentro micrófono en este dispositivo. Usa el micro del teclado o escribe.");
+    else if(err==="no-speech") asistSys("No te he oído. Prueba otra vez.");
+    else if(err&&err!=="aborted") asistSys("No pude usar el micrófono; usa el del teclado o escribe.");
+  };
   _asistRec.onend=()=>{ asistPararVoz(); };
   try{ _asistRec.start(); _asistEscuchando=true; const m=document.getElementById("asist-mic"); if(m) m.classList.add("rec"); }
-  catch(_){ asistPararVoz(); }
+  catch(_){ asistPararVoz(); asistSys("No pude arrancar el dictado. Usa el micro del teclado o escribe."); }
 }
 function asistPararVoz(){
   _asistEscuchando=false; const m=document.getElementById("asist-mic"); if(m) m.classList.remove("rec");

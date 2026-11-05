@@ -609,6 +609,38 @@ test("pedidos: el equipo no ve coste y un archivado queda fuera (guard de servid
   for (const r of (recE || [])) expect(r.importe_total === undefined).toBe(true);
 });
 
+test("pedidos: 'Compartir al grupo' usa el selector nativo (WhatsApp de grupo) y marca enviado", async ({ page, request }) => {
+  // Creamos un pedido por API (como admin) para no depender del flujo largo de alta.
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const provs = await (await request.get("/api/proveedores", { headers: hA })).json();
+  const prov = (provs || []).find((p) => !p.archivado);
+  if (!prov) return; // sin proveedores activos sembrados no hay nada que probar
+  const cat = await (await request.get(`/api/pedidos/proveedor/${prov.id}`, { headers: hA })).json();
+  const art = (cat.articulos || [])[0];
+  if (!art) return;
+  const base = { cantidad: 1, cantidad_pedido: 1, unidad_pedido: art.unidad_pedido || "ud" };
+  const linea = art.materia_id ? { materia_id: art.materia_id, ...base } : { compra_id: art.compra_id, nombre: art.nombre, ...base };
+  const pedido = await (await request.post("/api/pedidos", { headers: hA, data: { proveedor_id: prov.id, lineas: [linea] } })).json();
+  expect(pedido.id).toBeTruthy();
+
+  await login(page); // entra como admin en el navegador
+  // Stub de navigator.share: captura el texto en vez de abrir el selector del SO.
+  await page.evaluate(() => { window.__shared = null; navigator.share = async (d) => { window.__shared = d; }; });
+  // Renderiza la confirmación del pedido y pulsa "Compartir al grupo".
+  await page.evaluate((p) => { window._pedCfg = window._pedCfg || {}; pedConfirmacion(p); }, pedido);
+  await page.locator("button", { hasText: "Compartir al grupo" }).click();
+  await page.waitForFunction(() => window.__shared !== null, { timeout: 5_000 });
+  const shared = await page.evaluate(() => window.__shared);
+  expect(shared.text).toContain(pedido.codigo);  // el texto compartido lleva el pedido
+  expect(shared.text).toContain("Pedido");
+  // Compartir = el pedido salió: queda marcado "enviado".
+  await expect.poll(async () => {
+    const p = await (await request.get(`/api/pedidos/${pedido.id}`, { headers: hA })).json();
+    return p.estado;
+  }, { timeout: 5_000 }).toBe("enviado");
+});
+
 test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
@@ -1093,11 +1125,12 @@ test("pedidos: genera un pedido y lo envía por WhatsApp al proveedor y copia a 
   await page.locator(".ped-row .ped-cant").first().fill("2");
   await expect(page.locator("#ped-total")).toContainText(/€/);
   await page.locator("button", { hasText: "Generar pedido" }).click();
-  // Confirmación con los dos botones de WhatsApp (proveedor + copia a Jon).
+  // Confirmación: Compartir al grupo (primario) + envío directo al proveedor + copia a Jon.
   await expect(page.locator(".card-name")).toContainText(/PED-/);
-  await expect(page.locator("button", { hasText: "Enviar al proveedor" })).toBeVisible();
+  await expect(page.locator("button", { hasText: "Compartir al grupo" })).toBeVisible();
+  await expect(page.locator("button", { hasText: /enviar directo al proveedor/i })).toBeVisible();
   await expect(page.locator("button", { hasText: /copia a Jon/ })).toBeVisible();
-  await page.locator("button", { hasText: "Enviar al proveedor" }).click();
+  await page.locator("button", { hasText: /enviar directo al proveedor/i }).click();
   await page.locator("button", { hasText: /copia a Jon/ }).click();
   // Los onclick son async (crean el mensaje y luego abren WhatsApp): esperamos a
   // que se hayan capturado los dos enlaces antes de comprobar.

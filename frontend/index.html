@@ -14193,6 +14193,7 @@ function asistToggle(){
   const p=document.getElementById("asist-panel"); if(!p) return;
   const abrir=!p.classList.contains("on");
   p.classList.toggle("on",abrir);
+  const fab=document.getElementById("asist-fab"); if(fab) fab.style.display=abrir?"none":""; // sin dos micros a la vez
   if(abrir){ asistPintar(); const i=document.getElementById("asist-in"); if(i) setTimeout(()=>i.focus(),50); }
   else { asistPararVoz(); }
 }
@@ -14273,7 +14274,7 @@ function asistSys(texto){ window._asistHist.push({rol:"assistant",texto}); asist
 // Reconocimiento de voz (dictado) en español. Si el navegador no lo soporta
 // (iPhone/iPad: Safari/Chrome de iOS NO tienen Web Speech), abrimos el teclado y
 // guiamos a dictar con el micro del teclado (que sí funciona en iOS).
-function asistEscuchar(){
+async function asistEscuchar(){
   if(_asistPensando) return; // ocupado respondiendo: no arranques el dictado
   if(_asistEscuchando){ asistPararVoz(); return; }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -14287,20 +14288,35 @@ function asistEscuchar(){
     }
     return;
   }
+  // Pide el permiso de micrófono con un prompt EXPLÍCITO antes de dictar: en algunos
+  // Android el permiso implícito de SpeechRecognition falla mudo si no se concedió antes.
+  try{
+    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+      const s=await navigator.mediaDevices.getUserMedia({audio:true});
+      s.getTracks().forEach(t=>{try{t.stop();}catch(_){}}); // solo queríamos asegurar el permiso
+    }
+  }catch(e){ asistMicDenegado(); return; }
   try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(_){}
   _asistRec=new SR(); _asistRec.lang="es-ES"; _asistRec.interimResults=false; _asistRec.maxAlternatives=1;
   _asistRec.onresult=(ev)=>{ const t=ev.results&&ev.results[0]&&ev.results[0][0]&&ev.results[0][0].transcript; asistPararVoz(); if(t&&t.trim()) asistEnviar(t.trim()); };
   _asistRec.onerror=(ev)=>{
     asistPararVoz();
     const err=(ev&&ev.error)||"";
-    if(err==="not-allowed"||err==="service-not-allowed") asistSys("No tengo permiso para el micrófono. Actívalo (candado de la barra de direcciones → Micrófono) o usa el micro del teclado.");
-    else if(err==="audio-capture") asistSys("No encuentro micrófono en este dispositivo. Usa el micro del teclado o escribe.");
+    if(err==="not-allowed"||err==="service-not-allowed") asistMicDenegado();
+    else if(err==="audio-capture") asistSys("No encuentro micrófono en este dispositivo. Usa el micro 🎤 del teclado o escribe.");
     else if(err==="no-speech") asistSys("No te he oído. Prueba otra vez.");
     else if(err&&err!=="aborted") asistSys("No pude usar el micrófono; usa el del teclado o escribe.");
   };
   _asistRec.onend=()=>{ asistPararVoz(); };
   try{ _asistRec.start(); _asistEscuchando=true; const m=document.getElementById("asist-mic"); if(m) m.classList.add("rec"); }
-  catch(_){ asistPararVoz(); asistSys("No pude arrancar el dictado. Usa el micro del teclado o escribe."); }
+  catch(_){ asistPararVoz(); asistSys("No pude arrancar el dictado. Usa el micro 🎤 del teclado o escribe."); }
+}
+// Mensaje de permiso denegado, según sea la app instalada (sin barra) o el navegador.
+function asistMicDenegado(){
+  const pwa = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+  asistSys(pwa
+    ? "No tengo permiso para el micrófono. En el móvil: Ajustes → Aplicaciones → «m de materia» → Permisos → Micrófono → Permitir. Mientras, dicta con el micro 🎤 del teclado."
+    : "No tengo permiso para el micrófono. Toca el candado o la «ⓘ» junto a la dirección → Permisos → Micrófono → Permitir, y recarga. Mientras, dicta con el micro 🎤 del teclado.");
 }
 function asistPararVoz(){
   _asistEscuchando=false; const m=document.getElementById("asist-mic"); if(m) m.classList.remove("rec");

@@ -482,6 +482,7 @@ app.use("/api/catalogo-revision", require("./routes/catalogo-revision")); // rev
 app.use("/api/limpieza-catalogo", require("./routes/limpieza-catalogo")); // archivar productos/producciones no vinculados (admin)
 app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)
 app.use("/api/integraciones", require("./routes/integraciones")); // conector TPV (Ágora): clave, estado, prueba (admin)
+app.use("/api/asistente", require("./routes/asistente")); // asistente de voz/chat: agente de Claude sobre la propia API (rol del usuario)
 
 // 404 homogéneo para rutas de API inexistentes (JSON, no el HTML del SPA · tests.4).
 app.use("/api", (req, res) => {

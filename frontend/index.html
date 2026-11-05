@@ -11483,15 +11483,16 @@ function pedConfirmacion(p){
       <div class="card-meta">${admin&&p.total_estimado!=null?`${pedN(p.total_estimado)} € · `:""}${(p.lineas||[]).length} artículo(s)</div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7;">${lineas}</div>
     </div>
-    <div class="section-label">Enviar por WhatsApp</div>
+    <div class="section-label">Enviar el pedido</div>
     <div class="ped-send">
-      ${waProv?`<button class="btn-primary" onclick="pedEnviarWA('${p.id}','prov')">📤 Enviar al proveedor</button>`:`<div class="err">El proveedor no tiene WhatsApp.</div>`}
+      <button class="btn-primary" onclick="pedCompartir('${p.id}')">📲 Compartir al grupo (origen · M de materia)</button>
+      ${waProv?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','prov')">O enviar directo al proveedor</button>`:""}
       ${copia?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','copia')">📋 Enviar copia a ${esc(copiaNom)} (+${esc(copia)})</button>`:""}
     </div>
     <div class="card-actions" style="margin-top:14px;">
       <button class="btn-ghost" onclick="irA_pedidos()">Volver a pedidos</button>
     </div>
-    <div class="ped-foot">Consejo: envía primero al proveedor y luego la copia.</div>`);
+    <div class="ped-foot">«Compartir» abre el selector de WhatsApp: elige el grupo «origen · M de materia». (WhatsApp no deja enlazar un grupo con un número, por eso va con el selector.)</div>`);
 }
 async function pedEnviarWA(id, destino){
   try{
@@ -11518,6 +11519,36 @@ async function pedEnviarWA(id, destino){
       await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
     }
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
+  }catch(e){ alert(e.message); }
+}
+// Compartir el pedido al GRUPO de WhatsApp ("origen · M de materia") con el
+// selector nativo del móvil. wa.me solo abre chats de un número, no grupos; por
+// eso aquí usamos navigator.share, que deja elegir el grupo de destino. Si el
+// navegador no tiene share nativo, copiamos al portapapeles (y, en último caso,
+// mostramos el texto para pegarlo a mano). El equipo nunca ve euros en el mensaje.
+async function pedCompartir(id){
+  try{
+    const p=await api(`/pedidos/${id}`);
+    let prov=(window._pedCat&&window._pedCat.proveedor&&window._pedCat.proveedor.id===p.proveedor_id)?window._pedCat.proveedor:null;
+    if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`).catch(()=>({}));
+    const admin=mbdsEsAdmin(); // el equipo no incluye euros en el mensaje
+    const lineas=(p.lineas||[]).map(l=>{
+      const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
+      return `• ${l.nombre}: ${c} ${u}${admin&&pu!=null?` × ${pedN(pu)} €/${u} = ${pedN(c*(Number(pu)||0))} €`:""}`;
+    }).join("\n");
+    const totalLn=(admin&&p.total_estimado!=null)?`\n\nTotal estimado: ${pedN(p.total_estimado)} €`:"";
+    const dias=(prov.dias_reparto&&prov.dias_reparto.length)?`\n(Reparto habitual: ${prov.dias_reparto.join(", ")})`:"";
+    const texto=`📦 Pedido ${p.codigo} · ${prov.nombre||p.proveedor_nombre}\n${lineas}${totalLn}${dias}`;
+    let hecho=false;
+    if(navigator.share){
+      try{ await navigator.share({text:texto}); hecho=true; }
+      catch(e){ if(e&&e.name==="AbortError") return; } // el usuario cerró el selector: no marcamos nada
+    }
+    if(!hecho){
+      try{ await navigator.clipboard.writeText(texto); alert("Pedido copiado. Pégalo en el grupo de WhatsApp «origen · M de materia»."); hecho=true; }
+      catch(e){ prompt("Copia el pedido y pégalo en el grupo de WhatsApp «origen · M de materia»:", texto); hecho=true; }
+    }
+    if(hecho) await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
   }catch(e){ alert(e.message); }
 }
 // Cambiar el número de m de materia (el que va en la tablet) desde la pantalla.

@@ -641,6 +641,65 @@ test("pedidos: 'Compartir al grupo' usa el selector nativo (WhatsApp de grupo) y
   }, { timeout: 5_000 }).toBe("enviado");
 });
 
+test("pedidos: el equipo PROPONE (propuesto, sin euros) y solo dirección ENVÍA", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const hE = { Authorization: `Bearer ${lara.token}` };
+  const provs = await (await request.get("/api/proveedores", { headers: hA })).json();
+  const prov = (provs || []).find((p) => !p.archivado);
+  if (!prov) return;
+  const cat = await (await request.get(`/api/pedidos/proveedor/${prov.id}`, { headers: hE })).json();
+  const art = (cat.articulos || [])[0];
+  if (!art) return;
+  const base = { cantidad: 1, cantidad_pedido: 1, unidad_pedido: art.unidad_pedido || "ud" };
+  const linea = art.materia_id ? { materia_id: art.materia_id, ...base } : { compra_id: art.compra_id, nombre: art.nombre, ...base };
+  // El equipo crea → nace como PROPUESTA, sin euros.
+  const prop = await (await request.post("/api/pedidos", { headers: hE, data: { proveedor_id: prov.id, lineas: [linea] } })).json();
+  expect(prop.estado).toBe("propuesto");
+  expect(prop.total_estimado).toBeUndefined();
+  // El equipo NO puede enviar (403); la propuesta no cambia.
+  expect((await request.post(`/api/pedidos/${prop.id}/enviado`, { headers: hE })).status()).toBe(403);
+  expect((await (await request.get(`/api/pedidos/${prop.id}`, { headers: hA })).json()).estado).toBe("propuesto");
+  // Dirección sí envía = aprueba la propuesta.
+  expect((await request.post(`/api/pedidos/${prop.id}/enviado`, { headers: hA })).status()).toBe(200);
+  expect((await (await request.get(`/api/pedidos/${prop.id}`, { headers: hA })).json()).estado).toBe("enviado");
+  // Un admin, en cambio, crea un borrador listo para enviar (con euros).
+  const bor = await (await request.post("/api/pedidos", { headers: hA, data: { proveedor_id: prov.id, lineas: [linea] } })).json();
+  expect(bor.estado).toBe("borrador");
+  expect(bor.total_estimado).toBeGreaterThanOrEqual(0);
+});
+
+test("pedidos: la pantalla del equipo dice 'propuesta' y avisa a dirección (sin enviar)", async ({ page, request }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  // Login como Lara (equipo).
+  await page.goto("/");
+  await page.waitForSelector("#ubtn-Lara", { timeout: 30_000 });
+  await page.click("#ubtn-Lara");
+  await page.waitForSelector("#pin-wrap", { state: "visible" });
+  for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
+  await page.waitForSelector(".home-routine", { timeout: 15_000 });
+  // Arma un pedido del proveedor sembrado y lo "genera" (para el equipo = proponer).
+  await page.evaluate(() => irA_pedidoProveedor("prov-001"));
+  await expect(page.locator(".ped-row .ped-cant").first()).toBeVisible();
+  await page.locator(".ped-row .ped-cant").first().fill("1");
+  await page.locator("button", { hasText: "Generar pedido" }).click();
+  // Pantalla de PROPUESTA: avisa a dirección, NO ofrece enviar (ni Compartir al grupo).
+  await expect(page.locator("text=Propuesta enviada a dirección")).toBeVisible();
+  await expect(page.locator("button", { hasText: /Avisar a .* por WhatsApp/ })).toBeVisible();
+  expect(await page.locator("button", { hasText: "Compartir al grupo" }).count()).toBe(0);
+  expect(await page.locator("button", { hasText: /enviar directo al proveedor/i }).count()).toBe(0);
+  // En el servidor quedó una propuesta de prov-001 que dirección puede enviar.
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const peds = await (await request.get("/api/pedidos", { headers: hA })).json();
+  const prop = (peds || []).find((p) => p.proveedor_id === "prov-001" && p.estado === "propuesto");
+  expect(prop, "hay una propuesta del equipo en el servidor").toBeTruthy();
+  expect((await request.post(`/api/pedidos/${prop.id}/enviado`, { headers: hA })).status()).toBe(200);
+  expect(errors).toEqual([]);
+});
+
 test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

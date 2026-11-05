@@ -95,8 +95,11 @@ function camposDe(body, req) {
   [
     "nombre", "razon_social", "contacto", "telefono", "telefono_pedidos", "email",
     "direccion", "cif", "nif_cif", "categoria", "estado", "notas", "observaciones",
-    "hora_limite", "pedido_minimo", "transporte", "foto_url",
+    "hora_limite", "pedido_minimo", "transporte", "foto_url", "url_pedido",
   ].forEach(str);
+  // Canal del pedido: "web" (se pide en la web del proveedor y se paga con tarjeta,
+  // p. ej. Black BasCo) o "whatsapp" (por defecto). Cualquier otro valor cae a whatsapp.
+  if (body.canal_pedido != null) c.canal_pedido = String(body.canal_pedido).trim().toLowerCase() === "web" ? "web" : "whatsapp";
   if (Array.isArray(body.dias_reparto)) c.dias_reparto = body.dias_reparto.filter((d) => DIAS.includes(d));
   if (Array.isArray(body.dias_pedido)) c.dias_pedido = body.dias_pedido.filter((d) => DIAS.includes(d));
   if (Array.isArray(body.dias_entrega)) c.dias_entrega = body.dias_entrega.filter((d) => DIAS.includes(d));
@@ -131,6 +134,8 @@ router.post("/", jsonGrande, (req, res) => {
     hora_limite: datos.hora_limite || "",
     pedido_minimo: datos.pedido_minimo || "",
     transporte: datos.transporte || "",
+    canal_pedido: datos.canal_pedido || "whatsapp", // "whatsapp" | "web"
+    url_pedido: datos.url_pedido || "",             // web del proveedor para cargar/pagar el pedido
     forma_pago: datos.forma_pago || "",
     bizum: datos.bizum || "",
     bizum_tel: datos.bizum_tel || "",

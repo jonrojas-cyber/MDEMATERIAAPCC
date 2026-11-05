@@ -106,6 +106,11 @@ function catalogoProveedor(st, provId) {
       pedido_minimo: prov.pedido_minimo != null ? prov.pedido_minimo : null,
       hora_limite: prov.hora_limite || null,
       categoria: prov.categoria || null,
+      // Canal por el que se hace el pedido: "whatsapp" (por defecto) o "web" (p. ej.
+      // Black BasCo: se pide en su web y se paga con tarjeta). Lo decide el canal del
+      // proveedor; la URL es a dónde abre la dirección para cargar y pagar el pedido.
+      canal_pedido: prov.canal_pedido === "web" ? "web" : "whatsapp",
+      url_pedido: prov.url_pedido || "",
     },
     articulos,
     n_articulos: articulos.length,
@@ -219,6 +224,10 @@ router.post("/", (req, res) => {
     return linea;
   });
 
+  // Quién puede ENVIAR un pedido: solo dirección (Moni/Jon, rol admin). El equipo
+  // PROPONE: su pedido nace como "propuesto" y espera a que dirección lo revise y
+  // lo envíe. Un admin crea un "borrador" listo para enviar (como hasta ahora).
+  const esPropuesta = !esAdmin(req);
   const ahora = new Date();
   const pedido = {
     id: store.nextId("ped", "pedidos"),
@@ -226,16 +235,37 @@ router.post("/", (req, res) => {
     proveedor_id,
     proveedor_nombre: prov ? prov.nombre : proveedor_id,
     fecha: ahora.toISOString(),
-    estado: "borrador",
+    estado: esPropuesta ? "propuesto" : "borrador",
     lineas: lineasN,
     total_estimado: Math.round(lineasN.reduce((s, l) => s + l.cantidad * l.precio_esperado, 0) * 100) / 100,
   };
+  if (esPropuesta) {
+    pedido.propuesto_por = (req.user && (req.user.nombre || req.user.key)) || "equipo";
+    pedido.propuesto_en = ahora.toISOString();
+  }
   store.insert("pedidos", pedido);
+
+  // Aviso a dirección de que hay una propuesta por revisar: push a los dispositivos
+  // suscritos (llega aunque la app esté cerrada). No bloquea ni rompe la respuesta
+  // si el push falla o no hay suscripciones; el aviso directo a Jon por WhatsApp lo
+  // dispara el front (un toque del equipo) como refuerzo.
+  if (esPropuesta) {
+    try {
+      require("../push").enviarATodos(
+        { title: "Nueva propuesta de pedido", body: `${pedido.proveedor_nombre} · ${lineasN.length} artículo(s) — revísala y envíala`, url: "/", tag: "propuesta-pedido" },
+        { urgency: "high", topic: "propuesta", ttl: 86400 }
+      );
+    } catch (e) {}
+  }
+
   res.status(201).json(esAdmin(req) ? pedido : sinCostesPedido(pedido));
 });
 
-// Marcar un pedido como enviado al proveedor.
+// Marcar un pedido como enviado al proveedor. SOLO dirección (Moni/Jon): el equipo
+// propone pero no envía (regla de negocio · Mónica). Enviar también "aprueba" una
+// propuesta: pasa de "propuesto" a "enviado".
 router.post("/:id/enviado", (req, res) => {
+  if (!esAdmin(req)) return res.status(403).json({ error: "Solo Moni o Jon pueden enviar pedidos. El pedido del equipo queda como propuesta." });
   const p = store.update("pedidos", req.params.id, { estado: "enviado", enviado_en: new Date().toISOString() });
   if (!p) return res.status(404).json({ error: "Pedido no encontrado" });
   res.json(p);

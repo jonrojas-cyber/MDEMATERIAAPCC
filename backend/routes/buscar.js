@@ -39,8 +39,9 @@ router.get("/", (req, res) => {
     }));
 
   // ── Precios · artículos catalogados por proveedor (nombre del artículo) ──
+  // Los proveedores archivados quedan fuera del buscador (fuera del flujo de pedidos).
   const articulos = [];
-  provs.forEach((p) => {
+  provs.filter((p) => !p.archivado).forEach((p) => {
     (p.productos_asociados || []).forEach((a) => {
       const nom = a.nombre || a.materia_nombre || "";
       if (nom && norm(nom).includes(q)) {
@@ -56,7 +57,7 @@ router.get("/", (req, res) => {
 
   // ── Proveedores (por nombre) ──
   const proveedores = provs
-    .filter((p) => norm(p.nombre).includes(q))
+    .filter((p) => !p.archivado && norm(p.nombre).includes(q))
     .slice(0, 12)
     .map((p) => ({
       tipo: "proveedor", id: p.id, nombre: p.nombre,

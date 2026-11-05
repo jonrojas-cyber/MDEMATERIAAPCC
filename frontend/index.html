@@ -9567,7 +9567,7 @@ async function irA_proveedores(){
       const arch=!!p.archivado;
       const archivarBtn = arch
         ? `<button class="btn-primary" onclick="provRecuperar('${p.id}')">Recuperar</button>`
-        : `<button class="btn-ghost" onclick="provArchivar('${p.id}',${JSON.stringify(p.nombre)})">Archivar</button>`;
+        : `<button class="btn-ghost" onclick="provArchivar('${p.id}',${esc(JSON.stringify(p.nombre))})">Archivar</button>`;
       const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Abrir ficha</button>`+
         `<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
         (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"")+
@@ -9575,7 +9575,7 @@ async function irA_proveedores(){
       const buscar=[(p.nombre||""),(p.cif||p.nif_cif||""),(p.categoria||""),(p.contacto||"")].join(" ").toLowerCase();
       const chipArch=arch?` <span style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:lowercase;">· archivado</span>`:"";
       return `<div class="card prov-card" data-buscar="${esc(buscar)}"${arch?' style="opacity:.6;"':""}>
-        <div class="card-name">${esc(p.nombre)} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${chipArch}${pendChip}</div>
+        <div class="card-name">${esc(p.nombre)} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${esc(estado)}</span>${chipArch}${pendChip}</div>
         ${meta2?`<div class="card-meta">${meta2}</div>`:""}
         ${stat}
         <div class="card-actions">${acc}</div>
@@ -9749,6 +9749,7 @@ function provMesLargo(ym){ const a=String(ym).split("-").map(Number); const MN=[
 async function irA_productosProveedor(provId,mes){
   navInto(()=>irA_proveedores());
   openSection("prov-productos","Proveedor");
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección ve la ficha del proveedor. Para hacer un pedido, usa <b>Pedidos</b>.</div>`); return; }
   try{
     const [f,meta]=await Promise.all([
       api("/proveedores/"+provId+"/ficha"+(mes?("?mes="+encodeURIComponent(mes)):"")),
@@ -11261,6 +11262,7 @@ async function irA_pedidos(pre){
     // Los proveedores ARCHIVADOS no aparecen al hacer pedidos (se mantienen, pero
     // fuera del flujo del equipo). Se filtran de la lista y de las sugerencias.
     const archivadoIds=new Set((provs||[]).filter(p=>p.archivado).map(p=>p.id));
+    window._provArchivadoIds=archivadoIds; // lo usa el buscador "¿de quién es un producto?"
     const provsActivos=(provs||[]).filter(p=>!p.archivado);
     const sugActivas=(sug||[]).filter(g=>!archivadoIds.has(g.proveedor_id));
     window._provPed=provsActivos; window._pedSug=sugActivas; window._pedsAll=peds; window._pedCfg=cfg;
@@ -11342,6 +11344,7 @@ async function irA_pedidoProveedor(provId, opts){
     const [cat,cfg]=await Promise.all([ api(`/pedidos/proveedor/${provId}`), api("/pedidos/config").catch(()=>({copia_whatsapp:""})) ]);
     window._pedCat=cat; window._pedCfg=cfg;
     const pr=cat.proveedor;
+    const admin=mbdsEsAdmin(); // el equipo pide SIN ver precios de compra (regla de negocio)
     const estBadge=a=>a.estado==="critico"?`<span class="ped-tag crit">bajo mínimo</span>`:(a.estado==="por_pedir"?`<span class="ped-tag warn">va justo</span>`:``);
     const money=n=>vizEur? null:null; // (no usar) — formateo propio abajo
     const fmtP=(n,d)=>new Intl.NumberFormat("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}).format(Number(n)||0);
@@ -11349,12 +11352,12 @@ async function irA_pedidoProveedor(provId, opts){
       const sug=a.estado==="catalogo"?`<span class="ped-sugq cat">de factura</span>`
         :(a.cantidad_sugerida>0?`<span class="ped-sugq">sugerido ${fmtP(a.cantidad_sugerida,a.dec)} ${esc(a.unidad_pedido)}</span>`:`<span class="ped-sugq ok">stock ok</span>`);
       const pre=(opts.sugerir&&a.estado!=="correcto"&&a.estado!=="catalogo"&&a.cantidad_sugerida>0)?a.cantidad_sugerida:"";
-      return `<div class="ped-row" data-mat="${a.materia_id||''}" data-compra="${a.compra_id||''}" data-dn="${esc(a.nombre||'')}" data-nombre="${esc((a.nombre||"").toLowerCase())}" data-factor="${a.factor}" data-pbase="${a.precio_base}" data-up="${esc(a.unidad_pedido)}" data-dec="${a.dec}">
-        <span class="ped-name">${esc(a.nombre)} ${estBadge(a)}<span class="ped-price">${fmtP(a.precio_pedido,2)} €/${esc(a.unidad_pedido)}</span></span>
+      return `<div class="ped-row" data-mat="${a.materia_id||''}" data-compra="${a.compra_id||''}" data-dn="${esc(a.nombre||'')}" data-nombre="${esc((a.nombre||"").toLowerCase())}" data-factor="${a.factor}" data-pbase="${admin?(a.precio_base||0):0}" data-up="${esc(a.unidad_pedido)}" data-dec="${a.dec}">
+        <span class="ped-name">${esc(a.nombre)} ${estBadge(a)}${admin?`<span class="ped-price">${fmtP(a.precio_pedido,2)} €/${esc(a.unidad_pedido)}</span>`:""}</span>
         ${sug}
         <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" value="${pre}" oninput="pedTotal()">
         <span class="ped-u">${esc(a.unidad_pedido)}</span>
-        <span class="ped-lineimp" data-imp>—</span>
+        ${admin?`<span class="ped-lineimp" data-imp>—</span>`:""}
       </div>`;
     }).join("");
     const waOk=(pr.whatsapp||"").replace(/[^0-9]/g,"");
@@ -11376,7 +11379,7 @@ async function irA_pedidoProveedor(provId, opts){
       </div>
       <div id="ped-artlist">${rows||`<div class="empty">Este proveedor aún no tiene artículos. Añádelos en su ficha (Proveedores) o se crean solos al escanear un albarán.</div>`}</div>
       <div class="ped-bar">
-        <div class="ped-bar-tot">Total estimado: <b id="ped-total">0,00 €</b> <span id="ped-total-n" class="viz-mut"></span></div>
+        ${admin?`<div class="ped-bar-tot">Total estimado: <b id="ped-total">0,00 €</b> <span id="ped-total-n" class="viz-mut"></span></div>`:`<div class="ped-bar-tot" style="color:var(--muted);font-size:12px;">Pon las cantidades y genera el pedido.</div>`}
         <button class="btn-primary" onclick="pedCrear('${provId}')">Generar pedido</button>
       </div>`;
     setInner(html);
@@ -11397,6 +11400,7 @@ function pedUsarSugeridos(){
   pedTotal();
 }
 function pedTotal(){
+  if(!el("ped-total")) return; // el equipo no ve euros: no hay barra de total que actualizar
   let tot=0,n=0;
   document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{
     const cant=Number(r.querySelector(".ped-cant").value)||0;
@@ -11412,7 +11416,10 @@ async function pedCrear(provId){
   const lineas=[...document.querySelectorAll("#ped-artlist .ped-row")].map(r=>{
     const cantP=Number(r.querySelector(".ped-cant").value)||0;
     const factor=Number(r.dataset.factor)||1, pbase=Number(r.dataset.pbase)||0;
-    const base={ cantidad:cantP*factor, precio_esperado:pbase, unidad_pedido:r.dataset.up, cantidad_pedido:cantP, precio_pedido:pbase*factor };
+    // El equipo no manda precios (no los ve): el backend los recalcula del coste real.
+    const base=mbdsEsAdmin()
+      ? { cantidad:cantP*factor, precio_esperado:pbase, unidad_pedido:r.dataset.up, cantidad_pedido:cantP, precio_pedido:pbase*factor }
+      : { cantidad:cantP*factor, unidad_pedido:r.dataset.up, cantidad_pedido:cantP };
     // Materia de stock, o artículo del catálogo de compra (de factura).
     if(r.dataset.mat) return { materia_id:r.dataset.mat, ...base };
     return { compra_id:r.dataset.compra, nombre:r.dataset.dn, ...base };
@@ -11428,17 +11435,18 @@ async function pedCrear(provId){
 // Pantalla de confirmación: botones explícitos (cada window.open = un gesto fiable).
 function pedConfirmacion(p){
   openSection("ped-ok","Pedido creado");
+  const admin=mbdsEsAdmin(); // el equipo no ve euros del pedido
   const copia=((window._pedCfg||{}).copia_whatsapp)||"";
   const copiaNom=((window._pedCfg||{}).copia_nombre)||"copia";
   const prov=(window._pedCat&&window._pedCat.proveedor)||{};
   const waProv=(prov.whatsapp||"").replace(/[^0-9]/g,"");
   const lineas=(p.lineas||[]).map(l=>{
     const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
-    return `• ${esc(l.nombre)}: ${c} ${esc(u)} × ${pedN(pu)} €/${esc(u)}`;
+    return `• ${esc(l.nombre)}: ${c} ${esc(u)}${admin&&pu!=null?` × ${pedN(pu)} €/${esc(u)}`:""}`;
   }).join("<br>");
   setInner(`<div class="card" style="border-color:var(--olive)">
       <div class="card-name">✓ ${esc(p.codigo)} · ${esc(p.proveedor_nombre)}</div>
-      <div class="card-meta">${pedN(p.total_estimado)} € · ${(p.lineas||[]).length} artículo(s)</div>
+      <div class="card-meta">${admin&&p.total_estimado!=null?`${pedN(p.total_estimado)} € · `:""}${(p.lineas||[]).length} artículo(s)</div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7;">${lineas}</div>
     </div>
     <div class="section-label">Enviar por WhatsApp</div>
@@ -11457,21 +11465,22 @@ async function pedEnviarWA(id, destino){
     let prov=(window._pedCat&&window._pedCat.proveedor&&window._pedCat.proveedor.id===p.proveedor_id)?window._pedCat.proveedor:null;
     if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`);
     const cfg=window._pedCfg||await api("/pedidos/config").catch(()=>({copia_whatsapp:""}));
+    const admin=mbdsEsAdmin(); // el equipo no incluye euros en el mensaje
     const lineas=(p.lineas||[]).map(l=>{
       const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
-      return `• ${l.nombre}: ${c} ${u} × ${pedN(pu)} €/${u} = ${pedN(c*(Number(pu)||0))} €`;
+      return `• ${l.nombre}: ${c} ${u}${admin&&pu!=null?` × ${pedN(pu)} €/${u} = ${pedN(c*(Number(pu)||0))} €`:""}`;
     }).join("\n");
-    const total=pedN(p.total_estimado);
+    const totalLn=(admin&&p.total_estimado!=null)?`\n\nTotal estimado: ${pedN(p.total_estimado)} €`:"";
     const dias=(prov.dias_reparto&&prov.dias_reparto.length)?`\n(Reparto habitual: ${prov.dias_reparto.join(", ")})`:"";
     let tel, texto;
     if(destino==="copia"){
       tel=(cfg.copia_whatsapp||"").replace(/[^0-9]/g,"");
       if(!tel){ alert("No hay número de copia configurado."); return; }
-      texto=`📋 COPIA pedido ${p.codigo} → ${prov.nombre}\n${lineas}\n\nTotal estimado: ${total} €`;
+      texto=`📋 COPIA pedido ${p.codigo} → ${prov.nombre}\n${lineas}${totalLn}`;
     } else {
       tel=(prov.whatsapp||"").replace(/[^0-9]/g,"");
       if(!tel){ alert("Este proveedor no tiene WhatsApp."); return; }
-      texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}\n\nTotal estimado: ${total} €${dias}\n\nGracias.`;
+      texto=`Hola ${prov.contacto||""}, pedido de M de Materia (${p.codigo}):\n${lineas}${totalLn}${dias}\n\nGracias.`;
       await api(`/pedidos/${id}/enviado`,{method:"POST"}).catch(()=>{});
     }
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`,"_blank");
@@ -11540,11 +11549,13 @@ function buscarArticuloGlobal(q){
   const items=(window._matPed||window._matCache||[]);
   const base=items.length?items:(window._provPed? [] : []);
   // Usa materias si están cacheadas; si no, pide al vuelo una vez.
-  const render=(arr)=>{ out.innerHTML=arr.length?arr.map(m=>`<div class="card">
+  // Un proveedor archivado está fuera del flujo: no se muestra el botón "Pedir".
+  const archSet=window._provArchivadoIds||new Set();
+  const render=(arr)=>{ out.innerHTML=arr.length?arr.map(m=>{ const arch=m.proveedor_id&&archSet.has(m.proveedor_id); return `<div class="card">
       <div class="card-name">${esc(m.nombre)}</div>
-      <div class="card-meta">Proveedor: <b>${esc(m.proveedor_nombre||"— sin asignar —")}</b>${mbdsEsAdmin()?` · ${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"ud")}`:""} · stock ${m.disponibilidad_actual} ${esc(m.unidad||"")}</div>
-      ${m.proveedor_id?`<div class="card-actions"><button class="btn-ghost" onclick="irA_pedidoProveedor('${m.proveedor_id}')">Pedir a este proveedor</button></div>`:""}
-    </div>`).join(""):`<div class="empty">Ningún artículo coincide.</div>`; };
+      <div class="card-meta">Proveedor: <b>${esc(m.proveedor_nombre||"— sin asignar —")}</b>${arch?' <span style="color:var(--muted);">· archivado</span>':""}${mbdsEsAdmin()?` · ${(Number(m.coste_medio)||0).toFixed(4)} €/${esc(m.unidad||"ud")}`:""} · stock ${m.disponibilidad_actual} ${esc(m.unidad||"")}</div>
+      ${(m.proveedor_id&&!arch)?`<div class="card-actions"><button class="btn-ghost" onclick="irA_pedidoProveedor('${m.proveedor_id}')">Pedir a este proveedor</button></div>`:""}
+    </div>`; }).join(""):`<div class="empty">Ningún artículo coincide.</div>`; };
   if(window._matPed){ render(window._matPed.filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40)); }
   else { api("/materias").then(ms=>{ window._matPed=ms; render(ms.filter(m=>(m.nombre||"").toLowerCase().includes(s)).slice(0,40)); }).catch(()=>{ out.innerHTML=""; }); }
 }
@@ -11629,7 +11640,9 @@ async function irA_recepcion(pre){
     const ORIG_CORREO=new Set(["email","gmail_paquete","gmail_control"]);
     const correo=recs.filter(r=>ORIG_CORREO.has(r.origen));
     const otras=recs.filter(r=>!ORIG_CORREO.has(r.origen));
-    if(correo.length){
+    // Las facturas del correo (con su gasto total) y la gestión por proveedor son de
+    // dirección: el equipo no ve importes de compra ni gestiona proveedores.
+    if(correo.length && mbdsEsAdmin()){
       const total=correo.reduce((s,r)=>s+(Number(r.importe_total)||0),0);
       const avisos=correo.reduce((s,r)=>s+((r.avisos_precio&&r.avisos_precio.length)||0),0);
       const leyendo=correo.filter(r=>r.tiene_documento_pdf&&!r.procesada).length;
@@ -11654,9 +11667,10 @@ async function irA_recepcion(pre){
       const esFac=r.tipo_documento==="factura";
       const tipoTag=`<span style="display:inline-block;background:${esFac?"#9C5A2E":"var(--olive)"};color:#fff;font-weight:700;font-size:10px;padding:1px 7px;border-radius:20px;vertical-align:1px;">${esFac?"FACTURA":"ALBARÁN"}</span>`;
       const extra=[r.origen==="email"?"del correo":"", r.numero_documento?`nº ${esc(r.numero_documento)}`:"", r.lote_proveedor?`lote ${esc(r.lote_proveedor)}`:"", r.caducidad?`cad. ${esc(r.caducidad)}`:""].filter(Boolean).join(" · ");
+      const verE=mbdsEsAdmin(); // el equipo no ve importes de compra (gasto)
       return card(
-        `${tipoTag} ${prov?.nombre||r.proveedor_id} — ${r.importe_total.toFixed(2)} €`,
-        `<span style="color:${colEst};font-weight:700">${r.estado}</span> · pendiente ${r.pendiente_pago.toFixed(2)} € · ${new Date(r.fecha).toLocaleDateString("es-ES")}${extra?` · ${extra}`:""}`,
+        `${tipoTag} ${esc(prov?.nombre||r.proveedor_id)}${verE&&r.importe_total!=null?` — ${r.importe_total.toFixed(2)} €`:""}`,
+        `<span style="color:${colEst};font-weight:700">${esc(r.estado)}</span>${verE&&r.pendiente_pago!=null?` · pendiente ${r.pendiente_pago.toFixed(2)} €`:""} · ${new Date(r.fecha).toLocaleDateString("es-ES")}${extra?` · ${extra}`:""}`,
         acciones
       );
     },"No hay albaranes ni recepciones manuales pendientes.");

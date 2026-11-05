@@ -14,6 +14,13 @@ const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "
 // (rol `equipo`) nunca ve forma de pago ni Bizum/IBAN — regla de negocio.
 const CAMPOS_SENSIBLES = ["forma_pago", "bizum", "bizum_tel", "iban", "datos_bancarios"];
 function esAdmin(req) { return !!(req.user && req.user.rol === "admin"); }
+// Gestionar proveedores (crear/editar/archivar) es SOLO del propietario. El equipo
+// lee la lista (para pedir) pero no la administra (regla de negocio · Mónica).
+function soloAdmin(req, res) {
+  if (esAdmin(req)) return true;
+  res.status(403).json({ error: "Solo dirección gestiona los proveedores." });
+  return false;
+}
 function filtrarSensibles(p, req) {
   if (esAdmin(req)) return p;
   const out = { ...p };
@@ -103,6 +110,7 @@ function camposDe(body, req) {
 
 // Crear proveedor a mano.
 router.post("/", jsonGrande, (req, res) => {
+  if (!soloAdmin(req, res)) return;
   const datos = camposDe(req.body || {}, req);
   if (!datos.nombre) return res.status(400).json({ error: "Indica el nombre del proveedor." });
   const proveedor = {
@@ -132,6 +140,7 @@ router.post("/", jsonGrande, (req, res) => {
     dias_pedido: datos.dias_pedido || [],
     dias_entrega: datos.dias_entrega || [],
     productos_asociados: [],
+    archivado: false, // archivado = se mantiene pero NO aparece al hacer pedidos
     creado_en: new Date().toISOString(),
   };
   store.insert("proveedores", proveedor);
@@ -140,12 +149,28 @@ router.post("/", jsonGrande, (req, res) => {
 
 // Editar proveedor.
 router.put("/:id", jsonGrande, (req, res) => {
+  if (!soloAdmin(req, res)) return;
   const existe = store.findById("proveedores", req.params.id);
   if (!existe) return res.status(404).json({ error: "Proveedor no encontrado" });
   const datos = camposDe(req.body || {}, req);
   if (datos.nombre === "") return res.status(400).json({ error: "El nombre no puede quedar vacío." });
   const actualizado = store.update("proveedores", req.params.id, datos);
   res.json(filtrarSensibles(actualizado, req));
+});
+
+// Archivar / recuperar (baja lógica): el proveedor se mantiene (histórico, facturas,
+// artículos) pero deja de aparecer al hacer pedidos. Reversible. Solo admin.
+router.post("/:id/archivar", (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  if (!store.findById("proveedores", req.params.id)) return res.status(404).json({ error: "Proveedor no encontrado" });
+  const p = store.update("proveedores", req.params.id, { archivado: true, archivado_en: new Date().toISOString() });
+  res.json(filtrarSensibles(p, req));
+});
+router.post("/:id/recuperar", (req, res) => {
+  if (!soloAdmin(req, res)) return;
+  if (!store.findById("proveedores", req.params.id)) return res.status(404).json({ error: "Proveedor no encontrado" });
+  const p = store.update("proveedores", req.params.id, { archivado: false, archivado_en: null });
+  res.json(filtrarSensibles(p, req));
 });
 
 module.exports = router;

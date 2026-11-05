@@ -33,6 +33,16 @@ test("rutaInterna veta el propio asistente (recursión) y el login", () => {
   assert.strictEqual(asist.rutaInterna("/api/auth/login"), null);
 });
 
+test("rutaInterna no se elude con mayúsculas ni con %2e%2e (ruta canónica)", () => {
+  // Express enruta sin distinguir mayúsculas → el veto compara en minúscula.
+  assert.strictEqual(asist.rutaInterna("/api/ASISTENTE"), null, "mayúsculas");
+  assert.strictEqual(asist.rutaInterna("/api/AUTH/login"), null, "login en mayúsculas");
+  // fetch normaliza %2e%2e a .. y colapsa el path ANTES de enviar.
+  assert.strictEqual(asist.rutaInterna("/api/x/%2e%2e/asistente"), null, "recursión por %2e%2e");
+  assert.strictEqual(asist.rutaInterna("/api/x/%2e%2e/auth/login"), null, "login por %2e%2e");
+  assert.strictEqual(asist.rutaInterna("/api/../secreto"), null, "sale de /api tras colapsar");
+});
+
 test("accionPermitida: solo POST/PUT no destructivos (nada de GET ni DELETE)", () => {
   assert.strictEqual(asist.accionPermitida("GET", "/api/mermas").ok, false, "GET no es acción");
   assert.strictEqual(asist.accionPermitida("DELETE", "/api/recepciones/1").ok, false, "DELETE nunca");

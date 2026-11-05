@@ -11553,15 +11553,17 @@ async function pedAbrirWeb(id){
     const p=await api(`/pedidos/${id}`);
     let prov=(window._pedCat&&window._pedCat.proveedor&&window._pedCat.proveedor.id===p.proveedor_id)?window._pedCat.proveedor:null;
     if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`).catch(()=>({}));
-    const url=(prov&&prov.url_pedido)||"";
-    if(!url){ alert("Este proveedor no tiene web de pedido. Añádela en Proveedores → ¿Cómo se pide? → Por su web."); return; }
+    let url=(prov&&prov.url_pedido)||"";
+    // Defensa: solo abrimos http/https; si falta esquema, lo añadimos (no una ruta relativa).
+    if(url && !/^https?:\/\//i.test(url)) url=/^[a-z][a-z0-9+.-]*:/i.test(url)?"":"https://"+url;
+    if(!url){ alert("Este proveedor no tiene web de pedido válida. Añádela en Proveedores → ¿Cómo se pide? → Por su web (empezando por https://)."); return; }
     const lineas=(p.lineas||[]).map(l=>{
       const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad;
       return `• ${l.nombre}: ${c} ${u}`;
     }).join("\n");
     const texto=`Pedido ${p.codigo} · ${prov.nombre||p.proveedor_nombre}\n${lineas}`;
     try{ await navigator.clipboard.writeText(texto); }catch(e){}
-    window.open(url,"_blank");
+    window.open(url,"_blank","noopener"); // noopener: la web externa no accede a la pestaña de la app
     if(confirm("Pedido copiado y web del proveedor abierta. Cuando lo hayas cargado y pagado, ¿lo marco como enviado?")){
       try{ await api(`/pedidos/${id}/enviado`,{method:"POST"}); irA_pedidos(); }
       catch(e){ alert(e.message); }
@@ -11652,7 +11654,8 @@ function pedidoCard(p){
   const esProp=p.estado==="propuesto";
   // Una propuesta (del equipo) no se recibe ni se reenvía: se revisa (dirección) o se ve.
   const revisar=esProp?`<button class="btn-primary" onclick="irA_reenviarPedido('${p.id}')">${admin?"Revisar y enviar":"Ver propuesta"}</button>`:"";
-  const wa=(prov&&prov.whatsapp&&p.estado!=="recibido"&&!esProp)?`<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>`:"";
+  // Reenviar por WhatsApp es acción de dirección (enviar): el equipo no reenvía.
+  const wa=(admin&&prov&&prov.whatsapp&&p.estado!=="recibido"&&!esProp)?`<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>`:"";
   const recibir=(p.estado!=="recibido"&&!esProp)?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
   const linTxt=(p.lineas||[]).map(l=>{
     const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:(Number(l.precio_esperado)||0);

@@ -500,6 +500,7 @@ app.use("/api/limpieza-catalogo", require("./routes/limpieza-catalogo")); // arc
 app.use("/api/analisis-mes", require("./routes/analisis-mes")); // panel de análisis mensual de ventas (admin)
 app.use("/api/integraciones", require("./routes/integraciones")); // conector TPV (Ágora): clave, estado, prueba (admin)
 app.use("/api/asistente", require("./routes/asistente")); // asistente de voz/chat: agente de Claude sobre la propia API (rol del usuario)
+app.use("/api/nominas", require("./routes/nominas")); // nóminas/sueldos del equipo (SOLO dirección; no está en EQUIPO_ALLOWED)
 
 // 404 homogéneo para rutas de API inexistentes (JSON, no el HTML del SPA · tests.4).
 app.use("/api", (req, res) => {

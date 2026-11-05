@@ -335,7 +335,11 @@ router.post("/cotejar", jsonGrande, (req, res) => {
   const matById = {};
   materias.forEach((m) => (matById[m.id] = m));
 
-  const abiertos = store.readAll("pedidos").filter((p) => p.proveedor_id === proveedor_id && p.estado !== "recibido");
+  // Solo pedidos REALMENTE en curso para recibir: enviado o borrador. Una PROPUESTA
+  // del equipo ("propuesto") aún no se ha enviado ni aprobado; NO debe cotejarse ni,
+  // menos aún, marcarse recibida al aceptar un albarán (se saltaría la revisión de
+  // dirección y el gate admin de /:id/enviado).
+  const abiertos = store.readAll("pedidos").filter((p) => p.proveedor_id === proveedor_id && p.estado !== "recibido" && p.estado !== "propuesto");
   const pedido = abiertos.length ? abiertos[abiertos.length - 1] : null;
   const pedidoLineas = pedido ? pedido.lineas : [];
   const recibidas = (lineas || []).filter((l) => l.materia_id);
@@ -507,7 +511,9 @@ router.post("/:id/estado", jsonGrande, async (req, res) => {
   const aplicado = aceptada ? aplicarStock(recepcion) : [];
 
   if (aceptada && recepcion.pedido_id) {
-    store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
+    // Defensa en profundidad: nunca cerramos como "recibido" una propuesta sin enviar.
+    const ped = store.findById("pedidos", recepcion.pedido_id);
+    if (ped && ped.estado !== "propuesto") store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
   }
   const cambios = { estado, resuelta_en: new Date().toISOString() };
   if (aceptada) cambios.stock_aplicado = true;
@@ -531,7 +537,8 @@ router.post("/:id/confirmar", async (req, res) => {
   if (!recepcion) return res.status(404).json({ error: "Recepción no encontrada" });
   const aplicado = aplicarStock(recepcion);
   if (recepcion.pedido_id) {
-    store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
+    const ped = store.findById("pedidos", recepcion.pedido_id);
+    if (ped && ped.estado !== "propuesto") store.update("pedidos", recepcion.pedido_id, { estado: "recibido", recibido_en: new Date().toISOString() });
   }
   const actualizada = store.update("recepciones", req.params.id, {
     estado: "Aceptado", resuelta_en: new Date().toISOString(), stock_aplicado: true,

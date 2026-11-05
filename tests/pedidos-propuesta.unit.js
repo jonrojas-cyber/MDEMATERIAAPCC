@@ -8,6 +8,7 @@ const assert = require("assert");
 const store = require("../backend/data-store");
 const pedidos = require("../backend/routes/pedidos");
 const proveedores = require("../backend/routes/proveedores");
+const recepciones = require("../backend/routes/recepciones");
 
 let fallos = 0;
 function test(n, fn) { try { fn(); console.log("  ✓ " + n); } catch (e) { fallos++; console.error("  ✗ " + n + "\n    " + e.message); } }
@@ -87,6 +88,34 @@ test("canal_pedido inválido cae a 'whatsapp' (no se cuela basura)", () => {
   const res = fakeRes();
   handlerOf(proveedores, "post", "/")({ user: { rol: "admin" }, body: { nombre: "Raro SL", canal_pedido: "telepatia" } }, res, () => {});
   assert.strictEqual(store.findById("proveedores", res._json.id).canal_pedido, "whatsapp");
+});
+
+test("url_pedido sin esquema se normaliza a https:// (no una ruta relativa de la app)", () => {
+  store.writeAll("proveedores", []);
+  const res = fakeRes();
+  handlerOf(proveedores, "post", "/")({ user: { rol: "admin" }, body: { nombre: "Web2 SL", canal_pedido: "web", url_pedido: "blackbasco.com/pedido" } }, res, () => {});
+  assert.strictEqual(store.findById("proveedores", res._json.id).url_pedido, "https://blackbasco.com/pedido");
+});
+
+test("url_pedido con esquema peligroso (javascript:) se descarta", () => {
+  store.writeAll("proveedores", []);
+  const res = fakeRes();
+  handlerOf(proveedores, "post", "/")({ user: { rol: "admin" }, body: { nombre: "Web3 SL", canal_pedido: "web", url_pedido: "javascript:alert(1)" } }, res, () => {});
+  assert.strictEqual(store.findById("proveedores", res._json.id).url_pedido, "", "no se guarda un esquema no http/https");
+});
+
+test("recepción: el cotejo del albarán IGNORA una propuesta (no la coteja ni la recibe)", () => {
+  // Hay un pedido ENVIADO y, creada después, una PROPUESTA del equipo al mismo proveedor.
+  store.writeAll("proveedores", [{ id: "prov-1", nombre: "Café SL" }]);
+  store.writeAll("materias", [{ id: "m1", nombre: "Café en grano", unidad: "g", coste_medio: 0.02 }]);
+  store.writeAll("pedidos", [
+    { id: "ped-env", proveedor_id: "prov-1", codigo: "PED-ENV", estado: "enviado", lineas: [{ materia_id: "m1", nombre: "Café en grano", cantidad: 100, unidad: "g" }] },
+    { id: "ped-prop", proveedor_id: "prov-1", codigo: "PED-PROP", estado: "propuesto", lineas: [{ materia_id: "m1", nombre: "Café en grano", cantidad: 999, unidad: "g" }] },
+  ]);
+  const res = fakeRes();
+  handlerOf(recepciones, "post", "/cotejar")({ user: { rol: "admin" }, body: { proveedor_id: "prov-1", lineas: [{ materia_id: "m1", cantidad: 100, precio_unitario: 0.02 }] } }, res, () => {});
+  // Debe cotejar contra el pedido ENVIADO, nunca contra la propuesta (aunque sea la última).
+  assert.strictEqual(res._json.pedido_id, "ped-env", "coteja el enviado, no la propuesta");
 });
 
 if (fallos) { console.error(`\n${fallos} prueba(s) de propuestas fallaron`); process.exit(1); }

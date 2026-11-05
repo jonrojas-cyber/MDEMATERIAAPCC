@@ -100,6 +100,14 @@ function camposDe(body, req) {
   // Canal del pedido: "web" (se pide en la web del proveedor y se paga con tarjeta,
   // p. ej. Black BasCo) o "whatsapp" (por defecto). Cualquier otro valor cae a whatsapp.
   if (body.canal_pedido != null) c.canal_pedido = String(body.canal_pedido).trim().toLowerCase() === "web" ? "web" : "whatsapp";
+  // Normaliza la URL de pedido: si se escribió sin esquema (p. ej. "blackbasco.com")
+  // se le añade https:// para que abra la web real y no una ruta relativa de la app.
+  // Solo se admite http/https (nada de javascript:, data:, etc.).
+  if (c.url_pedido != null && c.url_pedido !== "") {
+    if (!/^https?:\/\//i.test(c.url_pedido)) {
+      c.url_pedido = /^[a-z][a-z0-9+.-]*:/i.test(c.url_pedido) ? "" : "https://" + c.url_pedido;
+    }
+  }
   if (Array.isArray(body.dias_reparto)) c.dias_reparto = body.dias_reparto.filter((d) => DIAS.includes(d));
   if (Array.isArray(body.dias_pedido)) c.dias_pedido = body.dias_pedido.filter((d) => DIAS.includes(d));
   if (Array.isArray(body.dias_entrega)) c.dias_entrega = body.dias_entrega.filter((d) => DIAS.includes(d));

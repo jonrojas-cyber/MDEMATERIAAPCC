@@ -9658,7 +9658,7 @@ async function formProveedor(id){
   const meta=window._provMeta||{categorias:["Otros"],estados:["Activo","Pausado","Sustituido"],dias:["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"]};
   const dias=meta.dias||["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
   const admin=mbdsEsAdmin();
-  let p={nombre:"",razon_social:"",contacto:"",telefono:"",telefono_pedidos:"",email:"",direccion:"",cif:"",nif_cif:"",categoria:"",estado:"Activo",notas:"",observaciones:"",hora_limite:"",pedido_minimo:"",transporte:"",forma_pago:"",bizum:"",bizum_tel:"",dias_pedido:[],dias_entrega:[],foto_url:null};
+  let p={nombre:"",razon_social:"",contacto:"",telefono:"",telefono_pedidos:"",email:"",direccion:"",cif:"",nif_cif:"",categoria:"",estado:"Activo",notas:"",observaciones:"",hora_limite:"",pedido_minimo:"",transporte:"",canal_pedido:"whatsapp",url_pedido:"",forma_pago:"",bizum:"",bizum_tel:"",dias_pedido:[],dias_entrega:[],foto_url:null};
   if(id){ try{ p=await api("/proveedores/"+id); }catch(e){ alert(e.message); return; } }
   window._provEditId=id||null;
   window._provFoto=(p.foto_url!==undefined)?p.foto_url:null; // null/"" según exista
@@ -9692,6 +9692,13 @@ async function formProveedor(id){
       <div class="field"><label>Hora límite de pedido</label><input id="pv-hora" value="${esc(p.hora_limite||"")}" placeholder="p. ej. 18:00" style="width:140px;"></div>
       <div class="field"><label>Pedido mínimo</label><input id="pv-min" value="${esc(p.pedido_minimo||"")}" placeholder="p. ej. 30 € o 1 caja" style="width:100%;"></div>
       <div class="field"><label>Transporte / portes</label><input id="pv-transp" value="${esc(p.transporte||"")}" style="width:100%;"></div>
+      <div class="field"><label>¿Cómo se pide?</label>
+        <select id="pv-canal" style="width:100%;" onchange="(function(v){var w=document.getElementById('pv-urlped-wrap'); if(w) w.style.display=(v==='web')?'block':'none';})(this.value)">
+          <option value="whatsapp" ${(p.canal_pedido||"whatsapp")!=="web"?"selected":""}>Por WhatsApp (mensaje al proveedor o al grupo)</option>
+          <option value="web" ${(p.canal_pedido||"whatsapp")==="web"?"selected":""}>Por su web (se paga con tarjeta)</option>
+        </select>
+      </div>
+      <div class="field" id="pv-urlped-wrap" style="display:${(p.canal_pedido||"whatsapp")==="web"?"block":"none"};"><label>Web para hacer el pedido</label><input id="pv-urlped" value="${esc(p.url_pedido||"")}" placeholder="https://… (donde cargas el pedido y pagas)" style="width:100%;" inputmode="url"></div>
       <div class="field"><label>Observaciones</label><textarea id="pv-obs" style="width:100%;min-height:50px;">${esc(p.observaciones||"")}</textarea></div>
       <div class="field"><label>Notas internas</label><textarea id="pv-notas" style="width:100%;min-height:50px;">${esc(p.notas)}</textarea></div>
     </div>
@@ -9753,6 +9760,8 @@ async function guardarProveedor(btn){
     hora_limite:val("pv-hora"),
     pedido_minimo:val("pv-min"),
     transporte:val("pv-transp"),
+    canal_pedido:(el("pv-canal")?el("pv-canal").value:"whatsapp"),
+    url_pedido:val("pv-urlped"),
     observaciones:val("pv-obs"),
     notas:el("pv-notas").value.trim(),
   };
@@ -11303,6 +11312,19 @@ async function irA_pedidos(pre){
     const sugByProv={}; sugActivas.forEach(g=>{ sugByProv[g.proveedor_id]={items:g.total_items,criticos:g.criticos}; });
     window._pedSugByProv=sugByProv;
 
+    // Propuestas del equipo por revisar (solo dirección): el equipo propone, Moni/Jon
+    // revisan y envían. Van arriba del todo, es lo primero que dirección debe atender.
+    const admin=mbdsEsAdmin();
+    const propuestas=admin?(peds||[]).filter(p=>p.estado==="propuesto"):[];
+    let propHtml="";
+    if(propuestas.length){
+      propHtml=`<div class="section-label">📝 Propuestas por revisar · ${propuestas.length}</div>
+        <div class="ped-sugwrap">`+propuestas.map(p=>`<button class="ped-sugcard crit" onclick="irA_reenviarPedido('${p.id}')">
+          <span class="ped-sugn">${esc(p.proveedor_nombre)}</span>
+          <span class="ped-sugm">${(p.lineas||[]).length} art. · propone ${esc(p.propuesto_por||"el equipo")} · revisar y enviar →</span>
+        </button>`).join("")+`</div>`;
+    }
+
     // Sugerencias de compra (proveedores que necesitan pedido ya) — acceso directo.
     let sugHtml="";
     if(sugActivas.length){
@@ -11317,6 +11339,7 @@ async function irA_pedidos(pre){
     const copiaNom=(cfg&&cfg.copia_nombre)||"copia";
     const negocio=(cfg&&cfg.whatsapp_negocio)||"";
     const html=`
+      ${propHtml}
       <div class="section-label">Buscar proveedor</div>
       <input id="ped-prov-q" class="mat-q" placeholder="Nombre del proveedor…" oninput="pedFiltrarProveedores(this.value)">
       <div id="ped-prov-list" class="ped-provlist"></div>
@@ -11466,33 +11489,118 @@ async function pedCrear(provId){
   }catch(e){ alert(e.message); }
   finally{ liberaDoble("pedido"); }
 }
-// Pantalla de confirmación: botones explícitos (cada window.open = un gesto fiable).
+// Pantalla de confirmación / revisión. Dos caminos según el rol:
+//   · EQUIPO → ha PROPUESTO el pedido (no puede enviar): ve "propuesta enviada a
+//     dirección" y un botón para avisar a Jon por WhatsApp. Sin euros, sin enviar.
+//   · ADMIN (Moni/Jon) → revisa (si es propuesta del equipo) y ENVÍA: al grupo de
+//     WhatsApp, directo al proveedor, o por la WEB del proveedor (pago con tarjeta).
 function pedConfirmacion(p){
-  openSection("ped-ok","Pedido creado");
-  const admin=mbdsEsAdmin(); // el equipo no ve euros del pedido
+  const admin=mbdsEsAdmin(); // el equipo no ve euros del pedido ni envía
+  const propuesta=(p.estado==="propuesto");
+  openSection("ped-ok", (!admin)?"Propuesta enviada":(propuesta?"Revisar propuesta":"Pedido creado"));
   const copia=((window._pedCfg||{}).copia_whatsapp)||"";
   const copiaNom=((window._pedCfg||{}).copia_nombre)||"copia";
-  const prov=(window._pedCat&&window._pedCat.proveedor)||{};
+  const jonNom=((window._pedCfg||{}).copia_nombre)||"Jon";
+  // Solo usamos el proveedor cacheado si es el de ESTE pedido (evita datos cruzados).
+  const pc=(window._pedCat&&window._pedCat.proveedor)||{};
+  const prov=(pc.id===p.proveedor_id)?pc:{};
   const waProv=(prov.whatsapp||"").replace(/[^0-9]/g,"");
+  const esWeb=(prov.canal_pedido==="web")&&!!(prov.url_pedido||"");
   const lineas=(p.lineas||[]).map(l=>{
     const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
     return `• ${esc(l.nombre)}: ${c} ${esc(u)}${admin&&pu!=null?` × ${pedN(pu)} €/${esc(u)}`:""}`;
   }).join("<br>");
-  setInner(`<div class="card" style="border-color:var(--olive)">
+  const ficha=`<div class="card" style="border-color:var(--olive)">
       <div class="card-name">✓ ${esc(p.codigo)} · ${esc(p.proveedor_nombre)}</div>
       <div class="card-meta">${admin&&p.total_estimado!=null?`${pedN(p.total_estimado)} € · `:""}${(p.lineas||[]).length} artículo(s)</div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7;">${lineas}</div>
-    </div>
-    <div class="section-label">Enviar el pedido</div>
-    <div class="ped-send">
-      <button class="btn-primary" onclick="pedCompartir('${p.id}')">📲 Compartir al grupo (origen · M de materia)</button>
+    </div>`;
+
+  if(!admin){
+    // EQUIPO: propuesta creada. No envía; avisa a dirección (Jon/Moni).
+    setInner(ficha + `
+      <div class="card" style="border-color:var(--olive);">
+        <div class="card-name">✓ Propuesta enviada a dirección</div>
+        <div class="card-meta">Moni y Jon la revisan y la envían al proveedor. Tú no tienes que enviar nada.</div>
+      </div>
+      <div class="section-label">Avisar a dirección</div>
+      <div class="ped-send">
+        <button class="btn-primary" onclick="pedAvisarJon('${p.id}')">📲 Avisar a ${esc(jonNom)} por WhatsApp</button>
+      </div>
+      <div class="card-actions" style="margin-top:14px;">
+        <button class="btn-ghost" onclick="irA_pedidos()">Volver a pedidos</button>
+      </div>
+      <div class="ped-foot">Un toque y le llega la propuesta a ${esc(jonNom)} para que la revise y la envíe.</div>`);
+    return;
+  }
+
+  // ADMIN: cabecera de "propuesta del equipo" cuando toca revisar una.
+  const cab=propuesta
+    ? `<div class="card" style="border-color:var(--olive);"><div class="card-name">📝 Propuesta de ${esc(p.propuesto_por||"el equipo")}</div><div class="card-meta">Revísala y, si está bien, envíala.</div></div>`
+    : "";
+  // Botones de envío según el canal del proveedor.
+  let enviar;
+  if(esWeb){
+    enviar=`<button class="btn-primary" onclick="pedAbrirWeb('${p.id}')">🛒 Abrir la web de ${esc(prov.nombre||"proveedor")} y copiar el pedido</button>
+      <button class="btn-ghost" onclick="pedCompartir('${p.id}')">O compartir el pedido por WhatsApp</button>`;
+  }else{
+    enviar=`<button class="btn-primary" onclick="pedCompartir('${p.id}')">📲 Compartir al grupo (origen · M de materia)</button>
       ${waProv?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','prov')">O enviar directo al proveedor</button>`:""}
-      ${copia?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','copia')">📋 Enviar copia a ${esc(copiaNom)} (+${esc(copia)})</button>`:""}
-    </div>
+      ${copia?`<button class="btn-ghost" onclick="pedEnviarWA('${p.id}','copia')">📋 Enviar copia a ${esc(copiaNom)} (+${esc(copia)})</button>`:""}`;
+  }
+  setInner(cab + ficha + `
+    <div class="section-label">Enviar el pedido</div>
+    <div class="ped-send">${enviar}</div>
     <div class="card-actions" style="margin-top:14px;">
       <button class="btn-ghost" onclick="irA_pedidos()">Volver a pedidos</button>
     </div>
-    <div class="ped-foot">«Compartir» abre el selector de WhatsApp: elige el grupo «origen · M de materia». (WhatsApp no deja enlazar un grupo con un número, por eso va con el selector.)</div>`);
+    <div class="ped-foot">${esWeb
+      ? `Se abre la web del proveedor y se copia el pedido al portapapeles para que lo cargues y pagues con tarjeta. Después márcalo como enviado.`
+      : `«Compartir» abre el selector de WhatsApp: elige el grupo «origen · M de materia». (WhatsApp no deja enlazar un grupo con un número, por eso va con el selector.)`}</div>`);
+}
+// EQUIPO → avisa a dirección (Jon por defecto) de que hay una propuesta, por WhatsApp
+// directo (wa.me a su número). Sin euros (el equipo no los ve). Es el refuerzo del
+// push automático que ya dispara el servidor al crear la propuesta.
+async function pedAvisarJon(id){
+  try{
+    const p=await api(`/pedidos/${id}`);
+    let prov=(window._pedCat&&window._pedCat.proveedor&&window._pedCat.proveedor.id===p.proveedor_id)?window._pedCat.proveedor:null;
+    if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`).catch(()=>({}));
+    const cfg=window._pedCfg||await api("/pedidos/config").catch(()=>({copia_whatsapp:"34682250373",copia_nombre:"Jon"}));
+    const jon=(cfg.copia_whatsapp||"34682250373").replace(/[^0-9]/g,"");
+    if(!jon){ alert("No hay número de dirección configurado (Pedidos → Copia de cada pedido)."); return; }
+    const admin=mbdsEsAdmin(); // el equipo no incluye euros
+    const lineas=(p.lineas||[]).map(l=>{
+      const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:l.precio_esperado;
+      return `• ${l.nombre}: ${c} ${u}${admin&&pu!=null?` × ${pedN(pu)} €/${u}`:""}`;
+    }).join("\n");
+    const quien=p.propuesto_por||"el equipo";
+    const texto=`📝 Propuesta de pedido (${quien})\nProveedor: ${prov.nombre||p.proveedor_nombre}\n${lineas}\n\n¿La revisas y la envías?`;
+    window.open(`https://wa.me/${jon}?text=${encodeURIComponent(texto)}`,"_blank");
+  }catch(e){ alert(e.message); }
+}
+// ADMIN → proveedor que se pide por WEB (pago con tarjeta): copia el pedido al
+// portapapeles y abre su web para cargarlo y pagar. Luego ofrece marcarlo enviado.
+// (No se puede rellenar una web externa por nosotros: abrir + copiar es lo fiable.)
+async function pedAbrirWeb(id){
+  try{
+    const p=await api(`/pedidos/${id}`);
+    let prov=(window._pedCat&&window._pedCat.proveedor&&window._pedCat.proveedor.id===p.proveedor_id)?window._pedCat.proveedor:null;
+    if(!prov) prov=await api(`/proveedores/${p.proveedor_id}`).catch(()=>({}));
+    const url=(prov&&prov.url_pedido)||"";
+    if(!url){ alert("Este proveedor no tiene web de pedido. Añádela en Proveedores → ¿Cómo se pide? → Por su web."); return; }
+    const lineas=(p.lineas||[]).map(l=>{
+      const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad;
+      return `• ${l.nombre}: ${c} ${u}`;
+    }).join("\n");
+    const texto=`Pedido ${p.codigo} · ${prov.nombre||p.proveedor_nombre}\n${lineas}`;
+    try{ await navigator.clipboard.writeText(texto); }catch(e){}
+    window.open(url,"_blank");
+    if(confirm("Pedido copiado y web del proveedor abierta. Cuando lo hayas cargado y pagado, ¿lo marco como enviado?")){
+      try{ await api(`/pedidos/${id}/enviado`,{method:"POST"}); irA_pedidos(); }
+      catch(e){ alert(e.message); }
+    }
+  }catch(e){ alert(e.message); }
 }
 async function pedEnviarWA(id, destino){
   try{
@@ -11574,16 +11682,21 @@ async function pedCambiarCopia(){
 function pedidoCard(p){
   const provs=window._provPed||[];
   const prov=provs.find(x=>x.id===p.proveedor_id);
-  const wa=(prov&&prov.whatsapp&&p.estado!=="recibido")?`<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>`:"";
-  const recibir=(p.estado!=="recibido")?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
+  const admin=mbdsEsAdmin(); // el equipo no ve euros de los pedidos
+  const esProp=p.estado==="propuesto";
+  // Una propuesta (del equipo) no se recibe ni se reenvía: se revisa (dirección) o se ve.
+  const revisar=esProp?`<button class="btn-primary" onclick="irA_reenviarPedido('${p.id}')">${admin?"Revisar y enviar":"Ver propuesta"}</button>`:"";
+  const wa=(prov&&prov.whatsapp&&p.estado!=="recibido"&&!esProp)?`<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>`:"";
+  const recibir=(p.estado!=="recibido"&&!esProp)?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
   const linTxt=(p.lineas||[]).map(l=>{
     const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:(Number(l.precio_esperado)||0);
-    return `${esc(l.nombre)}: ${c} ${esc(u)} × ${pedN(pu)} € = ${pedN(c*(Number(pu)||0))} €`;
+    return `${esc(l.nombre)}: ${c} ${esc(u)}${admin?` × ${pedN(pu)} € = ${pedN(c*(Number(pu)||0))} €`:""}`;
   }).join("<br>");
+  const estadoTxt=({propuesto:"propuesta",borrador:"borrador",enviado:"enviado",recibido:"recibido"})[p.estado]||p.estado;
   return card(
     `${esc(p.codigo)} — ${esc(p.proveedor_nombre)}`,
-    `${esc(p.estado)} · ${pedN(p.total_estimado)} € · ${(p.lineas||[]).length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
-    recibir+wa,
+    `${esc(estadoTxt)}${admin&&p.total_estimado!=null?` · ${pedN(p.total_estimado)} €`:""} · ${(p.lineas||[]).length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
+    revisar+recibir+wa,
     `<div style="font-size:10px;color:#888070;margin-top:6px;">${linTxt}</div>`
   );
 }

@@ -334,12 +334,23 @@ test("proveedores iniciales: se siembran, sus artículos salen 'Pendiente de com
   expect(errors).toEqual([]);
 });
 
-test("proveedores: el equipo NO accede a proveedores (datos de pago protegidos)", async ({ request }) => {
-  // El segmento proveedores es solo del propietario; el equipo ni ve los datos
-  // de pago (Bizum, forma de pago) porque no alcanza la sección.
+test("proveedores: el equipo LEE para pedir, pero sin datos de pago ni gestión", async ({ request }) => {
+  // El equipo elige proveedor al hacer pedidos (lectura), pero NUNCA ve los datos
+  // de pago (Bizum/IBAN/forma de pago) ni puede crear/editar/archivar.
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
-  const r = await request.get("/api/proveedores/prov-charcuteria", { headers: { Authorization: `Bearer ${lara.token}` } });
-  expect(r.status()).toBe(403);
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const hE = { Authorization: `Bearer ${lara.token}` };
+  // Admin fija datos de pago en un proveedor de la semilla.
+  await request.put("/api/proveedores/prov-001", { headers: hA, data: { bizum: "600111222", forma_pago: "Bizum", iban: "ES000" } });
+  // El equipo lo lee (para pedir) pero sin esos campos sensibles.
+  const p = await (await request.get("/api/proveedores/prov-001", { headers: hE })).json();
+  expect(p.nombre).toBeTruthy();
+  for (const k of ["forma_pago", "bizum", "bizum_tel", "iban", "datos_bancarios"]) expect(p[k]).toBeUndefined();
+  // Y no puede gestionarlos (crear/editar/archivar) → 403.
+  expect((await request.post("/api/proveedores", { headers: hE, data: { nombre: "X" } })).status()).toBe(403);
+  expect((await request.put("/api/proveedores/prov-001", { headers: hE, data: { nombre: "Y" } })).status()).toBe(403);
+  expect((await request.post("/api/proveedores/prov-001/archivar", { headers: hE })).status()).toBe(403);
 });
 
 test("informe de compras: el admin genera el informe; el equipo no accede", async ({ page, request }) => {

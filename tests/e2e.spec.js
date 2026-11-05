@@ -700,6 +700,35 @@ test("pedidos: la pantalla del equipo dice 'propuesta' y avisa a dirección (sin
   expect(errors).toEqual([]);
 });
 
+test("asistente: exige sesión, lo alcanza el equipo y degrada con gracia sin clave de IA", async ({ request }) => {
+  // Sin token → 401 (ruta protegida).
+  expect((await request.post("/api/asistente", { data: { texto: "hola" } })).status()).toBe(401);
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  // Sin ANTHROPIC_API_KEY (entorno de test) responde 503 claro, sin romper: dirección…
+  const rA = await request.post("/api/asistente", { headers: { Authorization: `Bearer ${moni.token}` }, data: { texto: "¿pronóstico de cierre?" } });
+  expect(rA.status()).toBe(503);
+  expect((await rA.json()).code).toBe("IA_NO_CONFIG");
+  // …y el EQUIPO también lo alcanza (no 403): está permitido, solo falta la clave.
+  const rE = await request.post("/api/asistente", { headers: { Authorization: `Bearer ${lara.token}` }, data: { texto: "apunta una merma" } });
+  expect(rE.status()).toBe(503);
+});
+
+test("asistente: el panel de voz se abre desde el botón flotante y responde", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await login(page);
+  // El botón flotante existe tras entrar; al pulsarlo se abre el panel.
+  await expect(page.locator("#asist-fab")).toBeVisible();
+  await page.locator("#asist-fab").click();
+  await expect(page.locator("#asist-panel.on")).toBeVisible();
+  // Escribimos (fallback de texto) y enviamos; sin clave, responde con gracia en el chat.
+  await page.locator("#asist-in").fill("¿cuánto me queda en caja?");
+  await page.locator(".asist-send").click();
+  await expect(page.locator("#asist-chat")).toContainText(/activado|no (lo )?puedo|caja|€|asistente/i, { timeout: 10_000 });
+  expect(errors).toEqual([]);
+});
+
 test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

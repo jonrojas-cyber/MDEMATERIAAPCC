@@ -68,6 +68,7 @@ const EQUIPO_ALLOWED = new Set([
   "ausencias", // vacaciones/bajas/permisos: el equipo solicita; aprobar/rechazar gated a admin en la ruta
   "tablon", // comunicación interna: el equipo lee; publicar gated a admin en la ruta
   "incidencias", // partes del equipo: el equipo abre; resolver gated a admin en la ruta
+  "asistente", // asistente de voz/chat: el equipo lo usa; sus consultas internas siguen gated por rol (sin dinero)
 ]);
 
 // ── Hash de PIN (scrypt, sin dependencias externas) ─────────────────────────

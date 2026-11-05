@@ -81,8 +81,10 @@ function trimestreDe(fecha) {
 }
 const RANGOS = { 1: "Ene–Mar", 2: "Abr–Jun", 3: "Jul–Sep", 4: "Oct–Dic" };
 
-// Archivo de albaranes agrupado por trimestre (resumen para la gestoría).
+// Archivo de albaranes agrupado por trimestre (resumen para la gestoría). El gasto
+// total es DINERO de compra: solo dirección lo ve (el equipo ve recuento y nº de fotos).
 router.get("/trimestres", (req, res) => {
+  const esAdmin = !!(req.user && req.user.rol === "admin");
   const grupos = {};
   store.readAll("recepciones").forEach((r) => {
     const { year, q } = trimestreDe(r.fecha);
@@ -94,13 +96,15 @@ router.get("/trimestres", (req, res) => {
   });
   res.json(
     Object.values(grupos)
-      .map((g) => ({ ...g, total: Math.round(g.total * 100) / 100 }))
+      .map((g) => { const o = { ...g, total: Math.round(g.total * 100) / 100 }; if (!esAdmin) delete o.total; return o; })
       .sort((a, b) => b.year - a.year || b.q - a.q)
   );
 });
 
 // PDF de un trimestre: portada con resumen + una página por albarán fotografiado.
+// Es un documento financiero para la gestoría (lleva importes): solo dirección.
 router.get("/trimestre/:year/:q/pdf", async (req, res) => {
+  if (!req.user || req.user.rol !== "admin") return res.status(403).json({ error: "El archivo trimestral con importes es solo de dirección." });
   const year = Number(req.params.year), q = Number(req.params.q);
   const proveedores = store.readAll("proveedores");
   const nombre = (id) => { const p = proveedores.find((x) => x.id === id); return p ? p.nombre : id; };
@@ -126,8 +130,11 @@ router.get("/trimestre/:year/:q/pdf", async (req, res) => {
 router.get("/:id", (req, res) => {
   const r = store.findById("recepciones", req.params.id);
   if (!r) return res.status(404).json({ error: "Recepción no encontrada" });
+  const esAdmin = !!(req.user && req.user.rol === "admin");
   const proveedor = store.findById("proveedores", r.proveedor_id);
-  res.json({ ...r, proveedor_nombre: proveedor ? proveedor.nombre : r.proveedor_id });
+  const salida = { ...r, proveedor_nombre: proveedor ? proveedor.nombre : r.proveedor_id };
+  // El equipo NUNCA ve importes de compra (regla de negocio): se le ocultan igual que en el listado.
+  res.json(esAdmin ? salida : sinEurosRec(salida));
 });
 
 // Importa en bloque el "control de facturas" (Excel del Gmail): crea una
@@ -331,6 +338,7 @@ router.post("/escanear", jsonGrande, async (req, res) => {
 // precio habitual de cada materia. Devuelve avisos de cantidad y de precio.
 router.post("/cotejar", jsonGrande, (req, res) => {
   const { proveedor_id, lineas } = req.body || {};
+  const esAdmin = !!(req.user && req.user.rol === "admin");
   const materias = store.readAll("materias");
   const matById = {};
   materias.forEach((m) => (matById[m.id] = m));
@@ -361,8 +369,9 @@ router.post("/cotejar", jsonGrande, (req, res) => {
       avisos.push({ tipo: "extra", nivel: "medio", mensaje: `${m.nombre}: llega en el albarán pero no estaba en el pedido` });
     }
 
+    // El aviso de PRECIO lleva importes (coste): solo dirección. El equipo ve cantidad/extra/falta.
     const esperado = pl && pl.precio_esperado > 0 ? pl.precio_esperado : m.coste_medio;
-    if (Number.isFinite(precio) && precio > 0 && esperado > 0) {
+    if (esAdmin && Number.isFinite(precio) && precio > 0 && esperado > 0) {
       const dp = (precio - esperado) / esperado;
       if (Math.abs(dp) >= 0.05) {
         avisos.push({ tipo: "precio", nivel: Math.abs(dp) >= 0.15 ? "alto" : "medio", mensaje: `${m.nombre}: precio ${precio.toFixed(4)} € vs ${pl ? "pedido" : "habitual"} ${esperado.toFixed(4)} € (${dp > 0 ? "+" : ""}${Math.round(dp * 100)}%)` });

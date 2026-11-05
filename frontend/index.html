@@ -11688,8 +11688,15 @@ function pedidoCard(p){
   const esProp=p.estado==="propuesto";
   // Una propuesta (del equipo) no se recibe ni se reenvía: se revisa (dirección) o se ve.
   const revisar=esProp?`<button class="btn-primary" onclick="irA_reenviarPedido('${p.id}')">${admin?"Revisar y enviar":"Ver propuesta"}</button>`:"";
-  // Reenviar por WhatsApp es acción de dirección (enviar): el equipo no reenvía.
-  const wa=(admin&&prov&&prov.whatsapp&&p.estado!=="recibido"&&!esProp)?`<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>`:"";
+  // Reabrir el envío (acción de dirección: el equipo no reenvía). Para un proveedor
+  // "web" el botón dice "Abrir la web" (reabre pedConfirmacion, que vuelve a ofrecer
+  // cargar/pagar en su web aunque dirección saliera sin hacerlo); si no, "WhatsApp".
+  const esWebProv=prov&&prov.canal_pedido==="web"&&!!(prov.url_pedido||"");
+  const reabrir=(admin&&p.estado!=="recibido"&&!esProp)
+    ? (esWebProv
+        ? `<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">Abrir la web</button>`
+        : (prov&&prov.whatsapp ? `<button class="btn-ghost" onclick="irA_reenviarPedido('${p.id}')">WhatsApp</button>` : ""))
+    : "";
   const recibir=(p.estado!=="recibido"&&!esProp)?`<button class="btn-primary" onclick="recibirPedido('${p.id}','${p.proveedor_id}','${esc(p.codigo)}')">Recibir</button>`:"";
   const linTxt=(p.lineas||[]).map(l=>{
     const u=l.unidad_pedido||l.unidad||"ud"; const c=l.cantidad_pedido!=null?l.cantidad_pedido:l.cantidad; const pu=l.precio_pedido!=null?l.precio_pedido:(Number(l.precio_esperado)||0);
@@ -11699,7 +11706,7 @@ function pedidoCard(p){
   return card(
     `${esc(p.codigo)} — ${esc(p.proveedor_nombre)}`,
     `${esc(estadoTxt)}${admin&&p.total_estimado!=null?` · ${pedN(p.total_estimado)} €`:""} · ${(p.lineas||[]).length} producto(s) · ${new Date(p.fecha).toLocaleDateString("es-ES")}`,
-    revisar+recibir+wa,
+    revisar+recibir+reabrir,
     `<div style="font-size:10px;color:#888070;margin-top:6px;">${linTxt}</div>`
   );
 }

@@ -551,6 +551,27 @@ test("auditoría de food cost: coste real por producto vendido (admin) y bloqueo
   expect(team).toBe(403);
 });
 
+test("proveedores: archivar/recuperar (admin) y bloqueo al equipo", async ({ request }) => {
+  const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
+  const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();
+  const hA = { Authorization: `Bearer ${moni.token}` };
+  const hE = { Authorization: `Bearer ${lara.token}` };
+  // Admin crea un proveedor (nace activo, no archivado).
+  const creado = await (await request.post("/api/proveedores", { headers: hA, data: { nombre: "Proveedor Test E2E" } })).json();
+  expect(creado.id).toBeTruthy();
+  expect(creado.archivado).toBe(false);
+  // El equipo NO puede crear ni archivar (gestión solo admin).
+  expect((await request.post("/api/proveedores", { headers: hE, data: { nombre: "X" } })).status()).toBe(403);
+  expect((await request.post(`/api/proveedores/${creado.id}/archivar`, { headers: hE })).status()).toBe(403);
+  // Admin archiva (reversible) y recupera.
+  const arch = await (await request.post(`/api/proveedores/${creado.id}/archivar`, { headers: hA })).json();
+  expect(arch.archivado).toBe(true);
+  const rec = await (await request.post(`/api/proveedores/${creado.id}/recuperar`, { headers: hA })).json();
+  expect(rec.archivado).toBe(false);
+  // Se deja archivado para no dejar un proveedor de prueba en el flujo de pedidos.
+  await request.post(`/api/proveedores/${creado.id}/archivar`, { headers: hA });
+});
+
 test("auditoría de escandallos: origen del coste por ingrediente (admin) y bloqueo al equipo", async ({ request }) => {
   const moni = await (await request.post("/api/auth/login", { data: { usuario: "Moni", pin: "3333" } })).json();
   const lara = await (await request.post("/api/auth/login", { data: { usuario: "Lara", pin: "2222" } })).json();

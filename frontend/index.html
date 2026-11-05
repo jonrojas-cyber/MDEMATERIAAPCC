@@ -7576,7 +7576,11 @@ async function irA_categoria(cat) {
   try {
     const d = await api("/inicio");
     const meta = modulosMeta(d);
+    // Secciones solo para dirección dentro de una categoría visible al equipo:
+    // Proveedores se gestiona solo por admin; el equipo hace pedidos en «Pedidos».
+    const SOLO_ADMIN_ID = { proveedores: true };
     const rows = c.ids.map(id => {
+      if (SOLO_ADMIN_ID[id] && !mbdsEsAdmin()) return "";
       const m = meta[id];
       if (!m) return "";
       const sub = esc(m.badge || (m.urgent ? "requiere atención" : ""));
@@ -9570,6 +9574,8 @@ const PROV_EST_COLOR={ "Activo":"var(--olive)", "Pausado":"var(--muted)", "Susti
 async function irA_proveedores(){
   navReset(); // raíz de Proveedores
   openSection("proveedores","Proveedores");
+  // Gestionar proveedores es solo de dirección; el equipo hace pedidos en «Pedidos».
+  if(!mbdsEsAdmin()){ setInner(`<div class="empty">Solo dirección gestiona los proveedores. Para hacer un pedido, usa <b>Pedidos</b>.</div>`); return; }
   try{
     const [provs,meta,arts]=await Promise.all([api("/proveedores"),api("/proveedores/meta"),api("/compras-productos").catch(()=>[])]);
     window._provMeta=meta;
@@ -9580,8 +9586,8 @@ async function irA_proveedores(){
     if(!provs.length){ setInner(cab+`<div class="empty">Aún no hay proveedores. Pulsa “Agregar proveedor” para crear el primero.</div>`); return; }
     // Buscador por proveedor (filtra las tarjetas en vivo).
     const buscador=`<input id="prov-buscar" type="search" placeholder="Buscar proveedor…" oninput="filtrarProveedores(this.value)" style="width:100%;margin-bottom:14px;font-size:14px;padding:9px 12px;">`;
-    // Orden: activos primero, luego por nombre.
-    provs.sort((a,b)=> (a.estado==="Activo"?0:1)-(b.estado==="Activo"?0:1) || a.nombre.localeCompare(b.nombre));
+    // Orden: no archivados primero, luego por nombre (los archivados, al final).
+    provs.sort((a,b)=> (a.archivado?1:0)-(b.archivado?1:0) || a.nombre.localeCompare(b.nombre));
     const anioAhora=new Date().getFullYear();
     const html=cab+buscador+`<div id="prov-vacio" class="empty" style="display:none;">Ningún proveedor coincide con la búsqueda.</div><div id="prov-lista">`+provs.map(p=>{
       const tel=(p.telefono||p.telefono_pedidos||p.whatsapp||"").replace(/[^0-9+]/g,"");
@@ -9592,12 +9598,18 @@ async function irA_proveedores(){
       // Línea de datos de un vistazo (admin): artículos · gasto del año · pendiente.
       const rs=p.resumen;
       const stat=rs?`<div class="card-meta" style="color:var(--olive);font-weight:700;">${rs.n_articulos} artículo${rs.n_articulos===1?"":"s"} · ${rs.n_documentos_anio} doc. ${anioAhora} · gasto ${adEur(rs.gasto_anio)}${rs.pendiente_total>0?` · <span style="color:var(--alert);">pendiente ${adEur(rs.pendiente_total)}</span>`:""}</div>`:"";
+      const arch=!!p.archivado;
+      const archivarBtn = arch
+        ? `<button class="btn-primary" onclick="provRecuperar('${p.id}')">Recuperar</button>`
+        : `<button class="btn-ghost" onclick="provArchivar('${p.id}',${JSON.stringify(p.nombre)})">Archivar</button>`;
       const acc=`<button class="btn-primary" onclick="irA_productosProveedor('${p.id}')">Abrir ficha</button>`+
         `<button class="btn-ghost" onclick="formProveedor('${p.id}')">Editar</button>`+
-        (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"");
+        (tel?`<button class="btn-ghost" onclick="whatsapp('${tel}','${encodeURIComponent("Hola "+(p.contacto||"")+", ")}')">WhatsApp</button>`:"")+
+        archivarBtn;
       const buscar=[(p.nombre||""),(p.cif||p.nif_cif||""),(p.categoria||""),(p.contacto||"")].join(" ").toLowerCase();
-      return `<div class="card prov-card" data-buscar="${esc(buscar)}">
-        <div class="card-name">${esc(p.nombre)} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${pendChip}</div>
+      const chipArch=arch?` <span style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:lowercase;">· archivado</span>`:"";
+      return `<div class="card prov-card" data-buscar="${esc(buscar)}"${arch?' style="opacity:.6;"':""}>
+        <div class="card-name">${esc(p.nombre)} <span style="font-size:10px;font-weight:700;color:${PROV_EST_COLOR[estado]||"var(--muted)"};letter-spacing:.06em;text-transform:lowercase;">· ${estado}</span>${chipArch}${pendChip}</div>
         ${meta2?`<div class="card-meta">${meta2}</div>`:""}
         ${stat}
         <div class="card-actions">${acc}</div>
@@ -9616,6 +9628,17 @@ function filtrarProveedores(q){
     c.style.display = ok ? "" : "none"; if(ok) visibles++;
   });
   const vac=document.getElementById("prov-vacio"); if(vac) vac.style.display = visibles? "none":"";
+}
+
+// Archivar / recuperar un proveedor (baja lógica, reversible). Solo dirección.
+async function provArchivar(id, nombre){
+  if(!confirm(`¿Archivar "${nombre}"?\n\nSe mantiene (histórico, facturas y artículos) pero deja de aparecer al hacer pedidos. Puedes recuperarlo cuando quieras.`)) return;
+  try{ await api("/proveedores/"+id+"/archivar",{method:"POST"}); irA_proveedores(); }
+  catch(e){ alert(e.message); }
+}
+async function provRecuperar(id){
+  try{ await api("/proveedores/"+id+"/recuperar",{method:"POST"}); irA_proveedores(); }
+  catch(e){ alert(e.message); }
 }
 
 // Filtra en vivo los artículos dentro de la ficha de proveedor.
@@ -11269,15 +11292,20 @@ async function irA_pedidos(pre){
       api("/pedidos").catch(()=>[]),
       api("/pedidos/config").catch(()=>({copia_whatsapp:""})),
     ]);
-    window._provPed=provs; window._pedSug=sug; window._pedsAll=peds; window._pedCfg=cfg;
-    const sugByProv={}; (sug||[]).forEach(g=>{ sugByProv[g.proveedor_id]={items:g.total_items,criticos:g.criticos}; });
+    // Los proveedores ARCHIVADOS no aparecen al hacer pedidos (se mantienen, pero
+    // fuera del flujo del equipo). Se filtran de la lista y de las sugerencias.
+    const archivadoIds=new Set((provs||[]).filter(p=>p.archivado).map(p=>p.id));
+    const provsActivos=(provs||[]).filter(p=>!p.archivado);
+    const sugActivas=(sug||[]).filter(g=>!archivadoIds.has(g.proveedor_id));
+    window._provPed=provsActivos; window._pedSug=sugActivas; window._pedsAll=peds; window._pedCfg=cfg;
+    const sugByProv={}; sugActivas.forEach(g=>{ sugByProv[g.proveedor_id]={items:g.total_items,criticos:g.criticos}; });
     window._pedSugByProv=sugByProv;
 
     // Sugerencias de compra (proveedores que necesitan pedido ya) — acceso directo.
     let sugHtml="";
-    if((sug||[]).length){
-      sugHtml=`<div class="section-label">Hay que pedir · ${sug.length} proveedor(es)</div>
-        <div class="ped-sugwrap">`+sug.map((g,idx)=>`<button class="ped-sugcard${g.criticos?' crit':''}" onclick="prepararPedidoDesdeSug(${idx})">
+    if(sugActivas.length){
+      sugHtml=`<div class="section-label">Hay que pedir · ${sugActivas.length} proveedor(es)</div>
+        <div class="ped-sugwrap">`+sugActivas.map((g,idx)=>`<button class="ped-sugcard${g.criticos?' crit':''}" onclick="prepararPedidoDesdeSug(${idx})">
           <span class="ped-sugn">${esc(g.proveedor)}</span>
           <span class="ped-sugm">${g.total_items} art.${g.criticos?` · ${g.criticos} bajo mínimo`:""} · preparar →</span>
         </button>`).join("")+`</div>`;
@@ -11312,7 +11340,7 @@ async function irA_pedidos(pre){
         </div>
       </div>`;
     setInner(html);
-    pedRenderProveedores(provs);
+    pedRenderProveedores(provsActivos);
     renderPedidosLista(peds);
   }catch(e){ setInner(`<div class="err">${esc(e.message)}</div>`); }
 }

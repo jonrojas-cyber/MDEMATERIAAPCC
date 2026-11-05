@@ -17,6 +17,9 @@ function sugerencias() {
   materias.forEach((m) => {
     const est = estadoStock(m);
     if (est === "correcto") return;
+    // Proveedor archivado: fuera del flujo de pedidos (no se sugiere ni se avisa).
+    const provM = m.proveedor_id ? provById[m.proveedor_id] : null;
+    if (provM && provM.archivado) return;
     const key = m.proveedor_id || "sin";
     if (!grupos[key]) {
       const p = provById[m.proveedor_id];

@@ -28,7 +28,11 @@ function cabeceras(req, res, next) {
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-DNS-Prefetch-Control", "off");
-  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=()");
+  // El asistente de voz graba audio con getUserMedia: el micrófono DEBE permitirse
+  // para el propio origen (self). Si se deja en microphone=() el navegador bloquea el
+  // micro en TODA la app (ni siquiera pregunta permiso), y la voz no funciona en
+  // ningún dispositivo. Cámara, ubicación y pago siguen vetados; micro solo same-origin.
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(self), camera=(), payment=()");
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
   }

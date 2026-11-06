@@ -276,8 +276,66 @@ router.post("/ejecutar", express.json({ limit: "1mb" }), async (req, res) => {
   return res.status(r.status >= 400 ? r.status : 200).json({ ok: r.status < 400, status: r.status, data: r.data });
 });
 
+// ── Transcripción de voz por SERVIDOR (voz directa) ──────────────────────────
+// El móvil graba el audio y lo manda aquí; lo transcribimos con un servicio de voz y
+// devolvemos el texto. Así el micro funciona en CUALQUIER navegador (Samsung Internet,
+// Chrome, Safari de iPhone) sin depender del reconocimiento de voz del navegador.
+// Requiere OPENAI_API_KEY (igual que el lector de albaranes requiere ANTHROPIC_API_KEY).
+const STT_MODEL = process.env.STT_MODEL || "whisper-1";
+function sttDisponible() { return !!process.env.OPENAI_API_KEY; }
+function extDe(mt) {
+  const s = String(mt || "").toLowerCase();
+  if (s.includes("mp4") || s.includes("m4a") || s.includes("aac")) return "mp4";
+  if (s.includes("ogg")) return "ogg";
+  if (s.includes("mpeg") || s.includes("mp3")) return "mp3";
+  if (s.includes("wav")) return "wav";
+  return "webm";
+}
+router.post("/transcribir", express.json({ limit: "16mb" }), async (req, res) => {
+  if (!sttDisponible()) {
+    return res.status(503).json({ error: "La transcripción de voz no está configurada (falta OPENAI_API_KEY).", code: "STT_NO_CONFIG" });
+  }
+  const b = req.body || {};
+  const b64 = String(b.audio || "").replace(/^data:[^,]+,/, "");
+  if (!b64) return res.status(400).json({ error: "No recibí audio." });
+  let buf;
+  try { buf = Buffer.from(b64, "base64"); } catch (e) { return res.status(400).json({ error: "Audio no válido." }); }
+  if (!buf.length) return res.status(400).json({ error: "El audio llegó vacío. Prueba otra vez." });
+  if (buf.length > 12 * 1024 * 1024) return res.status(413).json({ error: "El audio es demasiado largo; habla menos de un minuto." });
+  const mt = b.media_type || "audio/webm";
+  try {
+    const form = new FormData();
+    form.append("file", new Blob([buf], { type: mt }), "audio." + extDe(mt));
+    form.append("model", STT_MODEL);
+    form.append("language", "es"); // español: mejora mucho la precisión
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 45000);
+    let r;
+    try {
+      r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + process.env.OPENAI_API_KEY },
+        body: form,
+        signal: ac.signal,
+      });
+    } finally { clearTimeout(t); }
+    if (!r.ok) {
+      const det = await r.text().catch(() => "");
+      return res.status(502).json({ error: "No se pudo transcribir el audio.", detalle: det.slice(0, 200) });
+    }
+    const data = await r.json().catch(() => ({}));
+    return res.json({ texto: String(data.text || "").trim() });
+  } catch (e) {
+    const msg = e && e.message ? e.message : "";
+    if (/abort|timed? ?out|timeout/i.test(msg)) return res.status(504).json({ error: "La transcripción tardó demasiado. Inténtalo otra vez." });
+    return res.status(502).json({ error: "No se pudo transcribir: " + (msg || "error") });
+  }
+});
+
 module.exports = router;
 // Exports para pruebas unitarias (seguridad del puente, sin llamar al modelo).
 module.exports.disponible = disponible;
+module.exports.sttDisponible = sttDisponible;
+module.exports.extDe = extDe;
 module.exports.rutaInterna = rutaInterna;
 module.exports.accionPermitida = accionPermitida;

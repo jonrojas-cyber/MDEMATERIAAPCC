@@ -712,6 +712,10 @@ test("asistente: exige sesión, lo alcanza el equipo y degrada con gracia sin cl
   // …y el EQUIPO también lo alcanza (no 403): está permitido, solo falta la clave.
   const rE = await request.post("/api/asistente", { headers: { Authorization: `Bearer ${lara.token}` }, data: { texto: "apunta una merma" } });
   expect(rE.status()).toBe(503);
+  // La transcripción de voz también degrada con gracia sin OPENAI_API_KEY (y la alcanza el equipo).
+  const rT = await request.post("/api/asistente/transcribir", { headers: { Authorization: `Bearer ${lara.token}` }, data: { audio: "AAAA" } });
+  expect(rT.status()).toBe(503);
+  expect((await rT.json()).code).toBe("STT_NO_CONFIG");
 });
 
 test("asistente: el panel de voz se abre desde el botón flotante y responde", async ({ page }) => {

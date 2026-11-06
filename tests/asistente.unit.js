@@ -69,5 +69,28 @@ test("disponible() es booleano y es false sin ANTHROPIC_API_KEY", () => {
   if (!process.env.ANTHROPIC_API_KEY) assert.strictEqual(asist.disponible(), false);
 });
 
+test("transcripción: sttDisponible() refleja OPENAI_API_KEY y extDe() mapea el formato", () => {
+  assert.strictEqual(typeof asist.sttDisponible(), "boolean");
+  if (!process.env.OPENAI_API_KEY) assert.strictEqual(asist.sttDisponible(), false);
+  assert.strictEqual(asist.extDe("audio/webm;codecs=opus"), "webm");
+  assert.strictEqual(asist.extDe("audio/mp4"), "mp4");
+  assert.strictEqual(asist.extDe("audio/ogg"), "ogg");
+  assert.strictEqual(asist.extDe("audio/mpeg"), "mp3");
+  assert.strictEqual(asist.extDe(""), "webm");
+});
+
+test("POST /transcribir degrada sin clave (503 STT_NO_CONFIG) y valida el audio", () => {
+  const router = require("../backend/routes/asistente");
+  const layer = router.stack.find((l) => l.route && l.route.path === "/transcribir" && l.route.methods.post);
+  assert.ok(layer, "ruta /transcribir no encontrada");
+  const h = layer.route.stack[layer.route.stack.length - 1].handle;
+  const run = (body) => { const res = { _s: 200, _j: null, status(c){this._s=c;return this;}, json(x){this._j=x;return this;} }; h({ body }, res, () => {}); return res; };
+  if (!process.env.OPENAI_API_KEY) {
+    const r = run({ audio: "AAAA" });
+    assert.strictEqual(r._s, 503, "sin clave → 503");
+    assert.strictEqual(r._j.code, "STT_NO_CONFIG");
+  }
+});
+
 if (fallos) { console.error(`\n${fallos} prueba(s) del asistente fallaron`); process.exit(1); }
 console.log("\nTodas las pruebas del asistente OK");

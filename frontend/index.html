@@ -14225,6 +14225,7 @@ function entrarApp() {
 window._asistHist = window._asistHist || [];
 window._asistPendiente = null; // acción propuesta a la espera de que el usuario confirme
 let _asistRec = null, _asistEscuchando = false, _asistPensando = false;
+let _asistGrabando = false, _asistRecorder = null, _asistChunks = [], _asistStream = null, _asistAutoStop = null;
 function asistSoportaVoz(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
 function initAsistente(){
   if(document.getElementById("asist-fab")) return; // ya montado
@@ -14366,56 +14367,106 @@ function asistEsIOS(){
 }
 // Mensaje de sistema en el chat (avisos del propio asistente, no del modelo).
 function asistSys(texto){ window._asistHist.push({rol:"assistant",texto}); asistPintar(); }
-// Reconocimiento de voz (dictado) en español. Si el navegador no lo soporta
-// (iPhone/iPad: Safari/Chrome de iOS NO tienen Web Speech), abrimos el teclado y
-// guiamos a dictar con el micro del teclado (que sí funciona en iOS).
+// VOZ DIRECTA: graba el audio y lo transcribe en el servidor. Así funciona en CUALQUIER
+// móvil (Samsung Internet, Chrome, Safari de iPhone) sin depender del reconocimiento de voz
+// del navegador. Toca el micro para empezar, toca otra vez para parar (o se para solo a los 20s).
 async function asistEscuchar(){
-  if(_asistPensando) return; // ocupado respondiendo: no arranques el dictado
+  if(_asistPensando) return;
+  if(_asistGrabando){ asistPararGrabacion(); return; } // toca otra vez = parar y transcribir
+  const puedeGrabar = navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window.MediaRecorder !== "undefined";
+  if(!puedeGrabar){ return asistEscucharNavegador(); } // navegador muy antiguo: Web Speech o teclado
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+  catch(e){ return asistMicDenegado(); }
+  asistArrancarGrabacion(stream);
+}
+function asistTipoAudio(){
+  const cands=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg;codecs=opus","audio/ogg"];
+  for(const c of cands){ try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c; }catch(_){} }
+  return "";
+}
+function asistArrancarGrabacion(stream){
+  _asistStream=stream; _asistChunks=[];
+  const mime=asistTipoAudio();
+  try{ _asistRecorder = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }
+  catch(e){ asistSoltarStream(); return asistSys("No pude grabar en este móvil. Usa el micro 🎤 del teclado o escribe."); }
+  _asistRecorder.ondataavailable=(ev)=>{ if(ev.data && ev.data.size) _asistChunks.push(ev.data); };
+  _asistRecorder.onstop=()=>asistTrasGrabar();
+  _asistRecorder.onerror=()=>{ try{asistPararGrabacion();}catch(_){} };
+  try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(_){}
+  try{ _asistRecorder.start(); }catch(e){ asistSoltarStream(); return asistSys("No pude arrancar la grabación. Usa el micro del teclado o escribe."); }
+  _asistGrabando=true;
+  const m=document.getElementById("asist-mic"); if(m) m.classList.add("rec");
+  const i=document.getElementById("asist-in"); if(i) i.placeholder="Grabando… toca el micro para parar";
+  _asistAutoStop=setTimeout(()=>{ if(_asistGrabando) asistPararGrabacion(); }, 20000); // tope de seguridad 20s
+}
+function asistPararGrabacion(){
+  if(_asistAutoStop){ clearTimeout(_asistAutoStop); _asistAutoStop=null; }
+  _asistGrabando=false;
+  const m=document.getElementById("asist-mic"); if(m) m.classList.remove("rec");
+  const i=document.getElementById("asist-in"); if(i) i.placeholder="Habla o escribe…";
+  try{ if(_asistRecorder && _asistRecorder.state!=="inactive") _asistRecorder.stop(); else asistSoltarStream(); }
+  catch(_){ asistSoltarStream(); }
+}
+function asistSoltarStream(){ try{ if(_asistStream) _asistStream.getTracks().forEach(t=>{try{t.stop();}catch(_){}}); }catch(_){} _asistStream=null; }
+function asistBlobB64(blob){
+  return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onloadend=()=>resolve(String(fr.result||"").replace(/^data:[^,]+,/,"")); fr.onerror=reject; fr.readAsDataURL(blob); });
+}
+async function asistTrasGrabar(){
+  const chunks=_asistChunks.slice(); _asistChunks=[];
+  const mime=(_asistRecorder&&_asistRecorder.mimeType)||"audio/webm";
+  asistSoltarStream(); _asistRecorder=null;
+  if(!chunks.length) return;
+  const blob=new Blob(chunks,{type:mime});
+  if(blob.size<1200){ asistSys("No te oí bien. Prueba otra vez, hablando cerca del micro."); return; }
+  let b64; try{ b64=await asistBlobB64(blob); }catch(e){ return; }
+  asistOcupado(true);
+  try{
+    const r=await api("/asistente/transcribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({audio:b64,media_type:mime})});
+    asistOcupado(false);
+    const texto=((r&&r.texto)||"").trim();
+    if(texto){ asistEnviar(texto); }
+    else { asistSys("No te he entendido. ¿Lo repites?"); }
+  }catch(e){
+    asistOcupado(false);
+    const msg=(e&&e.message)||"";
+    if(/STT_NO_CONFIG|no está configurada/i.test(msg)){
+      const i=document.getElementById("asist-in"); if(i) i.focus();
+      asistSys("La voz directa aún no está activada en el servidor. Mientras, dicta con el micro 🎤 del teclado o escribe el mensaje.");
+    } else {
+      asistSys("No pude transcribir el audio. Prueba otra vez o escribe el mensaje.");
+    }
+  }
+}
+// Fallback para navegadores sin grabación (MediaRecorder): Web Speech o micro del teclado.
+async function asistEscucharNavegador(){
   if(_asistEscuchando){ asistPararVoz(); return; }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){
     const i=document.getElementById("asist-in"); if(i) i.focus();
-    if(!window._asistHintTeclado){
-      window._asistHintTeclado=true;
-      asistSys(asistEsIOS()
-        ? "En iPhone/iPad el dictado va con el teclado: toca el micrófono 🎤 de tu teclado (junto a la barra espaciadora), habla, y pulsa Enviar."
-        : "Tu navegador no permite dictado directo. Usa el micrófono del teclado para hablar, o escribe el mensaje.");
-    }
+    asistSys(asistEsIOS()
+      ? "Dicta con el micrófono 🎤 de tu teclado (junto a la barra espaciadora), habla y pulsa Enviar."
+      : "Usa el micrófono 🎤 del teclado para hablar, o escribe el mensaje.");
     return;
   }
-  // Pide el permiso de micrófono con un prompt EXPLÍCITO antes de dictar: en algunos
-  // Android el permiso implícito de SpeechRecognition falla mudo si no se concedió antes.
-  try{
-    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
-      const s=await navigator.mediaDevices.getUserMedia({audio:true});
-      s.getTracks().forEach(t=>{try{t.stop();}catch(_){}}); // solo queríamos asegurar el permiso
-    }
-  }catch(e){ asistMicDenegado(); return; }
   try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(_){}
   _asistRec=new SR(); _asistRec.lang="es-ES"; _asistRec.interimResults=false; _asistRec.maxAlternatives=1;
   _asistRec.onresult=(ev)=>{ const t=ev.results&&ev.results[0]&&ev.results[0][0]&&ev.results[0][0].transcript; asistPararVoz(); if(t&&t.trim()) asistEnviar(t.trim()); };
-  _asistRec.onerror=(ev)=>{
-    asistPararVoz();
-    const err=(ev&&ev.error)||"";
-    if(err==="not-allowed"||err==="service-not-allowed") asistMicDenegado();
-    else if(err==="audio-capture") asistSys("No encuentro micrófono en este dispositivo. Usa el micro 🎤 del teclado o escribe.");
-    else if(err==="no-speech") asistSys("No te he oído. Prueba otra vez.");
-    else if(err&&err!=="aborted") asistSys("No pude usar el micrófono; usa el del teclado o escribe.");
-  };
+  _asistRec.onerror=(ev)=>{ asistPararVoz(); const err=(ev&&ev.error)||""; if(err==="not-allowed"||err==="service-not-allowed") asistMicDenegado(); else if(err&&err!=="aborted"&&err!=="no-speech") asistSys("No pude usar el micrófono; usa el del teclado o escribe."); };
   _asistRec.onend=()=>{ asistPararVoz(); };
   try{ _asistRec.start(); _asistEscuchando=true; const m=document.getElementById("asist-mic"); if(m) m.classList.add("rec"); }
   catch(_){ asistPararVoz(); asistSys("No pude arrancar el dictado. Usa el micro 🎤 del teclado o escribe."); }
 }
-// Sin micrófono de la app (típico en la app instalada de Android, que no siempre
-// expone ese permiso). En vez de mandar a un ajuste que puede no existir, guiamos al
-// micro del TECLADO, que no necesita permisos de la app y funciona siempre.
+// Sin micrófono (permiso denegado): guiamos al micro del TECLADO, que no necesita permisos.
 function asistMicDenegado(){
-  const i=document.getElementById("asist-in"); if(i) i.focus(); // abre el teclado: su micro sí va
+  const i=document.getElementById("asist-in"); if(i) i.focus();
   const pwa = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
-  asistSys("Este móvil no me deja usar el micrófono de la app. La forma fácil de dictar: con el teclado abierto, toca el micrófono 🎤 de TU TECLADO (junto a la barra espaciadora), habla y pulsa Enviar. Funciona siempre, sin permisos." +
-    (pwa ? " (Si quieres el micro de la app, abre «m de materia» en Chrome —no la app instalada— y permite el micrófono.)" : " (O toca el candado/ⓘ junto a la dirección → Micrófono → Permitir, y recarga.)"));
+  asistSys("No consigo el micrófono (permiso denegado). La forma fácil: con el teclado abierto, toca el micrófono 🎤 de TU TECLADO, habla y pulsa Enviar (funciona siempre). " +
+    (pwa ? "Si quieres el micro de la app, abre «m de materia» en Chrome (no la app instalada) y permite el micrófono." : "O toca el candado/ⓘ junto a la dirección → Micrófono → Permitir, y recarga."));
 }
+// Para cualquier escucha/grabación en curso (al cerrar el panel).
 function asistPararVoz(){
+  if(_asistGrabando) asistPararGrabacion();
   _asistEscuchando=false; const m=document.getElementById("asist-mic"); if(m) m.classList.remove("rec");
   if(_asistRec){ try{_asistRec.stop();}catch(_){}} _asistRec=null;
 }

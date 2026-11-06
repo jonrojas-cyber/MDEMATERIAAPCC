@@ -49,5 +49,17 @@ test("cabeceras() pone CSP, nosniff y X-Frame-Options y continúa", () => {
   assert.strictEqual(h["X-Frame-Options"], "SAMEORIGIN");
 });
 
+test("Permissions-Policy PERMITE el micrófono al propio origen (para la voz) y veta cámara/ubicación/pago", () => {
+  const h = {};
+  seg.cabeceras({ headers: {} }, { setHeader: (k, v) => { h[k] = v; } }, () => {});
+  const pp = h["Permissions-Policy"] || "";
+  // Regresión: microphone=() bloqueaba el micro en TODA la app (ni pedía permiso).
+  assert.ok(/microphone=\(self\)/.test(pp), "el micrófono debe permitirse a 'self' (si no, la voz no funciona en ningún dispositivo)");
+  assert.ok(!/microphone=\(\)/.test(pp), "no debe volver a vetarse el micrófono por completo");
+  assert.ok(/camera=\(\)/.test(pp), "la cámara sigue vetada");
+  assert.ok(/geolocation=\(\)/.test(pp), "la ubicación sigue vetada");
+  assert.ok(/payment=\(\)/.test(pp), "el pago sigue vetado");
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s)`); process.exit(1); }
 console.log("  todo en verde");

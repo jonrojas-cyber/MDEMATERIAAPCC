@@ -282,11 +282,12 @@ router.post("/stream", express.json({ limit: "1mb" }), async (req, res) => {
   const client = new Anthropic({ timeout: 60000, maxRetries: 1 });
   const messages = aMensajes(req.body.historial, texto);
   const pasos = [];
-  let pendiente = null, cerrado = false;
-  req.on("close", () => { cerrado = true; });
+  let pendiente = null, cerrado = false, streamActual = null;
+  req.on("close", () => { cerrado = true; try { if (streamActual && streamActual.abort) streamActual.abort(); } catch (e) {} });
   try {
     for (let i = 0; i < MAX_PASOS && !cerrado; i++) {
       const stream = client.messages.stream({ model: MODELO, max_tokens: 1200, system: sistema(rol), tools: TOOLS, messages });
+      streamActual = stream;
       stream.on("text", (delta) => { if (delta && !cerrado) sse(res, "delta", { t: delta }); });
       const msg = await stream.finalMessage();
       messages.push({ role: "assistant", content: msg.content });
@@ -296,6 +297,10 @@ router.post("/stream", express.json({ limit: "1mb" }), async (req, res) => {
         sse(res, "fin", { accion_pendiente: pendiente, pasos });
         return res.end();
       }
+      // Este turno usa herramientas: el texto que haya escrito antes es un PREÁMBULO
+      // ("déjame mirar…"), no la respuesta. Le decimos al front que descarte lo acumulado,
+      // así solo queda (y se lee en voz) el texto del mensaje FINAL (como en POST /).
+      sse(res, "reset", {});
       // Ejecuta las herramientas y avisa del paso (para que no parezca congelado).
       const toolResults = [];
       for (const b of msg.content || []) {
@@ -318,7 +323,14 @@ router.post("/stream", express.json({ limit: "1mb" }), async (req, res) => {
       }
       messages.push({ role: "user", content: toolResults });
     }
-    if (!cerrado) { sse(res, "fin", { accion_pendiente: pendiente, pasos }); res.end(); }
+    if (!cerrado) {
+      // Se agotaron los pasos sin respuesta final: igual que POST /, emite una pista útil
+      // como delta antes de cerrar (si no, el front mostraría preámbulos sueltos o el
+      // genérico "No he podido responder", sin sugerir concretar la pregunta).
+      sse(res, "delta", { t: "He consultado varias cosas pero no he podido cerrar la respuesta. ¿Puedes concretar un poco más?" });
+      sse(res, "fin", { accion_pendiente: pendiente, pasos });
+      res.end();
+    }
   } catch (e) {
     if (!cerrado) { sse(res, "error", { error: "El asistente no pudo responder." }); try { res.end(); } catch (_) {} }
   }

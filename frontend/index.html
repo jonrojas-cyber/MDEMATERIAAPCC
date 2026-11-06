@@ -14262,6 +14262,7 @@ function asistToggle(){
 }
 function asistPintar(){
   const c=document.getElementById("asist-chat"); if(!c) return;
+  const pegado = (c.scrollHeight - c.scrollTop - c.clientHeight) < 48; // ¿estaba al fondo?
   let html=window._asistHist.map(m=>`<div class="asist-msg ${m.rol==="user"?"u":"a"}">${esc(m.texto)||(m.rol!=="user"&&_asistStreaming?"▍":"")}</div>`).join("");
   // Acción propuesta: botones de confirmar/cancelar (la acción NO se hace sin este toque).
   if(window._asistPendiente && !_asistPensando && !_asistStreaming){
@@ -14269,7 +14270,7 @@ function asistPintar(){
   }
   // "pensando…" solo si no hay ya texto llegando en vivo.
   if(_asistPensando && !_asistStreaming) html+=`<div class="asist-msg sys" id="asist-think">pensando…</div>`;
-  c.innerHTML=html; c.scrollTop=c.scrollHeight;
+  c.innerHTML=html; if(pegado) c.scrollTop=c.scrollHeight; // no arrastres si la persona subió a releer
 }
 function asistEnviarInput(){
   const i=document.getElementById("asist-in"); if(!i) return;
@@ -14306,9 +14307,9 @@ async function asistEnviarStream(texto,historial){
   _asistStreaming=true; _asistPensando=false;
   const idx=window._asistHist.push({rol:"assistant",texto:""})-1;
   asistPintar();
-  const reader=resp.body.getReader(), dec=new TextDecoder();
-  let buf="", full="";
+  let buf="", full="", errorMsg="";
   try{
+    const reader=resp.body.getReader(), dec=new TextDecoder();
     while(true){
       const {value,done}=await reader.read(); if(done) break;
       buf+=dec.decode(value,{stream:true});
@@ -14320,13 +14321,16 @@ async function asistEnviarStream(texto,historial){
         if(!data) continue;
         let obj={}; try{ obj=JSON.parse(data); }catch(_){ continue; }
         if(ev==="delta"&&obj.t){ full+=obj.t; window._asistHist[idx].texto=full; asistPintar(); }
+        else if(ev==="reset"){ full=""; window._asistHist[idx].texto=""; asistPintar(); } // era un preámbulo antes de consultar: descártalo
+        else if(ev==="paso"){ if(!full){ window._asistHist[idx].texto=(obj.texto||"consultando…"); asistPintar(); } } // feedback mientras consulta
         else if(ev==="fin"){ window._asistPendiente=obj.accion_pendiente||null; }
-        else if(ev==="error"){ if(!full) full="No he podido responder. Inténtalo otra vez."; window._asistHist[idx].texto=full; }
+        else if(ev==="error"){ errorMsg="No he podido responder. Inténtalo otra vez."; full=""; } // nunca presentes el preámbulo como respuesta
       }
     }
   }catch(e){ /* corte de red en mitad del stream */ }
-  _asistStreaming=false; asistSetInputDisabled(false);
-  if(!full){ full="No he podido responder. Inténtalo otra vez."; }
+  finally{ _asistStreaming=false; asistSetInputDisabled(false); }
+  if(errorMsg){ window._asistHist[idx].texto=errorMsg; asistPintar(); return true; } // error: lo mostramos, NO lo leemos en voz
+  if(!full){ full="No he podido responder. Inténtalo otra vez."; window._asistHist[idx].texto=full; asistPintar(); return true; }
   window._asistHist[idx].texto=full; asistPintar();
   asistHablar(full);
   return true;

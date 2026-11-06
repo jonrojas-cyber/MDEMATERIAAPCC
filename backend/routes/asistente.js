@@ -263,6 +263,67 @@ router.post("/", express.json({ limit: "1mb" }), async (req, res) => {
   }
 });
 
+// Versión en STREAMING del asistente: misma lógica que POST /, pero el texto final se
+// transmite token a token por SSE, así la respuesta aparece y se lee según se genera
+// (sensación fluida, como el chat). Si algo falla, el front cae a POST / (no-stream).
+function sse(res, tipo, data) { try { res.write(`event: ${tipo}\ndata: ${JSON.stringify(data || {})}\n\n`); } catch (e) {} }
+router.post("/stream", express.json({ limit: "1mb" }), async (req, res) => {
+  if (!disponible()) return res.status(503).json({ error: "El asistente no está configurado (falta ANTHROPIC_API_KEY).", code: "IA_NO_CONFIG" });
+  const texto = (req.body && req.body.texto) || "";
+  if (!String(texto).trim()) return res.status(400).json({ error: "Dime qué necesitas." });
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // nada de buffering en proxies
+  if (res.flushHeaders) res.flushHeaders();
+
+  const authorization = req.headers.authorization || "";
+  const rol = (req.user && req.user.rol) || "equipo";
+  const client = new Anthropic({ timeout: 60000, maxRetries: 1 });
+  const messages = aMensajes(req.body.historial, texto);
+  const pasos = [];
+  let pendiente = null, cerrado = false;
+  req.on("close", () => { cerrado = true; });
+  try {
+    for (let i = 0; i < MAX_PASOS && !cerrado; i++) {
+      const stream = client.messages.stream({ model: MODELO, max_tokens: 1200, system: sistema(rol), tools: TOOLS, messages });
+      stream.on("text", (delta) => { if (delta && !cerrado) sse(res, "delta", { t: delta }); });
+      const msg = await stream.finalMessage();
+      messages.push({ role: "assistant", content: msg.content });
+
+      if (msg.stop_reason !== "tool_use") {
+        if (msg.stop_reason === "max_tokens") sse(res, "delta", { t: " …(sigo si quieres)" });
+        sse(res, "fin", { accion_pendiente: pendiente, pasos });
+        return res.end();
+      }
+      // Ejecuta las herramientas y avisa del paso (para que no parezca congelado).
+      const toolResults = [];
+      for (const b of msg.content || []) {
+        if (b.type !== "tool_use") continue;
+        let out;
+        if (b.name === "consultar_datos") {
+          sse(res, "paso", { texto: "consultando…" });
+          const r = await llamarApi({ metodo: "GET", ruta: (b.input || {}).ruta, authorization });
+          pasos.push({ tipo: "consulta", ruta: (b.input || {}).ruta, status: r.status });
+          out = recorta(r.data);
+        } else if (b.name === "ejecutar_accion") {
+          const inp = b.input || {};
+          const permit = accionPermitida(inp.metodo, inp.ruta);
+          const rutaOk = rutaInterna(inp.ruta);
+          if (!permit.ok) out = JSON.stringify({ ok: false, motivo: permit.motivo });
+          else if (!rutaOk) out = JSON.stringify({ ok: false, motivo: "Esa ruta no está permitida." });
+          else { pendiente = { metodo: String(inp.metodo).toUpperCase(), ruta: rutaOk, cuerpo: inp.cuerpo || {}, resumen: inp.resumen || "" }; out = JSON.stringify({ necesita_confirmacion: true, resumen: inp.resumen || "", nota: "La acción NO se ha ejecutado. Dile en una frase qué harás y que pulse Confirmar." }); }
+        } else { out = JSON.stringify({ error: "Herramienta desconocida." }); }
+        toolResults.push({ type: "tool_result", tool_use_id: b.id, content: out });
+      }
+      messages.push({ role: "user", content: toolResults });
+    }
+    if (!cerrado) { sse(res, "fin", { accion_pendiente: pendiente, pasos }); res.end(); }
+  } catch (e) {
+    if (!cerrado) { sse(res, "error", { error: "El asistente no pudo responder." }); try { res.end(); } catch (_) {} }
+  }
+});
+
 // Ejecuta una acción que el usuario ha CONFIRMADO en la app (botón Confirmar). Se
 // re-valida en el servidor (nunca se confía solo en el cliente) y se ejecuta con el
 // rol del usuario. Es el único punto donde una mutación del asistente llega a la API.

@@ -716,6 +716,10 @@ test("asistente: exige sesión, lo alcanza el equipo y degrada con gracia sin cl
   const rT = await request.post("/api/asistente/transcribir", { headers: { Authorization: `Bearer ${lara.token}` }, data: { audio: "AAAA" } });
   expect(rT.status()).toBe(503);
   expect((await rT.json()).code).toBe("STT_NO_CONFIG");
+  // El streaming también degrada con 503 claro sin clave (el front cae a no-stream).
+  const rS = await request.post("/api/asistente/stream", { headers: { Authorization: `Bearer ${moni.token}` }, data: { texto: "hola" } });
+  expect(rS.status()).toBe(503);
+  expect((await rS.json()).code).toBe("IA_NO_CONFIG");
 });
 
 test("asistente: el panel de voz se abre desde el botón flotante y responde", async ({ page }) => {

@@ -14247,6 +14247,7 @@ function initAsistente(){
   if(!window._asistHist.length){
     window._asistHist.push({rol:"assistant",texto:"Hola, soy tu asistente. Dime qué necesitas: «apunta una merma de un croissant por caída» o «¿cuál es el pronóstico de cierre de este mes?»."});
   }
+  try{ if(window.speechSynthesis){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){}; } }catch(_){} // precarga las voces (carga asíncrona)
   asistPintar();
 }
 function asistToggle(){
@@ -14384,12 +14385,38 @@ function asistPararVoz(){
   _asistEscuchando=false; const m=document.getElementById("asist-mic"); if(m) m.classList.remove("rec");
   if(_asistRec){ try{_asistRec.stop();}catch(_){}} _asistRec=null;
 }
+// Limpia el texto ANTES de leerlo en voz: nada de leer "almohadilla", símbolos ni
+// emojis. Convierte € en "euros" y % en "por ciento" para que suene a persona.
+function asistLimpiarVoz(t){
+  return String(t||"")
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}️]/gu,"") // emojis/símbolos/flechas
+    .replace(/https?:\/\/\S+/g," enlace ")
+    .replace(/`+/g,"")
+    .replace(/[*_#>~|]/g,"")        // markdown (#, *, _, >, ~, |)
+    .replace(/^[ \t]*[-–—]\s+/gm," ") // guiones de lista al principio de línea
+    .replace(/[•·‣◦]/g," ")         // viñetas y puntos medios
+    .replace(/€/g," euros")
+    .replace(/%/g," por ciento")
+    .replace(/\s*&\s*/g," y ")
+    .replace(/[ \t]{2,}/g," ")
+    .replace(/\n{2,}/g,". ")
+    .trim();
+}
+// Elige una voz en español si el dispositivo la tiene (suena mucho mejor).
+function asistVozES(){
+  try{
+    const vs=(window.speechSynthesis.getVoices&&window.speechSynthesis.getVoices())||[];
+    return vs.find(v=>/es[-_]ES/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
+  }catch(_){ return null; }
+}
 function asistHablar(texto){
   try{
     if(!window.speechSynthesis) return;
+    const t=asistLimpiarVoz(texto); if(!t) return;
     window.speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(String(texto||"").slice(0,500));
-    u.lang="es-ES"; u.rate=1.05;
+    const u=new SpeechSynthesisUtterance(t.slice(0,600));
+    u.lang="es-ES"; u.rate=1.03; u.pitch=1;
+    const v=asistVozES(); if(v) u.voice=v;
     window.speechSynthesis.speak(u);
   }catch(_){}
 }

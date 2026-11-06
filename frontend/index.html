@@ -14420,14 +14420,46 @@ function asistSys(texto){ window._asistHist.push({rol:"assistant",texto}); asist
 // VOZ DIRECTA: graba el audio y lo transcribe en el servidor. Así funciona en CUALQUIER
 // móvil (Samsung Internet, Chrome, Safari de iPhone) sin depender del reconocimiento de voz
 // del navegador. Toca el micro para empezar, toca otra vez para parar (o se para solo a los 20s).
+// ¿Qué navegador es? (para dar instrucciones CONCRETAS cuando el micro falla).
+function asistNavegador(){
+  const ua=navigator.userAgent||"";
+  if(/SamsungBrowser/i.test(ua)) return "Samsung Internet";
+  if(/EdgA|EdgiOS|Edg/i.test(ua)) return "Edge";
+  if(/Firefox|FxiOS/i.test(ua)) return "Firefox";
+  if(/CriOS|Chrome/i.test(ua)) return "Chrome";
+  if(/Safari/i.test(ua)) return "Safari";
+  return "tu navegador";
+}
+// ¿Abierta como app INSTALADA (icono) en vez de en el navegador? (el micro suele fallar ahí).
+function asistEsPWA(){ try{ return (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||window.navigator.standalone===true; }catch(_){ return false; } }
 async function asistEscuchar(){
   if(_asistPensando||_asistStreaming) return;
   if(_asistGrabando){ asistPararGrabacion(); return; } // toca otra vez = parar y transcribir
-  const puedeGrabar = navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window.MediaRecorder !== "undefined";
-  if(!puedeGrabar){ return asistEscucharNavegador(); } // navegador muy antiguo: Web Speech o teclado
+  const nav=asistNavegador(), pwa=asistEsPWA();
+  // 1) Sin conexión segura (https) NINGÚN navegador da micrófono.
+  if(window.isSecureContext===false){
+    asistSys("El micrófono solo funciona con conexión segura (https). Abre la app desde la dirección con el candado 🔒 y prueba otra vez."); return;
+  }
+  // 2) ¿Este navegador puede grabar?
+  const puedeGrabar = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window.MediaRecorder !== "undefined");
+  if(!puedeGrabar){
+    // Samsung Internet (y a veces la app instalada) no deja grabar: Chrome lo resuelve.
+    if(/Samsung Internet/i.test(nav) || pwa){
+      asistSys("Aquí ("+nav+(pwa?", app instalada":"")+") no se puede grabar el micro. La forma segura: abre controlm-mdemateria.onrender.com en Chrome y permite el micrófono. Mientras, dicta con el micro 🎤 del teclado.");
+      return;
+    }
+    return asistEscucharNavegador(); // navegador antiguo: Web Speech o teclado
+  }
+  // 3) Pedir el micro; si falla, decir el motivo REAL (no un mensaje genérico).
   let stream;
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:true }); }
-  catch(e){ return asistMicDenegado(); }
+  catch(e){
+    const n=(e&&e.name)||(e&&e.message)||"error";
+    if(n==="NotAllowedError"||n==="SecurityError"||/denied|permission/i.test(n)) return asistMicDenegado();
+    if(/NotFound|DevicesNotFound/i.test(n)){ asistSys("No encuentro ningún micrófono en este dispositivo."); return; }
+    if(/NotReadable|TrackStart/i.test(n)){ asistSys("El micro está ocupado por otra app (una llamada, la grabadora, WhatsApp). Ciérrala y prueba otra vez."); return; }
+    asistSys("No pude abrir el micrófono ("+n+") en "+nav+". Usa el micro 🎤 del teclado o escribe."); return;
+  }
   asistArrancarGrabacion(stream);
 }
 function asistTipoAudio(){
@@ -14510,9 +14542,12 @@ async function asistEscucharNavegador(){
 // Sin micrófono (permiso denegado): guiamos al micro del TECLADO, que no necesita permisos.
 function asistMicDenegado(){
   const i=document.getElementById("asist-in"); if(i) i.focus();
-  const pwa = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
-  asistSys("No consigo el micrófono (permiso denegado). La forma fácil: con el teclado abierto, toca el micrófono 🎤 de TU TECLADO, habla y pulsa Enviar (funciona siempre). " +
-    (pwa ? "Si quieres el micro de la app, abre «m de materia» en Chrome (no la app instalada) y permite el micrófono." : "O toca el candado/ⓘ junto a la dirección → Micrófono → Permitir, y recarga."));
+  const pwa = asistEsPWA(), nav = asistNavegador();
+  asistSys("No consigo el micrófono: el permiso está bloqueado en "+nav+". " +
+    (pwa
+      ? "Como la tienes como app instalada (icono), el camino seguro es: abre controlm-mdemateria.onrender.com en Chrome (no el icono), toca Permitir cuando pida el micrófono, y ya grabará. "
+      : "Arréglalo así: toca el candado 🔒 (o la ⓘ) junto a la dirección → Permisos → Micrófono → Permitir, y recarga la página. ") +
+    "Mientras tanto, siempre puedes dictar con el micro 🎤 de tu teclado y pulsar Enviar.");
 }
 // Para cualquier escucha/grabación en curso (al cerrar el panel).
 function asistPararVoz(){

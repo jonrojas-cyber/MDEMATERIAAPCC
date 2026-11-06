@@ -32,7 +32,15 @@ function middleware(req, res, next) {
     const yaCodificado = res.getHeader("Content-Encoding");
     const clen = Number(res.getHeader("Content-Length"));
     const pequeno = Number.isFinite(clen) && clen > 0 && clen < MIN_BYTES;
-    comprimir = !yaCodificado && COMPRIMIBLE.test(tipo) && !pequeno && !res.headersSent;
+    // NUNCA comprimir respuestas EN DIRECTO (SSE / streaming): gzip bufferiza y los
+    // eventos no llegan hasta el final, así que el asistente se quedaba "colgado" sin
+    // mostrar la respuesta token a token. Se detecta por el tipo text/event-stream y por
+    // Cache-Control: no-transform (la señal HTTP estándar de "no me transformes", que
+    // ponen las rutas de streaming). rendimiento.4 / asistente streaming.
+    const cacheCtl = String(res.getHeader("Cache-Control") || "");
+    const esStream = /\btext\/event-stream\b/i.test(tipo);
+    const noTransform = /\bno-transform\b/i.test(cacheCtl);
+    comprimir = !yaCodificado && !esStream && !noTransform && COMPRIMIBLE.test(tipo) && !pequeno && !res.headersSent;
     if (!comprimir) return;
     res.removeHeader("Content-Length"); // la longitud comprimida no se conoce aún → chunked
     res.setHeader("Content-Encoding", "gzip");

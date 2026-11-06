@@ -14192,6 +14192,7 @@ window._asistHist = window._asistHist || [];
 window._asistPendiente = null; // acción propuesta a la espera de que el usuario confirme
 let _asistRec = null, _asistEscuchando = false, _asistPensando = false;
 let _asistGrabando = false, _asistRecorder = null, _asistChunks = [], _asistStream = null, _asistAutoStop = null;
+let _asistStreaming = false;
 function asistSoportaVoz(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
 function initAsistente(){
   if(document.getElementById("asist-fab")) return; // ya montado
@@ -14261,32 +14262,77 @@ function asistToggle(){
 }
 function asistPintar(){
   const c=document.getElementById("asist-chat"); if(!c) return;
-  let html=window._asistHist.map(m=>`<div class="asist-msg ${m.rol==="user"?"u":"a"}">${esc(m.texto)}</div>`).join("");
+  let html=window._asistHist.map(m=>`<div class="asist-msg ${m.rol==="user"?"u":"a"}">${esc(m.texto)||(m.rol!=="user"&&_asistStreaming?"▍":"")}</div>`).join("");
   // Acción propuesta: botones de confirmar/cancelar (la acción NO se hace sin este toque).
-  if(window._asistPendiente && !_asistPensando){
+  if(window._asistPendiente && !_asistPensando && !_asistStreaming){
     html+=`<div class="asist-confirm"><button class="ok" onclick="asistConfirmar()">Confirmar</button><button class="no" onclick="asistCancelar()">Cancelar</button></div>`;
   }
-  if(_asistPensando) html+=`<div class="asist-msg sys" id="asist-think">pensando…</div>`;
+  // "pensando…" solo si no hay ya texto llegando en vivo.
+  if(_asistPensando && !_asistStreaming) html+=`<div class="asist-msg sys" id="asist-think">pensando…</div>`;
   c.innerHTML=html; c.scrollTop=c.scrollHeight;
 }
 function asistEnviarInput(){
   const i=document.getElementById("asist-in"); if(!i) return;
   const t=(i.value||"").trim(); if(!t) return;
-  if(_asistPensando) return; // ocupado: no borres lo escrito
+  if(_asistPensando||_asistStreaming) return; // ocupado: no borres lo escrito
   i.value=""; asistEnviar(t);
 }
-function asistOcupado(on){
-  _asistPensando=on;
+function asistSetInputDisabled(on){
   const i=document.getElementById("asist-in"); if(i) i.disabled=on;
   const m=document.getElementById("asist-mic"); if(m) m.style.opacity=on?".5":"";
-  asistPintar();
+}
+function asistOcupado(on){
+  _asistPensando=on; asistSetInputDisabled(on); asistPintar();
 }
 async function asistEnviar(texto){
-  if(_asistPensando) return;
+  if(_asistPensando||_asistStreaming) return;
   window._asistPendiente=null; // una nueva pregunta descarta una propuesta sin confirmar
   // Contexto que mandamos (sin el saludo inicial del asistente): últimos turnos.
   const historial=window._asistHist.filter((m,idx)=>!(idx===0&&m.rol==="assistant")).slice(-10);
   window._asistHist.push({rol:"user",texto});
+  const ok=await asistEnviarStream(texto,historial);   // fluido, token a token
+  if(!ok) await asistEnviarNoStream(texto,historial);  // respaldo si el streaming no está
+}
+// Respuesta en STREAMING (SSE): la vamos escribiendo en vivo, como el chat. Devuelve
+// true si la respuesta llegó por streaming; false para que se use el respaldo no-stream.
+async function asistEnviarStream(texto,historial){
+  _asistPensando=true; asistSetInputDisabled(true); asistPintar();
+  let resp;
+  try{
+    resp=await fetch(API+"/asistente/stream",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+getToken()},body:JSON.stringify({texto,historial})});
+  }catch(e){ _asistPensando=false; asistSetInputDisabled(false); return false; }
+  const ct=resp.headers.get("content-type")||"";
+  if(!resp.ok || !resp.body || !/text\/event-stream/i.test(ct)){ _asistPensando=false; asistSetInputDisabled(false); return false; }
+  _asistStreaming=true; _asistPensando=false;
+  const idx=window._asistHist.push({rol:"assistant",texto:""})-1;
+  asistPintar();
+  const reader=resp.body.getReader(), dec=new TextDecoder();
+  let buf="", full="";
+  try{
+    while(true){
+      const {value,done}=await reader.read(); if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      let sep;
+      while((sep=buf.indexOf("\n\n"))>=0){
+        const raw=buf.slice(0,sep); buf=buf.slice(sep+2);
+        let ev="message", data="";
+        raw.split("\n").forEach(l=>{ if(l.indexOf("event:")===0) ev=l.slice(6).trim(); else if(l.indexOf("data:")===0) data+=l.slice(5).trim(); });
+        if(!data) continue;
+        let obj={}; try{ obj=JSON.parse(data); }catch(_){ continue; }
+        if(ev==="delta"&&obj.t){ full+=obj.t; window._asistHist[idx].texto=full; asistPintar(); }
+        else if(ev==="fin"){ window._asistPendiente=obj.accion_pendiente||null; }
+        else if(ev==="error"){ if(!full) full="No he podido responder. Inténtalo otra vez."; window._asistHist[idx].texto=full; }
+      }
+    }
+  }catch(e){ /* corte de red en mitad del stream */ }
+  _asistStreaming=false; asistSetInputDisabled(false);
+  if(!full){ full="No he podido responder. Inténtalo otra vez."; }
+  window._asistHist[idx].texto=full; asistPintar();
+  asistHablar(full);
+  return true;
+}
+// Respaldo sin streaming (navegador sin lectura de streams, o /stream no disponible).
+async function asistEnviarNoStream(texto,historial){
   asistOcupado(true);
   try{
     const r=await api("/asistente",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({texto,historial})});
@@ -14305,7 +14351,7 @@ async function asistEnviar(texto){
 }
 // Ejecuta la acción propuesta SOLO tras el toque humano (defensa contra inyección).
 async function asistConfirmar(){
-  const acc=window._asistPendiente; if(!acc||_asistPensando) return;
+  const acc=window._asistPendiente; if(!acc||_asistPensando||_asistStreaming) return;
   window._asistPendiente=null; asistOcupado(true);
   try{
     const r=await api("/asistente/ejecutar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(acc)});
@@ -14337,7 +14383,7 @@ function asistSys(texto){ window._asistHist.push({rol:"assistant",texto}); asist
 // móvil (Samsung Internet, Chrome, Safari de iPhone) sin depender del reconocimiento de voz
 // del navegador. Toca el micro para empezar, toca otra vez para parar (o se para solo a los 20s).
 async function asistEscuchar(){
-  if(_asistPensando) return;
+  if(_asistPensando||_asistStreaming) return;
   if(_asistGrabando){ asistPararGrabacion(); return; } // toca otra vez = parar y transcribir
   const puedeGrabar = navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window.MediaRecorder !== "undefined";
   if(!puedeGrabar){ return asistEscucharNavegador(); } // navegador muy antiguo: Web Speech o teclado

@@ -57,6 +57,13 @@ test("accionPermitida veta acciones destructivas/masivas/sensibles", () => {
   assert.strictEqual(asist.accionPermitida("POST", "/api/backup").ok, false);
 });
 
+test("accionPermitida admite las acciones de equipo por voz (incidencia, ausencia, aviso)", () => {
+  assert.strictEqual(asist.accionPermitida("POST", "/api/incidencias").ok, true, "abrir incidencia");
+  assert.strictEqual(asist.accionPermitida("POST", "/api/ausencias").ok, true, "pedir ausencia");
+  assert.strictEqual(asist.accionPermitida("POST", "/api/tablon").ok, true, "aviso al tablón (el rol lo gatea la ruta)");
+  assert.strictEqual(asist.accionPermitida("POST", "/api/pedidos").ok, true, "proponer pedido");
+});
+
 test("disponible() es booleano y es false sin ANTHROPIC_API_KEY", () => {
   assert.strictEqual(typeof asist.disponible(), "boolean");
   if (!process.env.ANTHROPIC_API_KEY) assert.strictEqual(asist.disponible(), false);

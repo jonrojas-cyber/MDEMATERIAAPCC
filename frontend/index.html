@@ -14270,6 +14270,10 @@ function asistPintar(){
   if(window._asistPendiente && !_asistPensando && !_asistStreaming){
     html+=`<div class="asist-confirm"><button class="ok" onclick="asistConfirmar()">Confirmar</button><button class="no" onclick="asistCancelar()">Cancelar</button></div>`;
   }
+  // Acción ya hecha: botón para IR a verla (todo encadenado, nada en el aire).
+  if(window._asistDestino && !window._asistPendiente && !_asistPensando && !_asistStreaming){
+    html+=`<div class="asist-confirm"><button class="ok" onclick="asistIrDestino()">${esc(window._asistDestino.etiqueta||"Ver")}</button></div>`;
+  }
   // "pensando…" solo si no hay ya texto llegando en vivo.
   if(_asistPensando && !_asistStreaming) html+=`<div class="asist-msg sys" id="asist-think">pensando…</div>`;
   c.innerHTML=html; if(pegado) c.scrollTop=c.scrollHeight; // no arrastres si la persona subió a releer
@@ -14289,7 +14293,7 @@ function asistOcupado(on){
 }
 async function asistEnviar(texto){
   if(_asistPensando||_asistStreaming) return;
-  window._asistPendiente=null; // una nueva pregunta descarta una propuesta sin confirmar
+  window._asistPendiente=null; window._asistDestino=null; // una nueva pregunta descarta lo anterior
   // Contexto que mandamos (sin el saludo inicial del asistente): últimos turnos.
   const historial=window._asistHist.filter((m,idx)=>!(idx===0&&m.rol==="assistant")).slice(-10);
   window._asistHist.push({rol:"user",texto});
@@ -14376,19 +14380,30 @@ async function asistEnviarNoStream(texto,historial){
 // Ejecuta la acción propuesta SOLO tras el toque humano (defensa contra inyección).
 async function asistConfirmar(){
   const acc=window._asistPendiente; if(!acc||_asistPensando||_asistStreaming) return;
-  window._asistPendiente=null; asistOcupado(true);
+  window._asistPendiente=null; window._asistDestino=null; asistOcupado(true);
   try{
     const r=await api("/asistente/ejecutar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(acc)});
     asistOcupado(false);
     const ok=r&&r.ok;
-    const txt=ok?"✓ Hecho.":("No se pudo: "+((r&&r.data&&(r.data.error||r.data.motivo))||"error"));
+    if(ok && r.destino) window._asistDestino=r.destino; // dónde ha quedado → botón "Ver en…"
+    const donde=(ok&&r.destino&&r.destino.etiqueta)?(" Lo tienes en "+String(r.destino.etiqueta).replace(/^Ver en\s+/i,"")+"."):"";
+    const txt=ok?("✓ Hecho."+donde):("No se pudo: "+((r&&r.data&&(r.data.error||r.data.motivo))||"error"));
     window._asistHist.push({rol:"assistant",texto:txt});
-    asistPintar(); asistHablar(ok?"Hecho":txt);
+    asistPintar(); asistHablar(ok?("Hecho."+donde):txt);
   }catch(e){
     asistOcupado(false);
     window._asistHist.push({rol:"assistant",texto:"No se pudo completar la acción: "+((e&&e.message)||"error")});
     asistPintar();
   }
+}
+// Cierra el círculo: lleva a la pantalla donde ha quedado lo que hizo el asistente.
+function asistIrDestino(){
+  const d=window._asistDestino; if(!d) return;
+  window._asistDestino=null;
+  const nav={pedidos:"irA_pedidos",mermas:"irA_mermas",incidencias:"irA_incidencias",ausencias:"irA_ausencias",tablon:"irA_tablon"}[d.pantalla];
+  try{ const p=document.getElementById("asist-panel"); if(p&&p.classList.contains("on")) asistToggle(); }catch(_){}
+  try{ if(nav&&typeof window[nav]==="function") window[nav](); }catch(_){}
+  asistPintar();
 }
 function asistCancelar(){
   window._asistPendiente=null;

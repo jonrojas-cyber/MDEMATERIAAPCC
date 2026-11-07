@@ -282,8 +282,10 @@ router.post("/", (req, res) => {
 
   // Quién puede ENVIAR un pedido: solo dirección (Moni/Jon, rol admin). El equipo
   // PROPONE: su pedido nace como "propuesto" y espera a que dirección lo revise y
-  // lo envíe. Un admin crea un "borrador" listo para enviar (como hasta ahora).
-  const esPropuesta = !esAdmin(req);
+  // lo envíe. Un admin crea un "borrador" listo para enviar (como hasta ahora). Con
+  // proponer:true (lo pone el asistente) nace como PROPUESTA aunque sea dirección, para
+  // que aparezca en "Propuestas por revisar" y no se quede en el aire.
+  const esPropuesta = !esAdmin(req) || (req.body && req.body.proponer === true);
   const ahora = new Date();
   const pedido = {
     id: store.nextId("ped", "pedidos"),

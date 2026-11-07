@@ -14293,8 +14293,10 @@ async function asistEnviar(texto){
   // Contexto que mandamos (sin el saludo inicial del asistente): últimos turnos.
   const historial=window._asistHist.filter((m,idx)=>!(idx===0&&m.rol==="assistant")).slice(-10);
   window._asistHist.push({rol:"user",texto});
-  const ok=await asistEnviarStream(texto,historial);   // fluido, token a token
-  if(!ok) await asistEnviarNoStream(texto,historial);  // respaldo si el streaming no está
+  // Modo DIRECTO (una sola respuesta) como principal: es MÁS FIABLE tras el proxy de
+  // Render que el streaming SSE, que bufferizaba los eventos y dejaba la app "pensando"
+  // sin recibir nada. Las respuestas del asistente son cortas, así que va de sobra.
+  await asistEnviarNoStream(texto,historial);
 }
 // Respuesta en STREAMING (SSE): la vamos escribiendo en vivo, como el chat. Devuelve
 // true si la respuesta llegó por streaming; false para que se use el respaldo no-stream.
@@ -14345,21 +14347,29 @@ async function asistEnviarStream(texto,historial){
   asistHablar(full);
   return true;
 }
-// Respaldo sin streaming (navegador sin lectura de streams, o /stream no disponible).
+// Respuesta DIRECTA (una sola): el asistente responde cuando termina. Fiable tras el
+// proxy. Con timeout propio: si tarda demasiado se corta con aviso, nunca se cuelga.
 async function asistEnviarNoStream(texto,historial){
   asistOcupado(true);
+  const ctrl=(typeof AbortController!=="undefined")?new AbortController():null;
+  const to=setTimeout(()=>{ try{ ctrl&&ctrl.abort(); }catch(_){} }, 70000);
   try{
-    const r=await api("/asistente",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({texto,historial})});
-    asistOcupado(false);
-    const resp=(r&&r.respuesta)||"Hecho.";
+    const resp=await fetch(API+"/asistente",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+getToken()},body:JSON.stringify({texto,historial}),signal:ctrl?ctrl.signal:undefined});
+    clearTimeout(to); asistOcupado(false);
+    let r={}; try{ r=await resp.json(); }catch(_){ r={}; }
+    if(!resp.ok){
+      const sig=((r&&r.code)||"")+" "+((r&&r.error)||"");
+      const amable=/IA_NO_CONFIG|no está configurado/i.test(sig)?"El asistente de voz aún no está activado en este dispositivo.":((r&&r.error)||"No he podido responder. Inténtalo otra vez.");
+      window._asistHist.push({rol:"assistant",texto:amable}); asistPintar(); return;
+    }
+    const texto_r=(r&&r.respuesta)||"Hecho.";
     window._asistPendiente=(r&&r.accion_pendiente)||null;
-    window._asistHist.push({rol:"assistant",texto:resp});
-    asistPintar(); asistHablar(resp);
+    window._asistHist.push({rol:"assistant",texto:texto_r});
+    asistPintar(); asistHablar(texto_r);
   }catch(e){
-    asistOcupado(false);
-    const msg=(e&&e.message)||"No he podido responder.";
-    const amable=/no está configurado|IA_NO_CONFIG/i.test(msg)?"El asistente de voz aún no está activado en este dispositivo.":msg;
-    window._asistHist.push({rol:"assistant",texto:amable});
+    clearTimeout(to); asistOcupado(false);
+    const abortado=e&&((e.name==="AbortError")||/abort/i.test((e&&e.message)||""));
+    window._asistHist.push({rol:"assistant",texto:abortado?"Se ha quedado pensando demasiado. Inténtalo otra vez, por favor.":"No he podido responder. Inténtalo otra vez."});
     asistPintar();
   }
 }

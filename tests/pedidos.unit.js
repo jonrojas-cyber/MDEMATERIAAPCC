@@ -93,5 +93,31 @@ test("config: el nombre de la copia deja de estar pegado a Jon", () => {
   assert.strictEqual(c.copia_nombre, "Mónica");
 });
 
+// La ruta POST / usa el store real; se prueba SOLO con DATA_DIR aislado (lo pone el
+// runner de unitarios). Así nunca se tocan los fixtures versionados al correr suelto.
+if (process.env.CONTROL_M_DATA_DIR) {
+  const postLayer = ped.stack.find((l) => l.route && l.route.path === "/" && l.route.methods.post);
+  const postHandler = postLayer && postLayer.route.stack[postLayer.route.stack.length - 1].handle;
+  const fakeRes = () => { const r = { _s: 201, _j: null }; r.status = (c) => { r._s = c; return r; }; r.json = (o) => { r._j = o; return r; }; return r; };
+
+  test("POST pedido: proveedor y línea por NOMBRE no dan 400 (crea con texto libre)", () => {
+    const req = { body: { proveedor_id: "Proveedor Inexistente ZZZ", lineas: [{ nombre: "Café de Brasil", cantidad: 1, unidad_pedido: "kg" }] }, user: { rol: "admin", nombre: "Test" }, headers: {} };
+    const res = fakeRes(); postHandler(req, res, () => {});
+    assert.strictEqual(res._s, 201, "no 400 aunque el proveedor/artículo no estén en catálogo");
+    assert.ok(res._j && Array.isArray(res._j.lineas) && res._j.lineas.length === 1);
+    assert.strictEqual(res._j.lineas[0].nombre, "Café de Brasil");
+  });
+
+  test("POST pedido: el proveedor se resuelve por NOMBRE contra el catálogo real", () => {
+    const store = require("../backend/data-store");
+    const prov = (store.readAll("proveedores") || []).find((p) => !p.archivado);
+    if (!prov) return; // sin seed, nada que comprobar
+    const req = { body: { proveedor_id: prov.nombre, lineas: [{ nombre: "algo", cantidad: 2, unidad_pedido: "ud" }] }, user: { rol: "admin", nombre: "Test" }, headers: {} };
+    const res = fakeRes(); postHandler(req, res, () => {});
+    assert.strictEqual(res._s, 201);
+    assert.strictEqual(res._j.proveedor_id, prov.id, "el nombre del proveedor se resolvió a su id");
+  });
+}
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en pedidos`); process.exit(1); }
 console.log("  pedidos OK");

@@ -192,8 +192,18 @@ router.post("/", (req, res) => {
   const materias = store.readAll("materias");
   const comprasP = store.readAll("compras_productos") || [];
   const todosProv = store.readAll("proveedores") || [];
-  // Casa un nombre contra una lista por nombre normalizado (coincidencia en cualquier sentido).
-  const casa = (nom, lista) => { const qn = normNombre(nom); if (qn.length < 2) return null; return lista.find((x) => { const xn = normNombre(x.nombre); return xn && (xn.includes(qn) || qn.includes(xn)); }) || null; };
+  // Casa un nombre contra una lista por nombre normalizado. Primero por contención directa
+  // (uno contiene al otro); si no, por SOLAPE DE PALABRAS significativas (≥4 letras), para
+  // que "café de Brasil" case con "Brasil Sitio Amoreira" (comparten «brasil»), como haría
+  // una persona. Evita palabras cortas de relleno (de, la, kg, dos…).
+  const casa = (nom, lista) => {
+    const qn = normNombre(nom); if (qn.length < 2) return null;
+    let hit = lista.find((x) => { const xn = normNombre(x.nombre); return xn && (xn.includes(qn) || qn.includes(xn)); });
+    if (hit) return hit;
+    const toks = qn.split(" ").filter((w) => w.length >= 4);
+    if (!toks.length) return null;
+    return lista.find((x) => { const xt = normNombre(x.nombre).split(" "); return toks.some((t) => xt.includes(t)); }) || null;
+  };
 
   // 1) Resolver el PROVEEDOR por id O por nombre (la IA puede mandar "Mercadona"/"Nomad Coffee").
   let prov = proveedor_id ? (store.findById("proveedores", proveedor_id) || null) : null;

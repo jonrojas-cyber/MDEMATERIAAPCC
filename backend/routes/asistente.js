@@ -341,14 +341,38 @@ router.post("/stream", express.json({ limit: "1mb" }), async (req, res) => {
 // Ejecuta una acción que el usuario ha CONFIRMADO en la app (botón Confirmar). Se
 // re-valida en el servidor (nunca se confía solo en el cliente) y se ejecuta con el
 // rol del usuario. Es el único punto donde una mutación del asistente llega a la API.
+// Tras ejecutar, decimos a la app DÓNDE ha quedado el resultado (para ofrecer un botón
+// "Ver en …" y que nada se quede en el aire: todo encadenado con su pantalla).
+const DESTINOS = {
+  pedidos: { pantalla: "pedidos", etiqueta: "Ver en Pedidos" },
+  mermas: { pantalla: "mermas", etiqueta: "Ver en Mermas" },
+  incidencias: { pantalla: "incidencias", etiqueta: "Ver en Incidencias" },
+  ausencias: { pantalla: "ausencias", etiqueta: "Ver en Ausencias" },
+  tablon: { pantalla: "tablon", etiqueta: "Ver en el Tablón" },
+};
+function segmentoDe(ruta) { return String(ruta || "").split("?")[0].toLowerCase().replace(/^\/api\//, "").split("/")[0]; }
+function destinoDe(ruta, data) {
+  const d = DESTINOS[segmentoDe(ruta)];
+  if (!d) return null;
+  const id = (data && (data.id || (data.merma && data.merma.id) || (data.pedido && data.pedido.id))) || null;
+  return { pantalla: d.pantalla, etiqueta: d.etiqueta, id };
+}
+
 router.post("/ejecutar", express.json({ limit: "1mb" }), async (req, res) => {
   const { metodo, ruta, cuerpo } = req.body || {};
   const permit = accionPermitida(metodo, ruta);
   if (!permit.ok) return res.status(400).json({ error: permit.motivo });
   const rutaOk = rutaInterna(ruta);
   if (!rutaOk) return res.status(400).json({ error: "Ruta no permitida." });
-  const r = await llamarApi({ metodo, ruta: rutaOk, cuerpo, authorization: req.headers.authorization || "" });
-  return res.status(r.status >= 400 ? r.status : 200).json({ ok: r.status < 400, status: r.status, data: r.data });
+  // Un pedido hecho por el asistente SIEMPRE nace como PROPUESTA (para revisar y enviar),
+  // también si lo pide dirección: así aparece en "Propuestas por revisar" y no se pierde.
+  let cuerpoFinal = cuerpo;
+  if (String(metodo || "").toUpperCase() === "POST" && segmentoDe(rutaOk) === "pedidos") {
+    cuerpoFinal = Object.assign({}, cuerpo || {}, { proponer: true });
+  }
+  const r = await llamarApi({ metodo, ruta: rutaOk, cuerpo: cuerpoFinal, authorization: req.headers.authorization || "" });
+  const destino = r.status < 400 ? destinoDe(rutaOk, r.data) : null;
+  return res.status(r.status >= 400 ? r.status : 200).json({ ok: r.status < 400, status: r.status, data: r.data, destino });
 });
 
 // ── Transcripción de voz por SERVIDOR (voz directa) ──────────────────────────

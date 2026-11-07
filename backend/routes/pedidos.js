@@ -188,19 +188,28 @@ router.get("/:id", (req, res) => {
 // pedido (kg/L/ud) para el mensaje de WhatsApp y la ficha del pedido.
 router.post("/", (req, res) => {
   let { proveedor_id, lineas } = req.body || {};
-  if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor" });
-
+  const lineasArr = Array.isArray(lineas) ? lineas : [];
   const materias = store.readAll("materias");
   const comprasP = store.readAll("compras_productos") || [];
+  const todosProv = store.readAll("proveedores") || [];
+  // Casa un nombre contra una lista por nombre normalizado (coincidencia en cualquier sentido).
+  const casa = (nom, lista) => { const qn = normNombre(nom); if (qn.length < 2) return null; return lista.find((x) => { const xn = normNombre(x.nombre); return xn && (xn.includes(qn) || qn.includes(xn)); }) || null; };
 
-  // Resolver el PROVEEDOR por id O por nombre (la IA puede mandar "Nomad Coffee" en vez
-  // del id). Si no se encuentra, se mantiene el comportamiento anterior (prov=null).
-  let prov = store.findById("proveedores", proveedor_id);
-  if (!prov) {
-    const qn = normNombre(proveedor_id);
-    if (qn.length >= 2) prov = (store.readAll("proveedores") || []).find((p) => !p.archivado && normNombre(p.nombre).includes(qn)) || null;
-    if (prov) proveedor_id = prov.id;
+  // 1) Resolver el PROVEEDOR por id O por nombre (la IA puede mandar "Mercadona"/"Nomad Coffee").
+  let prov = proveedor_id ? (store.findById("proveedores", proveedor_id) || null) : null;
+  if (!prov && proveedor_id) prov = casa(proveedor_id, todosProv.filter((p) => !p.archivado));
+  // 2) Si NO se indicó proveedor, DEDUCIRLO del primer producto que sea una materia con
+  //    proveedor (como un responsable de compras: "un kilo de café" → su proveedor habitual).
+  if (!prov && !proveedor_id) {
+    for (const l of lineasArr) {
+      let m = l && l.materia_id ? materias.find((x) => x.id === l.materia_id) : null;
+      if (!m && l && (l.nombre || l.materia_nombre)) m = casa(l.nombre || l.materia_nombre, materias.filter((x) => x.proveedor_id));
+      if (m && m.proveedor_id) { const p = store.findById("proveedores", m.proveedor_id); if (p && !p.archivado) { prov = p; break; } }
+    }
   }
+  if (prov) proveedor_id = prov.id;
+  // 3) Ni proveedor indicado ni deducible: pedirlo con un mensaje claro y accionable.
+  if (!proveedor_id) return res.status(400).json({ error: "¿A qué proveedor se lo pido? Dime el proveedor, o asegúrate de que el producto está dado de alta con su proveedor habitual." });
   // No se crean pedidos a proveedores archivados (fuera del flujo).
   if (prov && prov.archivado) return res.status(410).json({ error: "Este proveedor está archivado. Recupéralo en Proveedores para pedirle." });
 
@@ -208,7 +217,6 @@ router.post("/", (req, res) => {
   const aso = (prov && prov.productos_asociados) || [];
   const materiasProv = prov ? materias.filter((m) => m.proveedor_id === prov.id || aso.includes(m.id)) : [];
   const comprasProv = prov ? comprasP.filter((c) => c.proveedor_id === prov.id && c.archivado !== true) : [];
-  const casa = (nom, lista) => { const qn = normNombre(nom); if (qn.length < 2) return null; return lista.find((x) => { const xn = normNombre(x.nombre); return xn && (xn.includes(qn) || qn.includes(xn)); }) || null; };
 
   // Resuelve cada línea: si la IA manda solo {nombre, cantidad}, intentamos casarlo con un
   // artículo del proveedor (materia o catálogo de compra); si no, se guarda como texto libre.

@@ -117,6 +117,16 @@ if (process.env.CONTROL_M_DATA_DIR) {
     assert.strictEqual(res._s, 201);
     assert.strictEqual(res._j.proveedor_id, prov.id, "el nombre del proveedor se resolvió a su id");
   });
+
+  test("POST pedido SIN proveedor: lo DEDUCE del producto (su proveedor habitual)", () => {
+    const store = require("../backend/data-store");
+    const m = (store.readAll("materias") || []).find((x) => { const p = x.proveedor_id && store.findById("proveedores", x.proveedor_id); return p && !p.archivado; });
+    if (!m) return;
+    const req = { body: { lineas: [{ nombre: m.nombre, cantidad: 1, unidad_pedido: "kg" }] }, user: { rol: "admin", nombre: "Test" }, headers: {} };
+    const res = fakeRes(); postHandler(req, res, () => {});
+    assert.strictEqual(res._s, 201, "sin proveedor, lo deduce del producto");
+    assert.strictEqual(res._j.proveedor_id, m.proveedor_id, "proveedor deducido del producto");
+  });
 }
 
 if (fallos) { console.error(`\n${fallos} fallo(s) en pedidos`); process.exit(1); }

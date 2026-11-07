@@ -15,7 +15,15 @@ router.get("/motivos", (req, res) => {
 // Resuelve nombre + coste estimado (€) + materia a descontar, desde el ref del
 // catálogo. El coste SIEMPRE se deriva de costing.js (única fuente del dinero).
 function resolver(ref, nombre, cantidad) {
-  const obj = M.resolverObjetivo(ref);
+  let obj = M.resolverObjetivo(ref);
+  // Si llega un id "pelado" (el que devuelve /api/buscar, p. ej. mat-rep-croissant) sin el
+  // prefijo del catálogo (mat:/rec:/prod-), lo resolvemos mirando en las entidades. Así la
+  // IA puede usar el id tal cual lo da el buscador y la merma SÍ descuenta stock y coste.
+  if (obj.tipo === "otro" && ref) {
+    if (store.findById("materias", ref)) obj = { tipo: "materia", id: ref };
+    else if (store.findById("recetas", ref)) obj = { tipo: "receta", id: ref };
+    else if (store.findById("productos", ref)) obj = { tipo: "producto", id: ref };
+  }
   let coste = 0, objetivo_nombre = nombre || "", deducirMateria = null;
   if (obj.tipo === "materia") {
     const materia = store.findById("materias", obj.id);
@@ -52,7 +60,7 @@ router.post("/", express.json(), async (req, res) => {
   const b = req.body || {};
   const val = M.validar(b);
   if (!val.ok) return res.status(400).json({ error: "Faltan datos de la merma.", errores: val.errores });
-  const mot = M.motivo(b.motivo);
+  const mot = M.normalizar(b.motivo);
   const cantidad = M.parseCantidad(b.cantidad);
   const unidad = M.UNIDADES.includes(b.unidad) ? b.unidad : (b.unidad ? String(b.unidad).slice(0, 10) : "ud");
   const { obj, coste, objetivo_nombre, deducirMateria } = resolver(b.ref, b.nombre, cantidad);

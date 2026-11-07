@@ -48,5 +48,25 @@ test("validar: exige producto, cantidad>0 y motivo, con mensajes concretos", () 
   assert.strictEqual(M.validar({ nombre: "Croissant", cantidad: 1, motivo: "noexiste" }).ok, false); // motivo inválido
 });
 
+test("normalizar: acepta clave, etiqueta, acentos y LENGUAJE NATURAL (voz/IA)", () => {
+  assert.strictEqual(M.normalizar("caido").k, "caido");
+  assert.strictEqual(M.normalizar("Caído al suelo").k, "caido");           // etiqueta exacta (antes fallaba)
+  assert.strictEqual(M.normalizar("caída").k, "caido");                    // voz con acento
+  assert.strictEqual(M.normalizar("se me ha caído al suelo").k, "caido");  // frase larga
+  assert.strictEqual(M.normalizar("caducó").k, "caducado");
+  assert.strictEqual(M.normalizar("lo devolvió el cliente").k, "devolucion");
+  assert.strictEqual(M.normalizar("se quemó").k, "mal_elaborado");
+  assert.strictEqual(M.normalizar("regalo a un cliente").k, "cortesia");
+  assert.strictEqual(M.normalizar("cata de producto").k, "prueba");
+  assert.strictEqual(M.normalizar("sobró de producción").k, "sobrante");
+  assert.strictEqual(M.normalizar("xyz sin sentido"), null);
+});
+
+test("validar: ACEPTA el motivo por etiqueta y en lenguaje natural (regresión merma por voz)", () => {
+  assert.strictEqual(M.validar({ nombre: "Croissant", cantidad: 1, motivo: "Caído al suelo" }).ok, true);
+  assert.strictEqual(M.validar({ nombre: "Croissant", cantidad: 1, motivo: "caída" }).ok, true);
+  assert.strictEqual(M.validar({ nombre: "Croissant", cantidad: 1, motivo: "caducó" }).ok, true);
+});
+
 if (fallos) { console.error(`\n${fallos} fallo(s) en mermas motivos`); process.exit(1); }
 console.log("  mermas motivos OK");

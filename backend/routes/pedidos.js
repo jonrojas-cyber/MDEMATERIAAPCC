@@ -18,6 +18,9 @@ function unidadPedido(u) {
   return { unidad: u || "ud", factor: 1, dec: 0 };
 }
 function rN(n, d) { const f = Math.pow(10, d == null ? 2 : d); return Math.round((Number(n) || 0) * f) / f; }
+// Normaliza un nombre para comparar (minúsculas, sin acentos, sin signos): sirve para
+// resolver un proveedor o un artículo por su NOMBRE cuando la IA no manda el id interno.
+function normNombre(s) { return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim(); }
 
 function esAdmin(req) { return !!(req.user && req.user.rol === "admin"); }
 // El equipo NUNCA ve coste/precio de compra (regla de negocio): se le entrega el
@@ -184,37 +187,72 @@ router.get("/:id", (req, res) => {
 // (para stock/recepciones) y, si viene del nuevo flujo, también en unidad de
 // pedido (kg/L/ud) para el mensaje de WhatsApp y la ficha del pedido.
 router.post("/", (req, res) => {
-  const { proveedor_id, lineas } = req.body || {};
+  let { proveedor_id, lineas } = req.body || {};
   if (!proveedor_id) return res.status(400).json({ error: "Indica el proveedor" });
 
-  const candidatas = (Array.isArray(lineas) ? lineas : []).filter((l) => (l.materia_id || l.compra_id) && Number(l.cantidad) > 0);
-  if (!candidatas.length) return res.status(400).json({ error: "Añade al menos un producto con cantidad" });
+  const materias = store.readAll("materias");
+  const comprasP = store.readAll("compras_productos") || [];
 
-  const prov = store.findById("proveedores", proveedor_id);
+  // Resolver el PROVEEDOR por id O por nombre (la IA puede mandar "Nomad Coffee" en vez
+  // del id). Si no se encuentra, se mantiene el comportamiento anterior (prov=null).
+  let prov = store.findById("proveedores", proveedor_id);
+  if (!prov) {
+    const qn = normNombre(proveedor_id);
+    if (qn.length >= 2) prov = (store.readAll("proveedores") || []).find((p) => !p.archivado && normNombre(p.nombre).includes(qn)) || null;
+    if (prov) proveedor_id = prov.id;
+  }
   // No se crean pedidos a proveedores archivados (fuera del flujo).
   if (prov && prov.archivado) return res.status(410).json({ error: "Este proveedor está archivado. Recupéralo en Proveedores para pedirle." });
-  const materias = store.readAll("materias");
-  const compras = store.readAll("compras_productos") || [];
+
+  // Artículos pedibles del proveedor (para resolver líneas por NOMBRE, como el catálogo).
+  const aso = (prov && prov.productos_asociados) || [];
+  const materiasProv = prov ? materias.filter((m) => m.proveedor_id === prov.id || aso.includes(m.id)) : [];
+  const comprasProv = prov ? comprasP.filter((c) => c.proveedor_id === prov.id && c.archivado !== true) : [];
+  const casa = (nom, lista) => { const qn = normNombre(nom); if (qn.length < 2) return null; return lista.find((x) => { const xn = normNombre(x.nombre); return xn && (xn.includes(qn) || qn.includes(xn)); }) || null; };
+
+  // Resuelve cada línea: si la IA manda solo {nombre, cantidad}, intentamos casarlo con un
+  // artículo del proveedor (materia o catálogo de compra); si no, se guarda como texto libre.
+  const resueltas = (Array.isArray(lineas) ? lineas : []).map((l0) => {
+    const l = Object.assign({}, l0);
+    if (!l.materia_id && !l.compra_id && l.nombre) {
+      const m = casa(l.nombre, materiasProv);
+      if (m) l.materia_id = m.id;
+      else { const c = casa(l.nombre, comprasProv); if (c) l.compra_id = c.id; }
+    }
+    return l;
+  });
+  // Acepta líneas con materia_id, compra_id O nombre (texto libre), y cantidad > 0.
+  const candidatas = resueltas.filter((l) => (l.materia_id || l.compra_id || (l.nombre && String(l.nombre).trim())) && Number(l.cantidad) > 0);
+  if (!candidatas.length) return res.status(400).json({ error: "Añade al menos un producto con cantidad" });
+
   const lineasN = candidatas.map((l) => {
     let linea;
     if (l.materia_id) {
       const m = materias.find((x) => x.id === l.materia_id);
       linea = {
         materia_id: l.materia_id,
-        nombre: m ? m.nombre : l.materia_id,
-        unidad: m ? m.unidad : "",
+        nombre: m ? m.nombre : (l.nombre || l.materia_id),
+        unidad: m ? m.unidad : (l.unidad_pedido || l.unidad || ""),
         cantidad: Number(l.cantidad), // unidad base
         precio_esperado: l.precio_esperado != null ? Number(l.precio_esperado) : m ? m.coste_medio : 0,
       };
-    } else {
+    } else if (l.compra_id) {
       // Artículo del catálogo de compra (sin materia de stock): se guarda tal cual.
-      const c = compras.find((x) => x.id === l.compra_id);
+      const c = comprasP.find((x) => x.id === l.compra_id);
       linea = {
         compra_id: l.compra_id,
         nombre: l.nombre || (c ? c.nombre : l.compra_id),
         unidad: l.unidad_pedido || (c ? c.formato || c.unidad || "ud" : "ud"),
         cantidad: Number(l.cantidad),
         precio_esperado: l.precio_esperado != null ? Number(l.precio_esperado) : c && c.precio_con_iva != null ? Number(c.precio_con_iva) : 0,
+      };
+    } else {
+      // Línea de TEXTO LIBRE (no está en el catálogo): se guarda para el mensaje de pedido.
+      linea = {
+        nombre: String(l.nombre).trim(),
+        unidad: l.unidad_pedido || l.unidad || "ud",
+        cantidad: Number(l.cantidad),
+        precio_esperado: l.precio_esperado != null ? Number(l.precio_esperado) : 0,
       };
     }
     // Unidad de pedido (amigable) — opcional, del flujo nuevo.

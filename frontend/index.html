@@ -11433,12 +11433,12 @@ async function irA_pedidoProveedor(provId, opts){
     const fmtP=(n,d)=>new Intl.NumberFormat("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}).format(Number(n)||0);
     const rows=cat.articulos.map(a=>{
       const sug=a.estado==="catalogo"?`<span class="ped-sugq cat">de factura</span>`
-        :(a.cantidad_sugerida>0?`<span class="ped-sugq">sugerido ${fmtP(a.cantidad_sugerida,a.dec)} ${esc(a.unidad_pedido)}</span>`:`<span class="ped-sugq ok">stock ok</span>`);
-      const pre=(opts.sugerir&&a.estado!=="correcto"&&a.estado!=="catalogo"&&a.cantidad_sugerida>0)?a.cantidad_sugerida:"";
+        :(a.cantidad_sugerida>0?`<span class="ped-sugq">sugerido ${pedEntero(a.cantidad_sugerida)} ${esc(a.unidad_pedido)}</span>`:`<span class="ped-sugq ok">stock ok</span>`);
+      const pre=(opts.sugerir&&a.estado!=="correcto"&&a.estado!=="catalogo"&&a.cantidad_sugerida>0)?pedEntero(a.cantidad_sugerida):"";
       return `<div class="ped-row" data-mat="${a.materia_id||''}" data-compra="${a.compra_id||''}" data-dn="${esc(a.nombre||'')}" data-nombre="${esc((a.nombre||"").toLowerCase())}" data-factor="${a.factor}" data-pbase="${admin?(a.precio_base||0):0}" data-up="${esc(a.unidad_pedido)}" data-dec="${a.dec}">
         <span class="ped-name">${esc(a.nombre)} ${estBadge(a)}${admin?`<span class="ped-price">${fmtP(a.precio_pedido,2)} €/${esc(a.unidad_pedido)}</span>`:""}</span>
         ${sug}
-        <input class="ped-cant" type="number" inputmode="decimal" step="0.01" placeholder="0" value="${pre}" oninput="pedTotal()">
+        <input class="ped-cant" type="number" inputmode="decimal" step="any" placeholder="0" value="${pre}" oninput="pedTotal()">
         <span class="ped-u">${esc(a.unidad_pedido)}</span>
         ${admin?`<span class="ped-lineimp" data-imp>—</span>`:""}
       </div>`;
@@ -11473,12 +11473,15 @@ function pedFiltrarArticulos(q){
   const s=(q||"").toLowerCase().trim();
   document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{ r.style.display=(!s||(r.dataset.nombre||"").includes(s))?"":"none"; });
 }
+// Cantidad de pedido en NÚMERO REDONDO: sin decimales por defecto (si hace falta un
+// decimal, la persona lo escribe). Redondea el sugerido a entero, mínimo 1 si hay algo.
+function pedEntero(n){ n=Number(n)||0; return n>0?Math.max(1,Math.round(n)):0; }
 function pedUsarSugeridos(){
   const cat=window._pedCat; if(!cat) return;
   const byId={}; cat.articulos.forEach(a=>byId[a.materia_id]=a);
   document.querySelectorAll("#ped-artlist .ped-row").forEach(r=>{
     const a=byId[r.dataset.mat]; const inp=r.querySelector(".ped-cant");
-    if(a&&inp&&a.cantidad_sugerida>0){ inp.value=a.cantidad_sugerida; }
+    if(a&&inp&&a.cantidad_sugerida>0){ inp.value=pedEntero(a.cantidad_sugerida); }
   });
   pedTotal();
 }
@@ -12677,7 +12680,7 @@ async function irA_avisos(){
       ${(r.por_proveedor&&r.por_proveedor.length)?r.por_proveedor.map(g=>`
         <div class="card" style="${g.criticos?'border-color:var(--alert);':''}">
           <div class="card-name">${esc(g.proveedor)} · ${g.total_items} producto(s)</div>
-          ${g.items.map(it=>`<div class="card-meta">· ${esc(it.nombre)} — quedan ${it.disponibilidad_actual} ${esc(it.unidad)}, pedir ${it.cantidad_sugerida} ${esc(it.unidad)} <span style="color:${it.estado==='critico'?'var(--alert)':'#c79a3a'}">(${it.estado==='critico'?'bajo mínimo':'va justo'})</span></div>`).join("")}
+          ${g.items.map(it=>`<div class="card-meta">· ${esc(it.nombre)} — quedan ${Math.round(Number(it.disponibilidad_actual)||0)} ${esc(it.unidad)}, pedir ${pedEntero(it.cantidad_sugerida)} ${esc(it.unidad)} <span style="color:${it.estado==='critico'?'var(--alert)':'#c79a3a'}">(${it.estado==='critico'?'bajo mínimo':'va justo'})</span></div>`).join("")}
         </div>`).join(""):`<div class="card"><div class="card-meta">✔ Nada que pedir ahora mismo.</div></div>`}
       <div class="card">
         <div class="card-name">Lotes a punto de caducar (${r.caducando.length})</div>

@@ -127,6 +127,19 @@ const BATCHES = [
       { id: "fc-luz", name: "Luz", category: "Luz", amount: 420.79, vat: 21, periodicity: "monthly", active: true, notes: "Repsol · media REAL 3T 2026: 1.262,36 € / 3 meses = 420,79 €/mes (jul 371,50 · ago 383,57 · sep 507,29). Editable." },
     ],
   },
+  {
+    // Food cost MANUAL actualizado al 28 % (REAL). Es el food cost ponderado por
+    // las ventas VIVAS de octubre 2026 (Análisis de Ventas de Ágora; 98 % de la
+    // facturación con coste cargado) y YA con los precios de la carta nueva
+    // (nov-2026): coste 3.900 € / ventas 13.927 € = 28,0 % (antes 29,6 % con los
+    // precios viejos; el 26 % anterior era un provisional estimado). Sustituye el
+    // 26 % en la Cuenta de Resultados. Editable/borrable desde la pantalla.
+    flag: "negocio_seed_v13_foodcost_28_real",
+    entity: "config",
+    upserts: [
+      { id: "food_cost_manual_pct", valor: 28 },
+    ],
+  },
 ];
 
 async function seedNegocio() {

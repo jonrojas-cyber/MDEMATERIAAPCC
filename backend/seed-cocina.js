@@ -419,6 +419,33 @@ const BATCHES = [
       { entity: "productos", id: "prod-agora-limonada-coleccion", campos: { cantidades_estimadas: true, ingredientes: [ { materia_id: "mat-coc-superjuice-est", cantidad: 40 } ] } },
     ],
   },
+  {
+    // CRUNCH COLECCIÓN · cambio de proteína (dato de Mónica): antes mortadela
+    // (16,5 €/kg, 55 g = 0,91 €); ahora CABEZA DE LOMO (11 €/kg, 40 g = 0,44 €).
+    // Ahorro ≈ 0,47 €/sándwich. Se crea la materia y se reescribe el escandallo
+    // del Crunch Colección (el producto ACTIVO de la carta, prod-crunch-coleccion).
+    flag: "cocina_seed_v14_crunch_lomo",
+    materias: [
+      { id: "mat-coc-cabeza-lomo", nombre: "Cabeza de lomo", unidad: "g", categoria: "Charcutería", ubicacion: "Cocina", coste_medio: 0.011, pendiente_coste: false },
+    ],
+    actualizaciones: [
+      { entity: "productos", id: "prod-crunch-coleccion", campos: { ingredientes: [
+        { materia_id: "mat-coc-pan-centeno", cantidad: 1 }, { materia_id: "mat-coc-cabeza-lomo", cantidad: 40 },
+        { materia_id: "mat-coc-burrata", cantidad: 20 }, { materia_id: "mat-coc-rucula", cantidad: 3 },
+        { materia_id: "mat-coc-edam", cantidad: 20 }, { materia_id: "mat-coc-mayo-trufa", cantidad: 12 } ] } },
+    ],
+  },
+  {
+    // CHAI LATTE · alta como producto nuevo de la carta (PVP 3,50 €, de Mónica).
+    // Se crea SIN escandallo todavía: falta el coste real del sirope de chai y la
+    // receta (ml de sirope + ml de leche). Mientras, aparece en la carta y el
+    // conector de Ágora puede enlazar sus ventas; el food cost se cierra al cargar
+    // el escandallo. pendiente_coste marca que su coste aún no es real.
+    flag: "cocina_seed_v15_chai_latte",
+    productos: [
+      { id: "prod-chai-latte", clave: "Chai latte", nombre: "Chai latte", agora_ref: "Chai latte", categoria: "bebida", precio_venta: 3.50, activo: true, ingredientes: [], pendiente_coste: true, descripcion: "Chai latte · pendiente de escandallo (coste del sirope + receta)" },
+    ],
+  },
 ];
 
 // Flags de todos los lotes (para tests y trazabilidad).

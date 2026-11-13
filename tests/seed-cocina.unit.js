@@ -102,5 +102,29 @@ test("costing calcula el escandallo (coste 0 mientras las materias están pendie
   assert.strictEqual(coste, 0, "coste 0 hasta que entren las facturas");
 });
 
+test("Crunch Colección cambia mortadela por cabeza de lomo (40 g, 11 €/kg)", () => {
+  const data = { materias: [], recetas: [], productos: [], config: [] };
+  aplicar(fakeStore(data));
+  const lomo = data.materias.find((m) => m.id === "mat-coc-cabeza-lomo");
+  assert.ok(lomo, "crea la materia cabeza de lomo");
+  assert.strictEqual(lomo.coste_medio, 0.011, "11 €/kg = 0,011 €/g");
+  const cc = data.productos.find((p) => p.id === "prod-crunch-coleccion");
+  const lineaLomo = cc.ingredientes.find((i) => i.materia_id === "mat-coc-cabeza-lomo");
+  assert.ok(lineaLomo && lineaLomo.cantidad === 40, "el escandallo lleva 40 g de cabeza de lomo");
+  assert.ok(!cc.ingredientes.some((i) => i.materia_id === "mat-coc-mortadela"), "ya no lleva mortadela");
+});
+
+test("Chai latte se crea como producto nuevo (PVP 3,50, sin escandallo aún)", () => {
+  const data = { materias: [], recetas: [], productos: [], config: [] };
+  aplicar(fakeStore(data));
+  const chai = data.productos.find((p) => p.id === "prod-chai-latte");
+  assert.ok(chai, "crea el Chai latte");
+  assert.strictEqual(chai.precio_venta, 3.50);
+  assert.strictEqual(chai.agora_ref, "Chai latte");   // el conector enlaza por agora_ref
+  assert.strictEqual(chai.activo, true);
+  assert.deepStrictEqual(chai.ingredientes, []);       // escandallo pendiente
+  assert.strictEqual(chai.pendiente_coste, true);
+});
+
 if (fallos) { console.error(`\n${fallos} prueba(s) fallida(s)`); process.exit(1); }
 console.log("seed de la carta de cocina: OK");

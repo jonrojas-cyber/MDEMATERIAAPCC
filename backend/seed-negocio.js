@@ -140,6 +140,19 @@ const BATCHES = [
       { id: "food_cost_manual_pct", valor: 28 },
     ],
   },
+  {
+    // Cuota de autónomo (RETA) de la fundadora: 80 €/mes (tarifa reducida, dato de
+    // Mónica). Faltaba en los costes fijos de la app, así que el EBITDA salía algo
+    // inflado y el break-even algo bajo. Categoría "Seguridad Social" (NO "Personal":
+    // el personal son los empleados Lara/Daniel; esto es la SS de la titular), por lo
+    // que cuenta como OTROS fijos en la Cuenta de Resultados, no como coste laboral.
+    // vat 0 (la cuota de SS no lleva IVA). Editable en Costes fijos.
+    flag: "negocio_seed_v14_cuota_autonomo",
+    entity: "fixed_costs",
+    upserts: [
+      { id: "fc-cuota-autonomo", name: "Cuota de autónomo (RETA) · Mónica", category: "Seguridad Social", amount: 80, vat: 0, periodicity: "monthly", active: true, notes: "Cuota de autónomos de la titular. 80 €/mes (tarifa reducida). Editable." },
+    ],
+  },
 ];
 
 async function seedNegocio() {

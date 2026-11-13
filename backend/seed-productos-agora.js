@@ -17,14 +17,14 @@ const store = require("./data-store");
 // Matcha latte NO se incluye: ya existe en Control M (prod-005) con su escandallo.
 const CATALOGO = [
   ["Espresso", "bebida", 1.80], ["Lungo", "bebida", 1.90], ["Americano", "bebida", 1.90],
-  ["Cortado", "bebida", 2.00], ["Flatwhite", "bebida", 2.20], ["Capuccino", "bebida", 2.10],
-  ["Latte", "bebida", 2.60], ["Iced Latte", "bebida", 2.60], ["Coldbrew", "bebida", 3.50],
+  ["Cortado", "bebida", 2.00], ["Flatwhite", "bebida", 2.20], ["Capuccino", "bebida", 2.20],
+  ["Latte", "bebida", 2.60], ["Iced Latte", "bebida", 2.80], ["Coldbrew", "bebida", 3.50],
   ["Leche de avena", "bebida", 0.40], ["Leche de coco", "bebida", 0.40], ["Leche fresca", "bebida", 0.00],
-  ["Crunch origen", "comida", 4.80], ["Crunch equilibrio", "comida", 6.00], ["Crunch colección", "comida", 7.80],
-  ["Tosta origen", "comida", 3.50], ["Tosta equilibrio", "comida", 4.80], ["Tosta colección", "comida", 4.00],
-  ["Dulce origen", "comida", 2.20], ["Dulce equilibrio", "comida", 2.80], ["Dulce colección", "comida", 3.80],
+  ["Crunch origen", "comida", 5.20], ["Crunch equilibrio", "comida", 6.50], ["Crunch colección", "comida", 6.50],
+  ["Tosta origen", "comida", 3.50], ["Tosta equilibrio", "comida", 4.80], ["Tosta colección", "comida", 4.50],
+  ["Dulce origen", "comida", 2.40], ["Dulce equilibrio", "comida", 3.20], ["Dulce colección", "comida", 3.80],
   ["Iced matcha origen", "bebida", 3.60], ["Etiopía", "bebida", 0.30], ["Brasil", "bebida", 0.00],
-  ["Limonada origen", "bebida", 2.20], ["Limonada equilibrio", "bebida", 2.60], ["Limonada colección", "bebida", 2.20],
+  ["Limonada origen", "bebida", 3.00], ["Limonada equilibrio", "bebida", 3.00], ["Limonada colección", "bebida", 3.00],
   ["Zumo materia", "bebida", 3.50], ["Earl grey", "bebida", 1.80], ["Manzanilla", "bebida", 1.80],
   ["Té verde", "bebida", 1.80], ["Menta", "bebida", 1.80], ["Leche sin lactosa", "bebida", 0.00],
   ["Iced matcha equilibrio", "bebida", 4.00], ["Iced matcha colección", "bebida", 4.00],
@@ -66,11 +66,27 @@ const FLAG_EXTRA = "productos_agora_seed_v2_extra";
 // ya existe un producto que se llame así, no se crea.
 const MATCHA_LATTE = {
   id: "prod-agora-matcha-latte", clave: "Matcha latte", nombre: "Matcha latte", agora_ref: "Matcha latte",
-  categoria: "bebida", descripcion: "Matcha latte (casa con Ágora)", precio_venta: 3.30, activo: true,
+  categoria: "bebida", descripcion: "Matcha latte (casa con Ágora)", precio_venta: 3.50, activo: true,
   ingredientes: [{ materia_id: "mat-matcha", cantidad: 2.5 }, { materia_id: "mat-leche-fresca", cantidad: 180 }],
   origen: "agora",
 };
 const FLAG_MATCHA = "productos_agora_matcha_latte_v2";
+
+// AJUSTE DE PRECIOS a la carta nueva (noviembre 2026, de la fundadora). La siembra
+// de arriba solo CREA artículos que faltan y NUNCA pisa el PVP de uno que ya
+// existe; en producción estos productos ya existían con el PVP viejo, así que el
+// cambio de carta no llegaba. Este bloque fija el PVP nuevo UNA sola vez (flag),
+// SOLO en los productos que cambian (el resto no se toca, así se respeta cualquier
+// PVP que edites a mano). Mismos números que el CATALOGO de arriba (fuente única).
+const PRECIOS_CARTA_NOV2026 = [
+  ["Capuccino", 2.20], ["Iced Latte", 2.80],
+  ["Crunch origen", 5.20], ["Crunch equilibrio", 6.50], ["Crunch colección", 6.50],
+  ["Tosta colección", 4.50],
+  ["Dulce origen", 2.40], ["Dulce equilibrio", 3.20],
+  ["Limonada origen", 3.00], ["Limonada equilibrio", 3.00], ["Limonada colección", 3.00],
+  ["Matcha latte", 3.50],
+];
+const FLAG_PRECIOS = "productos_precios_carta_nov2026";
 
 // Aplica el lote sobre el store dado (inyectable para tests). Idempotente por flag.
 // No duplica: si ya existe un producto cuya clave/nombre coincide (sin distinguir
@@ -80,7 +96,7 @@ function aplicar(st) {
   const hechos = new Set(cfg.filter((c) => c && c.id).map((c) => c.id));
   const costeById = {}; COSTES_REALES.forEach((c) => { costeById[c.id] = c.coste_materia; });
 
-  let creados = 0, costesTocados = 0, ranAny = false;
+  let creados = 0, costesTocados = 0, precios = 0, ranAny = false;
 
   // Bloque 1 · crear los artículos del catálogo que faltan (nombre exacto + PVP).
   if (!hechos.has(FLAG)) {
@@ -155,16 +171,39 @@ function aplicar(st) {
     ranAny = true;
   }
 
-  return { creados, costes: costesTocados, ranAny };
+  // Bloque 5 (independiente) · AJUSTE DE PRECIOS de la carta nov-2026 sobre los
+  // productos que YA existen en producción. Casa por id derivado del nombre o por
+  // nombre/clave/agora_ref normalizados (sin acentos, minúsculas); actualiza TODAS
+  // las coincidencias por si hay variantes heredadas (p. ej. un "Matcha latte"
+  // antiguo + el de Ágora). Solo toca los que cambian. Idempotente por flag.
+  if (!hechos.has(FLAG_PRECIOS)) {
+    const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+    const productos = st.readAll("productos") || [];
+    PRECIOS_CARTA_NOV2026.forEach(([nombre, precio]) => {
+      const idEsperado = "prod-agora-" + slug(nombre);
+      const n = norm(nombre);
+      productos.forEach((p) => {
+        const casa = p.id === idEsperado || [p.clave, p.nombre, p.agora_ref].some((k) => norm(k) === n);
+        if (casa && Number(p.precio_venta) !== precio) {
+          st.update("productos", p.id, { precio_venta: precio });
+          precios++;
+        }
+      });
+    });
+    st.insert("config", { id: FLAG_PRECIOS, hecho: true, fecha: new Date().toISOString() });
+    ranAny = true;
+  }
+
+  return { creados, costes: costesTocados, precios, ranAny };
 }
 
 async function seedProductosAgora() {
   try {
-    const { creados, costes, ranAny } = aplicar(store);
-    if (ranAny) { await store.flush(); console.log(`Seed productos Ágora · ${creados} creados · ${costes} con coste real.`); }
+    const { creados, costes, precios, ranAny } = aplicar(store);
+    if (ranAny) { await store.flush(); console.log(`Seed productos Ágora · ${creados} creados · ${costes} con coste real · ${precios} precio(s) de carta ajustado(s).`); }
   } catch (e) {
     console.error("No se pudieron sembrar los productos de Ágora:", e.message);
   }
 }
 
-module.exports = { seedProductosAgora, aplicar, CATALOGO, FLAG, COSTES_REALES, FLAG_COSTES };
+module.exports = { seedProductosAgora, aplicar, CATALOGO, FLAG, COSTES_REALES, FLAG_COSTES, PRECIOS_CARTA_NOV2026, FLAG_PRECIOS };

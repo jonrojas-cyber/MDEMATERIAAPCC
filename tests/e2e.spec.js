@@ -1324,8 +1324,8 @@ test("MBDS: la pantalla del laboratorio muestra las bebidas y su veredicto", asy
   expect(errors).toEqual([]);
 });
 
-// Módulo Limonadas/Zumo: escalador que calcula las recetas (todo a la batidora
-// + clarificado con pectinasa). Cantidades base por litro; a 5 L dan el gramaje real.
+// Módulo Limonadas/Zumo: escalador que calcula las recetas (todo a la batidora,
+// en un mismo día, sin clarificado ni pectinasa). Cantidades base por litro; a 5 L dan el gramaje real.
 test("limonadas: el escalador calcula las 5 recetas cerradas por litros", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -1353,7 +1353,7 @@ test("limonadas: el escalador calcula las 5 recetas cerradas por litros", async 
   await expect(page.locator(".lim-tab")).not.toContainText(/Zumo/);
   await expect(page.locator(".lim-tab")).toContainText(/25,9 g/);       // 5,18 g/L × 5 (cada piel)
   // Estas recetas no llevan sub-preparaciones (todo a la batidora).
-  await page.evaluate(() => { limSetRec("R4"); limSetDia(1); });
+  await page.evaluate(() => { limSetRec("R4"); limSetL(5); });
   await expect(page.locator("body")).toContainText(/Esta receta no lleva preparaciones previas/);
   // Pomelo·romero·Lapsang: cambia el nombre y muestra el zumo de pomelo.
   await page.evaluate(() => { limSetRec("R5"); limSetL(5); });
@@ -1391,15 +1391,13 @@ test("limonadas: el escalador calcula las 5 recetas cerradas por litros", async 
     catch (e) { return String(e.message).includes("litros") ? 400 : -1; }
   });
   expect(status).toBe(400);
-  // Producción desestructurada en 3 días.
-  await page.evaluate(() => { limSetRec("R4"); limSetDia(1); });
-  await expect(page.locator(".lim-dias .lim-dia")).toHaveCount(3);
-  await expect(page.locator("body")).toContainText(/Clarificar con pectinasa/);
-  await expect(page.locator("body")).toContainText(/Pectinex Ultra SP-L/);
-  await page.evaluate(() => limSetDia(2));
-  await expect(page.locator("body")).toContainText(/Trasiego del clarificado/);
-  await expect(page.locator("body")).not.toContainText(/preparar antes/);   // el Día 2 no repite las preparaciones
-  await page.evaluate(() => { limSetDia(3); limSetL(5); });
+  // Producción en un mismo día (sin clarificado ni pectinasa, sin pestañas de día).
+  await page.evaluate(() => { limSetRec("R4"); limSetL(5); });
+  await expect(page.locator(".lim-dias")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/Clarificar con pectinasa/);
+  await expect(page.locator("body")).not.toContainText(/Pectinex Ultra SP-L/);
+  await expect(page.locator("body")).not.toContainText(/Trasiego del clarificado/);
+  await expect(page.locator("body")).toContainText(/Homemade · preparar antes/);
   await expect(page.locator("body")).toContainText(/Enlatado/);
   await expect(page.locator("body")).toContainText(/20 latas de 250 ml/);    // 5 L → 20 latas
   await expect(page.locator("body")).toContainText(/Carbonatación/);
@@ -1633,45 +1631,16 @@ test("MBDS: el trabajador NO recibe datos económicos de las bebidas", async ({ 
   expect(typeof ambar.calc.abv).toBe("number");     // pero sí parámetros técnicos
 });
 
-test("lab cocina: fichas de sándwiches y tostas, escandallo (admin) y montaje guiado", async ({ page }) => {
+test("lab cocina: vacío de origen (empezamos de cero), abre sin errores", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await login(page);
   await page.evaluate(() => irA_labCocina());
-  // Sándwich por defecto con ficha, perfil y escandallo (Moni es admin).
-  await expect(page.locator(".lim-h")).toContainText(/Sándwich Origen/);
-  await expect(page.locator("body")).toContainText(/Perfil sensorial/);
-  await expect(page.locator("body")).toContainText(/Escandallo · por unidad/);
-  await expect(page.locator(".lim-param")).toContainText(/food cost/);
-  // Cambio a Tostas → Colección.
-  await page.evaluate(() => labSet("tosta", "TC"));
-  await expect(page.locator(".lim-h")).toContainText(/Tosta Colección/);
-  await expect(page.locator("body")).toContainText(/nectarina caramelizada/i);
-  // Extras aplicables a cualquier tosta: jamón braseado y aguacate, con PVP y
-  // (solo admin) coste. El bloque aparece en cualquier tosta.
-  await expect(page.locator("body")).toContainText(/Extras · cualquier tosta/i);
-  await expect(page.locator("body")).toContainText(/Extra jamón braseado/i);
-  await expect(page.locator("body")).toContainText(/1,50 €/);   // pvp jamón
-  await expect(page.locator("body")).toContainText(/Extra aguacate/i);
-  await expect(page.locator("body")).toContainText(/1,00 €/);   // pvp aguacate
-  await expect(page.locator("body")).toContainText(/0,39 €/);   // coste jamón (admin)
-  // Bases: elaboraciones compartidas con rinde y coste de lote.
-  await page.evaluate(() => labSet("base", "SV"));
-  await expect(page.locator(".lim-h")).toContainText(/Salsa Verde Materia/);
-  await expect(page.locator("body")).toContainText(/Se usa en/);
-  await expect(page.locator("body")).toContainText(/Coste lote/);
-  // Enlace con la carta: la comida del LAB aparece en la categoría Comida.
-  await page.evaluate(() => labVerEnCarta("tosta"));
-  await expect(page.locator("body")).toContainText(/Tosta Colección/);
-  await expect(page.locator("body")).toContainText(/PVP 4,90 €/);
-  // Montaje guiado a pantalla completa: recorre los pasos hasta «listo».
-  await page.evaluate(() => labMontaje("TC", "tosta"));
-  await expect(page.locator(".pwz .pwz-step")).toBeVisible();
-  const n = await page.evaluate(() => window._labm.pasos.length);
-  for (let k = 0; k < n; k++) await page.locator(".pwz-next").click();
-  await expect(page.locator(".pwz-check")).toBeVisible();
-  await page.locator(".pwz-next").click();                 // Cerrar
-  await expect(page.locator("#prep-fs")).toBeHidden();
+  // El laboratorio de comida está vacío a propósito: no hay fichas ni escandallos.
+  await expect(page.locator(".lim-h")).toContainText(/Laboratorio de comida/);
+  await expect(page.locator("body")).toContainText(/Vacío · empezamos de cero/);
+  await expect(page.locator("body")).not.toContainText(/Sándwich Origen/);
+  await expect(page.locator("body")).not.toContainText(/Escandallo/);
   expect(errors).toEqual([]);
 });
 
@@ -1681,15 +1650,9 @@ test("estación de trabajo: mise en place derivada de la carta (cubetas + fuera 
   await login(page);
   await page.evaluate(() => irA_estacion());
   await expect(page.locator(".lim-h")).toContainText(/Estación de trabajo/);
-  // Cubetas derivadas de las recetas en carta.
-  await expect(page.locator("body")).toContainText(/Tomate huevo de toro/);
-  await expect(page.locator("body")).toContainText(/Jamón cocido/);
-  await expect(page.locator("body")).toContainText(/Pechuga de pollo/);
-  // Condimentos fuera de la mesa (salsas/acabados).
-  await expect(page.locator("body")).toContainText(/Mayonesa de chimichurri/);
-  await expect(page.locator("body")).toContainText(/AOVE/);
-  // La Tosta Equilibrio está «por definir» → no aporta cubetas inventadas.
-  await expect(page.locator("body")).not.toContainText(/edamame/i);
+  // Sin productos en el lab de comida (vaciado de origen) no hay cubetas derivadas.
+  await expect(page.locator("body")).not.toContainText(/Tomate huevo de toro/);
+  await expect(page.locator("body")).not.toContainText(/Pechuga de pollo/);
   expect(errors).toEqual([]);
 });
 
@@ -1719,15 +1682,11 @@ test("lab cocina: el trabajador NO ve escandallo ni food cost", async ({ page })
   for (const d of "2222") await page.locator(".pin-key", { hasText: new RegExp("^" + d + "$") }).click();
   await page.waitForSelector(".home-routine", { timeout: 15_000 });
   await page.evaluate(() => irA_labCocina());
-  await expect(page.locator(".lim-h")).toContainText(/Sándwich Origen/);
-  await expect(page.locator("body")).toContainText(/Ingredientes/);      // ve los ingredientes
-  await expect(page.locator("body")).not.toContainText(/Escandallo/);    // pero NO costes
+  // Lab de comida vacío de origen: ni fichas ni, por tanto, coste/food cost.
+  await expect(page.locator(".lim-h")).toContainText(/Laboratorio de comida/);
+  await expect(page.locator("body")).toContainText(/empezamos de cero/);
+  await expect(page.locator("body")).not.toContainText(/Escandallo/);
   await expect(page.locator("body")).not.toContainText(/food cost/);
-  // Extras en una tosta: el equipo ve el PVP pero NO el coste ni el food cost.
-  await page.evaluate(() => labSet("tosta", "TC"));
-  await expect(page.locator("body")).toContainText(/Extras · cualquier tosta/i);
-  await expect(page.locator("body")).toContainText(/1,50 €/);            // pvp jamón, visible
-  await expect(page.locator("body")).not.toContainText(/0,39 €/);        // coste jamón, oculto
 });
 
 test("lab: producir se divide en Bebidas y Comida, con navegación coherente", async ({ page }) => {
@@ -1748,17 +1707,10 @@ test("lab: producir se divide en Bebidas y Comida, con navegación coherente", a
   // Back vuelve al hub de Lab (dos filas).
   await page.evaluate(() => goBack());
   await expect(page.locator(".lab-rows > .lab-row")).toHaveCount(2);
-  // Comida → producciones reales + la salsa con trufa como PENDIENTE (sin inventar receta).
+  // Comida → vacío de origen (empezamos de cero): sin productos ni preparaciones.
   await page.evaluate(() => irA_labComida());
-  await expect(page.locator(".lr-name", { hasText: /Salsa Verde Materia/i })).toBeVisible();
-  await expect(page.locator(".lr-name", { hasText: /Salsa Materia con trufa/i })).toBeVisible();
-  await expect(page.locator(".lab-row.pend .lab-pend")).toBeVisible();   // marcada pendiente
-  // Abrir la salsa con trufa: ficha pendiente, no inventa ingredientes.
-  await page.evaluate(() => labAbrirFicha("base", "ST"));
-  await expect(page.locator("body")).toContainText(/No invento nada|Receta por definir/i);
-  // Back vuelve a Comida (destino dinámico _labVolver).
-  await page.evaluate(() => goBack());
-  await expect(page.locator(".lr-name", { hasText: /Salsa Materia con trufa/i })).toBeVisible();
+  await expect(page.locator("body")).toContainText(/Laboratorio de comida vacío/);
+  await expect(page.locator("body")).not.toContainText(/Salsa Verde Materia/i);
   expect(errors).toEqual([]);
 });
 

@@ -4054,15 +4054,25 @@ function irA_labComida(){
   navInto(()=>irA_lab()); openSection("labcomida", "Comida");
   window._labVolver = irA_labComida;
   const bases = Object.values(LAB_DATA.base || {});
+  const sandis = Object.values(LAB_DATA.sandwich || {});
+  const tostas = Object.values(LAB_DATA.tosta || {});
+  // Vacío (empezamos de cero): sin productos ni preparaciones.
+  if(!bases.length && !sandis.length && !tostas.length){
+    setInner(`
+      <div class="lab-eyebrow" style="margin:0 0 4px">producción · comida</div>
+      <div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Laboratorio de comida vacío.</b> Empezamos de cero: no hay productos ni preparaciones (ni avisos de «prepara salsa»). Dime qué vamos a producir (sándwiches, tostas, elaboraciones) con sus ingredientes y lo monto aquí: ficha, escandallo y montaje.</div>`);
+    return;
+  }
   const basesHTML = bases.map((b)=>labRow(esc(b.nombre), b.pendiente ? "pendiente de tu receta" : esc((b.carta||"").slice(0,60)), `labAbrirFicha('base','${b.cod}')`, !!b.pendiente)).join("");
+  const platosFoot = (sandis.length||tostas.length)?`<div class="lab-foot">
+      <span class="lab-foot-lb">platos de carta</span>
+      ${sandis.length?`<button onclick="labAbrirFicha('sandwich','${sandis[0].cod}')">sándwiches</button>`:""}
+      ${tostas.length?`<button onclick="labAbrirFicha('tosta','${tostas[0].cod}')">tostas</button>`:""}
+    </div>`:"";
   setInner(`
     <div class="lab-eyebrow" style="margin:0 0 4px">producción · comida · elaboraciones</div>
     <div class="lab-rows">${basesHTML}</div>
-    <div class="lab-foot">
-      <span class="lab-foot-lb">platos de carta</span>
-      <button onclick="labAbrirFicha('sandwich','SO')">sándwiches</button>
-      <button onclick="labAbrirFicha('tosta','TO')">tostas</button>
-    </div>`);
+    ${platosFoot}`);
 }
 // Abre la ficha de cocina directamente en un ítem concreto (salsa/sándwich/tosta).
 function labAbrirFicha(tipo, cod){ if(labProd(tipo,cod)){ window._labc = { tipo, cod }; } irA_labCocina(); }
@@ -4258,10 +4268,9 @@ const LIMONADAS_DATA = {
         { n: "Azúcar",             v: 61,    u: "g" },
         { n: "Fructosa",           v: 43,    u: "g" },
         { n: "Glutamato monosódico", v: 0.25, u: "g" },
-        { n: "Sal",                v: 0.61,  u: "g" },
-        { n: "Pectinasa Pectinex Ultra SP-L", v: 2, u: "g" }
+        { n: "Sal",                v: 0.61,  u: "g" }
       ],
-      nota: "Limonada · rendimiento 5 L (cantidades base por litro). SIN zumo: el zumo de lima se sustituye por agua (va al total). Hoja de lima kaffir subida un 20 % (1,84 → 2,21 g/L). Elaboración: 1) Pon ≈3,95 L de agua filtrada en la batidora (incluye el agua que antes era zumo). 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de lima y las hojas de lima kaffir. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 9) Deja actuar 90 min a 35-40 °C y luego 2-3 h en frío (alternativa operativa: 12-18 h directamente en refrigeración). 10) Cuela y filtra fino. 11) Completa con agua filtrada hasta 5 L exactos. 12) Envasa o pasa a barril. Conservación: 0-4 °C."
+      nota: "Limonada · rendimiento 5 L (cantidades base por litro). SIN zumo: el zumo de lima se sustituye por agua (va al total). Hoja de lima kaffir subida un 20 % (1,84 → 2,21 g/L). Elaboración: 1) Pon ≈3,95 L de agua filtrada en la batidora (incluye el agua que antes era zumo). 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de lima y las hojas de lima kaffir. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Cuela y filtra fino. 9) Completa con agua filtrada hasta 5 L exactos. 10) Envasa o pasa a barril. Conservación: 0-4 °C."
     },
     R5: {
       nombre: "Pomelo · romero · Lapsang Souchong", sabor: "pomelo · romero · lapsang souchong", prod: "Limonadas Colección", fase: "limonada · pomelo · romero · lapsang souchong", pvp: "2,50 €",
@@ -4276,10 +4285,9 @@ const LIMONADAS_DATA = {
         { n: "Ácido cítrico",      v: 7,    u: "g" },
         { n: "Ácido málico",       v: 1,    u: "g" },
         { n: "Sal",                v: 0.6,  u: "g" },
-        { n: "Glutamato monosódico", v: 0.2, u: "g" },
-        { n: "Pectinasa",          v: 1,    u: "g" }
+        { n: "Glutamato monosódico", v: 0.2, u: "g" }
       ],
-      nota: "Limonada · rendimiento 5 L (cantidades base por litro). Elaboración: 1) Calienta 1 L de agua filtrada a 85 °C. 2) Infusiona el Lapsang Souchong 4 min. 3) Cuela de inmediato y enfría. 4) Pon la infusión fría y ~2,5 L más de agua en la batidora. 5) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 6) Tritura hasta disolver. 7) Incorpora el zumo, la piel de pomelo y el romero. 8) Tritura 30 s, reposa 30 s y tritura otros 15 s. 9) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 10) Deja actuar 60-90 min. 11) Refrigera 8-12 h. 12) Cuela y filtra fino. 13) Completa con agua filtrada hasta 5 L exactos. 14) Envasa o pasa a barril. Conservación: 0-4 °C."
+      nota: "Limonada · rendimiento 5 L (cantidades base por litro). Elaboración: 1) Calienta 1 L de agua filtrada a 85 °C. 2) Infusiona el Lapsang Souchong 4 min. 3) Cuela de inmediato y enfría. 4) Pon la infusión fría y ~2,5 L más de agua en la batidora. 5) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 6) Tritura hasta disolver. 7) Incorpora el zumo, la piel de pomelo y el romero. 8) Tritura 30 s, reposa 30 s y tritura otros 15 s. 9) Cuela y filtra fino. 10) Completa con agua filtrada hasta 5 L exactos. 11) Envasa o pasa a barril. Conservación: 0-4 °C."
     },
     R6: {
       nombre: "Fruta de la pasión · hierbabuena", sabor: "fruta de la pasión · hierbabuena", prod: "Limonadas Equilibrio", fase: "limonada · fruta de la pasión · hierbabuena", pvp: "2,90 €",
@@ -4292,10 +4300,9 @@ const LIMONADAS_DATA = {
         { n: "Ácido cítrico",      v: 7,   u: "g" },
         { n: "Ácido málico",       v: 1,   u: "g" },
         { n: "Sal",                v: 0.6, u: "g" },
-        { n: "Glutamato monosódico", v: 0.2, u: "g" },
-        { n: "Pectinasa",          v: 1,   u: "g" }
+        { n: "Glutamato monosódico", v: 0.2, u: "g" }
       ],
-      nota: "Limonada · rendimiento 5 L (cantidades base por litro). Elaboración: 1) Pon ~3,5 L de agua filtrada en la batidora. 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver del todo. 4) Añade el puré de fruta de la pasión y tritura 30 s. 5) Añade la hierbabuena y tritura solo 10 s (evita notas vegetales excesivas). 6) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 7) Deja actuar 60-90 min. 8) Refrigera 8-12 h. 9) Cuela y filtra fino. 10) Completa con agua filtrada hasta 5 L exactos. 11) Envasa o pasa a barril. Conservación: 0-4 °C."
+      nota: "Limonada · rendimiento 5 L (cantidades base por litro). Elaboración: 1) Pon ~3,5 L de agua filtrada en la batidora. 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver del todo. 4) Añade el puré de fruta de la pasión y tritura 30 s. 5) Añade la hierbabuena y tritura solo 10 s (evita notas vegetales excesivas). 6) Cuela y filtra fino. 7) Completa con agua filtrada hasta 5 L exactos. 8) Envasa o pasa a barril. Conservación: 0-4 °C."
     },
     R7: {
       nombre: "Naranja · pomelo rosa · jengibre", sabor: "naranja · pomelo rosa · jengibre", prod: "Zumo Materia", fase: "zumo · naranja · pomelo rosa · jengibre", pvp: "",
@@ -4304,10 +4311,9 @@ const LIMONADAS_DATA = {
         { n: "Zumo de naranja",    v: 450, u: "g" },
         { n: "Zumo de pomelo rosa", v: 250, u: "g" },
         { n: "Jengibre fresco pelado", v: 20, u: "g" },
-        { n: "Pectinasa",          v: 0.5, u: "g" },
         { n: "Ácido ascórbico",    v: 0.2, u: "g" }
       ],
-      nota: "Zumo · rendimiento 5 L / 5.000 g (cantidades base por litro). Sal: una pizca por lote. Elaboración: 1) Tritura el jengibre con 1.400 g de agua (280 g/L) durante 90 s. 2) Añade el zumo de naranja, el zumo de pomelo, la pectinasa, el ácido ascórbico y la sal. 3) Tritura 30 s sin calentar el producto. 4) Deja actuar 60 min a temperatura ambiente controlada. 5) Refrigera 8-12 h. 6) Cuela primero con filtro fino y después con superbag. 7) Completa con agua filtrada hasta 5.000 g exactos. 8) Envasa de inmediato. Conservación: 0-4 °C. Vida útil operativa: 5 días refrigerado (0-4 °C); no indicar 7 días salvo control higiénico validado y pH ≤ 4,0."
+      nota: "Zumo · rendimiento 5 L / 5.000 g (cantidades base por litro). Sal: una pizca por lote. Elaboración: 1) Tritura el jengibre con 1.400 g de agua (280 g/L) durante 90 s. 2) Añade el zumo de naranja, el zumo de pomelo, el ácido ascórbico y la sal. 3) Tritura 30 s sin calentar el producto. 4) Cuela primero con filtro fino y después con superbag. 5) Completa con agua filtrada hasta 5.000 g exactos. 6) Envasa de inmediato. Conservación: 0-4 °C. Vida útil operativa: 5 días refrigerado (0-4 °C); no indicar 7 días salvo control higiénico validado y pH ≤ 4,0."
     },
     R8: {
       nombre: "Naranja · pomelo · albahaca", sabor: "naranja · pomelo · albahaca", prod: "Limonadas · naranja pomelo albahaca", fase: "limonada · naranja · pomelo · albahaca", pvp: "2,50 €",
@@ -4321,10 +4327,9 @@ const LIMONADAS_DATA = {
         { n: "Azúcar",             v: 61,    u: "g" },
         { n: "Fructosa",           v: 43,    u: "g" },
         { n: "Glutamato monosódico", v: 0.25, u: "g" },
-        { n: "Sal",                v: 0.61,  u: "g" },
-        { n: "Pectinasa Pectinex Ultra SP-L", v: 2, u: "g" }
+        { n: "Sal",                v: 0.61,  u: "g" }
       ],
-      nota: "Limonada · rendimiento 5 L (cantidades base por litro). NUEVA: copia de la de lima, SIN zumo (agua), con piel de naranja + piel de pomelo (50/50) en lugar de piel de lima, y albahaca en lugar de hoja de lima kaffir. Elaboración: 1) Pon ≈3,95 L de agua filtrada en la batidora. 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de naranja, la piel de pomelo y la albahaca. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Añade la pectinasa y mezcla 5-10 s a velocidad baja. 9) Deja actuar 90 min a 35-40 °C y luego 2-3 h en frío (alternativa operativa: 12-18 h directamente en refrigeración). 10) Cuela y filtra fino. 11) Completa con agua filtrada hasta 5 L exactos. 12) Envasa o pasa a barril. Conservación: 0-4 °C. PVP 2,50 €."
+      nota: "Limonada · rendimiento 5 L (cantidades base por litro). NUEVA: copia de la de lima, SIN zumo (agua), con piel de naranja + piel de pomelo (50/50) en lugar de piel de lima, y albahaca en lugar de hoja de lima kaffir. Elaboración: 1) Pon ≈3,95 L de agua filtrada en la batidora. 2) Añade azúcar, fructosa, ácido cítrico, ácido málico, sal y glutamato. 3) Tritura hasta disolver. 4) Añade la piel de naranja, la piel de pomelo y la albahaca. 5) Tritura 45 s. 6) Reposa 30 s. 7) Tritura otros 20 s. 8) Cuela y filtra fino. 9) Completa con agua filtrada hasta 5 L exactos. 10) Envasa o pasa a barril. Conservación: 0-4 °C. PVP 2,50 €."
     }
   }
 };
@@ -4342,21 +4347,17 @@ function limFmt(x){
 function irA_burbujas(){
   var _lv=window._labVolver||irA_mbds; navInto(function(){_lv();});
   const keys=Object.keys(LIMONADAS_DATA.recetas);
-  if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16, dia:1, carbonatar:null };
+  if(!window._lim || !window._lim.rk || !LIMONADAS_DATA.recetas[window._lim.rk]) window._lim={ rk:keys[0], litros:16, carbonatar:null };
   openSection("burbujas","Limonadas");
   limRender();
 }
 function limSetRec(rk){ if(LIMONADAS_DATA.recetas[rk]){ window._lim.rk=rk; window._lim.lote=null; window._lim.limitaMsg=""; limRender(); } }
 function limSetL(n){ window._lim.litros=Math.max(0,n); window._lim.prueba=false; window._lim.limitaMsg=""; limRender(); }
 function limLeerLitros(){ const i=el("lim-litros"); if(i) window._lim.litros=Math.max(0,parseFloat(i.value)||0); window._lim.prueba=false; window._lim.limitaMsg=""; limRender(); }
-// Prueba de cata de 200 ml antes de prebachear el lote entero (Día 3).
-function limPrueba(){ window._lim.prueba=true; window._lim.dia=3; window._lim.limitaMsg=""; limRender(); }
-function limPrebachear(){ window._lim.prueba=false; window._lim.dia=3; limRender(); }
-// Producción en 3 días: Día 1 super juice + clarificado · Día 2 trasiego · Día 3 prebache/carbonatación/enlatado.
-function limSetDia(n){ window._lim.dia=n; window._lim.prueba=false; limRender(); }
+// Prueba de cata de 200 ml antes de prebachear el lote entero.
+function limPrueba(){ window._lim.prueba=true; window._lim.limitaMsg=""; limRender(); }
+function limPrebachear(){ window._lim.prueba=false; limRender(); }
 function limToggleCarbonatar(v){ window._lim.carbonatar=v; limRender(); }
-// Etiqueta del super juice mientras clarifica / ya clarificado (vida útil corta en frío).
-function limEtiquetaClarificando(txt){ const s=window._lim, r=LIMONADAS_DATA.recetas[s.rk]; irA_etiquetaProd({ nombre:"Super juice "+r.nombre+" · "+(txt||"clarificando"), cantidad:limFmt(s.litros)+" L", vidaDias:3 }); }
 // ── Producir por INGREDIENTE LIMITANTE (compartido Burbujas/Spritz) ──────────
 // El que menos tienes marca el lote máximo: litros = lo que tienes / consumo por
 // litro. El resto de la receta y el resultado final se recalculan solos.
@@ -4481,41 +4482,20 @@ function limRender(){
     </div>` : "";
   // ── Producción en 3 días (desestructurada) ──────────────────────────────────
   const premezHTML = `<div class="card"><div class="lim-eyebrow" style="margin-bottom:6px;">para dosificar lo que pesa muy poco</div>${Object.entries(LIMONADAS_DATA.premezclas).map(([k,v])=>`<div class="lim-prem-row"><b>${esc(k)}</b> · ${esc(v)}</div>`).join("")}</div>`;
-  // DÍA 1 · super juice + aromáticos + clarificado con pectinasa.
-  const dia1HTML = `
-    <div class="section-label" style="margin-top:20px;">Día 1 · Homemade · preparar antes · para ${limFmt(L)} L</div>
+  // Preparaciones homemade (todo en un mismo día; sin clarificado ni pectinasa).
+  const prepHTML = `
+    <div class="section-label" style="margin-top:20px;">Homemade · preparar antes · para ${limFmt(L)} L</div>
     ${limPrepHTML(r, L)}
     <div class="section-label" style="margin-top:16px;">Premezclas líquidas</div>
-    ${premezHTML}
-    <div class="section-label" style="margin-top:16px;">Clarificar con pectinasa</div>
-    <div class="card" style="border-left:3px solid var(--olive);">
-      <div style="font-weight:700;margin-bottom:6px;">Cuando el super juice esté filtrado (V60), clarifícalo.</div>
-      <div class="lim-prem-row">1 · Dosifica <b>pectinasa (Pectinex Ultra SP-L) · 2 g/L</b> (0,2 %) sobre el super juice y remueve.</div>
-      <div class="lim-prem-row">2 · Tápalo y déjalo <b>clarificando en frío 12–24 h</b>: la enzima rompe la pectina y la pulpa decanta al fondo.</div>
-      <div class="lim-prem-row">3 · Mañana pasas al <b>Día 2</b> · trasiego del líquido limpio.</div>
-      <div class="card-meta" style="margin-top:6px;">Referencia: para ${limFmt(L)} L ≈ <b>${limFmt(L*2)} g de pectinasa</b> (ajusta al volumen real de super juice, no al de resultado).</div>
-      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limEtiquetaClarificando('clarificando')">🏷️ etiqueta «clarificando»</button></div>
-    </div>`;
-  // DÍA 2 · trasiego del clarificado.
-  const dia2HTML = `
-    <div class="section-label" style="margin-top:20px;">Día 2 · Trasiego del clarificado</div>
-    <div class="card" style="border-left:3px solid var(--olive);">
-      <div style="font-weight:700;margin-bottom:6px;">El super juice ha clarificado toda la noche.</div>
-      <div class="lim-prem-row">1 · La pulpa ha decantado al fondo. <b>Trasiega con cuidado</b> el líquido limpio a otro recipiente, dejando el sedimento.</div>
-      <div class="lim-prem-row">2 · Si aún queda turbio, <b>filtra en superbag o V60</b>.</div>
-      <div class="lim-prem-row">3 · Mide <b>°Bx (~${esc(r.bx)})</b> y <b>acidez (${esc(r.acidez)})</b> y anótalo. Guarda en frío.</div>
-      <div class="lim-prem-row">4 · Mañana, <b>Día 3</b>: prebache, carbonatación y enlatado.</div>
-      <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limEtiquetaClarificando('clarificado')">🏷️ etiqueta «clarificado»</button></div>
-    </div>`;
-  // DÍA 3 · prebache + carbonatación (por confirmar) + enlatado.
+    ${premezHTML}`;
   const latas = Math.floor(L*1000/250), carb = s.carbonatar;
-  const dia3HTML = `
-    <div class="section-label" style="margin-top:20px;">Día 3 · Prebache · carbonatación · enlatado</div>
+  const finalHTML = `
+    <div class="section-label" style="margin-top:20px;">Mezcla · prebache · carbonatación · enlatado</div>
     <div class="card"><div class="card-meta">Antes de escalar, cata una muestra de 200 ml del resultado final.</div>
       <div class="card-actions" style="margin-top:10px;"><button class="btn-ghost" onclick="limPrueba()">🧪 Hacer prueba de 200 ml</button></div></div>
     <div class="section-label" style="margin-top:16px;">Prebache · registrar lote</div>
     ${loteCardHTML}
-    <div class="card"><div class="card-meta">Mezcla el prebache final (super juice clarificado + aromáticos + azúcares + ácidos). Al cerrarlo, regístralo con los <b>litros</b> y la <b>hora exacta</b> (la sella el servidor).</div>
+    <div class="card"><div class="card-meta">Mezcla todo el lote (super juice + aromáticos + azúcares + ácidos) y dilúyelo con el agua hasta el volumen final. Al cerrarlo, regístralo con los <b>litros</b> y la <b>hora exacta</b> (la sella el servidor).</div>
       <div class="card-actions" style="margin-top:10px;"><button class="btn-primary" onclick="limGenerarLote()">✅ Generar lote de ${limFmt(L)} L</button></div></div>
     <div class="section-label" style="margin-top:16px;">Carbonatación <small style="color:var(--muted);font-weight:400;">· por confirmar</small></div>
     <div class="card">
@@ -4540,10 +4520,7 @@ function limRender(){
       <button class="btn-ghost" onclick="burVerEnCarta()">Todas en carta · Limonadas</button>
       <button class="btn-ghost" onclick="limOleo()">Óleo saccharum</button>
     </div>`;
-  const diaActivo = prueba ? 3 : (s.dia||1);
-  const diasDef = [{n:1,t:"Día 1",s:"Super juice + clarificado"},{n:2,t:"Día 2",s:"Trasiego del clarificado"},{n:3,t:"Día 3",s:"Prebache · carbonatación · enlatado"}];
-  const diaTabs = `<div class="lim-dias">${diasDef.map(d=>`<button class="lim-dia${d.n===diaActivo?" on":""}" onclick="limSetDia(${d.n})"><b>${esc(d.t)}</b><span>${esc(d.s)}</span></button>`).join("")}</div>`;
-  const bloqueLote = (diaActivo===1?dia1HTML : diaActivo===2?dia2HTML : dia3HTML);
+  const bloqueLote = prepHTML + finalHTML;
 
   setInner(`
     <div class="lim-head"><div><div class="lim-eyebrow">Control M · producción · carbonatada</div><div class="lim-h">Limonadas · ${esc(r.nombre)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(r.sabor)}</div></div><div style="font-size:19px;font-weight:700;color:var(--olive);">${volTxt}</div></div>
@@ -4567,7 +4544,6 @@ function limRender(){
     <div class="lim-param"><div><b>${esc(r.bx)}</b><span>°Bx</span></div><div><b>${esc(r.acidez)}</b><span>acidez</span></div><div><b>${esc(r.co2)}</b><span>CO₂</span></div><div><b>${esc(r.pvp)}</b><span>pvp</span></div></div>
     <table class="lim-tab"><thead><tr><th>componente</th><th>por litro</th><th>${colTxt}</th></tr></thead><tbody>${rows}${cierre}</tbody></table>
     <div class="lim-nota">${esc(r.nota)}</div>
-    ${diaTabs}
     ${prueba?bloquePrueba:bloqueLote}
   `);
 }
@@ -5520,6 +5496,10 @@ const LAB_DATA = {
       versiones:[ { v:"—", f:"pendiente", cambio:"Pendiente de tu receta (ingredientes, cantidades y coste de la trufa). No invento ingredientes." } ] },
   },
 };
+// Laboratorio de comida · VACIADO a cero (decisión de la fundadora, 17-nov-2026):
+// se empieza de cero; los productos y preparaciones nuevos se definirán desde la app.
+// Se mantiene la estructura (sandwich/tosta/base) para no romper el render.
+LAB_DATA.sandwich = {}; LAB_DATA.tosta = {}; LAB_DATA.base = {};
 function labEur(n){ return (Math.round((n||0)*100)/100).toFixed(2).replace(".",",")+" €"; }
 function labProd(tipo,cod){ return (LAB_DATA[tipo]||{})[cod]; }
 function irA_labCocina(){
@@ -5532,6 +5512,11 @@ function labSet(tipo,cod){ if(labProd(tipo,cod)){ window._labc={tipo,cod}; labRe
 function labRender(){
   const admin = mbdsEsAdmin();
   const { tipo, cod } = window._labc, p = labProd(tipo,cod);
+  if(!p){
+    setInner(`<div class="lim-head"><div><div class="lim-eyebrow">Control M · cocina</div><div class="lim-h">Laboratorio de comida</div></div></div>
+      <div class="lim-nota" style="border-left-color:var(--aviso);color:var(--ink);"><b>Vacío · empezamos de cero.</b> Aquí no hay productos ni preparaciones todavía. Dime qué vamos a producir (sándwiches, tostas, elaboraciones) con sus ingredientes y lo monto: ficha, escandallo y montaje guiado.</div>`);
+    return;
+  }
   const est = LAB_ESTADOS[p.estado] || LAB_ESTADOS.prueba;
   const tipoTxt = tipo==='sandwich'?'sándwiches':tipo==='tosta'?'tostas':'bases';
   const seg = `<div class="lim-seg" style="max-width:340px;">
@@ -5757,7 +5742,7 @@ const PLAN_PROD = {
   semanal: [
     { n:"Dejar pan a descongelar", freq:"1×/sem" },
     { n:"Zumo Materia · naranja, pomelo, agua, jengibre", freq:"2×/sem" },
-    { n:"Refrescos · super juice (pomelo · lima · pasión)", freq:"1×/sem", sub:["Clarificado 12 h","Prebacheado"] },
+    { n:"Refrescos · super juice (pomelo · lima · pasión)", freq:"1×/sem", sub:["Mezcla y dilución","Prebacheado"] },
     { n:"Pollo a baja temperatura", freq:"1×/sem" },
     { n:"Mayonesa de chimichurri", freq:"1×/sem" },
     { n:"Salsa Materia (verde)", freq:"2×/sem" },

@@ -22,7 +22,6 @@ const RAW = [
   { key: "acido-malico", nombre: "Ácido málico" },
   { key: "sal", nombre: "Sal" },
   { key: "glutamato", nombre: "Glutamato" },
-  { key: "pectinasa", nombre: "Pectinasa" },
   { key: "piel-lima", nombre: "Piel de lima" },
   { key: "hoja-kaffir", nombre: "Hoja de lima kaffir" },
   { key: "zumo-pomelo", nombre: "Zumo de pomelo rosa" },
@@ -38,10 +37,10 @@ const RAW = [
 
 // Receta por LITRO (g/L) de cada producto del TPV → se escala por vaso.
 const POR_LITRO = {
-  "limonada origen": [["azucar", 61], ["fructosa", 43], ["acido-citrico", 11.1], ["acido-malico", 1.22], ["glutamato", 0.25], ["sal", 0.61], ["pectinasa", 2], ["piel-lima", 10.36], ["hoja-kaffir", 2.21]],
-  "limonada equilibrio": [["puree-maracuya", 150], ["hierbabuena", 6], ["azucar", 60], ["fructosa", 40], ["acido-citrico", 7], ["acido-malico", 1], ["sal", 0.6], ["glutamato", 0.2], ["pectinasa", 1]],
-  "limonada coleccion": [["zumo-pomelo", 200], ["piel-pomelo", 7], ["lapsang", 2.4], ["romero", 1.2], ["azucar", 64], ["fructosa", 36], ["acido-citrico", 7], ["acido-malico", 1], ["sal", 0.6], ["glutamato", 0.2], ["pectinasa", 1]],
-  "zumo materia": [["zumo-naranja", 450], ["zumo-pomelo", 250], ["jengibre", 20], ["pectinasa", 0.5], ["acido-ascorbico", 0.2]],
+  "limonada origen": [["azucar", 61], ["fructosa", 43], ["acido-citrico", 11.1], ["acido-malico", 1.22], ["glutamato", 0.25], ["sal", 0.61], ["piel-lima", 10.36], ["hoja-kaffir", 2.21]],
+  "limonada equilibrio": [["puree-maracuya", 150], ["hierbabuena", 6], ["azucar", 60], ["fructosa", 40], ["acido-citrico", 7], ["acido-malico", 1], ["sal", 0.6], ["glutamato", 0.2]],
+  "limonada coleccion": [["zumo-pomelo", 200], ["piel-pomelo", 7], ["lapsang", 2.4], ["romero", 1.2], ["azucar", 64], ["fructosa", 36], ["acido-citrico", 7], ["acido-malico", 1], ["sal", 0.6], ["glutamato", 0.2]],
+  "zumo materia": [["zumo-naranja", 450], ["zumo-pomelo", 250], ["jengibre", 20], ["acido-ascorbico", 0.2]],
 };
 
 function norm(s) {
